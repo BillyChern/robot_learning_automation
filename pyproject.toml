@@ -1,0 +1,42 @@
+[project]
+name = "rlpj"
+version = "0.1.0"
+description = "Agentic data collection and pi0.5 fine-tuning on a Kinova Gen3 (16-831 final project)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "numpy>=2.0",
+    "scipy>=1.14",
+    "opencv-python-headless>=4.10",
+    "mujoco==3.12.0",
+    "pyyaml>=6.0",
+    "msgpack>=1.0",
+    "websockets>=13.0",
+]
+
+[project.optional-dependencies]
+robot = [
+    "kortex-api==2.6.0.post3",
+    "pyrealsense2>=2.55",
+]
+
+[project.scripts]
+rlpj = "rlpj.orchestrator.cli:main"
+
+[tool.uv]
+# Same pins as ~/.venvs/kinova_real, which ran every FAR trial: the Kortex wheel asks for protobuf 3.5.1.
+override-dependencies = ["protobuf==3.20.3", "deprecated>=1.2.7"]
+
+[tool.uv.sources]
+kortex-api = { path = "vendor/kortex_api-2.6.0.post3-py3-none-any.whl" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["rlpj"]

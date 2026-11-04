@@ -1,0 +1,20 @@
+name: cup_down_stacking
+instruction: put the upside-down cup nearer the robot over the other cup
+goal: >-
+  Two upside-down cups stand on the table in a line running away from the robot. Pick up the cup nearer the robot
+  and put it, still upside-down, over the other cup, so the two end up nested at the other cup's spot.
+success: The two cups are nested upside-down at the farther cup's spot and the gripper is clear.
+reset: Lift the top cup off the stack, then put both cups at the target positions you are given.
+objects: [base_cup, move_cup]
+
+one_demo: ~/Repositories/kinova_realsense_recorder/data/cup_down_stacking_1shot/episode_000
+
+reuse:
+  - ~/Documents/aaron/agentic_robotics/far_skills/cup_down_stacking/kinova_a
+
+layout:
+  base_cup: {x: [0.45, 0.57], y: [-0.20, 0.00]}
+  move_cup: {from: base_cup, distance: [0.12, 0.18], angle: [170, 205]}   # direction from base_cup, deg
+  min_gap: 0.10
+  radius: [0.30, 0.58]
+  tolerance: 0.02

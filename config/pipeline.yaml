@@ -1,0 +1,31 @@
+# Pipeline settings. Task details: config/tasks/<task>.yaml
+task: bee_in_tape_roll
+
+robot:
+  ip: 192.168.2.9                  # kinova_a
+  robots_json: ~/Documents/aaron/agentic_robotics/far_trials/robots.json
+
+hosts:
+  agent: Worksation_5090           # agents, VLM judge, training, policy server (no route to the arm)
+  policy_server: 100.122.29.80
+  policy_port: 8000
+
+recording: {fps: 15, width: 640, height: 360}
+
+collection:
+  round_size: 50                   # successful episodes per round
+  max_episodes: 200
+  refine_after_failures: 2         # execute failures in a row before Agent 1 repairs its program
+  manual_reset_after_failures: 2   # reset failures in a row before the operator resets by hand
+
+evaluation:
+  episodes: 20
+  target_success_rate: 0.8
+  max_policy_seconds: 150
+
+agents: {model: claude-opus-5-5, effort: medium, max_attempts: 25}
+vlm: {model: claude-opus-5-5, effort: low}
+
+training:
+  base_checkpoint: gs://openpi-assets/checkpoints/pi05_base
+  max_runs: 6

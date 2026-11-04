@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.pyc
+runs/
+third_party/
+!third_party/openpi.commit

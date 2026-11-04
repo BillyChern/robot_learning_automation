@@ -1,0 +1,22 @@
+name: bee_in_tape_roll
+instruction: put the foam bee in the tape roll       # pi0.5 prompt
+goal: A foam bee and a roll of tape lie on the table. Pick up the bee and put it inside the tape roll's hole.
+success: The bee rests inside the tape roll's hole, the tape roll still lies flat, and the gripper is clear of both.
+reset: >-
+  Take the bee out of the tape roll, then put the tape roll and the bee at the target positions you are given.
+  The tape roll is wider than the gripper opens (85 mm): lift it by pinching its wall.
+objects: [tape_roll, foam_bee]
+
+one_demo: ~/Repositories/kinova_realsense_recorder/data/bee_in_tape_roll/episode_000
+
+reuse:                             # read-only; agents may copy any of it
+  - ~/Documents/aaron/agentic_robotics/far_skills/battery_placement/kinova_b
+  - ~/Documents/aaron/agentic_robotics/far_skills/marker_placement/kinova_a
+  - ~/Documents/aaron/agentic_robotics/far_runs/battery_placement/baseline/seed_2/kinova_a
+
+layout:                            # reset targets, sampled per episode (base frame, m)
+  tape_roll: {x: [0.40, 0.56], y: [-0.20, 0.05]}
+  foam_bee: {x: [0.32, 0.56], y: [-0.25, 0.10]}
+  min_gap: 0.15                    # between object centres
+  radius: [0.30, 0.58]             # distance from the robot axis
+  tolerance: 0.025                 # a reset counts if each object is this close to its target
