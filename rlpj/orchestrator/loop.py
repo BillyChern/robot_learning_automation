@@ -253,14 +253,21 @@ class Pipeline:
         self.st.event("attempt", role=role, attempt=attempt_dir.name, moves_robot=moves, exit_code=r.exit_code,
                       outcome=r.outcome, duration=r.duration, what=what)
         self.st.save()
-        ws.push()
-        return _mod("rlpj.agents.runner").digest(attempt_dir) + (f"\n\northe orchestrator: {note}" if note else "")
+        self._push(ws)
+        return _mod("rlpj.agents.runner").digest(attempt_dir) + (f"\n\nthe orchestrator: {note}" if note else "")
 
     def _safe_head(self, ws):
         try:
             return ws.head()
         except Exception:
             return None
+
+    def _push(self, ws):
+        """Sync attempt results to the agent machine; a failure is reported, the digest text still reaches the agent."""
+        try:
+            ws.push()
+        except Exception as e:
+            self.op.notify(f"workspace push failed: {e!r}")
 
     def _reset_command(self, command, attempt_dir):
         """Targets for a reset run: the agent's own --targets (file or inline JSON) or sampled ones; returns (command, targets, path)."""
@@ -312,10 +319,7 @@ class Pipeline:
         a["repairs"] += 1
         a["status"] = "repairing"
         self._last[role] = None
-        try:
-            ws.push()
-        except Exception as e:
-            self.op.notify(f"workspace push failed: {e!r}")
+        self._push(ws)
         fails, dg = self._fails[role], _mod("rlpj.agents.runner").digest
         self.op.notify(f"{role} program failed {len(fails)} times in a row; asking the agent to repair it")
         lines = [f"repair your program; it failed {len(fails)} times in a row during "
@@ -577,10 +581,7 @@ class Pipeline:
         attempt_dir = Path(ws.next_attempt_dir())
         r = self._ssh(command, attempt_dir, timeout_s=self.cfg["training"].get("timeout_s"), what=what)
         self._note_vla(command, r)
-        try:
-            ws.push()
-        except Exception as e:
-            self.op.notify(f"workspace push failed: {e!r}")
+        self._push(ws)
         return f"{_mod('rlpj.agents.runner').digest(attempt_dir)}\n\n(exit code {r.exit_code}, {r.duration:.0f} s)", False
 
     def _ssh(self, command, attempt_dir, timeout_s=None, what=""):
@@ -723,6 +724,8 @@ class Pipeline:
                 phase = "develop_reset" if role == "execute" else "collect"
             elif phase == "collect":
                 self.collect(col["round_size"])
+                if self.st.collection.get("round_target"):      # round left open: the operator stopped it
+                    return "collect"
                 phase = "learn"
             elif phase == "learn":
                 status = self.learn()
