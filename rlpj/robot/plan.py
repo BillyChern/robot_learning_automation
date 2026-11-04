@@ -77,6 +77,28 @@ class Segment:
         return self.q[i] * (1 - f) + self.q[i + 1] * f, self.qd[i] * (1 - f) + self.qd[i + 1] * f
 
 
+class TimedSegment(Segment):
+    """Joint targets at a fixed period (policy chunks): linear interpolation, no quintic re-timing."""
+
+    def __init__(self, name, path_q, dt, speed, kin):
+        self.name, self.speed, self.kind = name, speed, "path"
+        self.path = np.asarray(path_q, float)
+        self.T = float(dt * max(len(self.path) - 1, 0))
+        self.sample(kin)
+
+    def sample(self, kin):
+        n = max(int(np.ceil(self.T / DT)), 1)
+        t = np.arange(n + 1) * DT; t[-1] = self.T
+        s = np.clip(t / max(self.T, 1e-9), 0, 1)
+        u = s * (len(self.path) - 1)
+        i0 = np.clip(np.floor(u).astype(int), 0, max(len(self.path) - 2, 0))
+        f = (u - i0)[:, None]
+        self.q = self.path[i0] * (1 - f) + self.path[np.minimum(i0 + 1, len(self.path) - 1)] * f
+        self.t = t
+        self.qd = np.gradient(self.q, DT, axis=0) if len(t) > 1 else np.zeros_like(self.q)
+        self.tool = np.array([kin.fk(q)[:3, 3] for q in self.q[:: max(1, len(self.q) // 60)]])
+
+
 class Planner:
     def __init__(self, kin=None, oracle=None, log=print):
         self.kin = kin or Kin.load()

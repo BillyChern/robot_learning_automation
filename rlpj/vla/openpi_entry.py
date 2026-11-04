@@ -1,0 +1,126 @@
+"""openpi's scripts with our configs registered (5090, openpi venv, PYTHONPATH=<repo>, cwd third_party/openpi):
+
+  python -m rlpj.vla.openpi_entry norm-stats --run-dir R --dataset NAME [--config-name pi05_kinova_lora] [--max-frames N] [--batch-size B]
+  python -m rlpj.vla.openpi_entry train --run-dir R --dataset NAME [pi05_kinova_lora] --exp-name E [tyro overrides, e.g.
+                                        --num-train-steps 5000 --batch-size 16 --overwrite | --resume --lr-schedule.peak-lr 1e-4]
+  python -m rlpj.vla.openpi_entry serve policy:checkpoint --policy.config pi05_kinova_lora --policy.dir CKPT [--port 8000]
+
+HF_LEROBOT_HOME = R/datasets (dataset rlpj/NAME); checkpoints R/checkpoints/E/<step>; norm stats R/assets/<config>/rlpj/NAME;
+wandb disabled unless RLPJ_WANDB=1; serve reads the dataset id back from the checkpoint's assets/ dir."""
+import argparse
+import dataclasses
+import importlib.util
+import json
+import logging
+import os
+import pathlib
+import platform
+import sys
+import time
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+OPENPI = ROOT / "third_party" / "openpi"
+USAGE = __doc__
+
+
+def _script(name):
+    """Import third_party/openpi/scripts/<name>.py as a module."""
+    spec = importlib.util.spec_from_file_location(f"openpi_scripts_{name}", OPENPI / "scripts" / f"{name}.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _repo_id(dataset):
+    return None if not dataset else (dataset if "/" in dataset else f"rlpj/{dataset}")
+
+
+def _setup_env(run_dir):
+    run_dir = pathlib.Path(run_dir).resolve()
+    run_dir.mkdir(parents=True, exist_ok=True)
+    os.environ["HF_LEROBOT_HOME"] = str(run_dir / "datasets")
+    os.environ.setdefault("XLA_PYTHON_CLIENT_MEM_FRACTION", "0.9")
+    return run_dir
+
+
+def _parser(prog, dataset_required=False):
+    p = argparse.ArgumentParser(prog=prog, allow_abbrev=False)
+    p.add_argument("--run-dir", required=True)
+    p.add_argument("--dataset", required=dataset_required, help="dataset NAME (repo_id rlpj/NAME) or a full repo_id")
+    return p
+
+
+def asset_id_from_checkpoint(ckpt_dir):
+    """Dataset id (e.g. rlpj/bee_v1) from <ckpt>/assets/<id>/norm_stats.json, or None."""
+    d = pathlib.Path(ckpt_dir)
+    found = sorted(d.glob("assets/**/norm_stats.json"))
+    return str(found[0].parent.relative_to(d / "assets")) if found else None
+
+
+def cmd_norm_stats(argv):
+    p = _parser("openpi_entry norm-stats", dataset_required=True)
+    p.add_argument("--config-name", default="pi05_kinova_lora")
+    p.add_argument("--max-frames", type=int, default=None)
+    p.add_argument("--batch-size", type=int, default=None, help="loader batch (must be <= dataset frames)")
+    ns = p.parse_args(argv)
+    run_dir = _setup_env(ns.run_dir)
+    from rlpj.vla import train_config as tc
+    import openpi.training.config as _config
+    cfgs = tc.register(run_dir, _repo_id(ns.dataset))
+    cfg = cfgs[ns.config_name]
+    if ns.batch_size:
+        cfg = dataclasses.replace(cfg, batch_size=ns.batch_size)
+        _config._CONFIGS_DICT[cfg.name] = cfg
+    t0 = time.time()
+    _script("compute_norm_stats").main(ns.config_name, ns.max_frames)
+    print(f"norm stats done in {time.time() - t0:.1f}s")
+
+
+def cmd_train(argv):
+    ns, rest = _parser("openpi_entry train").parse_known_args(argv)
+    run_dir = _setup_env(ns.run_dir)
+    from rlpj.vla import train_config as tc
+    import tyro
+    cfgs = tc.register(run_dir, _repo_id(ns.dataset))
+    if not rest or rest[0].startswith("-"):
+        rest = [tc.LORA_NAME, *rest]
+    config = tyro.extras.overridable_config_cli({k: (k, v) for k, v in cfgs.items()}, args=rest,
+                                                prog="openpi_entry train")
+    t0 = time.time()
+    _script("train").main(config)
+    info = dict(config=config.name, exp_name=config.exp_name, repo_id=config.data.repo_id,
+                checkpoint_dir=str(config.checkpoint_dir), num_train_steps=config.num_train_steps,
+                batch_size=config.batch_size, lr_schedule=dataclasses.asdict(config.lr_schedule),
+                hf_lerobot_home=os.environ["HF_LEROBOT_HOME"], host=platform.node(), seconds=round(time.time() - t0, 1),
+                finished=time.strftime("%Y-%m-%d %H:%M:%S"), argv=sys.argv[1:])
+    (config.checkpoint_dir / "train_info.json").write_text(json.dumps(info, indent=1))
+    print(f"train done in {info['seconds']}s -> {config.checkpoint_dir}")
+
+
+def cmd_serve(argv):
+    os.environ.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE", "false")
+    from rlpj.vla import train_config as tc
+    import tyro
+    sp = _script("serve_policy")
+    args = tyro.cli(sp.Args, args=argv, prog="openpi_entry serve")
+    repo_id = asset_id_from_checkpoint(args.policy.dir) if isinstance(args.policy, sp.Checkpoint) else None
+    tc.register(repo_id=repo_id)
+    logging.basicConfig(level=logging.INFO, force=True)
+    logging.info("serving %s with dataset id %s", getattr(args.policy, "dir", args.policy), repo_id)
+    sp.main(args)
+
+
+COMMANDS = {"norm-stats": cmd_norm_stats, "train": cmd_train, "serve": cmd_serve}
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else list(argv)
+    if not argv or argv[0] not in COMMANDS:
+        print(USAGE, file=sys.stderr)
+        return 2
+    COMMANDS[argv[0]](argv[1:])
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

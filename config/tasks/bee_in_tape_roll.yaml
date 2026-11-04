@@ -20,3 +20,7 @@ layout:                            # reset targets, sampled per episode (base fr
   min_gap: 0.15                    # between object centres
   radius: [0.30, 0.58]             # distance from the robot axis
   tolerance: 0.025                 # a reset counts if each object is this close to its target
+
+perception:                        # size priors (m) matched against rlpj.perception.tabletop blobs by layout.assign
+  tape_roll: {hollow: true, outer_r: [0.035, 0.06], inner_r: [0.015, 0.05], height: [0.01, 0.06]}
+  foam_bee: {hollow: false, extent: [0.02, 0.08], height: [0.008, 0.06]}

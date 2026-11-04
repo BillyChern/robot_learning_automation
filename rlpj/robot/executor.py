@@ -15,6 +15,7 @@ class Executor:
         self.robot, self.kin = robot, kin
         self.stop_flag, self.on_tick, self.heartbeat, self.log = stop_flag, on_tick, heartbeat, log
         self.last = {}
+        self.running = False   # True while run() tracks a segment (the recorder reads last["q_ref"] then)
 
     def halt(self):
         for _ in range(2):
@@ -32,6 +33,7 @@ class Executor:
         r = dict(segment=seg.name, ok=False, reason="", T_plan=round(seg.T, 2), max_dev_deg=0.0, max_dev_mm=0.0, n=0)
         vmax = seg.speed["jv"] * 1.1 + 1.0
         t0 = time.time(); ts = None; q = None
+        self.running = True
         try:
             while True:
                 if self.stop_flag():
@@ -69,6 +71,7 @@ class Executor:
                 r["n"] += 1
         except Exception as ex:
             r["reason"] = f"exception: {ex!r}"
+        self.running = False
         self.halt()
         r["t_exec"] = round(time.time() - t0, 2)
         r["max_dev_deg"] = round(r["max_dev_deg"], 3); r["max_dev_mm"] = round(r["max_dev_mm"], 2)

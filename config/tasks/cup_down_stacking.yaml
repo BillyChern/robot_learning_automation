@@ -18,3 +18,7 @@ layout:
   min_gap: 0.10
   radius: [0.30, 0.58]
   tolerance: 0.02
+
+perception:                        # size priors (m) matched against rlpj.perception.tabletop blobs by layout.assign
+  base_cup: {hollow: false, height: [0.06, 0.13], extent: [0.04, 0.12]}
+  move_cup: {hollow: false, height: [0.06, 0.13], extent: [0.04, 0.12]}

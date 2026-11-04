@@ -21,7 +21,7 @@ def gripper_points(opening=0.085, closed_frac=0.0):
 
 
 def check(seg_q, kin, speed, dt=0.01, gripper_frac=0.0, table_z=None, tip_margin=0.008, allow_low=False,
-          cart_tol=1.15):
+          cart_tol=1.15, max_radius=0.80):
     """Return (ok, report dict) for a sampled joint trajectory."""
     table_z = calib.table_z() if table_z is None else table_z
     rep = {}
@@ -54,7 +54,7 @@ def check(seg_q, kin, speed, dt=0.01, gripper_frac=0.0, table_z=None, tip_margin
                min_link_z=float(min_link), max_lin_speed=float(max_lin), max_radius=float(max_r))
     ok = (rep["joint_limit_violations"] == 0 and rep["joint_speed_ok"] and max_lin <= speed["lin"] * cart_tol
           and min_tip - table_z > tip_margin and min_body - table_z > 0.03 and min_link - table_z > 0.05
-          and not rep.get("near_base") and max_r < 0.80)
+          and not rep.get("near_base") and max_r < max_radius)
     rep["ok"] = bool(ok)
     return ok, rep
 
