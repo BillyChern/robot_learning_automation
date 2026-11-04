@@ -5,7 +5,9 @@
   change between runs within x {LAYOUT_X} m, y {LAYOUT_Y} m (base frame); nothing else is on the table.
 
 {CONDITION_BLOCK}
+
 {REUSE_BLOCK}
+
 ## Working loop
 1. Read what you need (this prompt, `rlpj/robot/session.py`, `rlpj/perception/tabletop.py`, the inputs). Write
    `programs/execute.py` with phases perceive, plan, approach, grasp, lift, place, verify, home: perceive the scene

@@ -22,8 +22,10 @@ The output schema is enforced: `action` is `run`, `done`, `need_operator` or `gi
   on the robot machine as `{PYTHON} programs/<file>.py ...` with the repo on `PYTHONPATH`. `what` is one line saying
   what the run should do. `moves_robot` true means the command may move the arm or the gripper: the operator is shown
   `what` and must confirm, and stops the run with Ctrl+C when the robot does something wrong. With `moves_robot` false
-  the orchestrator runs the command with motion disabled: a dry run connects to the arm and cameras, perceives, plans,
-  checks and writes replay videos, and every motion command raises. Use dry runs to test perception and planning.
+  the orchestrator runs the command with motion disabled: a dry run reads the arm and cameras, perceives, and runs the
+  whole program against the model: every motion command is checked and simulated (the session advances a simulated
+  joint state, `s.feedback()` returns it), nothing moves, the gripper reading is simulated, replay videos are written.
+  Use dry runs to test perception, planning and the program's flow before every real run.
   Each run becomes `attempts/attempt_<N>/` (`log.txt`, `summary.json`, images, plans) and you are resumed with a
   digest: exit code, outcome, `summary.json`, the log tail, the list of images. Open more only when the digest does
   not explain the outcome: specific lines of `log.txt`, one file, one image (<= 640 px). Never read whole logs, raw
@@ -63,8 +65,9 @@ clearance, base column, reach) and refuses to move if a check fails, tracks with
 > 1 deg / 10 mm deviation, returns home on `Abort` / Ctrl+C / SIGTERM along a checked path, records the stop moment
 (step, segment, joints vs plan, gripper, last frames), serves the live view on port 8090 and writes `dashboard.mp4`.
 Speeds: normal 20 deg/s, 0.10 m/s; slow 5 deg/s, 0.02 m/s. Motion needs `RLPJ_MOTION=1` (set by the orchestrator
-only); without it every motion command raises and the program is a dry run that still plans, checks and writes replay
-videos. Blobs from `s.tabletop()`: `{xy, z_top, height, extent, n, points}` in the base frame (metres).
+only); without it the program is a dry run: the robot is only read, motion commands are checked and simulated, replay
+videos are written. Also available: `s.home()` (return to the start joints), `s.follow(name, q_targets, dt)` (stream a
+joint path). Blobs from `s.tabletop()`: `{xy, z_top, height, extent, n, points}` in the base frame (metres).
 
 ## Program contracts
 - `programs/execute.py` (execute agent): no arguments. Does the task once from the current scene. Must `s.claim(...)`

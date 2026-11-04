@@ -9,7 +9,7 @@ HF_LEROBOT_HOME = R/datasets (dataset rlpj/NAME); checkpoints R/checkpoints/E/<s
 wandb disabled unless RLPJ_WANDB=1; serve reads the dataset id back from the checkpoint's assets/ dir."""
 import argparse
 import dataclasses
-import importlib.util
+import importlib
 import json
 import logging
 import os
@@ -24,11 +24,10 @@ USAGE = __doc__
 
 
 def _script(name):
-    """Import third_party/openpi/scripts/<name>.py as a module."""
-    spec = importlib.util.spec_from_file_location(f"openpi_scripts_{name}", OPENPI / "scripts" / f"{name}.py")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+    """Import third_party/openpi/scripts/<name>.py as scripts.<name> (importable again in spawned loader workers)."""
+    if str(OPENPI) not in sys.path:
+        sys.path.insert(0, str(OPENPI))
+    return importlib.import_module(f"scripts.{name}")
 
 
 def _repo_id(dataset):

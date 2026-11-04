@@ -95,7 +95,8 @@ def write_summary(attempt_dir, out, log):
         log(f"summary write failed {e}")
 
 
-def main(argv=None):
+def main(argv=None, robot=None, fd=None, kin=None):
+    """argv: <attempt_dir> <main_pid> [dry]; robot/fd/kin are injectable for offline tests."""
     argv = sys.argv[1:] if argv is None else argv
     A, main_pid = argv[0], int(argv[1])
     dry = len(argv) > 2 and argv[2] == "dry"
@@ -104,18 +105,23 @@ def main(argv=None):
     def log(m):
         logf.write(f"{time.strftime('%H:%M:%S')} {m}\n")
 
-    signal.signal(signal.SIGINT, signal.SIG_IGN)   # the operator's Ctrl+C is for the main program
-    signal.signal(signal.SIGHUP, signal.SIG_IGN)
     term = {"flag": False}
-    signal.signal(signal.SIGTERM, lambda *a: term.__setitem__("flag", True))
+    try:
+        signal.signal(signal.SIGINT, signal.SIG_IGN)   # the operator's Ctrl+C is for the main program
+        signal.signal(signal.SIGHUP, signal.SIG_IGN)
+        signal.signal(signal.SIGTERM, lambda *a: term.__setitem__("flag", True))
+    except ValueError:
+        pass   # not the main thread (tests)
 
-    from .kin import Kin
-    from .kortex import Robot
-    robot = Robot(dry=dry)
-    kin = Kin.load()
+    if robot is None:
+        from .kortex import Robot
+        robot = Robot(dry=dry)
+    if kin is None:
+        from .kin import Kin
+        kin = Kin.load()
     log(f"watchdog up, main pid {main_pid}, dry={dry}")
     p = Protocol()
-    fd = sys.stdin.fileno()
+    fd = sys.stdin.fileno() if fd is None else fd
     reason, last_ka = None, 0.0
     while True:
         r, _, _ = select.select([fd], [], [], 0.05)

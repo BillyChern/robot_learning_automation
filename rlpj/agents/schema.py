@@ -96,12 +96,15 @@ def parse(result_json) -> Action:
 
 @dataclass
 class Usage:
-    """Tokens by kind, cost, agent turns and wall time of one claude invocation."""
+    """Tokens by kind, cost, agent turns and wall time of one claude invocation (cost_usd: this invocation's share)."""
+    # Verified on Claude Code 2.1.318: `usage`, `num_turns`, `duration_ms` are per invocation; `total_cost_usd` and
+    # `modelUsage` are cumulative over a resumed session. session_cost_usd keeps the reported cumulative value.
     input_tokens: int = 0
     cache_creation_input_tokens: int = 0
     cache_read_input_tokens: int = 0
     output_tokens: int = 0
     cost_usd: float = 0.0
+    session_cost_usd: float = 0.0
     turns: int = 0
     duration_ms: int = 0
     model: str = ""
@@ -126,6 +129,7 @@ class Usage:
             cache_read_input_tokens=int(u.get("cache_read_input_tokens") or 0),
             output_tokens=int(u.get("output_tokens") or 0),
             cost_usd=float(result.get("total_cost_usd") or 0.0),
+            session_cost_usd=float(result.get("total_cost_usd") or 0.0),
             turns=int(result.get("num_turns") or 0),
             duration_ms=int(result.get("duration_ms") or 0),
             model=",".join(models) or model,

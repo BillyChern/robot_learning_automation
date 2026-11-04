@@ -104,6 +104,11 @@ class AgentRunner:
             {"t": time.strftime("%Y-%m-%d %H:%M:%S"), "kind": kind, "argv": argv, "prompt": prompt,
              "exit_code": proc.returncode, "stderr": proc.stderr[-4000:], "result": result}, indent=1))
         usage = Usage.from_result(result, model=self.model)
+        prev = float(self.ws.session.get("session_cost_usd") or 0.0) if kind == "resume" else 0.0
+        if usage.session_cost_usd >= prev:                    # total_cost_usd is cumulative over the session
+            usage.cost_usd = usage.session_cost_usd - prev
+        self.ws.session["session_cost_usd"] = usage.session_cost_usd
+        self.ws.save_session()
         self.ws.record_usage(usage, turn=n, kind=kind)
         if result.get("is_error"):
             raise AgentError(f"claude reported an error (exit {proc.returncode}): {str(result.get('result'))[:1500]}\n"

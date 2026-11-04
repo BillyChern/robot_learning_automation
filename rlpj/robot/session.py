@@ -164,20 +164,11 @@ class RobotSession:
             return None
 
     def _workspace(self):
-        """Workspace for tabletop(): task yaml 'workspace' if present, else the layout ranges padded by 8 cm."""
+        """Workspace for tabletop(): the task yaml's 'workspace' ({x: [..], y: [..]}) or None (perception default)."""
         try:
-            task = config.load().get("task", {})
+            return config.load().get("task", {}).get("workspace")
         except Exception:
-            task = {}
-        if "workspace" in task:
-            return task["workspace"]
-        lay = task.get("layout", {}) or {}
-        rng = [v for v in lay.values() if isinstance(v, dict) and "x" in v and "y" in v]
-        if rng:
-            return dict(x=[min(v["x"][0] for v in rng) - 0.08, max(v["x"][1] for v in rng) + 0.08],
-                        y=[min(v["y"][0] for v in rng) - 0.08, max(v["y"][1] for v in rng) + 0.08],
-                        radius=list(lay.get("radius", [0.25, 0.65])))
-        return dict(x=[0.25, 0.70], y=[-0.40, 0.25], radius=[0.25, 0.65])
+            return None
 
     def _git_commit(self):
         try:
@@ -272,7 +263,7 @@ class RobotSession:
             from rlpj.perception import tabletop as tt
         except ImportError as e:
             raise RuntimeError(f"rlpj.perception.tabletop is not available ({e}); tabletop() needs cloud() and detect()") from e
-        P = tt.cloud(self.side)
+        P = tt.cloud(self.side, n=n)
         blobs = tt.detect(P, workspace or self.workspace)
         objs = []
         for i, b in enumerate(blobs):
@@ -306,15 +297,21 @@ class RobotSession:
         q0 = self.measured_q(self.last_ref())
         self._execute(self.planner.cart_line(name, q0, np.asarray(T_goal, float), speed_of(speed)), tip_margin=tip_margin)
 
+    def run_segment(self, seg, settle_tol=None, settle_time=None, tip_margin=0.008, max_radius=0.80):
+        """Check, save and execute an executor-compatible segment built elsewhere (policy chunks); returns the
+        executor's result dict ({'ok': True, 'dry': True} in a dry run). Failures raise Abort / StopRequested."""
+        self._check_stop()
+        settle = None if settle_tol is None and settle_time is None else (0.15 if settle_tol is None else settle_tol, 2.0 if settle_time is None else settle_time)
+        return self._execute(seg, tip_margin=tip_margin, max_radius=max_radius, settle=settle)
+
     def follow(self, name, q_targets, dt, speed="normal", max_radius=0.65, tip_margin=0.008):
         """Stream joint targets (K,6) deg spaced dt s (policy chunk) through the tracker after one model check."""
-        self._check_stop()
         q0 = self.measured_q(np.asarray(q_targets[0], float))
         path = [q0]
         for q in np.asarray(q_targets, float):
             path.append(unwrap_near(q, path[-1]))
-        seg = TimedSegment(name, path, dt, speed_of(speed), self.kin)
-        self._execute(seg, tip_margin=tip_margin, max_radius=max_radius, settle=(1.0, 0.0))
+        return self.run_segment(TimedSegment(name, path, dt, speed_of(speed), self.kin), settle_tol=1.0, settle_time=0.0,
+                                tip_margin=tip_margin, max_radius=max_radius)
 
     def gripper(self, value, what=""):
         """0 open .. 1 closed; waits until the reading settles; returns the 0..100 reading."""
@@ -397,7 +394,7 @@ class RobotSession:
             self.S.set(segments=self.seg_log)
             self.view.set(segment=seg.name, progress=1.0)
             self.poll_view()
-            return
+            return dict(segment=seg.name, ok=True, dry=True, T_plan=round(seg.T, 2))
         q_meas = self.measured_q(seg.q[0])
         if np.abs(q_meas - seg.q[0]).max() > 0.5:
             raise Abort(f"{name}: measured joints differ from plan start by {np.abs(q_meas - seg.q[0]).max():.2f} deg")
@@ -410,6 +407,7 @@ class RobotSession:
                 raise StopRequested(r["reason"])
             raise Abort(f"{name}: {r['reason']}")
         self.poll_view()
+        return r
 
     # ------------------------------------------------------------------ stop / failure handling
     def record_stop(self, kind, why):

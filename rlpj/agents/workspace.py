@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import time
@@ -42,8 +43,14 @@ def _ranges(layout: dict, objects) -> tuple[str, str]:
 
 
 def _example_targets(layout: dict, objects) -> str:
-    return json.dumps({o: [round(sum(layout[o]["x"]) / 2, 2), round(sum(layout[o]["y"]) / 2, 2)]
-                       for o in objects if o in layout})
+    """Valid-looking example targets: x mid-range, y spread over the objects so they keep apart."""
+    objs = [o for o in objects if o in layout]
+    out = {}
+    for i, o in enumerate(objs):
+        f = 0.5 if len(objs) == 1 else 0.15 + 0.7 * i / (len(objs) - 1)
+        (x0, x1), (y0, y1) = layout[o]["x"], layout[o]["y"]
+        out[o] = [round((x0 + x1) / 2, 2), round(y0 + f * (y1 - y0), 2)]
+    return json.dumps(out)
 
 
 def link_names(paths) -> dict:
@@ -93,13 +100,13 @@ def render(role: str, task_cfg: dict, condition: str | None = None, robot: dict 
         TARGET_SUCCESS=cfg.get("evaluation", {}).get("target_success_rate", "?"),
         EVAL_EPISODES=cfg.get("evaluation", {}).get("episodes", "?"), MAX_RUNS=cfg.get("training", {}).get("max_runs", "?"),
     )
-    if role == "execute":
-        v["CONDITION_BLOCK"] = (PROMPTS / f"condition_{condition}.md").read_text().strip()
-    lines = [f"- `inputs/reuse/{n}` -> `{p}`" for p, n in reuse.items()]
-    v["REUSE_BLOCK"] = fill((PROMPTS / "reuse.md").read_text(), REUSE_LIST="\n".join(lines)).strip() if lines else ""
     if role == "learn":
         v.update(LEARN_DEFAULTS)
     v.update(extra)
+    if role == "execute":
+        v["CONDITION_BLOCK"] = fill((PROMPTS / f"condition_{condition}.md").read_text().strip(), **v)
+    lines = [f"- `inputs/reuse/{n}` -> `{p}`" for p, n in reuse.items()]
+    v["REUSE_BLOCK"] = fill((PROMPTS / "reuse.md").read_text(), REUSE_LIST="\n".join(lines), **v).strip() if lines else ""
     text = fill((PROMPTS / "common.md").read_text().strip() + "\n\n" + (PROMPTS / f"{role}.md").read_text().strip(), **v)
     text = re.sub(r"\n{3,}", "\n\n", text) + "\n"
     left = sorted(set(re.findall(r"\{[A-Z][A-Z_]+\}", text)))
@@ -255,10 +262,11 @@ class Workspace:
         return f"{self.host}:{self.path}/"
 
     def push_args(self, full: bool = False) -> list:
-        """rsync argv: robot machine -> agent machine; our files (attempts, turns, session, usage), or everything when full."""
+        """rsync argv: robot machine -> agent machine; our files (attempts, turns, session, usage) and .git (so commits
+        made here after a pull reach the agent), or everything when full."""
         if full:
             return ["rsync", "-a", "--delete", "--mkpath", f"{self.path}/", self.remote()]
-        inc = [a for p in ORCH_OWNED for a in ("--include", p + "***" if p.endswith("/") else p)]
+        inc = [a for p in ORCH_OWNED + (".git/",) for a in ("--include", p + "***" if p.endswith("/") else p)]
         return ["rsync", "-a", "--delete", "--mkpath", *inc, "--exclude", "*", f"{self.path}/", self.remote()]
 
     def pull_args(self) -> list:
@@ -288,7 +296,6 @@ class Workspace:
 
 
 def _q(p) -> str:
-    import shlex
     return shlex.quote(str(p))
 
 

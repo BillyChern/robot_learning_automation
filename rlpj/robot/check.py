@@ -34,15 +34,20 @@ def _workspace():
 
 
 def table_height(depth_m, workspace=None):
-    """Median base-frame z of the side depth over the workspace, within 6 cm of the configured table height."""
+    """Dominant base-frame z of the side depth over the workspace (1 cm histogram mode within +-25 cm of the
+    configured table height, refined by the median of the points within 1.5 cm of it); returns (z, n_points)."""
     K, dist = calib.side_intrinsics()
     P = calib.apply(calib.T_base_side(), calib.deproject(depth_m, K, dist, step=4)[0])
     (x0, x1), (y0, y1) = workspace or _workspace()
     tz = calib.table_z()
-    m = (P[:, 0] > x0) & (P[:, 0] < x1) & (P[:, 1] > y0) & (P[:, 1] < y1) & (np.abs(P[:, 2] - tz) < 0.06)
+    m = (P[:, 0] > x0) & (P[:, 0] < x1) & (P[:, 1] > y0) & (P[:, 1] < y1) & (np.abs(P[:, 2] - tz) < 0.25)
     if m.sum() < 200:
-        raise RuntimeError(f"only {int(m.sum())} depth points on the table region")
-    return float(np.median(P[m, 2])), int(m.sum())
+        raise RuntimeError(f"only {int(m.sum())} depth points within 25 cm of the table height over the workspace")
+    z = P[m, 2]
+    h, e = np.histogram(z, bins=np.arange(tz - 0.25, tz + 0.25 + 1e-9, 0.01))
+    k = int(np.argmax(h))
+    sel = np.abs(z - (e[k] + e[k + 1]) / 2) < 0.015
+    return float(np.median(z[sel])), int(sel.sum())
 
 
 def port_free(port):
@@ -122,8 +127,9 @@ def run(robot=True, cameras=True, port=8090, log=None):
                 add("side camera", "PASS", f"colour {c.shape[1]}x{c.shape[0]}, depth valid {100 * float((d > 0).mean()):.0f}%")
                 z, n = table_height(side.depth_median(5))
                 tz = calib.table_z()
-                add("table height", "PASS" if abs(z - tz) < TABLE_TOL_M else "FAIL",
-                    f"depth {z:.4f} vs calib {tz:.4f} m ({1000 * (z - tz):+.1f} mm, {n} pts)")
+                ok = abs(z - tz) < TABLE_TOL_M
+                add("table height", "PASS" if ok else "FAIL", f"depth {z:.4f} vs calib {tz:.4f} m ({1000 * (z - tz):+.1f} mm, {n} pts)"
+                    + ("" if ok else "; side camera or base moved? recalibrate the side pose (CALIBRATION.md)"))
         except Exception as e:
             add("side camera", "FAIL", repr(e))
         finally:

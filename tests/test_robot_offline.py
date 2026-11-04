@@ -55,6 +55,34 @@ class FakeRobot:
         self.closed = True
 
 
+class MovingFakeRobot(FakeRobot):
+    """Perfect arm: integrates joint-speed commands and moves the gripper, so the executor loop runs offline."""
+
+    def __init__(self, ip=None, dry=False, q=None):
+        super().__init__(q=q)
+        self.v, self.t_last, self.g, self.g_target = np.zeros(6), time.time(), 0.9, None
+
+    def _advance(self):
+        t = time.time(); dt = t - self.t_last; self.t_last = t
+        self.q = self.q + self.v * dt
+        if self.g_target is not None:
+            self.g += float(np.clip(self.g_target - self.g, -150 * dt, 150 * dt))
+
+    def feedback(self):
+        self._advance()
+        fb = super().feedback(); fb["gripper"], fb["dq"] = self.g, self.v.copy()
+        return fb
+
+    def send_joint_speeds(self, v):
+        self._advance(); self.v = np.asarray(v, float); time.sleep(0.004)
+
+    def stop(self):
+        self._advance(); self.v = np.zeros(6)
+
+    def gripper_position(self, value):
+        self.g_target, self.gripper_cmd = 100.0 * float(value), float(value)
+
+
 class FakeSideCam:
     def __init__(self, serial=None):
         self.color = np.zeros((720, 1280, 3), np.uint8); self.color[:, :, 1] = np.linspace(0, 255, 1280, dtype=np.uint8)
@@ -188,6 +216,42 @@ def test_watchdog_protocol():
     assert p.feed(b"HB id") == [] and p.feed(b"le 0\nBYE\n") == ["HB", "BYE"] and p.state == "idle" and p.bye
 
 
+def _run_watchdog(tmp_path, lines, close_without_bye):
+    """Run watchdog.main in a thread on a pipe with a fake (read-only) robot; returns (exit code, log, robot)."""
+    from rlpj.robot import watchdog
+    A = tmp_path / "wd"; A.mkdir()
+    (A / "summary.json").write_text('{"claimed_outcome": "aborted", "step": "lift"}\n')
+    r, w = os.pipe()
+    robot = FakeRobot(q=Q_LOW)
+    out = {}
+    th = threading.Thread(target=lambda: out.update(code=watchdog.main([str(A), "999999999", "dry"], robot=robot, fd=r, kin=KIN)))
+    th.start()
+    for line in lines:
+        os.write(w, line); time.sleep(0.1)
+    if close_without_bye:
+        os.close(w)
+    th.join(20)
+    assert not th.is_alive()
+    os.close(r)
+    if not close_without_bye:
+        os.close(w)
+    return out.get("code"), (A / "watchdog_log.txt").read_text(), robot, json.load(open(A / "summary.json"))
+
+
+def test_watchdog_bye_exits_cleanly(tmp_path):
+    home = " ".join(f"{v:.4f}" for v in Q_HOME)
+    code, log, robot, S = _run_watchdog(tmp_path, [f"HOME {home}\n".encode(), b"HB idle 0.00\n", b"HB moving 0.00\n", b"BYE\n"], False)
+    assert code == 0 and "BYE received" in log and "TAKEOVER" not in log and robot.closed and S["claimed_outcome"] == "aborted"
+
+
+def test_watchdog_takeover_on_pipe_close(tmp_path):
+    home = " ".join(f"{v:.4f}" for v in Q_HOME)
+    code, log, robot, S = _run_watchdog(tmp_path, [f"HOME {home}\n".encode(), b"HB moving 0.80\n"], True)
+    assert code == 0 and "TAKEOVER: main program pipe closed" in log and "return plan ok=True" in log
+    assert S["claimed_outcome"] == "aborted" and S["watchdog"]["return_checks_ok"] is True
+    assert S["watchdog"]["result"] == "return incomplete" and robot.closed   # fake robot refuses commands, like a dry run
+
+
 # ---------------------------------------------------------------- recorder
 def test_recorder_writes_valid_episode(tmp_path):
     from rlpj.robot.recorder import EpisodeRecorder, update_meta
@@ -258,7 +322,8 @@ def test_session_dry_run_success(fakes, tmp_path):
         g = s.gripper(0.8, "grasp")
         assert g == 80.0 and s.feedback()["gripper"] == 80.0
         s.phase("chunk")
-        s.follow("policy", np.linspace(fb["q"], fb["q"] + np.array([0, -2, 0, 0, 0, 0.]), 10), 1 / 15)
+        r = s.follow("policy", np.linspace(fb["q"], fb["q"] + np.array([0, -2, 0, 0, 0, 0.]), 10), 1 / 15)
+        assert r["ok"] and r["dry"]
         s.phase("home")
         s.home()
         assert np.allclose(wrap180(s.feedback()["q"]), wrap180(Q_HOME), atol=1e-6)
@@ -343,6 +408,33 @@ def test_session_stop_signal(fakes, tmp_path):
     S = json.load(open(A / "summary.json"))
     assert S["claimed_outcome"] == "aborted" and S["stop"]["kind"] == "operator stop" and S["stop"]["signal"] == "SIGINT"
     assert signal.getsignal(signal.SIGINT) is not s._on_signal   # handlers restored
+
+
+def test_session_motion_path_with_moving_fake(fakes, tmp_path, monkeypatch):
+    """RLPJ_MOTION=1 against a fake arm that integrates speed commands: tracking, gripper, Abort -> checked return home."""
+    from rlpj.robot.session import RobotSession
+    monkeypatch.setenv("RLPJ_MOTION", "1")
+    monkeypatch.setattr(kortex, "Robot", MovingFakeRobot)
+    A, ep = tmp_path / "motion", tmp_path / "ep"
+    with RobotSession(program="test", attempt_dir=A, record_dir=ep, view_port=0, watchdog=False, exit_on_close=False, kin=KIN) as s:
+        assert not s.dry and s.wd is None
+        s.phase("move")
+        s.move_joint("small", Q_HOME + np.array([3, 0, 0, 0, 0, 3.]), "normal")
+        assert np.abs(s.feedback()["q"] - (Q_HOME + [3, 0, 0, 0, 0, 3])).max() < 0.3 and s.executor.running is False
+        g = s.gripper(0.5, "half")
+        assert abs(g - 50) < 3 and s.robot.gripper_cmd == 0.5
+        s.require(False, "stop here")
+    assert s.exit_code == 2
+    S = json.load(open(A / "summary.json"))
+    assert S["segments"][0][0] == "small" and S["segments"][0][1] is True and S["segments"][0][2] < 1.0   # name, ok, max dev deg
+    assert S["segments"][-1][0] == "return_home" and S["segments"][-1][1] is True and S["return_home"] == [["return_home", True]]
+    assert S["stop"]["kind"] == "failed check" and "q_plan" in S["stop"] and S["stop"]["gripper"] == pytest.approx(50, abs=3)
+    z = np.load(ep / "steps.npz")
+    assert len(z["t"]) >= 15 and z["gripper_cmd"][-1] == 0.5 and np.isclose(z["gripper_cmd"][0], 0.009)
+    moving = np.abs(z["dq"]).max(1) > 0.1
+    assert moving.sum() >= 3 and np.all(np.isfinite(z["q_cmd"]))
+    ph = json.load(open(ep / "phases.json"))
+    assert [p["name"] for p in ph] == ["start", "move", "return_home"]
 
 
 def test_check_offline():
