@@ -64,6 +64,8 @@ bash scripts/record_demo.sh          # optional: one human demo for --condition 
 ```bash
 .venv/bin/rlpj new --condition text          # or one_demo; prints run id, e.g. 20261104_1200_bee
 .venv/bin/rlpj run-all <run>                 # check → develop execute → develop reset → collect → learn → report
+# learn = Agent 3's loop: convert → train → eval; with evaluation.dagger every failed rollout gets an expert
+# correction from the policy's last pose, and the next dataset includes them (DAgger rounds until the target)
 ```
 
 Step by step:

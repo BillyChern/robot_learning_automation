@@ -188,7 +188,7 @@ def main(argv=None):
     p.add_argument("--name", required=True, help="dataset name -> repo_id rlpj/<name>")
     p.add_argument("--episodes-glob", default="episodes/ep_*", help="relative to run dir")
     p.add_argument("--all", action="store_true", help="keep every outcome, not only outcome.final == success")
-    p.add_argument("--modes", default="collect", help="comma list of meta.mode to keep ('' = any)")
+    p.add_argument("--modes", default="collect,dagger", help="comma list of meta.mode to keep ('' = any); dagger = expert corrections")
     p.add_argument("--overwrite", action="store_true", help="remove an existing dataset of the same name first")
     p.add_argument("--videos", action="store_true", help="store images as AV1 videos instead of PNG-in-parquet")
     p.add_argument("--size", type=int, default=SIZE)

@@ -216,9 +216,14 @@ def report_md(st, cfg=None):
     out += [f"- dataset `{k}`: exit {v.get('exit_code')}, episodes {v.get('episodes')}" for k, v in st.datasets.items()] or ["- no datasets"]
     out += [f"- training run `{k}`: dataset {v.get('dataset')}, exit {v.get('exit_code')}, {v.get('duration_s', 0) / 60:.0f} min, `{v.get('command')}`"
             for k, v in st.training_runs.items()] or ["- no training runs"]
-    out += ["", "## Evaluations", "", "| eval | checkpoint | episodes | success | rate | met |", "|---|---|---|---|---|---|"]
+    out += ["", "## Evaluations", "", "| eval | checkpoint | episodes | success | rate | met | DAgger corrections (success/total) |",
+            "|---|---|---|---|---|---|---|"]
     out += [f"| {k} | `{v.get('checkpoint')}` | {v.get('n', 0)} | {v.get('success', 0)} | {v.get('success_rate', 0):.0%} | "
-            f"{'yes' if v.get('met') else 'no'}{' (zero-shot)' if v.get('zero_shot') else ''} |" for k, v in st.evals.items()]
+            f"{'yes' if v.get('met') else 'no'}{' (zero-shot)' if v.get('zero_shot') else ''} | "
+            f"{sum(d['final'] == 'success' for d in v.get('dagger', []))}/{len(v.get('dagger', []))} |" for k, v in st.evals.items()]
+    d = st.counters.get("dagger")
+    if d:
+        out.append(f"\nDAgger corrections: {d['total']} (success {d['success']}, fail {d['fail']}, unsure {d['unsure']})")
     out += ["", f"deployable checkpoint: `{st.deployable_checkpoint or '-'}`"]
     if st.zero_shot:
         out.append(f"\nzero-shot: {st.zero_shot}")

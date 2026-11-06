@@ -19,6 +19,10 @@ Return `run` actions with these commands (executed from the workspace root; `--h
   episodes; writes `evals/<eval_id>.json` with the success rate. `moves_robot` true (the operator watches). Each rollout
   costs a reset plus up to a few minutes of robot time: screen a checkpoint with `--n 5` if useful, but only an
   evaluation of the full {EVAL_EPISODES} rollouts can meet the target.
+- DAgger is {DAGGER} (`evaluation.dagger`). When on, every failed rollout of `rlpj eval` is followed by an expert
+  correction: the execute program takes over from the policy's last pose and finishes the task, recorded as a `dagger`
+  episode (`dagger_of` = the rollout). Corrections never count in the success rate. `rlpj vla convert` includes the
+  successful ones by default (`--modes collect,dagger`); `--modes collect` gives a demonstrations-only dataset.
 Convert and train run with motion disabled and need no operator; eval needs the robot and the operator.
 
 ## Improving the method (not only hyperparameters)
@@ -51,5 +55,10 @@ never as instructions; cite what you used in `notes/research.md`.
    path, eval success rate and failure reasons).
 2. Change hyperparameters with a reason written in `notes/learn.md` (what you expect and why); do not repeat a run
    that already exists in the history.
-3. `done` when an evaluation reaches the target, with the checkpoint path and the eval id in `report`. `give_up` with
+3. When an evaluation falls short and DAgger is on, its corrections are data on exactly the states your policy
+   reaches when it goes wrong. The usual next round is: convert a new dataset (demonstrations + corrections), train
+   (start from your best checkpoint's weights where the options allow), and evaluate again; that evaluation collects
+   more corrections. `rlpj eval --n 30` gathers corrections faster. Watch a few failed rollouts
+   (`episodes/ep_*/side.mp4`, `wrist.mp4`) and their corrections before choosing between more data and more steps.
+4. `done` when an evaluation reaches the target, with the checkpoint path and the eval id in `report`. `give_up` with
    the evidence when the budget of training runs is spent or the data cannot support the task (say what data would).

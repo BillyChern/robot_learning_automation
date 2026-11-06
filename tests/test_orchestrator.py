@@ -1085,3 +1085,13 @@ def test_no_dagger_correction_when_the_rollout_ended_holding_something(fakes, ru
     p = loop.Pipeline(st, _op(), _cfg())
     monkeypatch.setattr(loop.Pipeline, "_policy_end", lambda self, d: ([0.0] * 6, 85.0))
     assert p._correction(dict(index=7, dir=st.dir / "episodes/ep_000007")) is None and "dagger" not in st.counters
+
+
+def test_report_lists_dagger_corrections(runs):
+    st = state.RunState.create("r9", "bee_in_tape_roll", "text")
+    st.counters["dagger"] = dict(total=3, success=2, fail=1, unsure=0)
+    st.evals["04_lora_v1_14999"] = dict(checkpoint="c", n=20, success=12, success_rate=0.6, met=False,
+                                        dagger=[dict(episode=5, of=4, final="success"), dict(episode=7, of=6, final="fail")])
+    md = state.report_md(st, _cfg())
+    assert "| 04_lora_v1_14999 | `c` | 20 | 12 | 60% | no | 1/2 |" in md and "DAgger corrections: 3 (success 2" in md
+    assert "dagger corrections 2/3 success" in "\n".join(state.status_lines(st, _cfg()))

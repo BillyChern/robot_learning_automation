@@ -462,3 +462,10 @@ def test_trust_snippet_marks_only_the_workspace(tmp_path):
     d = json.loads(cj.read_text())
     assert d["projects"]["/ws/path"] == {"hasTrustDialogAccepted": True} and d["projects"]["/a"] == {"x": 1} and d["other"] == 2
     assert oct(cj.stat().st_mode & 0o777) == "0o600" and not (tmp_path / ".claude.json.rlpj.tmp").exists()
+
+
+def test_prompts_describe_dagger(task_cfg, robot):
+    ex = render("execute", task_cfg, "text", robot=robot)
+    assert "## Correction mode (DAgger)" in ex and "RLPJ_DAGGER=1" in ex and "RLPJ_START_JOINTS" in ex
+    learn = render("learn", task_cfg, None, robot=robot)
+    assert "DAgger is on (`evaluation.dagger`)" in learn and "--modes collect,dagger" in learn and "{" not in learn.split("DAgger is")[1][:40]

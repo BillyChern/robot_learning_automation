@@ -26,5 +26,14 @@
 6. The orchestrator may later resume you after repeated failures during collection, with the digest of the failed
    attempts: repair the program the same way and end with `done` again.
 
+## Correction mode (DAgger)
+Your program is also the expert that corrects the trained policy. After a failed policy rollout the orchestrator runs
+it with `RLPJ_DAGGER=1`; the session has already moved the arm back to the policy's last pose (`RLPJ_START_JOINTS`)
+and recording starts there, so what you do becomes training data for recovering from the policy's mistakes. With
+`RLPJ_DAGGER=1`: do not assume you start at home (the tool may be low, next to or over an object); open the gripper
+if it is closed on nothing; lift straight up to your hover height first, then perceive and do the task as usual. Keep
+the motion direct and smooth (the policy imitates it). Test this mode with a dry run that sets `RLPJ_START_JOINTS`
+to a low pose near an object.
+
 Dry runs and offline analysis cost nothing on the robot; real runs cost operator time. Prefer one well-checked real
 attempt over many guesses, but never spend more than a few turns without a run.

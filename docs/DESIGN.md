@@ -13,7 +13,8 @@ writes and repairs the programs; the orchestrator runs them.
 | Agent 2 RESET | `programs/reset.py --targets t.json`: undo the task, put objects at given targets | same |
 | Collection loop | reset -> check layout -> execute (recorded) -> verdict -> episode; every `review_every` episodes agents 1/2 improve on the window's failures | orchestrator on 4090 |
 | Agent 3 LEARN | convert episodes -> LeRobot, LoRA fine-tune pi0.5, decide hyperparameters; may add its own recipe, server (e.g. RTC) and rollout (workspace code, RobotSession limits, fixed evaluation); web research | 5090 |
-| Evaluation | policy rollouts (recorded) with Agent 2 resets between them; success rate vs target | 4090 (policy server on the 4090 by default) |
+| Evaluation | policy rollouts (recorded) with Agent 2 resets between them; success rate vs target | 4090 (policy server on `hosts.policy_host`, the 5090) |
+| DAgger | after each failed rollout, Agent 1's program takes over from the policy's last pose (recorded `dagger` episode); Agent 3 trains on demonstrations + corrections and evaluates again | 4090 robot, 5090 training |
 
 Task specification conditions for Agent 1: `text` (goal sentence) or `one_demo` (one human RGB-D recording). Both may
 reuse the libraries listed in the task yaml. Compared on time, tokens, cost and attempts to first success only.
@@ -132,6 +133,8 @@ the arm goes home. This keeps a dropped or stuck object on the table (two bees w
 - `programs/execute.py` (Agent 1): no arguments. Does the task once from the current scene. Must `s.claim(...)` from its own
   verification and write `summary.json` keys: `claimed_outcome`, `step`, `first_failed_check`, `objects` (what it saw,
   base frame), `verify` (numbers behind the claim).
+  With `RLPJ_DAGGER=1` it is the DAgger expert: the session has already moved the arm to the policy's last pose
+  (`RLPJ_START_JOINTS`); open an empty gripper, lift straight up, then do the task as usual (recorded as training data).
 - `programs/reset.py --targets <json>` (Agent 2): `{"<object>": [x, y], ...}` in the base frame. Undoes the task if needed,
   moves each object to its target, writes `summary.json` with `measured` `{"<object>": [x, y]}` after placing and `claimed_outcome`.
 - `rlpj.vla.rollout` (ours): policy rollout through the same session, recorded like an execute episode.

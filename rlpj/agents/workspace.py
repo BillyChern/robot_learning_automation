@@ -114,6 +114,7 @@ def render(role: str, task_cfg: dict, condition: str | None = None, robot: dict 
         EXAMPLE_TARGETS=_example_targets(layout, objects), DEMO=demo,
         TARGET_SUCCESS=cfg.get("evaluation", {}).get("target_success_rate", "?"),
         EVAL_EPISODES=cfg.get("evaluation", {}).get("episodes", "?"), MAX_RUNS=cfg.get("training", {}).get("max_runs", "?"),
+        DAGGER="on" if cfg.get("evaluation", {}).get("dagger") else "off",
     )
     if role == "learn":
         v.update(LEARN_DEFAULTS)
