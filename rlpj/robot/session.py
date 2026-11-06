@@ -252,11 +252,28 @@ class RobotSession:
             raise Abort("side camera gives no frames")
         if self.wrist.latest()[0] is None:
             raise Abort("wrist camera gives no frames")
+        if os.environ.get("RLPJ_START_JOINTS"):
+            self._go_to_start(np.asarray(json.loads(os.environ["RLPJ_START_JOINTS"]), float))
         if self.record_dir:
             from .recorder import EpisodeRecorder
             self.recorder = EpisodeRecorder(self, self.record_dir).start()
             self.recorder.snapshot("before")
         self.started = True
+
+    def _go_to_start(self, q_target):
+        """DAgger correction (RLPJ_START_JOINTS): retrace a rollout's return path back to its last policy pose before
+        recording starts (joint move to 0.20 m above it, straight line down); home stays the real start joints."""
+        self.decide(f"setup: back to the policy's last pose {r3(q_target, 1)} before recording")
+        T = self.kin.fk(q_target)
+        lift_z = self.table_z + 0.20
+        if T[2, 3] < lift_z - 0.01:
+            T_up = T.copy(); T_up[2, 3] = lift_z
+            q_up, _, _ = self.planner.ik_exact(T_up, q_target)
+            self.move_joint("setup_above_policy_pose", q_up, "normal")
+            self.move_line("setup_down_to_policy_pose", T, "slow", tip_margin=-0.01)
+        else:
+            self.move_joint("setup_policy_pose", q_target, "normal")
+        self.S.set(dagger_start=dict(q=r3(q_target, 2), tool=r3(T[:3, 3], 4)))
 
     # ------------------------------------------------------------------ program API
     def phase(self, name):

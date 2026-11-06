@@ -202,6 +202,13 @@ registered without editing openpi (our `rlpj/vla/train.py` adds it to `_CONFIGS_
 Serve: openpi `serve_policy.py policy:checkpoint --policy.config=pi05_kinova_lora --policy.dir=<ckpt>` on `hosts.policy_host`
 (`local` = the 4090, default; or an ssh host such as the 5090), reached at `hosts.policy_server`. Client on the 4090
 speaks openpi's msgpack-numpy websocket protocol (own implementation; the openpi client needs numpy < 2).
+DAgger (`evaluation.dagger`): after a rollout that is not a success, the expert (the execute program) takes over
+from the policy's last pose. `RLPJ_START_JOINTS` makes `RobotSession.start()` retrace the rollout's return path
+(joint move to 0.20 m above that pose, straight line down) before recording, so home stays the real start, and
+`RLPJ_DAGGER=1` tells the program it does not start at home. The correction is a `dagger` episode (`dagger_of`,
+`dagger_start` in meta.json, counters `state.counters.dagger`). It never counts in the success rate.
+`rlpj vla convert --modes collect,dagger` adds the successful corrections to a dataset. There is no correction when
+the rollout ended with the jaws closed on something.
 Rollout control: the policy returns a chunk of 10 joint targets at the recording rate; the session streams them with the
 executor's joint-speed tracker after a model check per chunk; hard limits: joint limits, table clearance, max radius 0.65,
 10 cm/s, 20 deg/s, deviation 1 deg / 10 mm, per-episode time limit, and Ctrl+C.

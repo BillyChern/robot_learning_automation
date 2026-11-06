@@ -34,7 +34,7 @@ if os.environ.get("RLPJ_MOTION") == "1":
     open(plan, "w").write("\n".join(lines[1:]))
 else:
     outcome = "dry"
-env = {k: os.environ.get(k) for k in ("RLPJ_MOTION", "RLPJ_RECORD_DIR", "RLPJ_RESET_TARGETS", "RLPJ_ATTEMPT_DIR")}
+env = {k: os.environ.get(k) for k in ("RLPJ_MOTION", "RLPJ_RECORD_DIR", "RLPJ_RESET_TARGETS", "RLPJ_ATTEMPT_DIR", "RLPJ_START_JOINTS", "RLPJ_DAGGER")}
 print("fake program", outcome, json.dumps(env))
 if env["RLPJ_RECORD_DIR"]:
     os.makedirs(env["RLPJ_RECORD_DIR"], exist_ok=True)
@@ -1057,3 +1057,31 @@ def test_remote_server_start_backgrounds_only_the_server_and_survives_a_hung_ssh
 
     monkeypatch.setattr(loop.subprocess, "run", hung)
     assert p._server_start("/ckpt/14999", 8000) is False                     # reported, no crash
+
+
+def test_dagger_expert_takes_over_after_a_failed_rollout(fakes, runs, tmp_path, monkeypatch):
+    st = _ready_run("d1", fakes, tmp_path, _plan(tmp_path, "exec", "success"), _plan(tmp_path, "reset", *["success"] * 5))
+    plan = _plan(tmp_path, "rollout", "success", "fail")
+    monkeypatch.setattr(loop.Pipeline, "_server_start", lambda self, ckpt, port: True)
+    monkeypatch.setattr(loop.Pipeline, "_server_wait", lambda self, ip, port, timeout_s=0: True)
+    monkeypatch.setattr(loop.Pipeline, "_server_stop", lambda self: None)
+    monkeypatch.setattr(loop.Pipeline, "_rollout_command", lambda self: f"python {fakes} {plan}")
+    monkeypatch.setattr(loop.Pipeline, "_policy_end", lambda self, d: ([25.7, 47.3, 288.0, 178.1, 58.3, 46.9], 99.1))
+    cfg = _cfg()
+    cfg["evaluation"]["dagger"] = True
+    p = loop.Pipeline(st, _op(), cfg)
+    res = p.evaluate(st.dir / "checkpoints/lora1/999", n=2)
+    assert (res["n"], res["success"]) == (2, 1)                                 # the correction does not count as a rollout
+    assert res["dagger"] == [dict(episode=2, of=1, final="success")]
+    assert st.counters["dagger"] == dict(total=1, success=1, fail=0, unsure=0) and st.counters["evals"]["total"] == 2
+    meta = json.loads((st.dir / "episodes/ep_000002/meta.json").read_text())
+    assert meta["mode"] == "dagger" and meta["dagger_of"] == 1 and meta["dagger_start"]["gripper"] == 99.1
+    s = json.loads(sorted((FakeWorkspace.created["execute"].path / "attempts").glob("attempt_*/summary.json"))[-1].read_text())
+    assert json.loads(s["env"]["RLPJ_START_JOINTS"]) == [25.7, 47.3, 288.0, 178.1, 58.3, 46.9] and s["env"]["RLPJ_DAGGER"] == "1"
+
+
+def test_no_dagger_correction_when_the_rollout_ended_holding_something(fakes, runs, tmp_path, monkeypatch):
+    st = _ready_run("d2", fakes, tmp_path, _plan(tmp_path, "exec", "success"), _plan(tmp_path, "reset", "success"))
+    p = loop.Pipeline(st, _op(), _cfg())
+    monkeypatch.setattr(loop.Pipeline, "_policy_end", lambda self, d: ([0.0] * 6, 85.0))
+    assert p._correction(dict(index=7, dir=st.dir / "episodes/ep_000007")) is None and "dagger" not in st.counters

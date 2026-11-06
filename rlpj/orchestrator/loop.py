@@ -805,8 +805,8 @@ class Pipeline:
         self._reset_runs.append((r.attempt_dir, f"reset {n}: layout {'ok' if ok else 'FAILED'} ({_reason(rep)}), {r.duration:.0f} s"))
         self.st.save()
 
-    def _episode(self, ep_dir, idx, targets, before, mode):
-        """One recorded robot execution (collect: the execute program, eval: the policy rollout) with its verdict."""
+    def _episode(self, ep_dir, idx, targets, before, mode, extra_env=None, meta_extra=None):
+        """One recorded robot execution (collect/dagger: the execute program, eval: the policy rollout) with its verdict."""
         if mode == "eval":
             cwd = Path(self.workspace("learn").path) if self._eval_code.get("rollout") else self.st.dir
             attempt_dir, command = ep_dir / "attempt", self._rollout_command()
@@ -818,7 +818,8 @@ class Pipeline:
             command = self.st.agent("execute").get("program_command") or "python programs/execute.py"
         if not self.op.gate(f"{mode} episode {idx}", True, command):
             return None
-        r = self._attempt(cwd, command, attempt_dir, True, record_dir=ep_dir, timeout_s=timeout, what=f"{mode} episode {idx}", commit=commit)
+        r = self._attempt(cwd, command, attempt_dir, True, record_dir=ep_dir, timeout_s=timeout, what=f"{mode} episode {idx}",
+                          commit=commit, extra_env=extra_env)
         after = self._safe_measure(ep_dir / "scene_after.jpg")
         aborted = r.outcome == "aborted"
         claim = "aborted" if aborted else (r.summary.get("claimed_outcome") or r.outcome)
@@ -828,12 +829,13 @@ class Pipeline:
         outcome = dict(claim=claim, perception=v["perception"], vlm=v["vlm"], operator=None, final=v["final"], reason=v["reason"])
         update_meta(ep_dir, episode=idx, run_id=self.st.run_id, task=self.task["name"], instruction=self.task["instruction"],
                     mode=mode, attempt=str(attempt_dir), exit_code=r.exit_code, duration=r.duration, layout_target=targets,
-                    layout_before=self._summ(before), layout_after=self._summ(after), outcome=outcome)
-        c = self.st.counters["episodes" if mode == "collect" else "evals"]
+                    layout_before=self._summ(before), layout_after=self._summ(after), outcome=outcome, **(meta_extra or {}))
+        key = {"collect": "episodes", "eval": "evals"}.get(mode, mode)
+        c = self.st.counters.setdefault(key, dict(total=0, success=0, fail=0, unsure=0))
         c["total"] += 1
         c[v["final"] if v["final"] in ("success", "unsure") else "fail"] += 1
         self.st.next_episode = idx + 1
-        if v["final"] == "unsure" or self._safe("rlpj.success.verdict", "needs_operator", v):
+        if mode != "dagger" and (v["final"] == "unsure" or self._safe("rlpj.success.verdict", "needs_operator", v)):
             self.op.queue_review(ep_dir, v)
         self.st.event("episode", episode=idx, mode=mode, final=v["final"], reason=v["reason"], claim=claim,
                       exit_code=r.exit_code, duration=r.duration, attempt=str(attempt_dir))
@@ -852,10 +854,41 @@ class Pipeline:
         self.op.notify(f"episode {idx} (collect): unsure - {v['reason']}; deleted, redoing it")
         return dict(index=idx, dir=ep_dir, attempt_dir=attempt_dir, final=v["final"], reason=v["reason"], result=r, discarded=True)
 
+    def _policy_end(self, ep_dir):
+        """(joints deg, gripper reading) at the last tick of the policy phase of a recorded rollout."""
+        d = np.load(Path(ep_dir) / "steps.npz", allow_pickle=True)
+        ph = json.loads((Path(ep_dir) / "phases.json").read_text())
+        i = next(x["i1"] - 1 for x in ph if x["name"] == "policy")
+        return [round(float(v), 3) for v in d["q"][i]], float(d["gripper"][i])
+
+    def _correction(self, ep):
+        """DAgger (evaluation.dagger): after a failed rollout the expert, the execute program, takes over from the
+        policy's last pose (RLPJ_START_JOINTS; the session goes back there before recording) and finishes the task.
+        Recorded as a 'dagger' episode; `rlpj vla convert --modes collect,dagger` adds the successful ones."""
+        try:
+            q, g = self._policy_end(ep["dir"])
+        except Exception as e:
+            self.op.notify(f"dagger: no policy end pose in episode {ep['index']} ({e!r}); no correction")
+            return None
+        if 5.0 < g < 97.5:                             # the jaws ended on something: that state cannot be retraced
+            self.op.notify(f"dagger: episode {ep['index']} ended holding something (gripper {g:.1f}); no correction")
+            return None
+        idx, ep_dir = self._new_episode_dir()
+        before = self._safe_measure(ep_dir / "scene_before.jpg")
+        fix = None
+        if before is not None:
+            self.op.notify(f"dagger: the expert takes over from the last pose of episode {ep['index']} (gripper {g:.1f})")
+            fix = self._episode(ep_dir, idx, None, before, "dagger", extra_env={"RLPJ_START_JOINTS": json.dumps(q), "RLPJ_DAGGER": "1"},
+                                meta_extra=dict(dagger_of=ep["index"], dagger_start=dict(q=q, gripper=round(g, 1))))
+        if fix is None:
+            shutil.rmtree(ep_dir, ignore_errors=True)
+        return fix
+
     # ------------------------------------------------------------------ agent 3 and evaluation
     def dataset_stats(self):
         c = self.st.counters["episodes"]
         return dict(run_dir=str(self.st.dir), episodes_dir=str(self.st.dir / "episodes"), episodes=dict(c),
+                    dagger_episodes=dict(self.st.counters.get("dagger", {})),
                     fps=self.cfg["recording"]["fps"], datasets=list(self.st.datasets), training_runs=list(self.st.training_runs),
                     evals={k: dict(checkpoint=v.get("checkpoint"), success_rate=v.get("success_rate"), n=v.get("n")) for k, v in self.st.evals.items()})
 
@@ -1135,6 +1168,8 @@ class Pipeline:
         serve / rollout: agent 3's own server and rollout programs (its workspace, pulled here first)."""
         ev, hosts = self.cfg["evaluation"], self.cfg["hosts"]
         self._eval_code = {k: v for k, v in (("serve", serve), ("rollout", rollout)) if v}
+        if self.cfg["evaluation"].get("dagger") and not zero_shot:
+            self.deliver_notes()                        # the expert may need its note before it takes over
         if self._eval_code:
             ws = self.workspace("learn")
             try:
@@ -1166,6 +1201,10 @@ class Pipeline:
                         res["error"] = "stopped by the operator"
                         break
                     res["episodes"].append(dict(episode=idx, final=ep["final"], reason=ep["reason"], duration=ep["result"].duration))
+                    if ev.get("dagger") and not zero_shot and ep["final"] != "success":
+                        fix = self._correction(ep)
+                        if fix is not None:
+                            res.setdefault("dagger", []).append(dict(episode=fix["index"], of=idx, final=fix["final"]))
         finally:
             self._server_stop()
         eps = res["episodes"]

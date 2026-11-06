@@ -176,7 +176,8 @@ def status_lines(st, cfg=None):
     target = (cfg or {}).get("evaluation", {}).get("target_success_rate")
     lines = [f"run {st.run_id}  task {st.task}  condition {st.condition}  phase {st.phase}  created {st.created}",
              f"episodes {e['total']} (success {e['success']}, fail {e['fail']}, unsure {e['unsure']}; {rate:.0%}; "
-             f"unsure deleted and redone {c.get('discarded', 0)})  "
+             f"unsure deleted and redone {c.get('discarded', 0)}; dagger corrections "
+             f"{st.counters.get('dagger', {}).get('success', 0)}/{st.counters.get('dagger', {}).get('total', 0)} success)  "
              f"eval episodes {st.counters['evals']['total']}  resets {r['total']} (ok {r['ok']}, fail {r['fail']}, manual {r['manual']})",
              f"collection round {c.get('round', 0)}: {c.get('round_successes', 0)}/{c.get('round_target') or '-'} successes  "
              f"vlm judge {st.vlm['calls']} calls ${st.vlm['cost_usd']:.2f}  operator queue {len(pending_reviews(st))} pending",

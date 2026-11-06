@@ -78,6 +78,7 @@ Step by step:
   (e.g. real-time chunking) and rollout in its workspace and research best practice on the web |
 | `rlpj eval <run> --checkpoint <dir> [--n 20]` | policy rollouts only |
 | `rlpj eval-zero-shot <run>` | same with base `pi05_base` |
+| (DAgger) | with `evaluation.dagger: true`, every failed rollout is followed by an expert correction from the policy's last pose (mode `dagger`); add them with `rlpj vla convert --modes collect,dagger` |
 
 Flags: `--hands-free` (countdown without Enter), `--yes` (skip non-robot prompts), `--autonomous` (hands-free and
 nothing waits for a person: agent requests get a standing "no operator" reply, failed resets go back to the reset agent

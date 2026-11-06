@@ -489,3 +489,18 @@ def test_session_refuses_to_let_go_outside_the_release_zone(fakes, tmp_path):
     S = json.load(open(A / "summary.json"))
     assert s.exit_code == 2 and "release refused" in S["stop"]["why"] and "(0.450, 0.120)" in S["stop"]["why"]
     assert S["gripper_final"] == {"cmd": 1.0, "reading": 85.0}
+
+
+def test_session_goes_back_to_the_policy_pose_before_recording(fakes, tmp_path, monkeypatch):
+    from rlpj.robot.session import RobotSession
+    q_low = KIN.ik(tool_down_T([0.50, -0.10, TZ + 0.05], 30.0), Q_HOME)[0]          # a rollout's last pose, near the table
+    monkeypatch.setenv("RLPJ_START_JOINTS", json.dumps([float(v) for v in q_low]))
+    A, ep = tmp_path / "dg", tmp_path / "ep"
+    with RobotSession(program="test", attempt_dir=A, record_dir=ep, view_port=0, exit_on_close=False, kin=KIN) as s:
+        assert np.allclose(s.q_home, wrap180(Q_HOME))                               # home stays the real start
+        fb = s.feedback()
+        assert np.allclose(fb["pose"][:3], KIN.fk(q_low)[:3, 3], atol=1e-3)         # recording starts at the policy pose
+        assert [x[0] for x in s.seg_log][:2] == ["setup_above_policy_pose", "setup_down_to_policy_pose"]
+        s.claim("success")
+    S = json.load(open(A / "summary.json"))
+    assert s.exit_code == 0 and S["dagger_start"]["tool"][2] < TZ + 0.06
