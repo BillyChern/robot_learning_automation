@@ -20,6 +20,7 @@ collection:
   manual_reset_after_failures: 2   # reset failures in a row before the operator resets by hand
   reflect_after_every_run: true    # agents 1/2 reflect on every run while the other program uses the robot
   review_every: 0                  # episodes between periodic reviews (0 = off; reflections cover it)
+  attempt_timeout_s: 1200           # any robot run (reset, execute, correction, agent test) is stopped after 20 min (attempt 220 hung 2 h 45 min)
   discard_unsure: true             # unsure episodes are deleted and redone (not counted, not queued for review)
 
 evaluation:
