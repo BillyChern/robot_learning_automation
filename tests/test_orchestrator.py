@@ -142,7 +142,10 @@ class FakeCam:
 
 
 def fake_decide(claim, perception, vlm):
-    final = ("fail" if perception is False else "success") if claim == "success" else "fail"
+    if claim is None:                                                              # policy rollout: checks decide
+        final = "success" if perception is not False and (vlm or {}).get("success") else "fail"
+    else:
+        final = ("fail" if perception is False else "success") if claim == "success" else "fail"
     return dict(final=final, reason=f"fake claim={claim} perception={perception} vlm={vlm and vlm.get('success')}")
 
 
@@ -186,6 +189,13 @@ def fakes(monkeypatch, tmp_path):
     prog.write_text(FAKE_PROG)
     return prog
 
+
+
+def _vlm_says(monkeypatch, *answers):
+    """The (fake) VLM judge answers these in turn: a policy rollout's verdict comes from the independent checks."""
+    it = iter(answers)
+    monkeypatch.setitem(sys.modules, "rlpj.success.vlm_judge", _mod("rlpj.success.vlm_judge", judge=lambda images, task_cfg: dict(
+        success=next(it), confidence=0.9, reason="vlm", cost_usd=0.01, images=sorted(images))))
 
 def _update_meta(ep_dir, **fields):
     p = Path(ep_dir) / "meta.json"
@@ -534,6 +544,7 @@ def test_evaluate(fakes, runs, tmp_path, monkeypatch):
     monkeypatch.setattr(loop.Pipeline, "_server_stop", lambda self: server.append(("stop",)))
     monkeypatch.setattr(loop.Pipeline, "_rollout_command", lambda self: f"python {fakes} {plan}")
     p = loop.Pipeline(st, _op(), _cfg())
+    _vlm_says(monkeypatch, True, False)
     res = p.evaluate(st.dir / "checkpoints/lora1/999", n=2)
     assert (res["n"], res["success"], res["success_rate"], res["met"]) == (2, 1, 0.5, False)
     assert server == [("start", str(st.dir / "checkpoints/lora1/999"), 8000), ("stop",)]
@@ -1070,6 +1081,7 @@ def test_dagger_expert_takes_over_after_a_failed_rollout(fakes, runs, tmp_path, 
     cfg = _cfg()
     cfg["evaluation"]["dagger"] = True
     p = loop.Pipeline(st, _op(), cfg)
+    _vlm_says(monkeypatch, True, False, True)                               # rollout, rollout, correction
     res = p.evaluate(st.dir / "checkpoints/lora1/999", n=2)
     assert (res["n"], res["success"]) == (2, 1)                                 # the correction does not count as a rollout
     assert res["dagger"] == [dict(episode=2, of=1, final="success")]

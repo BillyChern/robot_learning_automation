@@ -823,6 +823,8 @@ class Pipeline:
         after = self._safe_measure(ep_dir / "scene_after.jpg")
         aborted = r.outcome == "aborted"
         claim = "aborted" if aborted else (r.summary.get("claimed_outcome") or r.outcome)
+        if mode == "eval" and not aborted:
+            claim = None                                # a policy rollout never verifies itself: the independent checks decide
         v = self._verdict(claim, before, after, _images(ep_dir) or _images(attempt_dir), aborted=aborted)
         if mode == "collect" and v["final"] == "unsure" and self.cfg["collection"].get("discard_unsure"):
             return self._discard(ep_dir, idx, v, claim, r, attempt_dir)

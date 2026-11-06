@@ -33,9 +33,9 @@ perception:                        # size priors (m) matched against rlpj.percep
 
 gripper_check:                     # orchestrator, after every robot program (arm at home): the bee hanging on the fingers?
   object: bee
-  hsv: [[15, 101, 91], [40, 255, 255]]   # bee yellow (OpenCV HSV)
+  hsv: [[0, 120, 110], [40, 255, 255]]   # bee orange wrap + yellow (OpenCV HSV); the bee was wrapped in orange 2026-11-05
   bottom: 0.15                     # bottom share of the wrist image (the fingertips)
-  max_frac: 0.10                   # run 20261104_1510_bee: stuck 0.21-0.22, released bee below <= 0.052, empty <= 0.027
+  max_frac: 0.10                   # stuck 0.18-0.27 (yellow and orange bee), bee lying below <= 0.048, empty at home <= 0.006
   stop_after: 2                    # programs in a row that end with the bee on the gripper before the run stops for a person
 
 release_zone:                      # robot library: a held bee may only be let go here (RobotSession.gripper refuses elsewhere)

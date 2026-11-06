@@ -183,7 +183,8 @@ result in `state.agents.learn.pending_msg` and hands it over after the relaunch.
 - `rlpj.success.vlm_judge.judge(images, task_cfg) -> {"success": bool, "confidence": 0..1, "reason": str}`: Claude on the
   5090 reads the before/after images; `--json-schema`; cost logged.
 - `rlpj.success.verdict.decide(claim, perception, vlm) -> {"final": "success"|"fail"|"unsure", "reason"}`:
-  success needs claim and at least one independent yes with no independent no. An `unsure` collection episode is
+  success needs claim and at least one independent yes with no independent no. A policy rollout has no claim of its
+  own (claim None): success needs both the geometric check and the VLM to say yes, one yes is unsure, none is fail. An `unsure` collection episode is
   deleted and redone (`collection.discard_unsure`, counted in `collection.discarded` and toward `max_episodes`);
   otherwise, and in evaluation, `unsure` goes to the operator queue.
 - `rlpj.perception.wrist.gripper_load(img, chk)`: share of object-coloured pixels (task yaml `gripper_check.hsv`) in the

@@ -111,7 +111,9 @@ def test_verdict_truth_table():
         ("success", False, no, "fail"),
         ("fail", True, yes, "unsure"), ("fail", None, yes, "unsure"), ("fail", True, no, "fail"),
         ("fail", None, None, "fail"), ("fail", False, None, "fail"), ("fail", False, no, "fail"),
-        (None, True, yes, "unsure"), (None, None, None, "fail"),
+        (None, True, yes, "success"), (None, True, None, "unsure"), (None, None, yes, "unsure"), (None, True, no, "unsure"),
+        (None, False, yes, "unsure"), (None, False, no, "fail"), (None, False, None, "fail"), (None, None, no, "fail"),
+        (None, None, None, "fail"), (None, None, low, "fail"),
     ]
     for claim, p, v, want in cases:
         out = verdict.decide(claim, p, v)

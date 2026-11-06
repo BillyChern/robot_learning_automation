@@ -274,6 +274,6 @@ def test_gripper_load_on_real_wrist_images():
     chk = config.load("bee_in_bowl")["task"]["gripper_check"]
     d = config.ROOT / "tests/data/wrist"
     f = {p.stem: wrist.gripper_load(cv2.imread(str(p)), chk) for p in d.glob("*.jpg")}
-    assert f["stuck_after_release"] > 0.2 and f["stuck_at_home"] > 0.2
+    assert min(f["stuck_after_release"], f["stuck_at_home"], f["stuck_orange_at_home"]) > 1.5 * chk["max_frac"]
     assert f["released_below"] < chk["max_frac"] and f["empty_at_home"] < 0.02
     assert wrist.gripper_load(None, chk) is None
