@@ -75,7 +75,7 @@ def configs(run_dir=None, repo_id: str | None = None) -> dict[str, _config.Train
                   lr_schedule=_optimizer.CosineDecaySchedule(warmup_steps=500, peak_lr=5e-5, decay_steps=1_000_000,
                                                              decay_lr=5e-5),
                   optimizer=_optimizer.AdamW(clip_gradient_norm=1.0), batch_size=16, num_train_steps=5000,
-                  log_interval=50, save_interval=500, keep_period=1000, num_workers=2,
+                  log_interval=50, save_interval=500, keep_period=5000, num_workers=2,   # ~9 GB per kept checkpoint (5090 disk)
                   wandb_enabled=os.environ.get("RLPJ_WANDB") == "1", policy_metadata=POLICY_METADATA, **dirs)
     lora = KinovaTrainConfig(name=LORA_NAME, model=lora_model(), freeze_filter=lora_model().get_freeze_filter(),
                              ema_decay=None, **common)

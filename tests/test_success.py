@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 import test_perception as tp
-from rlpj.perception import tabletop
+from rlpj.perception import layout, tabletop
 from rlpj.success import checks, verdict, vlm_judge
 
 RING, BEE, CUP, TZ = tp.RING, tp.BEE, tp.CUP, tp.TZ
@@ -137,3 +137,82 @@ def test_vlm_judge_dry_and_parse(bee_cfg):
     assert bad["success"] is None and "quota" in bad["reason"]
     assert vlm_judge.parse("not json")["success"] is None
     assert vlm_judge.main(["/x/before_side.jpg", "/x/after_side.jpg", "--dry", "--task", "bee_in_tape_roll"]) == 0
+
+
+BOWL = dict(xy=(0.47, -0.06), r_foot=0.035, r_rim=0.072, h=0.068, floor=0.010)
+BOWL_BEE = (0.40, 0.12)
+
+
+def bowl_pts(xy=BOWL["xy"], step=0.0008):
+    """Upright bowl: bulging outer wall from the foot to the rim, flat inner floor above the table, curved inside."""
+    c, H, f, ri = np.asarray(xy, float), BOWL["h"], BOWL["floor"], BOWL["r_rim"] - 0.004
+    pts = []
+    for z in np.arange(0, H, step):
+        ring = tp.circle(c, BOWL["r_foot"] + (BOWL["r_rim"] - BOWL["r_foot"]) * np.sqrt(z / H), step)
+        pts.append(np.c_[ring, np.full(len(ring), tp.TZ + z)])
+    disc = tp.grid2(c[0] - ri, c[0] + ri, c[1] - ri, c[1] + ri, step)
+    r = np.linalg.norm(disc - c, axis=1)
+    disc, r = disc[r <= BOWL["r_rim"]], r[r <= BOWL["r_rim"]]
+    z = np.where(r <= 0.03, f, f + (H - f) * ((np.clip(r, 0.03, ri) - 0.03) / (ri - 0.03)) ** 2)
+    z = np.where(r > ri, H, z)
+    pts.append(np.c_[disc, tp.TZ + z])
+    return np.vstack(pts)
+
+
+def bee_on(xy, z0=0.0, sx=0.09, sy=0.05, h=0.04):
+    P = tp.box_pts(xy, sx, sy, h)
+    P[:, 2] += z0
+    return P
+
+
+@pytest.fixture(scope="module")
+def bowl_cfg():
+    return tp.task("bee_in_bowl")
+
+
+@pytest.fixture(scope="module")
+def bowl_before():
+    return blobs([bowl_pts(), bee_on(BOWL_BEE)])
+
+
+def test_bowl_scene_matches_priors(bowl_cfg, bowl_before):
+    pick = layout.assign(bowl_cfg, bowl_before)
+    assert np.linalg.norm(np.subtract(pick["bowl"]["xy"], BOWL["xy"])) < 0.01
+    assert np.linalg.norm(np.subtract(pick["bee"]["xy"], BOWL_BEE)) < 0.02
+    ok, rep = layout.check(bowl_cfg, {"bowl": list(BOWL["xy"]), "bee": list(BOWL_BEE)}, bowl_before)
+    assert ok, rep
+
+
+def test_bee_in_bowl_cases(bowl_cfg, bowl_before):
+    ok, rep = checks.run(bowl_cfg, bowl_before, blobs([bowl_pts(), bee_on(BOWL["xy"], BOWL["floor"])]))
+    assert ok is True and rep["risen_cells"] >= checks.RISEN_CELLS, rep
+    nudged = (BOWL["xy"][0] + 0.02, BOWL["xy"][1] - 0.01)
+    ok, rep = checks.run(bowl_cfg, bowl_before, blobs([bowl_pts(nudged), bee_on(nudged, BOWL["floor"], 0.06, 0.04)]))
+    assert ok is True, rep
+    ok, rep = checks.run(bowl_cfg, bowl_before, blobs([bowl_pts(), bee_on((0.36, 0.10))]))
+    assert ok is False and "outside" in rep["reason"]
+    moved = (BOWL["xy"][0] - 0.09, BOWL["xy"][1] + 0.03)
+    ok, rep = checks.run(bowl_cfg, bowl_before, blobs([bowl_pts(moved), bee_on(moved, BOWL["floor"])]))
+    assert ok is False and "moved" in rep["reason"]
+    ok, rep = checks.run(bowl_cfg, bowl_before, blobs([tp.box_pts(BOWL["xy"], 0.07, 0.15, 0.15)]))   # on its side
+    assert ok is False and "tipped" in rep["reason"]
+    ok, rep = checks.run(bowl_cfg, bowl_before, blobs([bowl_pts()]))                                 # bee hidden
+    assert ok is None and "hidden" in rep["reason"] and rep["risen_cells"] < checks.RISEN_CELLS
+    ok, rep = checks.run(bowl_cfg, bowl_before, [])
+    assert ok is None
+    assert json.dumps(rep)
+
+
+def test_bee_in_bowl_on_real_side_scans(bowl_cfg):
+    """Regression: real side-camera scans (2026-11-04, kinova_a) of the empty bowl and of the bee inside it."""
+    d = np.load(tp.config.ROOT / "tests/data/bee_in_bowl_real.npz")
+    tz = float(d["table_z"])
+    empty, full = tabletop.detect(d["empty_before"], table_z=None), tabletop.detect(d["bee_in_bowl"], table_z=None)
+    ok, rep = checks.run(bowl_cfg, empty, full)
+    assert ok is True and rep["risen_cells"] >= 3 * checks.RISEN_CELLS, rep
+    bowl_only = [b for b in empty if b["n"] > 3000]
+    ok, rep = checks.run(bowl_cfg, empty, bowl_only)
+    assert ok is None and rep["risen_cells"] < checks.RISEN_CELLS, rep
+    ok, rep = checks.run(bowl_cfg, empty, empty)
+    assert ok is False and "outside" in rep["reason"]
+    assert abs(tz + 0.016) < 1e-6

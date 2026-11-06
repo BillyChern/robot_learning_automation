@@ -105,6 +105,17 @@ class Planner:
         self.oracle = oracle          # callable q_deg -> tool_pose (x,y,z,tx,ty,tz) or None
         self.log = log
 
+    def _oracle_T(self, q):
+        """The robot's own FK as a 4x4, or None (no oracle, or the controller refused this joint set: Kortex rejects
+        some with ERROR_INTERNAL); the fitted model, which every safety check uses anyway, then stands in."""
+        if self.oracle is None:
+            return None
+        try:
+            return calib.pose_to_T(self.oracle(q))
+        except Exception as e:
+            self.log(f"FK oracle refused q {np.round(np.asarray(q, float), 1).tolist()} ({str(e)[:80]}); using the fitted model")
+            return None
+
     def ik_exact(self, T_goal, q_seed, tol=0.0003):
         """IK on the model; then shift the model target by the oracle error until the oracle hits T_goal."""
         T_adj = T_goal.copy(); q = np.array(q_seed, float)
@@ -113,9 +124,9 @@ class Planner:
             q, ep, er = self.kin.ik(T_adj, q)
             if ep > 1e-3 or er > 0.1:
                 raise RuntimeError(f"IK failed (model) pos err {ep * 1000:.1f} mm rot {er:.2f} deg")
-            if self.oracle is None:
+            To = self._oracle_T(q)
+            if To is None:
                 info = dict(oracle=False); break
-            To = calib.pose_to_T(self.oracle(q))
             dp = T_goal[:3, 3] - To[:3, 3]
             dR = T_goal[:3, :3] @ To[:3, :3].T
             info = dict(oracle=True, pos_err_mm=float(np.linalg.norm(dp) * 1000), rot_err_deg=float(np.degrees(np.linalg.norm(rotvec(dR)))), it=it)
@@ -141,9 +152,8 @@ class Planner:
         else:
             q1, ep, er = self.kin.ik(T_goal, q0); T1adj = T_goal; info = {}
         # the robot's actual start pose (oracle) -> model target offset at s=0 is zero by definition (we start at q0)
-        if self.oracle is not None:
-            Ts = calib.pose_to_T(self.oracle(q0))
-        else:
+        Ts = self._oracle_T(q0)
+        if Ts is None:
             Ts = T0
         L = np.linalg.norm(T_goal[:3, 3] - Ts[:3, 3])
         n = int(max(np.ceil(L / step), 2))

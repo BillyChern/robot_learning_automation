@@ -6,7 +6,8 @@
   python -m rlpj.vla.openpi_entry serve policy:checkpoint --policy.config pi05_kinova_lora --policy.dir CKPT [--port 8000]
 
 HF_LEROBOT_HOME = R/datasets (dataset rlpj/NAME); checkpoints R/checkpoints/E/<step>; norm stats R/assets/<config>/rlpj/NAME;
-wandb disabled unless RLPJ_WANDB=1; serve reads the dataset id back from the checkpoint's assets/ dir."""
+wandb disabled unless RLPJ_WANDB=1; serve reads the dataset id back from the checkpoint's assets/ dir.
+RLPJ_RECIPE=<file.py>: agent 3's recipe (configs(run_dir, repo_id) -> {name: TrainConfig}) registered next to ours."""
 import argparse
 import dataclasses
 import importlib
@@ -28,6 +29,31 @@ def _script(name):
     if str(OPENPI) not in sys.path:
         sys.path.insert(0, str(OPENPI))
     return importlib.import_module(f"scripts.{name}")
+
+
+def load_recipe(path, run_dir=None, repo_id=None):
+    """Agent 3's training recipe: a .py file with configs(run_dir, repo_id) -> {name: TrainConfig}. Imported by module
+    name with its folder on sys.path and PYTHONPATH, so spawned data-loader workers can import it too."""
+    path = pathlib.Path(path).resolve()
+    if str(path.parent) not in sys.path:
+        sys.path.insert(0, str(path.parent))
+    os.environ["PYTHONPATH"] = os.pathsep.join([str(path.parent)] + ([os.environ["PYTHONPATH"]] if os.environ.get("PYTHONPATH") else []))
+    mod = importlib.import_module(path.stem)
+    return dict(mod.configs(run_dir, repo_id))
+
+
+def _register(run_dir=None, repo_id=None):
+    """Our configs plus the recipe in $RLPJ_RECIPE (if set), registered into openpi's config registry."""
+    from rlpj.vla import train_config as tc
+    import openpi.training.config as _config
+    cfgs = tc.register(run_dir, repo_id)
+    if os.environ.get("RLPJ_RECIPE"):
+        extra = load_recipe(os.environ["RLPJ_RECIPE"], run_dir, repo_id)
+        for c in extra.values():
+            _config._CONFIGS_DICT[c.name] = c
+            _config._CONFIGS[:] = [x for x in _config._CONFIGS if x.name != c.name] + [c]
+        cfgs = {**cfgs, **extra}
+    return cfgs
 
 
 def _repo_id(dataset):
@@ -63,9 +89,8 @@ def cmd_norm_stats(argv):
     p.add_argument("--batch-size", type=int, default=None, help="loader batch (must be <= dataset frames)")
     ns = p.parse_args(argv)
     run_dir = _setup_env(ns.run_dir)
-    from rlpj.vla import train_config as tc
     import openpi.training.config as _config
-    cfgs = tc.register(run_dir, _repo_id(ns.dataset))
+    cfgs = _register(run_dir, _repo_id(ns.dataset))
     cfg = cfgs[ns.config_name]
     if ns.batch_size:
         cfg = dataclasses.replace(cfg, batch_size=ns.batch_size)
@@ -80,7 +105,7 @@ def cmd_train(argv):
     run_dir = _setup_env(ns.run_dir)
     from rlpj.vla import train_config as tc
     import tyro
-    cfgs = tc.register(run_dir, _repo_id(ns.dataset))
+    cfgs = _register(run_dir, _repo_id(ns.dataset))
     if not rest or rest[0].startswith("-"):
         rest = [tc.LORA_NAME, *rest]
     config = tyro.extras.overridable_config_cli({k: (k, v) for k, v in cfgs.items()}, args=rest,
@@ -91,6 +116,7 @@ def cmd_train(argv):
                 checkpoint_dir=str(config.checkpoint_dir), num_train_steps=config.num_train_steps,
                 batch_size=config.batch_size, lr_schedule=dataclasses.asdict(config.lr_schedule),
                 hf_lerobot_home=os.environ["HF_LEROBOT_HOME"], host=platform.node(), seconds=round(time.time() - t0, 1),
+                recipe=os.environ.get("RLPJ_RECIPE"),
                 finished=time.strftime("%Y-%m-%d %H:%M:%S"), argv=sys.argv[1:])
     (config.checkpoint_dir / "train_info.json").write_text(json.dumps(info, indent=1))
     print(f"train done in {info['seconds']}s -> {config.checkpoint_dir}")
@@ -103,7 +129,7 @@ def cmd_serve(argv):
     sp = _script("serve_policy")
     args = tyro.cli(sp.Args, args=argv, prog="openpi_entry serve")
     repo_id = asset_id_from_checkpoint(args.policy.dir) if isinstance(args.policy, sp.Checkpoint) else None
-    tc.register(repo_id=repo_id)
+    _register(repo_id=repo_id)
     logging.basicConfig(level=logging.INFO, force=True)
     logging.info("serving %s with dataset id %s", getattr(args.policy, "dir", args.policy), repo_id)
     sp.main(args)

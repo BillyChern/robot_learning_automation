@@ -79,7 +79,13 @@ class AgentRunner:
         sid = str(uuid.uuid4())
         self.ws.session.update(session_id=sid, model=self.model, effort=self.effort)
         self.ws.save_session()
-        return self._turn(self.command(sid), self.ws.prompt() if prompt is None else prompt, "start")
+        try:
+            return self._turn(self.command(sid), self.ws.prompt() if prompt is None else prompt, "start")
+        except AgentError:
+            if not self.ws.session.get("turns"):              # no turn came back: the next start() opens a new session
+                self.ws.session["session_id"] = None
+                self.ws.save_session()
+            raise
 
     def resume(self, message: str) -> tuple[Action, Usage]:
         """Continue the session with a new user message (a digest, an operator note)."""

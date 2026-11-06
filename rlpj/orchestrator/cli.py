@@ -1,4 +1,4 @@
-"""`rlpj` command line: check, fit-kin, new, develop, collect, learn, eval, eval-zero-shot, run-all, status, review, report, vla."""
+"""`rlpj` command line: check, fit-kin, new, develop, collect, learn, eval, eval-zero-shot, run-all, status, review, report, timeline, transcripts, vla."""
 import argparse
 import os
 import shlex
@@ -10,6 +10,7 @@ from rlpj import config
 from . import state as S
 
 CONDITIONS = ("text", "one_demo")
+USES_AGENT_HOST = ("develop", "collect", "learn", "eval", "eval-zero-shot", "run-all")   # agents, judge, training on the 5090
 
 
 def build_parser():
@@ -17,6 +18,8 @@ def build_parser():
                                 "collects episodes, fine-tunes pi0.5 and evaluates it.")
     p.add_argument("--hands-free", action="store_true", help="robot gates count down and go without a keypress (operator on the e-stop)")
     p.add_argument("--yes", action="store_true", help="no prompt for steps that do not move the robot")
+    p.add_argument("--autonomous", action="store_true", help="hands-free and nothing waits for a person: agent requests get a "
+                   "standing 'no operator' reply, failed resets go back to the reset agent instead of a manual reset")
     p.add_argument("--task", help="task name (config/tasks/<task>.yaml); also RLPJ_TASK")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("check", help="robot, camera and calibration checks (nothing moves)")
@@ -30,7 +33,9 @@ def build_parser():
                ("eval", "evaluate a checkpoint on the robot", [("--checkpoint", dict(required=True)), ("--n", dict(type=int))]),
                ("eval-zero-shot", "evaluate training.base_checkpoint", [("--n", dict(type=int))]),
                ("run-all", "check -> develop -> collect -> learn -> report, resumable", []),
-               ("status", "state table", []), ("review", "label the unsure episodes", []), ("report", "write REPORT.md", []))
+               ("status", "state table", []), ("review", "label the unsure episodes", []), ("report", "write REPORT.md", []),
+               ("timeline", "one video of every recorded run (side + wrist), in time order", [("--robot-only", dict(action="store_true"))]),
+               ("transcripts", "readable agent conversations: runs/<run>/transcripts/<role>.md", []))
     for name, help_, extra in per_run:
         s = sub.add_parser(name, help=help_)
         s.add_argument("run", help="run id (runs/<run>)")
@@ -58,6 +63,8 @@ def main(argv=None):
     if args.cmd == "vla":
         return vla(rest)
     cfg = config.load()
+    if args.cmd in USES_AGENT_HOST:
+        sync_code()
     if args.cmd == "check":
         from rlpj.robot import check
         return 0 if check.run(log=print).get("ok") else 1
@@ -76,7 +83,16 @@ def main(argv=None):
     if args.cmd == "status":
         print("\n".join(S.status_lines(st, cfg)))
         return 0
-    op = Operator(hands_free=args.hands_free, yes=args.yes, countdown_s=cfg.get("operator", {}).get("countdown_s", 5))
+    if args.cmd == "timeline":
+        from .timeline import build
+        build(st.dir, robot_only=args.robot_only)
+        return 0
+    if args.cmd == "transcripts":
+        from .transcript import build
+        build(st.dir)
+        return 0
+    op = Operator(hands_free=args.hands_free, yes=args.yes, countdown_s=cfg.get("operator", {}).get("countdown_s", 5),
+                  autonomous=args.autonomous)
     p = Pipeline(st, op, cfg)
     try:
         if args.cmd == "develop":
@@ -103,6 +119,15 @@ def main(argv=None):
         return 130
 
 
+def sync_code():
+    """Push this repo to the agent host (scripts/sync.sh push) so both machines run the same code; False on failure."""
+    if os.environ.get("RLPJ_NO_SYNC") == "1":
+        return True
+    r = subprocess.run(["bash", str(config.ROOT / "scripts/sync.sh"), "push"], capture_output=True, text=True, timeout=300)
+    print("== code sync to the agent host: " + ("ok" if r.returncode == 0 else f"FAILED ({r.stderr.strip()[-300:]})"), flush=True)
+    return r.returncode == 0
+
+
 def review(st, op, p):
     """Walk the operator queue: show the episode's files and verdict, ask success/fail, write the label."""
     pending = S.pending_reviews(st)
@@ -122,7 +147,8 @@ def review(st, op, p):
 
 
 def vla(args):
-    """rlpj vla convert --run-dir R --name N [...] | train --run-dir R --dataset N --exp-name E [overrides] | serve --checkpoint C [--port P]"""
+    """rlpj vla convert --run-dir R --name N [...] | train --run-dir R --dataset N --exp-name E [--config NAME --recipe FILE.py]
+    [overrides] | serve --checkpoint C [--port P]"""
     if not args or args[0] not in ("convert", "train", "serve"):
         print(vla.__doc__)
         return 2
@@ -137,14 +163,20 @@ def vla(args):
         return default
 
     root = config.ROOT
+    if "--run-dir" in rest[:-1]:                     # convert runs from third_party/openpi: make the run dir absolute
+        i = rest.index("--run-dir") + 1
+        rest[i] = str(Path(rest[i]).resolve())
     if kind == "convert":
-        cmd = f"cd {shlex.quote(str(root / 'third_party/openpi'))} && uv run python -m rlpj.vla.convert {shlex.join(rest)}"
+        cmd = (f"cd {shlex.quote(str(root / 'third_party/openpi'))} && PYTHONPATH={shlex.quote(str(root))} "
+               f"uv run python -m rlpj.vla.convert {shlex.join(rest)}")
     elif kind == "train":
         run_dir, dataset, exp = take("--run-dir"), take("--dataset"), take("--exp-name")
+        name, recipe = take("--config"), take("--recipe")
         if not (run_dir and dataset and exp):
-            print("usage: rlpj vla train --run-dir R --dataset NAME --exp-name EXP [tyro overrides]")
+            print("usage: rlpj vla train --run-dir R --dataset NAME --exp-name EXP [--config NAME --recipe FILE.py] [tyro overrides]")
             return 2
-        cmd = f"bash {shlex.quote(str(root / 'scripts/train.sh'))} {shlex.join([run_dir, dataset, exp, *rest])}"
+        env = (f"RLPJ_CONFIG={shlex.quote(name)} " if name else "") + (f"RLPJ_RECIPE={shlex.quote(str(Path(recipe).resolve()))} " if recipe else "")
+        cmd = f"{env}bash {shlex.quote(str(root / 'scripts/train.sh'))} {shlex.join([run_dir, dataset, exp, *rest])}"
     else:
         ckpt, port = take("--checkpoint"), take("--port", "8000")
         if not ckpt:

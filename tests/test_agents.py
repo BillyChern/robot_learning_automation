@@ -382,8 +382,11 @@ def test_runner_timeout_and_missing_binary(ws, fake_claude, monkeypatch):
     runner = AgentRunner(ws, timeout_s=0.5)
     with pytest.raises(AgentError, match="timed out"):
         runner.start("slow")
+    assert ws.session["session_id"] is None                  # a first turn that never came back leaves no session
     monkeypatch.setenv("RLPJ_FAKE_CLAUDE", str(ws.path / "no_such_binary"))
     with pytest.raises(AgentError, match="cannot run"):
+        AgentRunner(ws, timeout_s=5).start("x")
+    with pytest.raises(AgentError, match="no session"):
         AgentRunner(ws, timeout_s=5).resume("x")
 
 
@@ -444,3 +447,18 @@ def test_sync_sh_usage():
     text = script.read_text()
     for ex in ("/.venv", "/runs", "/third_party", "/.git"):
         assert f"--exclude {ex}" in text
+
+
+def test_trust_snippet_marks_only_the_workspace(tmp_path):
+    import os
+    import subprocess
+    import sys
+    from rlpj.agents.workspace import TRUST
+    cj = tmp_path / ".claude.json"
+    cj.write_text(json.dumps({"projects": {"/a": {"x": 1}}, "other": 2}))
+    cj.chmod(0o600)
+    for _ in range(2):
+        subprocess.run([sys.executable, "-c", TRUST, "/ws/path"], env={**os.environ, "HOME": str(tmp_path)}, check=True)
+    d = json.loads(cj.read_text())
+    assert d["projects"]["/ws/path"] == {"hasTrustDialogAccepted": True} and d["projects"]["/a"] == {"x": 1} and d["other"] == 2
+    assert oct(cj.stat().st_mode & 0o777) == "0o600" and not (tmp_path / ".claude.json.rlpj.tmp").exists()

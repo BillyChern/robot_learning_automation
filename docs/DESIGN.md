@@ -11,9 +11,9 @@ writes and repairs the programs; the orchestrator runs them.
 |---|---|---|
 | Agent 1 EXECUTE | `programs/execute.py`: perceive, plan, do the task, verify, claim outcome | code on 5090, program on 4090 |
 | Agent 2 RESET | `programs/reset.py --targets t.json`: undo the task, put objects at given targets | same |
-| Collection loop | reset -> check layout -> execute (recorded) -> verdict -> episode | orchestrator on 4090 |
-| Agent 3 LEARN | convert episodes -> LeRobot, LoRA fine-tune pi0.5, serve, decide hyperparameters | 5090 |
-| Evaluation | policy rollouts (recorded) with Agent 2 resets between them; success rate vs target | 4090 + policy server on 5090 |
+| Collection loop | reset -> check layout -> execute (recorded) -> verdict -> episode; every `review_every` episodes agents 1/2 improve on the window's failures | orchestrator on 4090 |
+| Agent 3 LEARN | convert episodes -> LeRobot, LoRA fine-tune pi0.5, decide hyperparameters; may add its own recipe, server (e.g. RTC) and rollout (workspace code, RobotSession limits, fixed evaluation); web research | 5090 |
+| Evaluation | policy rollouts (recorded) with Agent 2 resets between them; success rate vs target | 4090 (policy server on the 4090 by default) |
 
 Task specification conditions for Agent 1: `text` (goal sentence) or `one_demo` (one human RGB-D recording). Both may
 reuse the libraries listed in the task yaml. Compared on time, tokens, cost and attempts to first success only.
@@ -23,8 +23,13 @@ reuse the libraries listed in the task yaml. Compared on time, tokens, cost and 
 | | 4090 `zen-System-Product-Name` (this repo's home) | 5090 `Worksation_5090` (ssh alias; `WorkStation_4090` from there) |
 |---|---|---|
 | has | arm network, side RealSense, repo venv `.venv` (uv, `--extra robot`), demos | Claude Code (subscription), openpi venv `third_party/openpi/.venv`, GPU 32 GB |
-| runs | orchestrator, robot programs, policy rollouts | agents, VLM judge, training, policy server (port 8000) |
+| runs | orchestrator, robot programs, policy rollouts (policy server if `hosts.policy_host: local`) | agents, VLM judge, training, policy server (port 8000; `hosts.policy_host` default since 2026-11-06: the 4090 GPU is shared) |
 | path | `/home/r2r/robot_learning_final_pj` | same path; `scripts/sync.sh push|pull` (rsync, excludes runs/ episodes) |
+| openpi | `third_party/openpi/.venv` (`setup_openpi.sh --serve-only`) | `third_party/openpi/.venv` + `pi05_base`, same commit (`third_party/openpi.commit`) |
+
+Sync (the 4090 is the source of truth): every `rlpj` command that uses the 5090 pushes the repo first (`sync.sh push`);
+agent workspaces sync per run (`rlpj.agents.workspace`); episodes go to the 5090 before each convert; a checkpoint's
+`params/` and `assets/` come back to the 4090 before local serving (marked `.pulled_from`, earlier copies pruned).
 
 The 5090 cannot reach the arm. Robot programs run only on the 4090, started only by the orchestrator.
 
@@ -48,6 +53,9 @@ runs/            all outputs (git-ignored)
 ```
 runs/<run_id>/
   state.json                      orchestrator state (phase, counters, sessions, datasets, checkpoints, eval results)
+  events.jsonl                    append-only log of phases, agent actions, attempts, resets, episodes, evals
+  usage.jsonl                     one line per agent turn, VLM judge call, GPU job (convert/train) and evaluation:
+                                  cost, tokens, duration, plus run totals (cost, tokens, agent/robot/GPU/wall time)
   agents/<execute|reset|learn>/   agent workspace: git repo; programs/, notes/, inputs/ (calibration copy, demo link),
                                   attempts/attempt_<N>/ (log.txt, summary.json, images, plans/), session.json, usage.jsonl
   episodes/ep_<000123>/           one robot execution (collection or evaluation), format below
@@ -55,6 +63,13 @@ runs/<run_id>/
   checkpoints/<train_run>/        openpi checkpoint dirs
   evals/<eval_id>.json            per-checkpoint evaluation summary
   calib/<robot>/kin_fit.json      per-arm kinematic fit (rlpj.robot.fit_kin)
+  transcripts/<role>/*.jsonl      full Claude Code transcript of each agent (copied from the agent host after every turn)
+  timeline.mp4                    `rlpj timeline <run>`: every attempt's dashboard.mp4 in time order, with title cards
+  notes/<role>.md                 operator note for an agent, sent once with its next message (then <role>.sent_<time>.md)
+  operator_queue.jsonl            episodes waiting for an operator label (`rlpj review`)
+  OPERATOR_LOG.md                 human interventions, unplanned stops and mid-run system changes (kept by hand)
+  RESTART                         `echo why > RESTART`: the orchestrator exits at the next safe point (exit 75)
+  logs/                           side logs (policy server, timeline/transcript builds)
 ```
 
 ### Episode format (`rlpj.robot.recorder` writes, `rlpj.vla.convert` reads)
@@ -106,6 +121,12 @@ port 8090 and writes `dashboard.mp4`. Speeds: normal 20 deg/s, 0.10 m/s; slow 5 
 `RLPJ_MOTION=1` (set by the orchestrator only); without it every command raises and the program is a dry run that
 still plans, checks and writes replay videos. Exit codes: 0 success, 2 fail, 130 operator stop, 3 exception.
 
+Release zone (task yaml `release_zone`): `s.gripper()` refuses to open while the jaws hold the task object (last
+reading inside `release_zone.reading`, e.g. 60-92 for the bee; the bowl rim reads 94.3, empty 99.1) unless the tool is
+inside `x`/`y` and at most `max_height` above the table. A refused release raises Abort, so the object stays held and
+the arm goes home. This keeps a dropped or stuck object on the table (two bees were lost near the curtain-side edge).
+`summary.json` gets `gripper_final` `{cmd, reading}`.
+
 ## 6. Program contracts
 
 - `programs/execute.py` (Agent 1): no arguments. Does the task once from the current scene. Must `s.claim(...)` from its own
@@ -142,6 +163,12 @@ analysis on the 5090 with `uv run` in this repo (numpy, cv2, mujoco, scipy; no k
 
 Usage per turn is appended to `usage.jsonl`; `session.json` keeps the session id and condition. Resume on crash.
 
+Operator notes: text in `runs/<run>/notes/<role>.md` goes first in that agent's next message (repair, reflection,
+review, learn), marked as overriding the agent's earlier assumptions. It is sent once and logged (`operator_note`
+event). Pending notes for the reset and execute agents are delivered in a reflection turn (no robot) before collection
+resumes. The orchestrator writes notes too (`gripper_check`). A restart during the learn phase keeps the last run's
+result in `state.agents.learn.pending_msg` and hands it over after the relaunch.
+
 ## 8. Perception and success
 
 - `rlpj.perception.tabletop.detect(P_base, workspace) -> [blob]`, blob = `{xy, z_top, height, extent, n, points}`; plus
@@ -153,22 +180,41 @@ Usage per turn is appended to `usage.jsonl`; `session.json` keeps the session id
 - `rlpj.success.vlm_judge.judge(images, task_cfg) -> {"success": bool, "confidence": 0..1, "reason": str}`: Claude on the
   5090 reads the before/after images; `--json-schema`; cost logged.
 - `rlpj.success.verdict.decide(claim, perception, vlm) -> {"final": "success"|"fail"|"unsure", "reason"}`:
-  success needs claim and at least one independent yes with no independent no; `unsure` goes to the operator queue.
+  success needs claim and at least one independent yes with no independent no. An `unsure` collection episode is
+  deleted and redone (`collection.discard_unsure`, counted in `collection.discarded` and toward `max_episodes`);
+  otherwise, and in evaluation, `unsure` goes to the operator queue.
+- `rlpj.perception.wrist.gripper_load(img, chk)`: share of object-coloured pixels (task yaml `gripper_check.hsv`) in the
+  bottom `gripper_check.bottom` of the wrist image. The orchestrator checks it after every robot program, with the arm
+  at home. Above `max_frac` (bee: stuck 0.21-0.22, lying below at most 0.052, empty at most 0.027; limit 0.10) the
+  object is on the gripper. The episode is skipped, the reset agent (and the agent whose program it was) gets a note,
+  and after `stop_after` programs in a row the run stops before the object falls. If the jaws are closed on the object
+  (`gripper_final`), it is held, not stuck.
 
 ## 9. VLA data
 
 state (7) = `[q (6, rad), gripper reading / 100]`; actions (7) = `[q_cmd (6, rad), gripper_cmd (0..1)]`, absolute, converted to
 deltas for the 6 joints by openpi's `DeltaActions(make_bool_mask(6, -1))`. Images: `image` = side, `wrist_image` = wrist,
 stored at 640x360 (openpi resizes to 224x224 itself). `task` = the instruction. LeRobot `fps` = recording fps.
-Train config `pi05_kinova_lora` (LoRA, batch 16-32, `pi05_base` weights, prompt_from_task, `use_quantile_norm` default),
+Train config `pi05_kinova_lora` (LoRA, batch 16-32, `pi05_base` weights, prompt_from_task, `use_quantile_norm` default;
+constant LR 5e-5 after 500 warmup steps, so `--resume --num-train-steps N` extends a run exactly; a checkpoint every 500
+steps, one kept per 5000 at about 8.9 GB each),
 registered without editing openpi (our `rlpj/vla/train.py` adds it to `_CONFIGS_DICT` then calls openpi's `main`).
-Serve: openpi `serve_policy.py policy:checkpoint --policy.config=pi05_kinova_lora --policy.dir=<ckpt>`. Client on the 4090
+Serve: openpi `serve_policy.py policy:checkpoint --policy.config=pi05_kinova_lora --policy.dir=<ckpt>` on `hosts.policy_host`
+(`local` = the 4090, default; or an ssh host such as the 5090), reached at `hosts.policy_server`. Client on the 4090
 speaks openpi's msgpack-numpy websocket protocol (own implementation; the openpi client needs numpy < 2).
 Rollout control: the policy returns a chunk of 10 joint targets at the recording rate; the session streams them with the
 executor's joint-speed tracker after a model check per chunk; hard limits: joint limits, table clearance, max radius 0.65,
 10 cm/s, 20 deg/s, deviation 1 deg / 10 mm, per-episode time limit, and Ctrl+C.
 
 ## 10. Safety
+
+`--autonomous` (operator at the e-stop, but never asked): robot gates count down and go, `need_operator` gets a standing
+reply (do it with the robot or skip it; 3 requests in a row = gave_up), failed resets go to the reset agent up to
+2 more times, then the run stops instead of waiting for a manual reset.
+
+Object safety (no person needed to recover): bee targets stay inside the release zone, the robot library refuses
+releases outside it, the reset and execute programs confirm every release with the side camera before travelling,
+and the orchestrator's gripper check stops the run while a stuck object is still on the gripper.
 
 The operator is always present with Ctrl+C and the e-stop. The orchestrator prints what will run and counts down before any
 command that moves the robot. Everything that moves the arm goes through the executor's model checks. No agent process ever

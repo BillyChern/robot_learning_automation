@@ -8,10 +8,12 @@ from .state import now_iso, update_meta
 
 
 class Operator:
-    """Plain input() interface. hands_free: the countdown starts without a keypress; yes: no prompt for dry steps."""
+    """Plain input() interface. hands_free: the countdown starts without a keypress; yes: no prompt for dry steps;
+    autonomous: hands_free and nothing waits for a person (agent requests get a standing reply, no manual resets)."""
 
-    def __init__(self, hands_free=False, yes=False, countdown_s=5):
-        self.hands_free, self.yes, self.countdown_s = hands_free, yes or hands_free, countdown_s
+    def __init__(self, hands_free=False, yes=False, countdown_s=5, autonomous=False):
+        self.autonomous = autonomous
+        self.hands_free, self.yes, self.countdown_s = hands_free or autonomous, yes or hands_free or autonomous, countdown_s
         self.tty = bool(getattr(sys.stdin, "isatty", lambda: False)())
         self.last = None     # go | refused | skipped (result of the last gate)
 

@@ -1,0 +1,48 @@
+name: bee_in_bowl
+instruction: pick up the toy bee and put it into the bowl   # pi0.5 prompt (the task as given)
+goal: A toy bee and an empty bowl lie on the table. Pick up the toy bee and put it into the bowl.
+success: The bee rests inside the bowl, the bowl still stands upright on the table, and the gripper is clear of both.
+reset: >-
+  Take the bee out of the bowl if it is inside, then put the bowl and the bee at the target positions you are given.
+  The bowl (about 15 cm across, 7 cm tall) is wider than the gripper opens (85 mm): move it by pinching its rim,
+  one finger inside and one outside. Never put the bee down outside x 0.36-0.58, y -0.24-0.09 (base frame, m), not
+  even for a moment: closer to the robot base or nearer the table edge the side camera barely sees it and it gets lost.
+objects: [bowl, bee]
+
+# no one_demo: this task runs with --condition text (the goal sentence is the whole specification)
+
+reuse:                             # read-only; agents may copy any of it
+  - ~/Documents/aaron/agentic_robotics/far_skills/battery_placement/kinova_b
+  - ~/Documents/aaron/agentic_robotics/far_skills/marker_placement/kinova_a
+  - ~/Documents/aaron/agentic_robotics/far_runs/battery_placement/baseline/seed_2/kinova_a
+
+layout:                            # reset targets, sampled per episode (base frame, m)
+  bowl: {x: [0.40, 0.54], y: [-0.17, 0.05]}      # rim stays on the table and inside tabletop.WORKSPACE (y < 0.20)
+  # bee kept in the well-seen middle: run 20261104_1510_bee had every bee-lost reset failure at x < 0.36 (side camera
+  # barely sees the bee near the base; at (0.30, 0.10) it was lost off the table edge and needed a person)
+  bee: {x: [0.38, 0.56], y: [-0.20, 0.06]}             # inside release_zone with 2 cm to spare
+  min_gap: 0.18                    # rim (7.5 cm) + side-camera shadow of the bowl (~8 cm) + half a bee
+  radius: [0.38, 0.58]             # distance from the robot axis
+  tolerance: 0.04                  # a reset counts if each object is this close to its target (side-camera bowl readings scatter 2-3 cm)
+
+perception:                        # size priors (m) matched against rlpj.perception.tabletop blobs by layout.assign
+  # measured 2026-11-04 on kinova_a: bowl height 0.069, extent [0.127, 0.154], not hollow (its floor is above the
+  # table); bee lying down height 0.043, extent [0.108, 0.076]
+  bowl: {height: [0.058, 0.09], extent: [0.11, 0.22]}      # far from the camera the rim noise widens it (0.196 seen)
+  bee: {height: [0.025, 0.055], extent: [0.035, 0.15]}       # bee reads 0.042-0.049 tall; table glare makes flat 0.013-0.017 blobs
+
+gripper_check:                     # orchestrator, after every robot program (arm at home): the bee hanging on the fingers?
+  object: bee
+  hsv: [[15, 101, 91], [40, 255, 255]]   # bee yellow (OpenCV HSV)
+  bottom: 0.15                     # bottom share of the wrist image (the fingertips)
+  max_frac: 0.10                   # run 20261104_1510_bee: stuck 0.21-0.22, released bee below <= 0.052, empty <= 0.027
+  stop_after: 2                    # programs in a row that end with the bee on the gripper before the run stops for a person
+
+release_zone:                      # robot library: a held bee may only be let go here (RobotSession.gripper refuses elsewhere)
+  # table edges measured 2026-11-05 with the side camera: curtain side y +0.19 (x 0.30) .. +0.25 (x 0.60), a ~10 cm gap,
+  # then the curtain at +0.31..+0.37; e-stop side about -0.21..-0.29. Two bees were lost near the curtain-side edge
+  # (released at (0.30, 0.10) and (0.36, 0.09)); y <= 0.08 keeps >= 12 cm to that edge for x >= 0.36.
+  reading: [60, 92]                # gripper reading while holding the bee (78-91; bee + bowl wall 67-71); bowl rim 94.3, empty 99.1
+  x: [0.36, 0.60]
+  y: [-0.22, 0.08]                 # also covers a bee dropped into a bowl at the edge of its layout (+-4 cm tolerance)
+  max_height: 0.20                 # tool height above the table at the release (bounces stay small)

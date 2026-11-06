@@ -179,7 +179,7 @@ def test_detect_empty_and_workspace():
     assert tabletop.detect(P, workspace=dict(x=(0.6, 0.9), y=(-0.4, 0.2)), table_z=TZ) == []
 
 
-@pytest.mark.parametrize("name", ["bee_in_tape_roll", "cup_down_stacking"])
+@pytest.mark.parametrize("name", ["bee_in_tape_roll", "cup_down_stacking", "bee_in_bowl"])
 def test_layout_sample(name):
     cfg = task(name)
     lay = cfg["layout"]
@@ -267,3 +267,13 @@ def test_wrist_projection_and_circle_refine():
     assert np.isnan(behind).all()
     xy2, info2 = wrist.circle_refine(np.full((720, 1280, 3), 230, np.uint8), T_bt, guess, z, r, K=K_W, dist=DIST0, T_tool_cam=T_TC)
     assert xy2 is None and info2["err"]
+
+
+def test_gripper_load_on_real_wrist_images():
+    """run 20261104_1510_bee: the foam bee stuck on the fingers vs released below them vs an empty gripper."""
+    chk = config.load("bee_in_bowl")["task"]["gripper_check"]
+    d = config.ROOT / "tests/data/wrist"
+    f = {p.stem: wrist.gripper_load(cv2.imread(str(p)), chk) for p in d.glob("*.jpg")}
+    assert f["stuck_after_release"] > 0.2 and f["stuck_at_home"] > 0.2
+    assert f["released_below"] < chk["max_frac"] and f["empty_at_home"] < 0.02
+    assert wrist.gripper_load(None, chk) is None

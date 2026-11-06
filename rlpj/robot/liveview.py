@@ -84,7 +84,7 @@ class LiveView:
             self.decq.append(f"{time.strftime('%H:%M:%S')} {msg}")
 
     def set_scene(self, objects=None, targets=None, path=None):
-        """objects: [{xy, z_top, r, label}] (base frame, m); targets: [(name, xyz)]; path: Nx3 tool positions."""
+        """objects: [{xy, z_top, r, label}] (base frame, m); targets: same dicts or [(name, xyz)]; path: Nx3 tool positions."""
         with self.lock:
             if objects is not None:
                 self.objects = list(objects)
@@ -201,7 +201,9 @@ class LiveView:
                 ok = np.all(np.isfinite(uv), 1)
                 if ok.sum() > 1:
                     cv2.polylines(img, [uv[ok].astype(np.int32)], False, (255, 0, 255), 2)
-        for name, xyz in targets:
+        for t in targets:        # dicts like objects (xy, z_top, label) or (name, xyz) pairs
+            name, xyz = ((t.get("label", "target"), [t["xy"][0], t["xy"][1], float(t.get("z_top", self.table_z))])
+                         if isinstance(t, dict) else t)
             u = proj([xyz]); p = pt(u[0]) if u is not None else None
             if p:
                 cv2.drawMarker(img, p, (0, 0, 255), cv2.MARKER_TILTED_CROSS, 22, 2)
@@ -256,6 +258,24 @@ class LiveView:
         if self.writer is None:
             self.writer = cv2.VideoWriter(os.path.join(self.A, "dashboard.mp4"), cv2.VideoWriter_fourcc(*"mp4v"), self.fps, (1280, 480))
         self.writer.write(fr)
+        self._publish(fr)
+
+    def _publish(self, fr, every_s=0.1):
+        """Latest dashboard frame for the read-only web viewer (rlpj.orchestrator.webview): runs/live/latest.jpg + .json."""
+        now = time.time()
+        if now - getattr(self, "_pub_t", 0.0) < every_s:
+            return
+        self._pub_t = now
+        from rlpj import config
+        d = config.RUNS / "live"
+        d.mkdir(parents=True, exist_ok=True)
+        ok, j = cv2.imencode(".jpg", fr, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        if ok:
+            (d / "latest.jpg.tmp").write_bytes(j.tobytes())
+            os.replace(d / "latest.jpg.tmp", d / "latest.jpg")
+            (d / "latest.json.tmp").write_text(json.dumps(dict(t=now, attempt=str(self.A), program=getattr(self, "program", ""),
+                                                                 phase=self.st.get("phase"))))
+            os.replace(d / "latest.json.tmp", d / "latest.json")
 
     def snapshot(self, prefix):
         """Save the current overlaid frames as <prefix>_side.jpg / <prefix>_wrist.jpg (640x360)."""

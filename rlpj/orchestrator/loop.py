@@ -3,9 +3,13 @@ Other modules are imported inside the methods so each phase only needs what it u
 import importlib
 import json
 import shlex
+import os
+import re
 import shutil
+import signal
 import socket
 import subprocess
+import threading
 import time
 from pathlib import Path
 
@@ -16,6 +20,20 @@ from . import attempts
 from .state import RunState, now_iso, report_md, update_meta
 
 RESTART_MSG = "The orchestrator restarted. Summarize in one line where your work stands, then continue."
+NO_OPERATOR = ("No operator is available: this run is fully autonomous and nobody will act on requests. Do it yourself "
+               "with the robot through a program (for example, set up the scene state you need with your own pick-and-place), "
+               "work around it, or skip that test if it cannot be done safely. Do not ask for an operator again.")
+MAX_ASKS = 3                # autonomous: need_operator requests in a row before the agent counts as gave_up
+AUTONOMOUS_RESET_REPAIRS = 2  # autonomous: extra reset-agent repairs instead of a manual reset, then the run stops
+REFLECT_RULES = ("This is a reflection turn while the robot runs the other agent's program: you cannot use the robot or "
+                 "the cameras now (no run actions, not even dry runs). If this run shows a problem or a clear, safe "
+                 "improvement (robustness first, then speed), edit {program}, check it offline on this machine, commit, "
+                 "and reply done; reply done at once if nothing should change. Your next run uses what you committed, "
+                 "and its result comes back to you the same way.")
+REFLECT_BUSY = "Not now: the robot is busy. Edit and test offline only, commit, then reply done."
+REFLECT_TURNS = 4           # agent turns per reflection before it is closed
+RESTART_EXIT = 75          # exit code of a requested restart (runs/<run>/RESTART); the launcher loop relaunches
+PULLED = ".pulled_from"     # marker in a checkpoint dir copied from the agent host for local serving
 
 
 def _mod(name):
@@ -52,6 +70,40 @@ def _reason(rep):
     return rep.get("reason", str(rep)) if isinstance(rep, dict) else str(rep)
 
 
+def _group_cmdlines(pgid):
+    """Command lines of the processes in process group pgid (from /proc)."""
+    out = []
+    for d in Path("/proc").iterdir():
+        if d.name.isdigit():
+            try:
+                if int((d / "stat").read_text().rsplit(")", 1)[1].split()[2]) == pgid:
+                    out.append((d / "cmdline").read_bytes())
+            except (OSError, ValueError, IndexError):
+                pass
+    return out
+
+
+def _stop_group(pgid, proc=None, wait_s=30):
+    """SIGTERM a process group, SIGKILL what is left after wait_s."""
+    try:
+        os.killpg(pgid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    t0 = time.time()
+    while time.time() - t0 < wait_s:
+        if proc is not None:
+            proc.poll()
+        try:
+            os.killpg(pgid, 0)
+        except ProcessLookupError:
+            return
+        time.sleep(0.5)
+    try:
+        os.killpg(pgid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+
+
 class Pipeline:
     """Runs the phases of one run with a RunState, an Operator and the config; every phase resumes from the state."""
 
@@ -64,6 +116,11 @@ class Pipeline:
         self._last = {}                               # role -> last robot attempt of the current agent session
         self._fails = {"execute": [], "reset": []}    # (attempt_dir, why) since the last success, for repair digests
         self._pending_targets = None                  # targets of the episode being reset (reset repair runs use them)
+        self._server = None                           # local policy server process (hosts.policy_host: local)
+        self._eval_code = {}                          # agent 3's own server / rollout program for the running evaluation
+        self._reflections = {}                        # role -> thread of its running reflection (collection)
+        self._reset_runs = []                         # [(attempt_dir, what happened)] of the resets of the current episode
+        self._stuck = 0                               # robot programs in a row that ended with the object on the gripper
 
     # ------------------------------------------------------------------ shared pieces
     def workspace(self, role, **extra):
@@ -101,6 +158,23 @@ class Pipeline:
         a["duration_s"] += (_get(usage, "duration_ms", 0) or 0) / 1000
         a["session_id"] = _get(usage, "session_id") or self._session_id(role) or a.get("session_id")
         self.st.save()
+        self._archive_transcript(role)
+        self.st.ledger("agent", role=role, model=_get(usage, "model"), session_id=a["session_id"],
+                       cost_usd=_get(usage, "cost_usd", 0), input_tokens=_get(usage, "input_tokens", 0),
+                       output_tokens=_get(usage, "output_tokens", 0), cache_read=_get(usage, "cache_read_input_tokens", 0),
+                       cache_creation=_get(usage, "cache_creation_input_tokens", 0), turns=_get(usage, "turns", 0),
+                       duration_s=round((_get(usage, "duration_ms", 0) or 0) / 1000, 1))
+
+    def _archive_transcript(self, role):
+        """Copy the agent's full Claude Code transcript (every message and tool call) from the agent host into
+        runs/<run>/transcripts/<role>/; Claude Code deletes old transcripts there after 30 days."""
+        enc = re.sub(r"[^A-Za-z0-9]", "-", str(self.st.dir / "agents" / role))
+        dst = self.st.dir / "transcripts" / role
+        dst.mkdir(parents=True, exist_ok=True)
+        r = subprocess.run(["rsync", "-a", f"{self.cfg['hosts']['agent']}:.claude/projects/{enc}/", f"{dst}/"],
+                           capture_output=True, text=True, timeout=120)
+        if r.returncode:
+            self.op.notify(f"transcript archive for {role} failed: {r.stderr.strip()[-200:]}")
 
     def _safe(self, mod, fn, *args, **kw):
         """Call mod.fn; a missing module or an exception is reported and gives None instead of stopping the loop."""
@@ -142,8 +216,101 @@ class Pipeline:
         (attempt_dir / "attempt.json").write_text(json.dumps(dict(what=what, commit=commit)))
         if moves_robot:
             attempts.wrist_stream_free(self.cfg["robot"]["ip"])
-        return attempts.run_attempt(cwd, command, attempt_dir, moves_robot, record_dir=record_dir, extra_env=extra_env,
-                                    timeout_s=timeout_s or self.cfg["collection"].get("attempt_timeout_s"))
+        r = attempts.run_attempt(cwd, command, attempt_dir, moves_robot, record_dir=record_dir, extra_env=extra_env,
+                                 timeout_s=timeout_s or self.cfg["collection"].get("attempt_timeout_s"))
+        if moves_robot:
+            self._check_gripper(attempt_dir, Path(cwd).name if Path(cwd).parent.name == "agents" else None)
+        return r
+
+    def _gripper_frame(self, wait_s=6.0):
+        """One fresh wrist-camera frame (the stream is opened and closed here), or None."""
+        cls = getattr(_mod("rlpj.robot.cams"), "WristCam", None)
+        if cls is None:
+            return None
+        cam, t0 = cls(self.cfg["robot"]["ip"]), time.time()
+        try:
+            while time.time() - t0 < wait_s:
+                img, t = cam.latest()
+                if img is not None and t > t0 + 0.3:
+                    return img
+                time.sleep(0.1)
+            return None
+        finally:
+            cam.close()
+
+    def _check_gripper(self, attempt_dir, role):
+        """After a robot program (arm at home): is the object hanging on the fingers (task gripper_check)? Counts the
+        programs in a row that ended so and tells the reset agent (and the agent whose program it was) by a note."""
+        chk = self.task.get("gripper_check")
+        if not chk:
+            return None
+        try:
+            img = self._gripper_frame()
+            f = _mod("rlpj.perception.wrist").gripper_load(img, chk)
+        except Exception as e:
+            self.op.notify(f"gripper check failed: {e!r}")
+            return None
+        if f is None:
+            self.op.notify("gripper check: no wrist frame")
+            return None
+        import cv2
+        cv2.imwrite(str(Path(attempt_dir) / "gripper_check.jpg"), cv2.resize(img, (640, 360)))
+        if f <= chk["max_frac"]:
+            self._stuck = 0
+            return f
+        held = self._held_at_end(attempt_dir)
+        if held is None:
+            self._stuck += 1
+        obj = chk.get("object") or self.task["objects"][-1]
+        how = f"held in the closed jaws (reading {held:.1f})" if held is not None else "hanging on the gripper"
+        self.st.event("gripper_not_clear", attempt=str(attempt_dir), frac=round(f, 3), in_a_row=self._stuck, held=held)
+        self.op.notify(f"gripper check: the {obj} is {how} after {Path(attempt_dir).name} "
+                       f"(object colour {f:.2f} > {chk['max_frac']} at the bottom of the wrist image)")
+        msg = (f"The orchestrator's wrist check after {role or 'a'} run {Path(attempt_dir).name} (arm at home) shows the "
+               f"{obj} {how}: object colour {f:.2f} of the bottom {chk.get('bottom', 0.15):.0%} of the wrist "
+               f"image (threshold {chk['max_frac']}; image {Path(attempt_dir) / 'gripper_check.jpg'}).")
+        for r in {role, "reset"} - {None}:
+            fix = ("Your next run must take it off first: put it down on the table, check again, and only then go on."
+                   if r == "reset" else "Your program released it but it did not come off. Check the fingers after every "
+                   "release before moving away, and shake it off over the target if it is still there.")
+            self._add_note(r, f"{msg} {fix}")
+        return f
+
+    def _held_at_end(self, attempt_dir):
+        """The final gripper reading when the program ended with the jaws closed on something (a firm hold, e.g. after a
+        refused release), else None."""
+        try:
+            g = json.loads((Path(attempt_dir) / "summary.json").read_text()).get("gripper_final") or {}
+        except (OSError, ValueError):
+            return None
+        r = g.get("reading")
+        return float(r) if r is not None and (g.get("cmd") or 0) > 0.5 and 5.0 < r < 97.5 else None
+
+    def deliver_notes(self):
+        """Agents with a pending operator note get it now in a reflection turn (they may edit and test offline, no robot)."""
+        for role in ("reset", "execute"):
+            if (self.st.dir / "notes" / f"{role}.md").exists() and self._session_id(role):
+                self.op.notify(f"delivering the operator note to the {role} agent before collection continues")
+                self._reflect(role, "Before collection continues: no robot run now; update your program for the note above "
+                              "and test it offline.", [])
+
+    def _add_note(self, role, text):
+        """Append to the operator note for an agent (delivered with its next message by _with_note)."""
+        f = self.st.dir / "notes" / f"{role}.md"
+        f.parent.mkdir(exist_ok=True)
+        with open(f, "a") as fh:
+            fh.write(text.strip() + "\n")
+
+    def _stuck_stop(self):
+        """True (and the run stops for a person) when the object stayed on the gripper after stop_after programs."""
+        n = int((self.task.get("gripper_check") or {}).get("stop_after", 2))
+        if self._stuck < n:
+            return False
+        obj = (self.task.get("gripper_check") or {}).get("object") or self.task["objects"][-1]
+        self.op.notify(f"the {obj} has stayed on the gripper after {self._stuck} robot programs in a row: stopping before it "
+                       f"falls; take it off by hand and put it on the table, then rerun")
+        self.st.event("autonomous_stop", reason=f"{obj} stuck on the gripper", in_a_row=self._stuck)
+        return True
 
     def _sample_targets(self):
         t = _mod("rlpj.perception.layout").sample(self.task, self.rng)
@@ -171,6 +338,9 @@ class Pipeline:
             if vlm:
                 self.st.vlm["calls"] += 1
                 self.st.vlm["cost_usd"] += float(vlm.get("cost_usd") or 0)
+                self.st.ledger("vlm", cost_usd=vlm.get("cost_usd"), duration_s=vlm.get("duration_s"), success=vlm.get("success"),
+                               confidence=vlm.get("confidence"), usage=vlm.get("usage"),
+                               images=str(Path(next(iter(images.values()))).parent))
         p_ok = perception[0] if isinstance(perception, (tuple, list)) else perception
         v = _mod("rlpj.success.verdict").decide(claim, p_ok, vlm)
         return dict(final=v["final"], reason=v.get("reason", ""), vlm=vlm,
@@ -185,7 +355,9 @@ class Pipeline:
         a["model"], a["status"] = self.cfg["agents"]["model"], "developing"
         self.st.save()
         runner = self.runner(role)
-        action, usage = runner.resume(RESTART_MSG) if self._session_id(role) else runner.start()
+        self._ensure_remote(self.workspace(role))
+        restart = RESTART_MSG + (" " + NO_OPERATOR if self._autonomous() else "")
+        action, usage = runner.resume(restart) if self._session_id(role) else runner.start()
         status = self._agent_loop(role, action, usage)
         a["ended"] = now_iso()
         self.st.event("agent_status", role=role, status=status)
@@ -196,19 +368,23 @@ class Pipeline:
     def _agent_loop(self, role, action, usage):
         """Drive one agent session until an accepted done, give_up or agents.max_attempts runs; returns the status."""
         a, runner = self.st.agent(role), self.runner(role)
-        n0, limit = a["attempts"], self.cfg["agents"]["max_attempts"]
+        n0, limit, asks = a["attempts"], self.cfg["agents"]["max_attempts"], 0
         while True:
             self._account(role, usage)
             kind = _get(action, "action")
             self.st.event("agent", role=role, action=kind, what=_get(action, "what"), report=_get(action, "report"))
+            asks = asks + 1 if kind == "need_operator" else 0
             if kind == "run":
                 if a["attempts"] - n0 >= limit:
                     a["status"] = "max_attempts"
                     return "max_attempts"
                 msg = self._agent_run(role, action)
             elif kind == "need_operator":
-                self.op.notify(f"{role} agent needs you: {_get(action, 'report')}")
-                msg = "Operator: " + (self.op.ask("reply to the agent (Enter = done, continue)") or "done, continue")
+                if self._autonomous() and asks > MAX_ASKS:
+                    a["status"], a["last_report"] = "gave_up", f"asked for an operator {asks} times in autonomous mode"
+                    self.op.notify(f"{role} agent keeps asking for an operator; counted as gave_up")
+                    return "gave_up"
+                msg = self._operator_reply(role, _get(action, "report"))
             elif kind == "done":
                 a["last_report"] = _get(action, "report")
                 ok, why = self._accept(role)
@@ -222,7 +398,23 @@ class Pipeline:
                 a["status"], a["last_report"] = "gave_up", _get(action, "report")
                 self.op.notify(f"{role} agent gave up: {a['last_report']}")
                 return "gave_up"
-            action, usage = runner.resume(msg)
+            self.restart_point()
+            action, usage = runner.resume(self._with_note(role, msg))
+
+    def _with_note(self, role, msg):
+        """msg with the operator's note for this agent first (runs/<run>/notes/<role>.md, delivered once, then renamed
+        to <role>.sent_<time>.md)."""
+        f = self.st.dir / "notes" / f"{role}.md"
+        try:
+            note = f.read_text().strip()
+            f.rename(f.with_name(f"{role}.sent_{time.strftime('%Y%m%d_%H%M%S')}.md"))
+        except OSError:
+            return msg
+        if not note:
+            return msg
+        self.st.event("operator_note", role=role, note=note)
+        self.op.notify(f"operator note delivered to the {role} agent")
+        return f"Note from the operator (overrides your earlier assumptions where they disagree):\n{note}\n\n{msg}"
 
     def _agent_run(self, role, action):
         """Execute one 'run' action (gate, pull the workspace, attempt, measurements, push); returns the resume message."""
@@ -261,6 +453,43 @@ class Pipeline:
             return ws.head()
         except Exception:
             return None
+
+    def restart_point(self):
+        """Exit with RESTART_EXIT at a safe point (no robot program, no agent turn) when runs/<run>/RESTART exists, so
+        the launcher loop reloads the code; the state is saved and every phase resumes from it."""
+        f = self.st.dir / "RESTART"
+        if f.exists():
+            for role in list(self._reflections):
+                self._join(role)
+            why = f.read_text().strip() or "code update"
+            f.unlink()
+            self.st.event("restart", reason=why)
+            self.st.save()
+            self.op.notify(f"restart requested ({why}): exiting at a safe point")
+            raise SystemExit(RESTART_EXIT)
+
+    def _autonomous(self):
+        return bool(getattr(self.op, "autonomous", False))
+
+    def _operator_reply(self, role, report):
+        """Answer a need_operator action: the operator's reply, or in autonomous mode the standing NO_OPERATOR reply."""
+        if self._autonomous():
+            self.op.notify(f"{role} agent asked for an operator ({report}); autonomous: told to do it itself")
+            self.st.event("operator_auto_reply", role=role, request=report)
+            return NO_OPERATOR
+        self.op.notify(f"{role} agent needs you: {report}")
+        return "Operator: " + (self.op.ask("reply to the agent (Enter = done, continue)") or "done, continue")
+
+    def _ensure_remote(self, ws):
+        """The agent runs in its workspace on the agent host: copy it there (full push) when it does not exist yet and
+        mark it trusted, so Claude Code applies the workspace's permission rules."""
+        try:
+            if not ws.remote_exists():
+                ws.push(full=True)
+                self.op.notify(f"workspace {ws.path.name} copied to the agent host")
+            ws.trust()
+        except Exception as e:
+            self.op.notify(f"workspace setup on the agent host failed: {e!r}")
 
     def _push(self, ws):
         """Sync attempt results to the agent machine; a failure is reported, the digest text still reaches the agent."""
@@ -315,24 +544,105 @@ class Pipeline:
 
     def _repair(self, role):
         """Resume the agent with the digests of the recent failures and let it fix its program; returns the status."""
+        fails = self._fails[role]
+        self._fails[role] = []
+        self.op.notify(f"{role} program failed {len(fails)} times in a row; asking the agent to repair it")
+        head = (f"repair your program; it failed {len(fails)} times in a row during "
+                f"{'collection' if role == 'execute' else 'the resets between episodes'}:")
+        return self._improve(role, head, fails, "repair")
+
+    def _improve(self, role, head, items, kind):
+        """Resume the agent with a header and the digests of failed attempts [(attempt_dir, why)]; it fixes its program,
+        tests it with a robot run and replies done. kind: repair (failures in a row) | review (periodic); returns the status."""
+        self._join(role)
         a, ws = self.st.agent(role), self.workspace(role)
-        a["repairs"] += 1
-        a["status"] = "repairing"
+        a["repairs" if kind == "repair" else "reviews"] = a.get("repairs" if kind == "repair" else "reviews", 0) + 1
+        a["status"] = "repairing" if kind == "repair" else "reviewing"
         self._last[role] = None
         self._push(ws)
-        fails, dg = self._fails[role], _mod("rlpj.agents.runner").digest
-        self.op.notify(f"{role} program failed {len(fails)} times in a row; asking the agent to repair it")
-        lines = [f"repair your program; it failed {len(fails)} times in a row during "
-                 f"{'collection' if role == 'execute' else 'the resets between episodes'}:"]
-        for d, why in fails:
+        dg = _mod("rlpj.agents.runner").digest
+        lines = [head]
+        for d, why in items:
             lines += [f"--- {Path(d).name}: {why}", str(dg(d))]
-        lines.append(f"Find the cause, fix programs/{role}.py, test it with a run (moves_robot true) and reply done when it works again.")
-        self._fails[role] = []
-        action, usage = self.runner(role).resume("\n".join(lines))
+        lines.append(f"Find the cause, fix programs/{role}.py, test it with a run (moves_robot true) and reply done when it works.")
+        action, usage = self.runner(role).resume(self._with_note(role, "\n".join(lines)))
         status = self._agent_loop(role, action, usage)
-        self.st.event("repair", role=role, status=status)
+        self.st.event(kind, role=role, status=status)
         self.st.save()
         return status
+
+    def _reflect_async(self, role, head, items):
+        """Start the agent's reflection on its last run in a thread (it overlaps with the other agent's robot run)."""
+        if not self.cfg["collection"].get("reflect_after_every_run"):
+            return
+        self._join(role)
+        t = threading.Thread(target=self._reflect, args=(role, head, list(items)), daemon=True, name=f"reflect-{role}")
+        self._reflections[role] = t
+        t.start()
+
+    def _reflect(self, role, head, items):
+        """One reflection: digest of the run, the agent may edit and test offline (no robot), ends with done."""
+        try:
+            ws, runner, a = self.workspace(role), self.runner(role), self.st.agent(role)
+            self._push(ws)
+            dg = _mod("rlpj.agents.runner").digest
+            lines = [head] + [f"--- {Path(d).name}: {why}\n{dg(d)}" for d, why in items]
+            msg = self._with_note(role, "\n".join(lines + [REFLECT_RULES.format(program=f"programs/{role}.py")]))
+            for _ in range(REFLECT_TURNS):
+                action, usage = runner.resume(msg)
+                self._account(role, usage)
+                kind = _get(action, "action")
+                self.st.event("reflect", role=role, action=kind, what=_get(action, "what"), report=_get(action, "report"))
+                if kind in ("done", "give_up"):
+                    break
+                msg = NO_OPERATOR if kind == "need_operator" else REFLECT_BUSY
+            with self.st.lock:
+                a["reflections"] = a.get("reflections", 0) + 1
+            self.st.save()
+        except Exception as e:
+            self.op.notify(f"{role} reflection failed: {e!r}")
+
+    def _join(self, role):
+        t = self._reflections.pop(role, None)
+        if t is not None and t.is_alive():
+            self.op.notify(f"waiting for the {role} agent's reflection")
+            t.join()
+
+    def _ready(self, role):
+        """Before the agent's program runs: its reflection is over and its committed files are here."""
+        self._join(role)
+        if self.cfg["collection"].get("reflect_after_every_run"):
+            try:
+                self.workspace(role).pull()
+            except Exception as e:
+                self.op.notify(f"{role} workspace pull failed: {e!r}")
+
+    def _window(self):
+        """Collection episodes since the last periodic review (kept in the state)."""
+        c = self.st.collection
+        if not c.get("window"):
+            c["window"] = dict(n=0, success=0, fail=0, unsure=0, failed=[], reset_failed=[])
+        return c["window"]
+
+    def _review_due(self):
+        every = int(self.cfg["collection"].get("review_every") or 0)
+        return every > 0 and self._window()["n"] >= every
+
+    def _review(self):
+        """Periodic review: the execute agent gets this window's failed or unsure episodes, the reset agent its failed
+        resets, each to make its program more robust; nothing is asked when everything succeeded."""
+        w = self._window()
+        head = (f"periodic review after {w['n']} collection episodes: {w['success']} success, {w['fail']} fail, "
+                f"{w['unsure']} unsure; {len(w['reset_failed'])} failed resets.")
+        self.op.notify(head)
+        if w["fail"] or w["unsure"]:
+            self._improve("execute", head + " Make programs/execute.py succeed on these cases too (more robust; faster only "
+                          "where it stays safe). The failed or unsure episodes:", w["failed"][-4:], "review")
+        if w["reset_failed"]:
+            self._improve("reset", head + " Make programs/reset.py place both objects within tolerance on these cases too. "
+                          "The failed resets:", w["reset_failed"][-4:], "review")
+        self.st.collection["window"] = None
+        self.st.save()
 
     # ------------------------------------------------------------------ collection
     def collect(self, n_target=None):
@@ -340,20 +650,45 @@ class Pipeline:
         col, c = self.cfg["collection"], self.st.collection
         if not c.get("round_target"):
             c.update(round=c.get("round", 0) + 1, round_successes=0, round_target=int(n_target or col["round_size"]))
+        elif int(n_target or col["round_size"]) > c["round_target"]:          # round size raised while the round is open
+            c["round_target"] = int(n_target or col["round_size"])
         self.st.phase = "collect"
         self.st.save()
+        self.deliver_notes()
         cf, ce = self.st.counters["consecutive_failures"], self.st.counters["episodes"]
         self.op.notify(f"collection round {c['round']}: {c['round_successes']}/{c['round_target']} successes, {ce['total']} episodes so far")
-        while c["round_successes"] < c["round_target"] and ce["total"] < col["max_episodes"]:
+        while c["round_successes"] < c["round_target"] and ce["total"] + c.get("discarded", 0) < col["max_episodes"]:
+            self.restart_point()
             idx, ep_dir = self._new_episode_dir()
             targets = self._sample_targets()
+            self._reset_runs = []
             before = self._reset_to(targets, save=ep_dir / "scene_before.jpg")
+            if self._reset_runs:
+                self._reflect_async("reset", f"Reflection after the reset for collection episode {idx} "
+                                    f"({len(self._reset_runs)} run(s), {'ok' if before is not None else 'not ok'}):", self._reset_runs)
+            if before is not None and self._stuck:              # the reset left the object on the gripper: reset again
+                shutil.rmtree(ep_dir, ignore_errors=True)
+                continue
+            if before is not None and self._review_due():       # the agents test their fixes on this reset scene
+                shutil.rmtree(ep_dir, ignore_errors=True)
+                self._review()
+                continue
             ep = self._episode(ep_dir, idx, targets, before, "collect") if before is not None else None
             if ep is None:
                 shutil.rmtree(ep_dir, ignore_errors=True)
                 self.op.notify("collection stopped by the operator")
                 self.st.save()
                 return c["round_successes"]
+            e = self.st.counters["episodes"]
+            done = f"{ep['final']} (deleted; the episode is redone)" if ep.get("discarded") else ep["final"]
+            self._reflect_async("execute", f"Reflection after collection episode {idx}: {done} ({ep['reason']}), "
+                                f"{ep['result'].duration:.0f} s; collection so far {e['success']}/{e['total']} success.",
+                                [(ep["attempt_dir"], f"episode {idx}: {ep['final']}")])
+            w = self._window()
+            w["n"] += 1
+            w[ep["final"] if ep["final"] in ("success", "unsure") else "fail"] += 1
+            if ep["final"] != "success":
+                w["failed"].append([str(ep["attempt_dir"]), f"episode {idx}: {ep['final']} - {ep['reason']}"])
             if ep["final"] == "success":
                 c["round_successes"] += 1
                 cf["execute"] = 0
@@ -368,6 +703,8 @@ class Pipeline:
                         self.st.save()
                         return c["round_successes"]
             self.st.save()
+        for role in list(self._reflections):
+            self._join(role)
         c["round_target"] = None
         self.st.save()
         self.op.notify(f"round {c['round']} done: {c['round_successes']} successes, {ce['total']} episodes in total")
@@ -382,9 +719,20 @@ class Pipeline:
     def _reset_to(self, targets, save=None):
         """Reset the scene to targets (reset program, agent repair, then the operator); the blobs seen, or None to stop."""
         col, cf = self.cfg["collection"], self.st.counters["consecutive_failures"]
-        self._pending_targets, fails = targets, 0
+        self._pending_targets, fails, extra = targets, 0, 0
         try:
             while True:
+                if self._stuck_stop():
+                    return None
+                if fails >= col["manual_reset_after_failures"] and self._autonomous():
+                    if extra >= AUTONOMOUS_RESET_REPAIRS:
+                        self.op.notify("resets keep failing after the reset agent's repairs; stopping (autonomous: no manual reset)")
+                        self.st.event("autonomous_stop", reason="reset failures", targets=targets)
+                        return None
+                    extra += 1
+                    self._repair("reset")
+                    cf["reset"], fails = 0, 0
+                    continue
                 if fails >= col["manual_reset_after_failures"]:
                     if not self.op.wait_manual_reset(targets):
                         return None
@@ -413,6 +761,7 @@ class Pipeline:
                 fails += 1
                 cf["reset"] += 1
                 self._fails["reset"].append((r.attempt_dir, f"layout check failed: {_reason(rep)}"))
+                self._window()["reset_failed"].append([str(r.attempt_dir), f"layout check failed: {_reason(rep)}"])
                 self.op.notify(f"reset failed ({fails} in a row): {_reason(rep)}")
                 if cf["reset"] >= col["refine_after_failures"]:
                     status = self._repair("reset")
@@ -429,6 +778,7 @@ class Pipeline:
     def _run_reset(self, targets):
         """One gated run of the reset program with these targets; None if the operator refused."""
         ws = self.workspace("reset")
+        self._ready("reset")
         attempt_dir = Path(ws.next_attempt_dir())
         attempt_dir.mkdir(parents=True, exist_ok=True)
         tpath = attempt_dir / "targets.json"
@@ -452,15 +802,18 @@ class Pipeline:
         c["total"] += 1
         c["ok" if ok else "fail"] += 1
         self.st.event("reset", reset=n, ok=ok, outcome=r.outcome, duration=r.duration, attempt=str(r.attempt_dir))
+        self._reset_runs.append((r.attempt_dir, f"reset {n}: layout {'ok' if ok else 'FAILED'} ({_reason(rep)}), {r.duration:.0f} s"))
         self.st.save()
 
     def _episode(self, ep_dir, idx, targets, before, mode):
         """One recorded robot execution (collect: the execute program, eval: the policy rollout) with its verdict."""
         if mode == "eval":
-            cwd, attempt_dir, command = self.st.dir, ep_dir / "attempt", self._rollout_command()
+            cwd = Path(self.workspace("learn").path) if self._eval_code.get("rollout") else self.st.dir
+            attempt_dir, command = ep_dir / "attempt", self._rollout_command()
             timeout, commit = self.cfg["evaluation"]["max_policy_seconds"] + 120, None
         else:
             ws = self.workspace("execute")
+            self._ready("execute")
             cwd, attempt_dir, timeout, commit = Path(ws.path), Path(ws.next_attempt_dir()), None, self._safe_head(ws)
             command = self.st.agent("execute").get("program_command") or "python programs/execute.py"
         if not self.op.gate(f"{mode} episode {idx}", True, command):
@@ -470,6 +823,8 @@ class Pipeline:
         aborted = r.outcome == "aborted"
         claim = "aborted" if aborted else (r.summary.get("claimed_outcome") or r.outcome)
         v = self._verdict(claim, before, after, _images(ep_dir) or _images(attempt_dir), aborted=aborted)
+        if mode == "collect" and v["final"] == "unsure" and self.cfg["collection"].get("discard_unsure"):
+            return self._discard(ep_dir, idx, v, claim, r, attempt_dir)
         outcome = dict(claim=claim, perception=v["perception"], vlm=v["vlm"], operator=None, final=v["final"], reason=v["reason"])
         update_meta(ep_dir, episode=idx, run_id=self.st.run_id, task=self.task["name"], instruction=self.task["instruction"],
                     mode=mode, attempt=str(attempt_dir), exit_code=r.exit_code, duration=r.duration, layout_target=targets,
@@ -485,6 +840,17 @@ class Pipeline:
         self.st.save()
         self.op.notify(f"episode {idx} ({mode}): {v['final']} - {v['reason']}")
         return dict(index=idx, dir=ep_dir, attempt_dir=attempt_dir, final=v["final"], reason=v["reason"], result=r)
+
+    def _discard(self, ep_dir, idx, v, claim, r, attempt_dir):
+        """Unsure collection episode: delete its recording and keep its index for the redo; not counted, not queued."""
+        shutil.rmtree(ep_dir, ignore_errors=True)
+        c = self.st.collection
+        c["discarded"] = c.get("discarded", 0) + 1
+        self.st.event("episode_discarded", episode=idx, final=v["final"], reason=v["reason"], claim=claim,
+                      exit_code=r.exit_code, duration=r.duration, attempt=str(attempt_dir))
+        self.st.save()
+        self.op.notify(f"episode {idx} (collect): unsure - {v['reason']}; deleted, redoing it")
+        return dict(index=idx, dir=ep_dir, attempt_dir=attempt_dir, final=v["final"], reason=v["reason"], result=r, discarded=True)
 
     # ------------------------------------------------------------------ agent 3 and evaluation
     def dataset_stats(self):
@@ -509,13 +875,18 @@ class Pipeline:
         self.st.phase = "learn"
         a["started"] = a.get("started") or now_iso()
         a["model"], a["status"] = self.cfg["agents"]["model"], "learning"
-        a["rounds"] = a.get("rounds", 0) + 1
+        pending = a.pop("pending_msg", None)           # the orchestrator restarted mid-round: hand over that run's result
+        a["rounds"] = a.get("rounds", 0) + (0 if pending else 1)
         self.st.save()
-        self.workspace("learn", **self._learn_extras())
+        self._ensure_remote(self.workspace("learn", **self._learn_extras()))
         runner = self.runner("learn")
-        if self._session_id("learn"):
-            action, usage = runner.resume(f"The orchestrator is back with the current data: {json.dumps(self.dataset_stats())}. "
-                                          f"Convert the new episodes, train and evaluate again; training runs this round: {tr['max_runs']}.")
+        if self._session_id("learn") and pending:
+            action, usage = runner.resume(self._with_note("learn", "The orchestrator restarted (code or config update); "
+                                                          f"nothing else changed. The result of your last run:\n{pending}"))
+        elif self._session_id("learn"):
+            action, usage = runner.resume(self._with_note("learn", f"The orchestrator is back with the current data: "
+                                          f"{json.dumps(self.dataset_stats())}. Convert the new episodes, train and evaluate "
+                                          f"again; training runs this round: {tr['max_runs']}."))
         else:
             action, usage = runner.start()
         n_train, status = 0, None
@@ -534,8 +905,7 @@ class Pipeline:
                 if met:
                     status = "met"
             elif kind == "need_operator":
-                self.op.notify(f"learn agent needs you: {_get(action, 'report')}")
-                msg = "Operator: " + (self.op.ask("reply to the agent (Enter = done, continue)") or "done, continue")
+                msg = self._operator_reply("learn", _get(action, "report"))
             elif kind == "done":
                 a["last_report"] = _get(action, "report")
                 if self.st.deployable_checkpoint:
@@ -546,7 +916,10 @@ class Pipeline:
             else:
                 a["last_report"], status = _get(action, "report"), "gave_up"
             if status is None:
-                action, usage = runner.resume(msg)
+                a["pending_msg"] = msg                 # kept in the state if restart_point exits here
+                self.restart_point()
+                a.pop("pending_msg", None)
+                action, usage = runner.resume(self._with_note("learn", msg))
         a["status"] = {"met": "done", "collect_more": "max_runs", "gave_up": "gave_up"}[status]
         a["ended"] = now_iso()
         self.st.event("agent_status", role="learn", status=status)
@@ -557,7 +930,7 @@ class Pipeline:
     @staticmethod
     def _is_train(command):
         toks = shlex.split(command)
-        return "train.sh" in command or ("train" in toks and "vla" in toks)
+        return "train.sh" in command or "openpi_entry train" in command or ("train" in toks and "vla" in toks)
 
     def _learn_run(self, action, command):
         """One 'run' of agent 3: evaluations here on the robot, everything else over ssh on the agent host."""
@@ -567,8 +940,9 @@ class Pipeline:
             ckpt = toks[toks.index("--checkpoint") + 1] if "--checkpoint" in toks[:-1] else next((t for t in toks[1:] if "/" in t), None)
             n = toks[toks.index("--n") + 1] if "--n" in toks[:-1] else next((t for t in toks[2:] if t.isdigit()), None)
             if not ckpt:
-                return "usage: rlpj eval --checkpoint <checkpoint_dir> [--n N]", False
-            res = self.evaluate(ckpt, int(n) if n else None)
+                return "usage: rlpj eval --checkpoint <checkpoint_dir> [--n N] [--serve <program>] [--rollout <program>]", False
+            code = {k: toks[toks.index(f"--{k}") + 1] for k in ("serve", "rollout") if f"--{k}" in toks[:-1]}
+            res = self.evaluate(ckpt, int(n) if n else None, **code)
             lines = [json.dumps({k: res.get(k) for k in ("id", "checkpoint", "n", "success", "success_rate", "met", "error")})]
             lines += [f"  episode {e['episode']}: {e['final']} ({e['reason']})" for e in res.get("episodes", [])]
             return "\n".join(lines), bool(res.get("met"))
@@ -578,6 +952,8 @@ class Pipeline:
             return f"the operator {self.op.last} this command.", False
         if toks[:2] == ["rlpj", "vla"] and "--run-dir" not in toks:
             command += f" --run-dir {shlex.quote(str(self.st.dir))}"
+        if "convert" in toks or "rlpj.vla.convert" in command:
+            self._sync_episodes()
         attempt_dir = Path(ws.next_attempt_dir())
         r = self._ssh(command, attempt_dir, timeout_s=self.cfg["training"].get("timeout_s"), what=what)
         self._note_vla(command, r)
@@ -609,29 +985,75 @@ class Pipeline:
             exp = exp or f"run_{len(self.st.training_runs) + 1}"
             self.st.training_runs[exp] = dict(dataset=dataset, command=command, exit_code=r.exit_code, duration_s=r.duration, t=now_iso(),
                                               checkpoint_dir=str(self.st.dir / "checkpoints" / exp), round=self.st.agent("learn").get("rounds"))
+            self.st.ledger("gpu", job="train", name=exp, dataset=dataset, exit_code=r.exit_code, duration_s=r.duration)
         elif "convert" in toks or "rlpj.vla.convert" in command:
             name = opt("--name") or f"dataset_{len(self.st.datasets) + 1}"
             self.st.datasets[name] = dict(command=command, exit_code=r.exit_code, duration_s=r.duration, t=now_iso(),
                                           only_success="--only-success" in toks, episodes=dict(self.st.counters["episodes"]),
                                           path=str(self.st.dir / "datasets" / name))
+            self.st.ledger("gpu", job="convert", name=name, exit_code=r.exit_code, duration_s=r.duration)
         self.st.save()
 
     def _rollout_command(self):
+        """rlpj.vla.rollout, or agent 3's rollout program (run from its workspace, same arguments, same RobotSession limits)."""
         h, ev = self.cfg["hosts"], self.cfg["evaluation"]
-        return (f"{config.ROOT / '.venv/bin/python'} -m rlpj.vla.rollout --host {h['policy_server']} --port {h['policy_port']} "
+        prog = self._eval_code.get("rollout")
+        head = f"{config.ROOT / '.venv/bin/python'} " + (shlex.quote(prog) if prog else "-m rlpj.vla.rollout")
+        return (f"{head} --host {h['policy_server']} --port {h['policy_port']} "
                 f"--instruction {shlex.quote(self.task['instruction'])} --max-seconds {ev['max_policy_seconds']}")
 
+    def _policy_host(self):
+        """Where the policy server runs: 'local' (this robot machine, the default) or an ssh host."""
+        return self.cfg["hosts"].get("policy_host") or "local"
+
     def _server_start(self, checkpoint_dir, port):
-        """nohup bash scripts/serve.sh <ckpt> <port> on the agent host; its log goes to runs/<run>/evals/ there."""
-        host, log = self.cfg["hosts"]["agent"], self.st.dir / "evals" / f"server_{port}.log"
-        remote = (f"mkdir -p {shlex.quote(str(log.parent))} && cd {shlex.quote(str(config.ROOT))} && "
-                  f"nohup bash scripts/serve.sh {shlex.quote(str(checkpoint_dir))} {int(port)} > {shlex.quote(str(log))} 2>&1 < /dev/null &")
-        subprocess.run(["ssh", "-o", "BatchMode=yes", host, remote], timeout=60, check=False)
-        self.op.notify(f"policy server starting on {host}:{port} for {checkpoint_dir} (log {log})")
+        """bash scripts/serve.sh <ckpt> <port> in the background on the policy host (local: the checkpoint is copied
+        from the agent host first, the process group goes to evals/server.pid); log evals/server_<port>.log there.
+        False when it cannot start (copy failed, or another server holds the port and would answer instead)."""
+        host, ip, log = self._policy_host(), self.cfg["hosts"]["policy_server"], self.st.dir / "evals" / f"server_{port}.log"
+        self._server_stop()
+        if self._port_busy(ip, port):
+            self.op.notify(f"{ip}:{port} is held by another server; stop it first (it would answer for the wrong checkpoint)")
+            return False
+        if host == "local":
+            try:
+                ckpt = self._fetch_checkpoint(checkpoint_dir)
+            except RuntimeError as e:
+                self.op.notify(str(e))
+                return False
+            log.parent.mkdir(parents=True, exist_ok=True)
+            env = {**os.environ, **({"RLPJ_SERVE_PROGRAM": self._serve_program()} if self._eval_code.get("serve") else {})}
+            with open(log, "w") as f:
+                self._server = subprocess.Popen(["bash", str(config.ROOT / "scripts/serve.sh"), str(ckpt), str(int(port))],
+                                                cwd=str(config.ROOT), stdout=f, stderr=subprocess.STDOUT, env=env,
+                                                stdin=subprocess.DEVNULL, start_new_session=True)
+            (log.parent / "server.pid").write_text(f"{self._server.pid}\n")
+        else:
+            prog = f"RLPJ_SERVE_PROGRAM={shlex.quote(self._serve_program())} " if self._eval_code.get("serve") else ""
+            # only the server goes to the background, inside ( ... ): a backgrounded `a && b && c &` list would keep the ssh
+            # channel open for the server's lifetime (2026-11-06: ssh timed out and the orchestrator crashed)
+            remote = (f"mkdir -p {shlex.quote(str(log.parent))} && cd {shlex.quote(str(config.ROOT))} && "
+                      f"({prog}setsid nohup bash scripts/serve.sh {shlex.quote(str(checkpoint_dir))} {int(port)} "
+                      f"> {shlex.quote(str(log))} 2>&1 < /dev/null &)")
+            try:
+                r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-n", host, remote], timeout=60, check=False,
+                                   capture_output=True, text=True)
+            except subprocess.TimeoutExpired:
+                self.op.notify(f"policy server start on {host} did not return within 60 s")
+                return False
+            if r.returncode != 0:
+                self.op.notify(f"policy server start on {host} failed: {(r.stderr or r.stdout).strip()[-300:]}")
+                return False
+        self.op.notify(f"policy server starting on {host}:{port} for {checkpoint_dir} (log {log} on {host})")
+        return True
 
     def _server_wait(self, ip, port, timeout_s=900):
         t0 = time.time()
         while time.time() - t0 < timeout_s:
+            p = self._server
+            if p is not None and p.poll() is not None:
+                self.op.notify(f"policy server exited with code {p.returncode}; see runs/{self.st.run_id}/evals/server_{port}.log")
+                return False
             try:
                 socket.create_connection((ip, int(port)), timeout=2).close()
                 return True
@@ -639,14 +1061,87 @@ class Pipeline:
                 time.sleep(5)
         return False
 
-    def _server_stop(self):
-        host = self.cfg["hosts"]["agent"]
-        subprocess.run(["ssh", "-o", "BatchMode=yes", host, "pkill -f '[s]cripts/serve.sh'; pkill -f '[o]penpi_entry serve'; true"],
-                       timeout=60, check=False)
+    def _serve_program(self):
+        """Absolute path of agent 3's server program (relative paths are in its workspace)."""
+        prog = Path(self._eval_code["serve"])
+        return str(prog if prog.is_absolute() else Path(self.workspace("learn").path) / prog)
 
-    def evaluate(self, checkpoint_dir, n=None, zero_shot=False):
-        """Serve checkpoint_dir on the 5090 and run n rollout episodes (reset + rollout + verdict); writes evals/<id>.json."""
+    @staticmethod
+    def _port_busy(ip, port, wait_s=15):
+        """True when something still accepts connections on ip:port after wait_s (a server shutting down gets time)."""
+        t0 = time.time()
+        while True:
+            try:
+                socket.create_connection((ip, int(port)), timeout=2).close()
+            except OSError:
+                return False
+            if time.time() - t0 > wait_s:
+                return True
+            time.sleep(1)
+
+    def _server_stop(self):
+        """Stop the policy server: locally only the process group we started (or the one in evals/server.pid left by an
+        earlier orchestrator); on a remote policy host its serve processes."""
+        host = self._policy_host()
+        if host != "local":
+            subprocess.run(["ssh", "-o", "BatchMode=yes", host, "pkill -f '[s]cripts/serve.sh'; pkill -f '[o]penpi_entry serve'; true"],
+                           timeout=60, check=False)
+            return
+        pidfile = self.st.dir / "evals" / "server.pid"
+        p, self._server = self._server, None
+        if p is not None:
+            _stop_group(p.pid, p)
+        elif pidfile.exists():
+            pgid = int(pidfile.read_text().split()[0])
+            if any(b"serve.sh" in c or b"openpi_entry" in c for c in _group_cmdlines(pgid)):
+                _stop_group(pgid)
+        pidfile.unlink(missing_ok=True)
+
+    def _fetch_checkpoint(self, checkpoint_dir):
+        """Local path of a checkpoint to serve: params/ and assets/ copied from the agent host (same path) unless it was
+        trained here; earlier copies of this run's checkpoints are removed first (6 GB each), the deployable one kept."""
+        ckpt = Path(str(checkpoint_dir))
+        if "://" in str(checkpoint_dir):
+            return checkpoint_dir
+        ckpt = ckpt if ckpt.is_absolute() else config.ROOT / ckpt
+        if (ckpt / "params").is_dir() and not (ckpt / PULLED).exists():
+            return ckpt
+        keep = {ckpt.resolve()} | ({Path(self.st.deployable_checkpoint).resolve()} if self.st.deployable_checkpoint else set())
+        for m in (self.st.dir / "checkpoints").glob(f"*/*/{PULLED}"):
+            if m.parent.resolve() not in keep:
+                shutil.rmtree(m.parent, ignore_errors=True)
+        host = self.cfg["hosts"]["agent"]
+        self.op.notify(f"copying {ckpt} (params, assets) from {host}")
+        for sub in ("params", "assets"):
+            r = subprocess.run(["rsync", "-a", "--delete", "--mkpath", f"{host}:{ckpt}/{sub}/", f"{ckpt}/{sub}/"],
+                               capture_output=True, text=True)
+            if r.returncode:
+                raise RuntimeError(f"cannot copy {ckpt}/{sub} from {host}: {r.stderr.strip()[-300:]}")
+        subprocess.run(["rsync", "-a", f"{host}:{ckpt.parent}/train_info.json", f"{ckpt.parent}/"], capture_output=True, text=True)
+        (ckpt / PULLED).write_text(host + "\n")
+        return ckpt
+
+    def _sync_episodes(self):
+        """Copy runs/<run>/episodes to the agent host (same path): convert runs there, the robot records here."""
+        src, host = self.st.dir / "episodes", self.cfg["hosts"]["agent"]
+        if not src.is_dir():
+            return True
+        r = subprocess.run(["rsync", "-a", "--mkpath", f"{src}/", f"{host}:{src}/"], capture_output=True, text=True)
+        self.op.notify(f"episodes synced to {host}" if r.returncode == 0 else f"episode sync to {host} FAILED: {r.stderr.strip()[-300:]}")
+        return r.returncode == 0
+
+    def evaluate(self, checkpoint_dir, n=None, zero_shot=False, serve=None, rollout=None):
+        """Serve checkpoint_dir on the policy host and run n rollout episodes (reset + rollout + verdict); writes evals/<id>.json.
+        serve / rollout: agent 3's own server and rollout programs (its workspace, pulled here first)."""
         ev, hosts = self.cfg["evaluation"], self.cfg["hosts"]
+        self._eval_code = {k: v for k, v in (("serve", serve), ("rollout", rollout)) if v}
+        if self._eval_code:
+            ws = self.workspace("learn")
+            try:
+                ws.pull()
+            except Exception as e:
+                self.op.notify(f"learn workspace pull failed: {e!r}")
+            self._eval_code["learn_commit"] = self._safe_head(ws)
         n, ckpt = int(n or ev["episodes"]), Path(str(checkpoint_dir))
         eid = f"{len(self.st.evals) + 1:02d}_{'zero_shot_' if zero_shot else ''}{ckpt.parent.name}_{ckpt.name}"
         port, ip = hosts["policy_port"], hosts["policy_server"]
@@ -655,9 +1150,10 @@ class Pipeline:
                    success_rate=0.0, met=False, episodes=[], t_start=now_iso(), port=port)
         if zero_shot:
             res["caveat"] = "base pi05 weights served with norm stats from our dataset; the model never saw this robot or task"
-        self._server_start(str(checkpoint_dir), port)
+        res.update(self._eval_code)
+        started = self._server_start(str(checkpoint_dir), port)
         try:
-            if not self._server_wait(ip, port, ev.get("server_timeout_s", 900)):
+            if started is False or not self._server_wait(ip, port, ev.get("server_timeout_s", 900)):
                 res["error"] = f"policy server {ip}:{port} did not come up"
             else:
                 for _ in range(n):
@@ -675,7 +1171,8 @@ class Pipeline:
         eps = res["episodes"]
         res.update(n=len(eps), t_end=now_iso(), **{k: sum(e["final"] == k for e in eps) for k in ("success", "fail", "unsure")})
         res["success_rate"] = round(res["success"] / len(eps), 3) if eps else 0.0
-        res["met"] = len(eps) >= n and res["success_rate"] >= ev["target_success_rate"]
+        full = max(n, int(ev["episodes"]))              # only a full evaluation (evaluation.episodes rollouts) can meet the target
+        res["met"] = len(eps) >= full and res["success_rate"] >= ev["target_success_rate"]
         d = self.st.dir / "evals"
         d.mkdir(exist_ok=True)
         (d / f"{eid}.json").write_text(json.dumps(res, indent=1, default=str))
@@ -686,6 +1183,8 @@ class Pipeline:
             self.st.zero_shot = dict(eval=eid, success_rate=res["success_rate"], n=len(eps), caveat=res["caveat"])
         self.st.event("eval", **self.st.evals[eid])
         self.st.save()
+        self.st.ledger("eval", id=eid, checkpoint=str(checkpoint_dir), n=res["n"], success_rate=res["success_rate"], met=res["met"],
+                       duration_s=round(time.time() - _ts(res["t_start"]), 1))
         self.op.notify(f"evaluation {eid}: {res['success']}/{len(eps)} success ({res['success_rate']:.0%}); target {'met' if res['met'] else 'not met'}")
         return res
 

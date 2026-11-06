@@ -93,9 +93,10 @@ class RobotSession:
         self.phases, self.phase_idx = ["start"], 0
         self.seg_log, self.nseg = [], 0
         self.cur_seg = None
-        self.grip_frac, self.grip_cmd_sent = 0.0, False
+        self.grip_frac, self.grip_cmd_sent, self.grip_reading = 0.0, False, None
         self.table_z = calib.table_z()
         self.workspace = self._workspace()
+        self.release_zone = self._task_key("release_zone")
         self.q_home = self.q_sim = None
         self.side = self.wrist = self.view = self.robot = self.planner = self.executor = None
         self.wd = self.recorder = None
@@ -165,10 +166,29 @@ class RobotSession:
 
     def _workspace(self):
         """Workspace for tabletop(): the task yaml's 'workspace' ({x: [..], y: [..]}) or None (perception default)."""
+        return self._task_key("workspace")
+
+    def _task_key(self, key):
         try:
-            return config.load().get("task", {}).get("workspace")
+            return config.load().get("task", {}).get(key)
         except Exception:
             return None
+
+    def _check_release(self, value):
+        """Opening the gripper on a held object (reading in the task's release_zone.reading) only inside the zone and
+        low enough: anywhere else the object could fall off the table. Raises Abort (the object stays held)."""
+        z = self.release_zone
+        if not z or self.grip_reading is None or value >= self.grip_frac - 0.02:
+            return
+        lo, hi = z.get("reading", (60.0, 92.0))
+        if not lo <= self.grip_reading <= hi:
+            return
+        x, y, h = (float(v) for v in self.feedback()["pose"][:3])
+        h -= self.table_z
+        if not (z["x"][0] <= x <= z["x"][1] and z["y"][0] <= y <= z["y"][1] and h <= z.get("max_height", 0.20)):
+            raise Abort(f"release refused: holding an object (gripper reading {self.grip_reading:.1f}) at "
+                        f"({x:.3f}, {y:.3f}), {h:.3f} m above the table, outside the release zone x {z['x']} y {z['y']} "
+                        f"below {z.get('max_height', 0.20)} m (task release_zone): put it down inside the zone")
 
     def _git_commit(self):
         try:
@@ -317,13 +337,14 @@ class RobotSession:
         """0 open .. 1 closed; waits until the reading settles; returns the 0..100 reading."""
         self._check_stop()
         value = float(np.clip(value, 0, 1))
+        self._check_release(value)
         self.log(f"gripper -> {value:.2f} ({what})")
         if self.dry:
-            self.grip_frac, self.grip_cmd_sent = value, True
+            self.grip_frac, self.grip_cmd_sent, self.grip_reading = value, True, 100.0 * value
             self.robot.gripper_cmd = value
             return 100.0 * value
         g = self.executor.gripper(value)
-        self.grip_frac, self.grip_cmd_sent = value, True
+        self.grip_frac, self.grip_cmd_sent, self.grip_reading = value, True, float(g)
         self.poll_view()
         if self.stop["flag"]:
             raise StopRequested("stop during gripper motion")
@@ -493,7 +514,7 @@ class RobotSession:
         except Exception:
             traceback.print_exc(); code = code or 3
         finally:
-            self.S.set(segments=self.seg_log, exit_code=code)
+            self.S.set(segments=self.seg_log, exit_code=code, gripper_final=dict(cmd=self.grip_frac, reading=self.grip_reading))
             self.close()
         print(f"summary: {self.S.p} outcome: {self.S.d.get('claimed_outcome')} exit {code}", flush=True)
         self.exit_code = code

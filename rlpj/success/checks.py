@@ -6,6 +6,10 @@ from rlpj.perception import layout, tabletop
 MOVE_TOL = 0.03      # m: the tape roll may not move more than this
 SPOT_TOL = 0.04      # m: a blob this close to a cup's start is "at its spot"
 EMPTY_TOL = 0.05     # m: a spot counts as empty when no blob lies within this
+BOWL_MOVE_MAX = 0.06 # m: the bowl may be nudged this far, not more
+RISE = 0.015         # m: inside the bowl, points this far above the empty bowl's surface are new (the bee)
+RISEN_CELLS = 20     # 5 mm cells of risen points that count as the bee inside (real bee: ~80, empty bowl noise: <10)
+MIN_BEE_POINTS = 300 # a stray bee outside the bowl shows >1000 side-depth points; smaller blobs are depth noise
 
 
 def run(task_cfg, before_blobs, after_blobs):
@@ -88,7 +92,71 @@ def cup_down_stacking(before, after, task_cfg):
     return True, _why(rep, "nested cups at the base cup's spot")
 
 
-CHECKS = {"bee_in_tape_roll": bee_in_tape_roll, "cup_down_stacking": cup_down_stacking}
+def bee_in_bowl(before, after, task_cfg):
+    """Success: the bowl blob lies within BOWL_MOVE_MAX of its start, still upright (footprint and height kept),
+    something new rises above its empty inside near the centre (the bee, merged with the bowl blob or separate) and no
+    bee-sized blob lies outside the rim. A bee resting on the rim is left to the VLM judge: the bowl's measured
+    footprint varies by several cm between scans (depth noise), too much to see an overhang from it."""
+    bee_prior = (task_cfg.get("perception", {}) or {}).get("bee") or {}
+    bowl_b = layout.assign(task_cfg, before).get("bowl")
+    rep = dict(before_bowl=_brief(bowl_b))
+    if bowl_b is None:
+        return None, _why(rep, "bowl not found before")
+    if not after:
+        return None, _why(rep, "no blobs after")
+    bowl_a = min(after, key=lambda b: _dist(b["xy"], bowl_b["xy"]))
+    moved = _dist(bowl_a["xy"], bowl_b["xy"])
+    rep.update(after_bowl=_brief(bowl_a), bowl_moved_m=round(moved, 4))
+    if moved > BOWL_MOVE_MAX:
+        return False, _why(rep, f"bowl moved {moved * 100:.1f} cm or is gone")
+    ext_b, ext_a = sorted(bowl_b["extent"]), sorted(bowl_a["extent"])
+    if ext_a[0] < 0.75 * ext_b[0] or bowl_a["height"] < 0.75 * bowl_b["height"]:
+        return False, _why(rep, "the bowl is tipped over or not at its spot")
+    c, r_rim = np.asarray(bowl_a["xy"], float), 0.5 * ext_b[1]
+    others = [b for b in after if b is not bowl_a]
+    outside = [b for b in others if layout.matches(bee_prior, b) and _dist(b["xy"], c) > r_rim and b["n"] >= MIN_BEE_POINTS]
+    rep.update(rim_r=round(r_rim, 4), outside_bees=[_brief(b) for b in outside])
+    if outside:
+        return False, _why(rep, "bee-sized blob outside the bowl")
+    r_in = 0.55 * r_rim
+    pts_a = [p for p in (_rel(b, c, r_in) for b in [bowl_a] + [b for b in others if _dist(b["xy"], c) <= r_rim]) if len(p)]
+    pts_a = np.vstack(pts_a) if pts_a else np.zeros((0, 3))
+    base = _profile(_rel(bowl_b, np.asarray(bowl_b["xy"], float), r_in), bowl_b["xy"], r_in)
+    rise = pts_a[:, 2] - base(np.linalg.norm(pts_a[:, :2] - c, axis=1))
+    risen = tabletop.cells(pts_a[rise > RISE, :2])
+    rep.update(inside_floor_m=round(float(base(np.zeros(1))[0]), 4), risen_cells=risen)
+    if risen >= RISEN_CELLS:
+        return True, _why(rep, "bee inside the bowl")
+    return None, _why(rep, "nothing seen inside the bowl and no bee elsewhere (hidden?)")
+
+
+CHECKS = {"bee_in_tape_roll": bee_in_tape_roll, "cup_down_stacking": cup_down_stacking, "bee_in_bowl": bee_in_bowl}
+
+
+def _rel(b, c, r):
+    """Points of blob b within r of c (xy), with z as height above the table."""
+    P = b.get("points")
+    if P is None or len(P) == 0:
+        return np.zeros((0, 3))
+    P = np.asarray(P, float)
+    P = P[np.linalg.norm(P[:, :2] - c, axis=1) < r]
+    return np.c_[P[:, :2], P[:, 2] - (b["z_top"] - b["height"])]
+
+
+def _profile(pts, c, r, step=0.005):
+    """Empty bowl's inside height as a function of distance from its centre: 75th percentile per 5 mm ring of pts
+    (x, y, height), empty rings interpolated; 0 everywhere when nothing is seen (only table inside)."""
+    edges = np.arange(0, r + step, step)
+    rr = np.linalg.norm(pts[:, :2] - np.asarray(c, float), axis=1) if len(pts) else np.zeros(0)
+    mid, val = [], []
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        m = (rr >= lo) & (rr < hi)
+        if m.sum() >= 5:
+            mid.append(0.5 * (lo + hi))
+            val.append(float(np.percentile(pts[m, 2], 75)))
+    if not mid:
+        return lambda d: np.zeros(len(np.atleast_1d(d)))
+    return lambda d: np.interp(np.atleast_1d(d), mid, val)
 
 
 def _hole_fill(ring_a, ring_b, hole, r_in):

@@ -128,3 +128,14 @@ def _box(img, uv, half):
     x0, y0 = int(max(uv[0] - half, 0)), int(max(uv[1] - half, 0))
     x1, y1 = int(min(uv[0] + half, w)), int(min(uv[1] + half, h))
     return x0, y0, x1, y1
+
+
+def gripper_load(img, chk):
+    """Share of object-coloured pixels in the bottom of the wrist image, where an object hanging on the fingers shows
+    (chk: task gripper_check with hsv [[lo], [hi]] and bottom share); None without an image."""
+    if img is None:
+        return None
+    h = img.shape[0]
+    lo, hi = (np.array(v, np.uint8) for v in chk["hsv"])
+    m = cv2.inRange(cv2.cvtColor(img[int((1.0 - chk.get("bottom", 0.15)) * h):], cv2.COLOR_BGR2HSV), lo, hi)
+    return float((m > 0).mean())

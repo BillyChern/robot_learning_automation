@@ -20,6 +20,21 @@ RUN_SIBLINGS = ("state.json", "episodes", "datasets", "checkpoints", "evals", "c
 BASH_DENY = ("*RLPJ_MOTION*", "ssh *", "scp *", "rsync *", "*192.168.2.*", "sudo *")
 GITIGNORE = "attempts/\nturns/\nsession.json\nusage.jsonl\ninputs/demo\ninputs/reuse/\n__pycache__/\n*.pyc\n"
 GIT_ID = ["-c", "user.name=rlpj", "-c", "user.email=rlpj@local"]
+# Claude Code applies a folder's .claude/settings.json allow rules only once the folder is trusted:
+# projects[<path>].hasTrustDialogAccepted in ~/.claude.json of the agent machine (deny rules apply either way).
+TRUST = """import json, os, sys
+p = os.path.expanduser("~/.claude.json")
+d = json.load(open(p)) if os.path.exists(p) else {}
+e = d.setdefault("projects", {}).setdefault(sys.argv[1], {})
+if not e.get("hasTrustDialogAccepted"):
+    e["hasTrustDialogAccepted"] = True
+    t = p + ".rlpj.tmp"
+    with open(t, "w") as f:
+        json.dump(d, f, indent=2)
+    if os.path.exists(p):
+        os.chmod(t, os.stat(p).st_mode & 0o777)
+    os.replace(t, p)
+"""
 LEARN_DEFAULTS = dict(N_EPISODES="0", EPISODES_NOTE="none collected yet", EPISODES_DIR="<run>/episodes", DATASET="none yet",
                       HISTORY="  (no training runs yet)")
 
@@ -135,6 +150,8 @@ def settings(ws: Path, run_dir: Path, role: str, allowed: list) -> dict:
     deny = [f"Bash({b})" for b in BASH_DENY] + [f"Read({_pat(p)})" for p in hidden] + \
            [f"Edit({_pat(p)})" for p in hidden + read_only]
     allow = ["Bash", f"Read({_pat(root)})"] + [f"Read({_pat(Path(p))})" for p in allowed]
+    if role == "learn":
+        allow += ["WebSearch", "WebFetch"]          # research on fine-tuning practice (pi0.5, openpi, RTC, ...)
     excludes = [str(p / "CLAUDE.md") for p in ws.parents]
     return {"permissions": {"allow": list(dict.fromkeys(allow)), "deny": list(dict.fromkeys(deny))},
             "claudeMdExcludes": excludes}
@@ -286,6 +303,10 @@ class Workspace:
     def pull(self):
         """Sync the agent's files from the agent machine."""
         _run(self.pull_args())
+
+    def trust(self):
+        """Mark this workspace trusted for Claude Code on the agent machine, so its permission rules apply."""
+        _run(["ssh", "-o", "BatchMode=yes", self.host, f"python3 -c {shlex.quote(TRUST)} {_q(self.path)}"])
 
     def remote_exists(self) -> bool:
         r = subprocess.run(["ssh", "-o", "BatchMode=yes", self.host, f"test -f {_q(self.path / 'PROMPT.md')}"],

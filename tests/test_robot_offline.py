@@ -448,3 +448,44 @@ def test_check_offline():
         assert not check.port_free(srv.getsockname()[1])
     finally:
         srv.close()
+
+
+def test_planner_survives_a_refusing_fk_oracle():
+    """Kortex sometimes rejects ComputeForwardKinematics for a joint set: plan with the fitted model instead of crashing."""
+    import numpy as np
+    from rlpj.robot.kin import Kin
+    from rlpj.robot.plan import Planner, SLOW
+
+    def refuse(q):
+        raise RuntimeError("KServerException('Sending request for forward kinematics calculations failed: Failed')")
+
+    kin, logs = Kin(), []
+    q0 = np.array([0, 15, 230, 0, 55, 90.0])
+    goal = kin.fk(q0)
+    goal[2, 3] -= 0.04
+    seg = Planner(kin, oracle=refuse, log=logs.append).cart_line("down", q0, goal, SLOW)
+    assert np.linalg.norm(kin.fk(seg.q[-1])[:3, 3] - goal[:3, 3]) < 1e-3 and any("refused" in m for m in logs)
+
+
+def test_session_refuses_to_let_go_outside_the_release_zone(fakes, tmp_path):
+    from rlpj.robot.session import RobotSession
+    zone = dict(reading=[60, 92], x=[0.36, 0.60], y=[-0.22, 0.08], max_height=0.20)
+    A = tmp_path / "r1"
+    with RobotSession(program="test", attempt_dir=A, view_port=0, exit_on_close=False, kin=KIN) as s:
+        s.release_zone = zone
+        s.move_joint("pre", KIN.ik(tool_down_T([0.45, 0.0, 0.20], 0.0), Q_HOME)[0], "normal")
+        s.move_line("low", tool_down_T([0.45, 0.0, TZ + 0.10], 0.0), "slow")
+        s.gripper(1.0, "grasp")
+        s.grip_reading = 85.0                                   # dry run: as if the bee were in the jaws
+        s.gripper(0.0, "release inside the zone")               # allowed
+        s.gripper(1.0, "grasp again")
+        s.grip_reading = 94.3                                   # the bowl rim: not a held bee, any place is fine
+        s.gripper(0.3, "release the rim")
+        s.gripper(1.0, "grasp the bee")
+        s.grip_reading = 85.0
+        s.move_line("edge", tool_down_T([0.45, 0.12, TZ + 0.10], 0.0), "slow")
+        s.gripper(0.0, "release near the curtain-side edge")    # refused: the bee stays held
+        raise AssertionError("not reached")
+    S = json.load(open(A / "summary.json"))
+    assert s.exit_code == 2 and "release refused" in S["stop"]["why"] and "(0.450, 0.120)" in S["stop"]["why"]
+    assert S["gripper_final"] == {"cmd": 1.0, "reading": 85.0}
