@@ -1173,3 +1173,11 @@ def test_train_host_local_runs_convert_and_train_here(fakes, runs, tmp_path, mon
         p._learn_run(dict(action="run", command=cmd, what="x"), cmd)
     assert [w[0] for w in where] == ["local", "local", "ssh"]                # analysis still runs on the agent host
     assert "nice -n 10 rlpj vla train" in where[1][1]
+
+
+def test_fetch_checkpoint_uses_a_pytorch_checkpoint_trained_here(runs):
+    st = state.RunState.create("fp", "bee_in_tape_roll", "text")
+    ck = st.dir / "checkpoints/full_v1/29999"
+    (ck / "assets").mkdir(parents=True)
+    (ck / "model.safetensors").write_bytes(b"x")
+    assert loop.Pipeline(st, _op(), _cfg())._fetch_checkpoint(ck) == ck               # no copy from the agent host

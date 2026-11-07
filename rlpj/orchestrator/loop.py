@@ -1182,8 +1182,8 @@ class Pipeline:
         if "://" in str(checkpoint_dir):
             return checkpoint_dir
         ckpt = ckpt if ckpt.is_absolute() else config.ROOT / ckpt
-        if (ckpt / "params").is_dir() and not (ckpt / PULLED).exists():
-            return ckpt
+        if ((ckpt / "params").is_dir() or (ckpt / "model.safetensors").exists()) and not (ckpt / PULLED).exists():
+            return ckpt                                  # trained here (JAX params/ or PyTorch model.safetensors)
         keep = {ckpt.resolve()} | ({Path(self.st.deployable_checkpoint).resolve()} if self.st.deployable_checkpoint else set())
         for m in (self.st.dir / "checkpoints").glob(f"*/*/{PULLED}"):
             if m.parent.resolve() not in keep:
