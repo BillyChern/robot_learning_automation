@@ -277,3 +277,13 @@ def test_gripper_load_on_real_wrist_images():
     assert min(f["stuck_after_release"], f["stuck_at_home"], f["stuck_orange_at_home"]) > 1.5 * chk["max_frac"]
     assert f["released_below"] < chk["max_frac"] and f["empty_at_home"] < 0.02
     assert wrist.gripper_load(None, chk) is None
+
+
+def test_side_align_offset_and_advice():
+    from rlpj.robot.side_align import advice, offset
+    rng = np.random.default_rng(0)
+    g = cv2.GaussianBlur((rng.random((360, 640)) * 255).astype(np.uint8), (5, 5), 0)
+    moved = cv2.warpAffine(g, np.float32([[1, 0, -12], [0, 1, 5]]), (640, 360))   # content 12 px left, 5 px down
+    dx, dy, n = offset(g, moved)
+    assert n > 8 and abs(dx + 12) < 0.6 and abs(dy - 5) < 0.6
+    assert advice(dx, dy) == "pan LEFT 12 px, tilt DOWN 5 px" and advice(0.4, -0.6) == "ALIGNED"
