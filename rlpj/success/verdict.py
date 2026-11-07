@@ -29,7 +29,7 @@ def decide(claim, perception, vlm):
     else:
         final = "fail"
     txt = ", ".join(f"{k}={'none' if x is None else x}" for k, x in votes.items())
-    return dict(final=final, reason=f"{_explain(None if claim is None else claimed, claimed, yes, no)} ({txt})", votes=votes)
+    return dict(final=final, reason=f"{_explain(final, None if claim is None else claimed, yes, no)} ({txt})", votes=votes)
 
 
 def needs_operator(verdict):

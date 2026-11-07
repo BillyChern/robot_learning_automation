@@ -1023,10 +1023,16 @@ class Pipeline:
             return f"the operator {self.op.last} this command.", False
         if toks[:2] == ["rlpj", "vla"] and "--run-dir" not in toks:
             command += f" --run-dir {shlex.quote(str(self.st.dir))}"
-        if "convert" in toks or "rlpj.vla.convert" in command:
+        convert = "convert" in toks or "rlpj.vla.convert" in command
+        local = self.cfg["hosts"].get("train_host") == "local" and (convert or self._is_train(command))
+        if convert and not local:
             self._sync_episodes()
         attempt_dir = Path(ws.next_attempt_dir())
-        r = self._ssh(command, attempt_dir, timeout_s=self.cfg["training"].get("timeout_s"), what=what)
+        if local:   # hosts.train_host local: convert and train on this machine (the 5090 kept losing power under load)
+            r = self._attempt(config.ROOT, f"PATH={shlex.quote(str(config.ROOT / '.venv/bin'))}:$PATH nice -n 10 {command}",
+                              attempt_dir, False, timeout_s=self.cfg["training"].get("timeout_s"), what=what)
+        else:
+            r = self._ssh(command, attempt_dir, timeout_s=self.cfg["training"].get("timeout_s"), what=what)
         self._note_vla(command, r)
         self._push(ws)
         return f"{_mod('rlpj.agents.runner').digest(attempt_dir)}\n\n(exit code {r.exit_code}, {r.duration:.0f} s)", False

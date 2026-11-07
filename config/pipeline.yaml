@@ -9,9 +9,10 @@ robot:
 
 hosts:
   agent: Worksation_5090           # 5090 (100.122.29.80): agents, VLM judge, training (no route to the arm)
-  policy_host: local               # this 4090 (GPU free since the 11-07 reboot) while the 5090 trains; Worksation_5090 when the 4090 GPU is taken
-  policy_server: 127.0.0.1         # 100.122.29.80 when policy_host is the 5090
+  policy_host: Worksation_5090     # serve on the 5090 while the 4090 trains (inference is light); local when the 4090 GPU is free
+  policy_server: 100.122.29.80     # 127.0.0.1 when policy_host is local
   policy_port: 8000
+  train_host: local                # convert + train on this 4090 (nice 10); the 5090 loses power under sustained GPU load (2026-11-07)
 
 recording: {fps: 15, width: 640, height: 360}
 

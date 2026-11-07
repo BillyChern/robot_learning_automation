@@ -85,7 +85,10 @@ def configs(run_dir=None, repo_id: str | None = None) -> dict[str, _config.Train
     full = KinovaTrainConfig(name=FULL_NAME, model=pi0_config.Pi0Config(pi05=True, action_horizon=ACTION_HORIZON,
                                                                         pytorch_compile_mode=None),
                              ema_decay=None, pytorch_weight_path=str(PI05_BASE_PYTORCH), pytorch_training_precision="bfloat16",
-                             **{**common, "batch_size": 2, "num_train_steps": 30000})
+                             **{**common, "batch_size": 2, "num_train_steps": 30000,
+                                # a full checkpoint is ~15 GB (weights + 8-bit AdamW): save every 5000 steps, keep the
+                                # newest whole (resume) and 10000-step multiples as weights only (~7 GB) -> <= ~35 GB
+                                "save_interval": 5000, "keep_period": 10000})
     return {c.name: c for c in (lora, full)}
 
 

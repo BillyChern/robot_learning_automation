@@ -218,3 +218,12 @@ def test_bee_in_bowl_on_real_side_scans(bowl_cfg):
     ok, rep = checks.run(bowl_cfg, empty, empty)
     assert ok is False and "outside" in rep["reason"]
     assert abs(tz + 0.016) < 1e-6
+
+
+def test_verdict_reason_text_matches_the_outcome():
+    yes, no = dict(success=True, confidence=0.9), dict(success=False, confidence=0.9)
+    assert verdict.decide("success", True, yes)["reason"].startswith("claim confirmed by an independent check")
+    assert verdict.decide(None, True, yes)["reason"].startswith("both independent checks say success")
+    assert verdict.decide(None, True, no)["reason"].startswith("the independent checks disagree")
+    assert verdict.decide(None, False, no)["reason"].startswith("no independent check says success")
+    assert verdict.decide("fail", None, None)["reason"].startswith("program claimed fail")

@@ -163,7 +163,7 @@ class Workspace:
     """One agent's directory. `Workspace(path)` opens an existing one, `Workspace.create(...)` makes a new one."""
 
     def __init__(self, path):
-        self.path = Path(path).resolve()
+        self.path = Path(os.path.abspath(path))   # not resolve(): the run dir may be a symlink (same path on both hosts)
         self.session = json.loads((self.path / "session.json").read_text())
 
     @classmethod
@@ -177,7 +177,7 @@ class Workspace:
         condition = condition if role == "execute" else None
         cfg = cfg or config.load()
         robot = robot or config.robot()
-        run_dir = Path(run_dir).resolve()
+        run_dir = Path(os.path.abspath(run_dir))
         ws = run_dir / "agents" / role
         if (ws / "session.json").exists():
             raise FileExistsError(f"{ws} already exists")

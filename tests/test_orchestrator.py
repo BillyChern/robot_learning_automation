@@ -213,6 +213,7 @@ def _cfg(**collection):
     cfg["agents"]["max_attempts"] = 6
     cfg["collection"]["reflect_after_every_run"] = False      # its own test below
     cfg["training"].update(full_finetune_only=False, min_train_steps=0)   # the operator's training policy has its own test
+    cfg["hosts"]["train_host"] = None                                     # local training has its own test
     return cfg
 
 
@@ -1156,3 +1157,19 @@ def test_training_policy_refuses_lora_and_short_runs(runs):
     assert "at least 30000" in r("RLPJ_CONFIG=pi05_kinova_full bash scripts/train.sh /r d e --num-train-steps 12000")
     assert "at least 30000" in r("rlpj vla train --dataset d --exp-name e --config pi05_kinova_full")   # default 5000 steps
     assert r("rlpj vla train --dataset d --exp-name e --config pi05_kinova_full --num-train-steps 30000") is None
+
+
+def test_train_host_local_runs_convert_and_train_here(fakes, runs, tmp_path, monkeypatch):
+    st = state.RunState.create("th", "bee_in_tape_roll", "text")
+    cfg = _cfg()
+    cfg["hosts"]["train_host"] = "local"
+    p = loop.Pipeline(st, _op(), cfg)
+    p.workspace("learn")
+    where = []
+    monkeypatch.setattr(loop.Pipeline, "_ssh", lambda self, c, a, timeout_s=None, what="": where.append(("ssh", c)) or attempts.run_attempt(tmp_path, "true", a, False))
+    monkeypatch.setattr(loop.Pipeline, "_attempt", lambda self, cwd, c, a, m, **kw: where.append(("local", c)) or attempts.run_attempt(tmp_path, "true", a, False))
+    monkeypatch.setattr(loop.Pipeline, "_sync_episodes", lambda self: where.append(("sync", "")) or True)
+    for cmd in ("rlpj vla convert --name d", "rlpj vla train --dataset d --exp-name e --num-train-steps 30000", "python programs/analyse.py"):
+        p._learn_run(dict(action="run", command=cmd, what="x"), cmd)
+    assert [w[0] for w in where] == ["local", "local", "ssh"]                # analysis still runs on the agent host
+    assert "nice -n 10 rlpj vla train" in where[1][1]
