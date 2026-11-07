@@ -1015,7 +1015,8 @@ class Pipeline:
         if command.startswith("rlpj "):
             command = "uv run " + command
         remote = f"cd {shlex.quote(str(config.ROOT))} && {command}"
-        return self._attempt(self.st.dir, f"ssh -o BatchMode=yes {shlex.quote(host)} {shlex.quote(remote)}", attempt_dir, False,
+        return self._attempt(self.st.dir, f"ssh -o BatchMode=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=10 "
+                             f"{shlex.quote(host)} {shlex.quote(remote)}", attempt_dir, False,
                              timeout_s=timeout_s, what=what)
 
     def _note_vla(self, command, r):

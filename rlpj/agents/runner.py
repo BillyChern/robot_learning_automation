@@ -94,10 +94,18 @@ class AgentRunner:
             raise AgentError("no session to resume; call start() first")
         return self._turn(self.command(sid, resume=True), message, "resume")
 
+    SSH_RETRIES = 2                 # extra tries when the ssh link drops (exit 255, no JSON); the session resumes as before
+
     def _turn(self, argv, prompt, kind) -> tuple[Action, Usage]:
         t0 = time.time()
         proc = self._run(argv, prompt)
         result = _json_object(proc.stdout)
+        for k in range(self.SSH_RETRIES if not self.fake else 0):
+            if result is not None or proc.returncode != 255:
+                break
+            time.sleep(30 * (k + 1))   # 2026-11-07: a Tailscale ssh link dropped after the robot machine rebooted
+            proc = self._run(argv, prompt)
+            result = _json_object(proc.stdout)
         if result is None:
             raise AgentError(f"claude exit {proc.returncode} without a JSON result after {time.time() - t0:.0f} s\n"
                              f"stderr: {_tail(proc.stderr)}\nstdout: {_tail(proc.stdout, 5)}")
@@ -130,7 +138,8 @@ class AgentRunner:
         if self.fake:
             cmd, cwd = argv, self.ws.path
         else:
-            cmd, cwd = ["ssh", "-o", "BatchMode=yes", self.ws.host, self.shell_command(argv)], None
+            cmd, cwd = ["ssh", "-o", "BatchMode=yes", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=10",
+                        self.ws.host, self.shell_command(argv)], None
         try:
             return subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=self.timeout_s, cwd=cwd, env=env)
         except subprocess.TimeoutExpired as e:

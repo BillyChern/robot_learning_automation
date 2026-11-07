@@ -469,3 +469,42 @@ def test_prompts_describe_dagger(task_cfg, robot):
     assert "## Correction mode (DAgger)" in ex and "RLPJ_DAGGER=1" in ex and "RLPJ_START_JOINTS" in ex
     learn = render("learn", task_cfg, None, robot=robot)
     assert "DAgger is on (`evaluation.dagger`)" in learn and "--modes collect,dagger" in learn and "{" not in learn.split("DAgger is")[1][:40]
+
+
+def test_runner_retries_a_dropped_ssh_link(ws, fake_claude, monkeypatch):
+    runner = AgentRunner(ws, model="claude-opus-5-5", effort="low", timeout_s=30)
+    monkeypatch.setenv("FAKE_CLAUDE_OUTPUT", json.dumps({"action": "done", "report": "ok"}))
+    runner.start()
+    good = runner._run                                       # the fake claude, as on the agent host
+    calls = []
+
+    def flaky(argv, prompt):
+        calls.append(1)
+        if len(calls) == 1:                                  # 2026-11-07: "client_loop: send disconnect: Broken pipe"
+            return subprocess.CompletedProcess(argv, 255, "", "client_loop: send disconnect: Broken pipe")
+        runner.fake = fake                                   # the second try reaches the (fake) agent host
+        try:
+            return good(argv, prompt)
+        finally:
+            runner.fake = None
+
+    fake = runner.fake
+    monkeypatch.setattr(runner, "_run", flaky)
+    monkeypatch.setattr(runner, "fake", None)                # behave like the ssh path
+    monkeypatch.setattr("rlpj.agents.runner.time.sleep", lambda s: None)
+    action, _ = runner.resume("hello")
+    assert action.action == "done" and len(calls) == 2
+
+
+def test_runner_ssh_has_keepalives(ws):
+    runner = AgentRunner(ws, model="m", effort="low")
+    runner.fake = None
+    seen = []
+    import rlpj.agents.runner as R
+    orig = R.subprocess.run
+    R.subprocess.run = lambda cmd, **kw: seen.append(cmd) or subprocess.CompletedProcess(cmd, 0, "", "")
+    try:
+        runner._run(["claude", "-p"], "x")
+    finally:
+        R.subprocess.run = orig
+    assert seen[0][:7] == ["ssh", "-o", "BatchMode=yes", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=10"]
