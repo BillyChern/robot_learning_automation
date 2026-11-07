@@ -1107,3 +1107,38 @@ def test_report_lists_dagger_corrections(runs):
     md = state.report_md(st, _cfg())
     assert "| 04_lora_v1_14999 | `c` | 20 | 12 | 60% | no | 1/2 |" in md and "DAgger corrections: 3 (success 2" in md
     assert "dagger corrections 2/3 success" in "\n".join(state.status_lines(st, _cfg()))
+
+
+def test_is_train_counts_only_steps_that_start_a_training():
+    t = loop.Pipeline._is_train
+    assert t("rlpj vla train --dataset d --exp-name e") and t("cd /r && uv run rlpj vla train --dataset d")
+    assert t("cd /r && RLPJ_CONFIG=x RLPJ_RECIPE=/w/recipe.py setsid nohup bash scripts/train.sh /run bee_v2 lora_h30 --overwrite > log 2>&1 &")
+    assert t("python -m rlpj.vla.openpi_entry train --run-dir r --dataset d")
+    assert not t("cd /r && bash /w/programs/wait_train.sh lora_h30")                 # overnight 2026-11-06: counted 4 times
+    assert not t("pkill -f '[o]penpi_entry train'; tail -n 5 logs/train_lora_h30.log")
+    assert not t("cd /r && uv run rlpj vla convert --name bee_v2") and not t("rlpj eval r --checkpoint c")
+
+
+def test_robot_time_limit_does_not_apply_to_gpu_jobs(fakes, runs, tmp_path, monkeypatch):
+    st = state.RunState.create("t1", "bee_in_tape_roll", "text")
+    cfg = _cfg(attempt_timeout_s=1200)
+    p = loop.Pipeline(st, _op(), cfg)
+    seen = []
+    monkeypatch.setattr(attempts, "run_attempt", lambda cwd, command, attempt_dir, moves_robot, **kw: seen.append((moves_robot, kw["timeout_s"])))
+    p._attempt(tmp_path, "true", tmp_path / "a1", True)
+    p._attempt(tmp_path, "true", tmp_path / "a2", False)
+    p._attempt(tmp_path, "true", tmp_path / "a3", False, timeout_s=7200)
+    assert seen == [(True, 1200), (False, None), (False, 7200)]
+
+
+def test_phase_file_redirects_run_all(fakes, runs, monkeypatch):
+    st = state.RunState.create("t2", "bee_in_tape_roll", "text")
+    st.phase = "collect"
+    (st.dir / "PHASE").write_text("learn\n")
+    p = loop.Pipeline(st, _op(), _cfg())
+    went = []
+    monkeypatch.setattr(loop.Pipeline, "learn", lambda self: went.append("learn") or "gave_up")
+    monkeypatch.setattr(loop.Pipeline, "report", lambda self: None)
+    p.run_all()
+    assert went == ["learn"] and not (st.dir / "PHASE").exists()
+    assert any(e["kind"] == "phase_override" and e["was"] == "collect" for e in state.read_jsonl(st.dir / "events.jsonl"))

@@ -216,8 +216,10 @@ class Pipeline:
         (attempt_dir / "attempt.json").write_text(json.dumps(dict(what=what, commit=commit)))
         if moves_robot:
             attempts.wrist_stream_free(self.cfg["robot"]["ip"])
+        # the default time limit is for robot runs only; GPU jobs (convert, train) and offline runs bring their own
+        default = self.cfg["collection"].get("attempt_timeout_s") if moves_robot else None
         r = attempts.run_attempt(cwd, command, attempt_dir, moves_robot, record_dir=record_dir, extra_env=extra_env,
-                                 timeout_s=timeout_s or self.cfg["collection"].get("attempt_timeout_s"))
+                                 timeout_s=timeout_s or default)
         if moves_robot:
             self._check_gripper(attempt_dir, Path(cwd).name if Path(cwd).parent.name == "agents" else None)
         return r
@@ -964,8 +966,20 @@ class Pipeline:
 
     @staticmethod
     def _is_train(command):
-        toks = shlex.split(command)
-        return "train.sh" in command or "openpi_entry train" in command or ("train" in toks and "vla" in toks)
+        """True when one of the command's steps starts a training (not when a step only mentions it, as pgrep/tail do)."""
+        for step in re.split(r"&&|\|\||;|\|", command):
+            try:
+                toks = shlex.split(step)
+            except ValueError:
+                toks = step.split()
+            while toks and ("=" in toks[0] and not toks[0].startswith("-") or toks[0] in ("nohup", "setsid", "uv", "run", "exec", "time")):
+                toks = toks[1:]
+            if toks[:1] in (["bash"], ["sh"]):
+                toks = toks[1:]
+            if toks[:3] == ["rlpj", "vla", "train"] or (toks and Path(toks[0]).name == "train.sh") \
+                    or ("-m" in toks[:3] and "rlpj.vla.openpi_entry" in toks and "train" in toks):
+                return True
+        return False
 
     def _learn_run(self, action, command):
         """One 'run' of agent 3: evaluations here on the robot, everything else over ssh on the agent host."""
@@ -1248,6 +1262,14 @@ class Pipeline:
         col = self.cfg["collection"]
         phases = ("check", "develop_execute", "develop_reset", "collect", "learn", "report")
         phase = self.st.phase if self.st.phase in phases else "check"
+        f = self.st.dir / "PHASE"                       # operator redirect: `echo learn > runs/<run>/PHASE`, then RESTART
+        if f.exists():
+            want = f.read_text().strip()
+            f.unlink()
+            if want in phases:
+                self.st.event("phase_override", phase=want, was=phase)
+                self.op.notify(f"operator: phase {phase} -> {want}")
+                phase = want
         while True:
             self.st.phase = phase
             self.st.save()
