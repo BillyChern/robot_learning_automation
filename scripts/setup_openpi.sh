@@ -30,3 +30,11 @@ PY
 
 git rev-parse HEAD > "$ROOT/third_party/openpi.commit"
 echo "openpi ready at $(cat "$ROOT/third_party/openpi.commit")"
+
+# PyTorch full fine-tuning / serving (2026-11-07). openpi's lock pins torch 2.7.1 built for CUDA 12.6, which has no
+# kernels for Blackwell (RTX 5090, sm_120): install the CUDA 12.8 build, and apply openpi's transformers patch as fresh
+# files (cp --remove-destination) so the hard-linked uv cache is not modified. Our scripts then run with UV_NO_SYNC=1.
+(cd third_party/openpi && \
+  uv pip install --python .venv/bin/python --reinstall-package torch --reinstall-package torchvision \
+    "torch==2.7.1+cu128" "torchvision==0.22.1+cu128" --index-url https://download.pytorch.org/whl/cu128 && \
+  cp -r --remove-destination src/openpi/models_pytorch/transformers_replace/* .venv/lib/python3.11/site-packages/transformers/)

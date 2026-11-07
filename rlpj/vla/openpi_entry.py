@@ -135,7 +135,76 @@ def cmd_serve(argv):
     sp.main(args)
 
 
-COMMANDS = {"norm-stats": cmd_norm_stats, "train": cmd_train, "serve": cmd_serve}
+def _manage_pytorch_checkpoints(tp):
+    """openpi's PyTorch trainer keeps every checkpoint (about 20 GB each with the optimizer). After each save keep the
+    newest whole (to resume), keep_period multiples as weights only, and remove the rest. RLPJ_NO_SAVE=1 skips saving
+    (memory tests)."""
+    import shutil
+    orig = tp.save_checkpoint
+
+    def save(model, optimizer, global_step, config, is_main, data_config):
+        if os.environ.get("RLPJ_NO_SAVE") == "1":
+            return
+        orig(model, optimizer, global_step, config, is_main, data_config)
+        if not is_main or not config.checkpoint_dir.exists():
+            return
+        steps = sorted(int(p.name) for p in config.checkpoint_dir.iterdir() if p.name.isdigit())
+        for s in steps[:-1]:
+            d = config.checkpoint_dir / str(s)
+            if config.keep_period and s % config.keep_period == 0:
+                (d / "optimizer.pt").unlink(missing_ok=True)
+            else:
+                shutil.rmtree(d, ignore_errors=True)
+
+    tp.save_checkpoint = save
+
+
+def _use_8bit_adamw():
+    """openpi's PyTorch trainer builds torch.optim.AdamW. Swap in bitsandbytes' 8-bit AdamW (same update, state in 8 bits).
+    bf16 AdamW state needs about 15 GB for pi0.5 and runs out of memory on the 32 GB 5090 (2026-11-07: 30 GB at the
+    first optimizer step, batch 2); 8-bit state is about 7.5 GB. Every weight is still trained (full fine-tuning)."""
+    import bitsandbytes as bnb
+    import torch
+
+    class AdamW8bit(bnb.optim.AdamW8bit):
+        def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.0, **_):
+            super().__init__(params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+
+    torch.optim.AdamW = AdamW8bit
+
+
+def cmd_train_pytorch(argv):
+    """Full fine-tuning with openpi's PyTorch trainer (default config pi05_kinova_full: bf16, batch 2, 30k steps)."""
+    ns, rest = _parser("openpi_entry train-pytorch").parse_known_args(argv)
+    run_dir = _setup_env(ns.run_dir)
+    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+    from rlpj.vla import train_config as tc
+    import tyro
+    cfgs = _register(run_dir, _repo_id(ns.dataset))
+    if not rest or rest[0].startswith("-"):
+        rest = [tc.FULL_NAME, *rest]
+    config = tyro.extras.overridable_config_cli({k: (k, v) for k, v in cfgs.items()}, args=rest,
+                                                prog="openpi_entry train-pytorch")
+    tp = _script("train_pytorch")
+    _manage_pytorch_checkpoints(tp)
+    optimizer = os.environ.get("RLPJ_OPTIMIZER", "adamw8bit")
+    if optimizer == "adamw8bit":
+        _use_8bit_adamw()
+    tp.init_logging()
+    t0 = time.time()
+    tp.train_loop(config)
+    info = dict(trainer="pytorch", optimizer=optimizer, config=config.name, exp_name=config.exp_name, repo_id=config.data.repo_id,
+                checkpoint_dir=str(config.checkpoint_dir), num_train_steps=config.num_train_steps,
+                batch_size=config.batch_size, lr_schedule=dataclasses.asdict(config.lr_schedule),
+                precision=config.pytorch_training_precision, hf_lerobot_home=os.environ["HF_LEROBOT_HOME"],
+                host=platform.node(), seconds=round(time.time() - t0, 1), recipe=os.environ.get("RLPJ_RECIPE"),
+                finished=time.strftime("%Y-%m-%d %H:%M:%S"), argv=sys.argv[1:])
+    if os.environ.get("RLPJ_NO_SAVE") != "1":
+        (config.checkpoint_dir / "train_info.json").write_text(json.dumps(info, indent=1))
+    print(f"train-pytorch done in {info['seconds']}s -> {config.checkpoint_dir}")
+
+
+COMMANDS = {"norm-stats": cmd_norm_stats, "train": cmd_train, "train-pytorch": cmd_train_pytorch, "serve": cmd_serve}
 
 
 def main(argv=None):

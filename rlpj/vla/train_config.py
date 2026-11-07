@@ -17,6 +17,7 @@ import openpi.transforms as _transforms
 from .kinova_policy import KinovaInputs, KinovaOutputs
 
 PI05_BASE_PARAMS = "gs://openpi-assets/checkpoints/pi05_base/params"
+PI05_BASE_PYTORCH = pathlib.Path.home() / ".cache/openpi/openpi-assets/checkpoints/pi05_base_pytorch"   # convert_jax_model_to_pytorch.py, bf16
 DEFAULT_REPO_ID = "rlpj/kinova"
 LORA_NAME, FULL_NAME = "pi05_kinova_lora", "pi05_kinova_full"
 ACTION_HORIZON = 10
@@ -79,8 +80,12 @@ def configs(run_dir=None, repo_id: str | None = None) -> dict[str, _config.Train
                   wandb_enabled=os.environ.get("RLPJ_WANDB") == "1", policy_metadata=POLICY_METADATA, **dirs)
     lora = KinovaTrainConfig(name=LORA_NAME, model=lora_model(), freeze_filter=lora_model().get_freeze_filter(),
                              ema_decay=None, **common)
-    full = KinovaTrainConfig(name=FULL_NAME, model=pi0_config.Pi0Config(pi05=True, action_horizon=ACTION_HORIZON),
-                             ema_decay=0.999, fsdp_devices=1, **common)   # > 70 GB: reference only on one 5090
+    # full fine-tuning with openpi's PyTorch trainer (openpi_entry train-pytorch): bf16 weights and optimizer state,
+    # gradient checkpointing, no EMA, small batch, so it fits the 32 GB 5090 (JAX full fine-tuning needs > 70 GB)
+    full = KinovaTrainConfig(name=FULL_NAME, model=pi0_config.Pi0Config(pi05=True, action_horizon=ACTION_HORIZON,
+                                                                        pytorch_compile_mode=None),
+                             ema_decay=None, pytorch_weight_path=str(PI05_BASE_PYTORCH), pytorch_training_precision="bfloat16",
+                             **{**common, "batch_size": 2, "num_train_steps": 30000})
     return {c.name: c for c in (lora, full)}
 
 

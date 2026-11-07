@@ -1150,7 +1150,8 @@ def test_training_policy_refuses_lora_and_short_runs(runs):
     cfg = _cfg()
     cfg["training"].update(full_finetune_only=True, min_train_steps=30000)
     r = loop.Pipeline(st, _op(), cfg)._train_refusal
-    assert "LoRA" in r("rlpj vla train --dataset d --exp-name e --num-train-steps 40000")          # default config is LoRA
+    assert r("rlpj vla train --dataset d --exp-name e --num-train-steps 40000") is None             # default config is full
+    assert "LoRA" in r("rlpj vla train --dataset d --exp-name e --config pi05_kinova_lora --num-train-steps 40000")
     assert "LoRA" in r("RLPJ_CONFIG=pi05_kinova_lora_v4 setsid nohup bash scripts/train.sh /r d e --num-train-steps 40000")
     assert "at least 30000" in r("RLPJ_CONFIG=pi05_kinova_full bash scripts/train.sh /r d e --num-train-steps 12000")
     assert "at least 30000" in r("rlpj vla train --dataset d --exp-name e --config pi05_kinova_full")   # default 5000 steps

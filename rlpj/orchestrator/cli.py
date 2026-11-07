@@ -168,7 +168,7 @@ def vla(args):
         rest[i] = str(Path(rest[i]).resolve())
     if kind == "convert":
         cmd = (f"cd {shlex.quote(str(root / 'third_party/openpi'))} && PYTHONPATH={shlex.quote(str(root))} "
-               f"uv run python -m rlpj.vla.convert {shlex.join(rest)}")
+               f"uv run --no-sync python -m rlpj.vla.convert {shlex.join(rest)}")   # a sync would undo torch cu128
     elif kind == "train":
         run_dir, dataset, exp = take("--run-dir"), take("--dataset"), take("--exp-name")
         name, recipe = take("--config"), take("--recipe")

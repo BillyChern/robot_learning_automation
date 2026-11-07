@@ -993,7 +993,7 @@ class Pipeline:
         --num-train-steps (default 5000)."""
         tr = self.cfg["training"]
         m = re.search(r"RLPJ_CONFIG=(\S+)", command) or re.search(r"--config[ =](\S+)", command)
-        cfg_name = m.group(1).strip("'\"") if m else "pi05_kinova_lora"
+        cfg_name = m.group(1).strip("'\"") if m else "pi05_kinova_full"     # scripts/train.sh default
         m = re.search(r"--num[-_]train[-_]steps[ =](\d+)", command)
         steps = int(m.group(1)) if m else 5000
         why = []

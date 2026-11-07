@@ -7,6 +7,7 @@
 # Env: RLPJ_CONFIG / RLPJ_RECIPE (default: from <exp>/train_info.json, else pi05_kinova_lora), RLPJ_SERVE_PROGRAM
 # (agent 3's server: --checkpoint --port --config); JAX does not preallocate so training can share the GPU.
 set -euo pipefail
+export UV_NO_SYNC=1    # keep the venv as set up (torch cu128, transformers patch for PyTorch checkpoints)
 [ $# -ge 1 ] || { echo "usage: $0 <checkpoint_dir> [port]" >&2; exit 2; }
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CKPT="$(realpath "$1")"; PORT="${2:-8000}"
