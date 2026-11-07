@@ -27,7 +27,7 @@ collection:
 
 evaluation:
   episodes: 20
-  target_success_rate: 0.9
+  target_success_rate: 0.7        # operator, 2026-11-07 (was 0.9)
   max_policy_seconds: 150
   dagger: true                     # after a failed rollout the execute program takes over from the policy's last pose (mode 'dagger')
 
@@ -36,4 +36,6 @@ vlm: {model: claude-opus-5-5, effort: low}
 
 training:
   base_checkpoint: gs://openpi-assets/checkpoints/pi05_base
+  full_finetune_only: true         # operator, 2026-11-07: no LoRA; a training command must name a full fine-tuning config
+  min_train_steps: 30000           # operator, 2026-11-07: every training run at least 30k steps
   max_runs: 6

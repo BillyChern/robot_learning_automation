@@ -933,6 +933,12 @@ class Pipeline:
             self.st.event("agent", role="learn", action=kind, what=_get(action, "what"), report=_get(action, "report"))
             if kind == "run":
                 command = (_get(action, "command") or "").strip()
+                if self._is_train(command) and self._train_refusal(command):
+                    msg = self._train_refusal(command)
+                    self.st.event("train_refused", command=command, reason=msg)
+                    self.restart_point()
+                    action, usage = runner.resume(self._with_note("learn", msg))
+                    continue
                 if self._is_train(command):
                     if n_train >= tr["max_runs"]:
                         status = "collect_more"
@@ -980,6 +986,22 @@ class Pipeline:
                     or ("-m" in toks[:3] and "rlpj.vla.openpi_entry" in toks and "train" in toks):
                 return True
         return False
+
+    def _train_refusal(self, command):
+        """Why a training command breaks the operator's training policy (training.full_finetune_only, min_train_steps),
+        or None. The config comes from RLPJ_CONFIG=... or --config (default pi05_kinova_lora), the steps from
+        --num-train-steps (default 5000)."""
+        tr = self.cfg["training"]
+        m = re.search(r"RLPJ_CONFIG=(\S+)", command) or re.search(r"--config[ =](\S+)", command)
+        cfg_name = m.group(1).strip("'\"") if m else "pi05_kinova_lora"
+        m = re.search(r"--num[-_]train[-_]steps[ =](\d+)", command)
+        steps = int(m.group(1)) if m else 5000
+        why = []
+        if tr.get("full_finetune_only") and "lora" in cfg_name.lower():
+            why.append(f"config {cfg_name} is LoRA: the operator requires full fine-tuning (a full config, e.g. pi05_kinova_full)")
+        if steps < int(tr.get("min_train_steps") or 0):
+            why.append(f"{steps} steps: the operator requires at least {tr['min_train_steps']} (--num-train-steps)")
+        return ("refused, not run and not counted: " + "; ".join(why)) if why else None
 
     def _learn_run(self, action, command):
         """One 'run' of agent 3: evaluations here on the robot, everything else over ssh on the agent host."""

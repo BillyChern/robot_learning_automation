@@ -212,6 +212,7 @@ def _cfg(**collection):
     cfg["collection"].update(collection)
     cfg["agents"]["max_attempts"] = 6
     cfg["collection"]["reflect_after_every_run"] = False      # its own test below
+    cfg["training"].update(full_finetune_only=False, min_train_steps=0)   # the operator's training policy has its own test
     return cfg
 
 
@@ -1142,3 +1143,15 @@ def test_phase_file_redirects_run_all(fakes, runs, monkeypatch):
     p.run_all()
     assert went == ["learn"] and not (st.dir / "PHASE").exists()
     assert any(e["kind"] == "phase_override" and e["was"] == "collect" for e in state.read_jsonl(st.dir / "events.jsonl"))
+
+
+def test_training_policy_refuses_lora_and_short_runs(runs):
+    st = state.RunState.create("tp", "bee_in_tape_roll", "text")
+    cfg = _cfg()
+    cfg["training"].update(full_finetune_only=True, min_train_steps=30000)
+    r = loop.Pipeline(st, _op(), cfg)._train_refusal
+    assert "LoRA" in r("rlpj vla train --dataset d --exp-name e --num-train-steps 40000")          # default config is LoRA
+    assert "LoRA" in r("RLPJ_CONFIG=pi05_kinova_lora_v4 setsid nohup bash scripts/train.sh /r d e --num-train-steps 40000")
+    assert "at least 30000" in r("RLPJ_CONFIG=pi05_kinova_full bash scripts/train.sh /r d e --num-train-steps 12000")
+    assert "at least 30000" in r("rlpj vla train --dataset d --exp-name e --config pi05_kinova_full")   # default 5000 steps
+    assert r("rlpj vla train --dataset d --exp-name e --config pi05_kinova_full --num-train-steps 30000") is None

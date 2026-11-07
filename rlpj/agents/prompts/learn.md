@@ -2,6 +2,8 @@
 - **Instruction the policy is trained on:** "{TASK_INSTRUCTION}"
 - **Episodes:** {N_EPISODES} ({EPISODES_NOTE}) in `{EPISODES_DIR}`; dataset so far: {DATASET}.
 - **Goal:** success rate >= {TARGET_SUCCESS} over {EVAL_EPISODES} evaluation rollouts, within {MAX_RUNS} training runs.
+- **Training policy (operator):** full fine-tuning only, no LoRA, and at least {MIN_TRAIN_STEPS} steps per training
+  run. The orchestrator refuses other training commands (not run, not counted).
 - **History (training runs and evaluations so far):**
 {HISTORY}
 
