@@ -504,3 +504,14 @@ def test_session_goes_back_to_the_policy_pose_before_recording(fakes, tmp_path, 
         s.claim("success")
     S = json.load(open(A / "summary.json"))
     assert s.exit_code == 0 and S["dagger_start"]["tool"][2] < TZ + 0.06
+
+
+def test_sim_check_keeps_the_gripper_out_of_the_curtain():
+    pl = Planner(KIN)
+    toward = pl.cart_line("toward_curtain", Q_HOME, tool_down_T([0.48, 0.29, 0.43], 0.0), SLOW, exact_goal=False)
+    ok, rep = sim.check(toward.q, KIN, toward.speed, keep_in={"y": [-0.45, 0.30]})
+    assert not ok and rep["keep_in_violations"] > 0                     # rollout 209 went to y 0.295 and grasped the curtain
+    inside = pl.cart_line("over_table", Q_HOME, tool_down_T([0.48, 0.10, 0.30], 0.0), SLOW, exact_goal=False)
+    ok, rep = sim.check(inside.q, KIN, inside.speed, keep_in={"y": [-0.45, 0.30]})
+    assert ok and rep["keep_in_violations"] == 0
+    assert sim.cell_keep_in().get("y") == [-0.45, 0.30]                   # from config/pipeline.yaml robot.keep_in

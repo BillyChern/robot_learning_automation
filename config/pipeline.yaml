@@ -4,6 +4,8 @@ task: bee_in_bowl
 robot:
   ip: 192.168.2.9                  # kinova_a
   robots_json: ~/Documents/aaron/agentic_robotics/far_trials/robots.json
+  keep_in: {y: [-0.45, 0.30]}      # every gripper point (fingertips, body) stays inside, base frame m; the curtain hangs at
+                                   # y +0.31..+0.37 (2026-11-07: a policy rollout reached y 0.295 and grasped it, faulting the arm)
 
 hosts:
   agent: Worksation_5090           # 5090 (100.122.29.80): agents, VLM judge, training (no route to the arm)

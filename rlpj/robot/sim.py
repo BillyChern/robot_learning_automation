@@ -1,8 +1,20 @@
 """Simulation replay of planned joint trajectories: MuJoCo model of the Gen3 6-DoF + 2F-85 (from the fitted
 kinematics) for videos, and numeric checks (joint limits, speeds, table clearance)."""
+import functools
+
 import numpy as np
 from .kin import Kin, LIMITS_DEG, VMAX_DEG
 from . import calib
+
+
+@functools.lru_cache(None)
+def cell_keep_in():
+    """The work cell's keep-in box for the gripper (config robot.keep_in, e.g. {y: [lo, hi]}), or {}."""
+    try:
+        from rlpj import config
+        return dict(config.load().get("robot", {}).get("keep_in") or {})
+    except Exception:
+        return {}
 
 # gripper sample points in the TOOL frame (x = jaw closing axis, z = pointing direction)
 def gripper_points(opening=0.085, closed_frac=0.0):
@@ -21,8 +33,11 @@ def gripper_points(opening=0.085, closed_frac=0.0):
 
 
 def check(seg_q, kin, speed, dt=0.01, gripper_frac=0.0, table_z=None, tip_margin=0.008, allow_low=False,
-          cart_tol=1.15, max_radius=0.80):
-    """Return (ok, report dict) for a sampled joint trajectory."""
+          cart_tol=1.15, max_radius=0.80, keep_in=None):
+    """Return (ok, report dict) for a sampled joint trajectory. keep_in ({x|y|z: [lo, hi]}, default config robot.keep_in):
+    every gripper point must stay inside (the curtain beside the table)."""
+    keep = cell_keep_in() if keep_in is None else keep_in
+    out_of_cell = 0
     table_z = calib.table_z() if table_z is None else table_z
     rep = {}
     q = np.asarray(seg_q)
@@ -41,6 +56,9 @@ def check(seg_q, kin, speed, dt=0.01, gripper_frac=0.0, table_z=None, tip_margin
         T = F[-1]
         P = G @ T[:3, :3].T + T[:3, 3]
         min_tip = min(min_tip, P[:8, 2].min()); min_body = min(min_body, P[8:, 2].min())
+        for ax, (lo, hi) in keep.items():
+            c = P[:, "xyz".index(ax)]
+            out_of_cell += int(c.min() < lo or c.max() > hi)
         for Tj in F[1:6]:
             min_link = min(min_link, Tj[2, 3])
         if prev is not None:
@@ -50,11 +68,12 @@ def check(seg_q, kin, speed, dt=0.01, gripper_frac=0.0, table_z=None, tip_margin
         # keep the gripper away from the base column
         if np.hypot(*T[:2, 3]) < 0.18 and T[2, 3] < 0.25:
             rep["near_base"] = True
+    rep["keep_in_violations"] = out_of_cell
     rep.update(min_tip_above_table=float(min_tip - table_z), min_body_above_table=float(min_body - table_z),
                min_link_z=float(min_link), max_lin_speed=float(max_lin), max_radius=float(max_r))
     ok = (rep["joint_limit_violations"] == 0 and rep["joint_speed_ok"] and max_lin <= speed["lin"] * cart_tol
           and min_tip - table_z > tip_margin and min_body - table_z > 0.03 and min_link - table_z > 0.05
-          and not rep.get("near_base") and max_r < max_radius)
+          and not rep.get("near_base") and max_r < max_radius and out_of_cell == 0)
     rep["ok"] = bool(ok)
     return ok, rep
 
