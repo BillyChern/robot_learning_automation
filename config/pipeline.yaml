@@ -9,8 +9,8 @@ robot:
 
 hosts:
   agent: Worksation_5090           # 5090 (100.122.29.80): agents, VLM judge, training (no route to the arm)
-  policy_host: Worksation_5090     # where `rlpj eval` serves pi0.5: local (this 4090) or an ssh host; 5090 since 2026-11-06 (the 4090 GPU is shared with other jobs: 18.7 of 24.5 GB in use, the server ran out of memory)
-  policy_server: 100.122.29.80     # address the rollout connects to (127.0.0.1 when policy_host is local)
+  policy_host: local               # this 4090 (GPU free since the 11-07 reboot) while the 5090 trains; Worksation_5090 when the 4090 GPU is taken
+  policy_server: 127.0.0.1         # 100.122.29.80 when policy_host is the 5090
   policy_port: 8000
 
 recording: {fps: 15, width: 640, height: 360}
