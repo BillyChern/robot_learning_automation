@@ -1,6 +1,6 @@
 #!/bin/bash
 # Serve a checkpoint with openpi's websocket policy server (4090 by default, or 5090).  bash scripts/serve.sh <checkpoint_dir> [port]
-#   <checkpoint_dir> = <run_dir>/checkpoints/<exp_name>/<step>  (must contain params/ and assets/)
+#   <checkpoint_dir> = <run_dir>/checkpoints/<exp_name>/<step>  (params/ for JAX or model.safetensors for PyTorch, and assets/)
 #   rlpj eval does this itself (hosts.policy_host). On the 5090 by hand:  ssh Worksation_5090 'nohup bash ~/robot_learning_final_pj/scripts/serve.sh \
 #       ~/robot_learning_final_pj/runs/r1/checkpoints/lora_5k/4999 8000 >/dev/null 2>&1 &'
 #   stop:  ssh Worksation_5090 'pkill -f "rlpj.vla.openpi_entry serve"'
@@ -15,7 +15,7 @@ INFO="$(dirname "$CKPT")/train_info.json"      # written by training: config nam
 info() { [ -f "$INFO" ] && python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2]) or '')" "$INFO" "$1" || true; }
 CONFIG="${RLPJ_CONFIG:-$(info config)}"; CONFIG="${CONFIG:-pi05_kinova_lora}"
 RECIPE="${RLPJ_RECIPE:-$(info recipe)}"; [ -n "$RECIPE" ] && export RLPJ_RECIPE="$RECIPE"
-[ -d "$CKPT/params" ] || { echo "no params/ in $CKPT" >&2; exit 2; }
+[ -d "$CKPT/params" ] || [ -f "$CKPT/model.safetensors" ] || { echo "no params/ or model.safetensors in $CKPT" >&2; exit 2; }
 case "$CKPT" in */checkpoints/*) LOG="${CKPT%%/checkpoints/*}/logs" ;; *) LOG="$ROOT/runs/logs" ;; esac
 mkdir -p "$LOG"
 TAG="$(basename "$(dirname "$CKPT")")_$(basename "$CKPT")"

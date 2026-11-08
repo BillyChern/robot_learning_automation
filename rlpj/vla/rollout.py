@@ -127,7 +127,8 @@ def main(argv=None):
     p.add_argument("--chunk", type=int, default=10, help="actions taken from each policy call")
     p.add_argument("--replan-every", type=int, default=10, help="actions executed before the next call")
     p.add_argument("--fps", type=float, default=cfg["recording"]["fps"], help="recording rate = action rate")
-    p.add_argument("--tip-margin", type=float, default=0.003, help="fingertip clearance above the table (m)")
+    p.add_argument("--tip-margin", type=float, default=0.008,
+                   help="fingertip clearance above the table (m); the session re-checks every segment at 0.008")
     p.add_argument("--settle-tol", type=float, default=0.5, help="deg; chunk ends when within this of its target")
     p.add_argument("--dry-chunks", type=int, default=3, help="cycles to run without RLPJ_MOTION=1")
     a = p.parse_args(argv)
