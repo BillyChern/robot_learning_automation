@@ -10,11 +10,12 @@ sed -i -E 's|^  policy_host: .*$|  policy_host: local               # 4090 GPU f
 cat >> "$RUN/notes/learn.md" <<NOTE
 
 $EXP finished training at $(date '+%F %T') on the 4090: final checkpoint $LAST.
-Evaluate it now: rlpj eval $1 --checkpoint $LAST --n 20 (DAgger on), with the rollout that matches the
-representation it was trained with: the default rollout for the stock config, your own rollout for a recipe that
-changes the actions or state (e.g. joint deltas, gripper-only state). The policy server runs on the 4090
-(hosts.policy_host local). If it is short of 70 %, convert a new dataset (all collection episodes plus DAgger
-corrections) and train the next full fine-tuning run on the 4090: >= 30k steps, --batch-size 4.
+Evaluate it now: rlpj eval $1 --checkpoint $LAST --n 20 --rollout programs/rollout_look.py (DAgger on): the
+policy starts at the look pose, like the bee_v5 episodes, which start at the approach phase. The policy server
+runs on the 4090 (hosts.policy_host local). If it is short of 70 %, build the next dataset the same way:
+rlpj vla convert --modes collect,dagger --wrist normal --start-phase approach --drop-idle (newest collection
+episodes and DAgger corrections included; only collection episodes are trimmed to the look pose). Train the next
+full fine-tuning run on the 4090 from the best checkpoint so far: >= 30k steps, --batch-size 4.
 NOTE
 echo "- $(date '+%m-%d %H:%M'): $EXP finished ($LAST). after_training.sh: policy_host local, learn note, PHASE=learn." >> "$RUN/OPERATOR_LOG.md"
 echo learn > "$RUN/PHASE"; echo "evaluate $EXP" > "$RUN/RESTART"

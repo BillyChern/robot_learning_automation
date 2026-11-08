@@ -172,3 +172,29 @@ def test_asset_id_from_checkpoint(tmp_path):
     assert openpi_entry.asset_id_from_checkpoint(tmp_path) == "rlpj/bee_v1"
     assert openpi_entry.asset_id_from_checkpoint(tmp_path / "none") is None
     assert openpi_entry._repo_id("bee_v1") == "rlpj/bee_v1" and openpi_entry._repo_id("a/b") == "a/b"
+
+
+def test_idle_keep_mask_drops_pauses_but_keeps_gripper_changes():
+    q = np.zeros((40, 6)); q[:, 0] = np.r_[np.zeros(15), np.linspace(0, 10, 10), np.full(15, 10.0)]
+    qc = np.vstack([q[1:], q[-1:]])
+    g = np.r_[np.zeros(30), np.linspace(0, 70, 5), np.full(5, 70.0)]
+    gc = np.r_[np.zeros(28), np.ones(12)]
+    m = convert.idle_keep_mask(q, qc, g, gc)
+    assert m[:2].all() and not m[2:5].any()                 # opening pause: first 2 kept, rest dropped
+    assert m[14:25].all()                                    # the move
+    assert m[25:35].all()                                    # still joints but the gripper command/reading changes
+    assert not m[-3:].any()                                  # final pause after the gripper settled
+
+
+def test_load_episode_wrist_start_phase_and_idle(tmp_path):
+    import json
+    ep = tmp_path / "episodes" / "ep_000000"
+    make_episode(ep, n_steps=40, fps=15, seed=3)
+    (ep / "phases.json").write_text(json.dumps([{"name": "start", "i0": 0, "i1": 10}, {"name": "approach", "i0": 10, "i1": 40}]))
+    d = convert.load_episode(ep, start_phase="approach")
+    assert d["n"] == 30 and d["image"].shape[0] == 30 and "starts at phase approach (frame 10)" in d["notes"]
+    np.testing.assert_allclose(d["state"], convert.load_episode(ep)["state"][10:])
+    st = dict(np.load(ep / "steps.npz")); st["q"] = st["q"].copy(); st["q"][5, 3] = 180.0
+    np.savez(ep / "steps.npz", **st)
+    with pytest.raises(convert.Skip):
+        convert.load_episode(ep, wrist="normal")

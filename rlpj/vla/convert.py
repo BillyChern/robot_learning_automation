@@ -65,12 +65,50 @@ def read_video(path, n=None, size=SIZE):
     return np.stack(frames)
 
 
-def load_episode(ep_dir, size=SIZE, with_images=True):
-    """Read one episode dir -> dict(meta, n, fps, instruction, state, actions, image, wrist_image, phases, notes)."""
+class Skip(Exception):
+    """Episode left out on purpose (reason in the message)."""
+
+
+def wrist_flipped(q_deg):
+    """True where joint 4 is in the flipped wrist family (90..270 deg); the rollout's look pose uses the normal one."""
+    q4 = np.mod(np.asarray(q_deg, float).reshape(-1, 6)[:, 3], 360.0)
+    return (q4 > 90.0) & (q4 < 270.0)
+
+
+def idle_keep_mask(q_deg, q_cmd_deg, gripper, gripper_cmd, horizon=10, tol_deg=0.3, grip_tol=2.0, keep=2):
+    """Bool mask of frames to keep: drop frames whose next `horizon` commands move no joint more than tol_deg while the
+    gripper command stays the same and the reading changes < grip_tol (a scripted pause); keep the first `keep` frames
+    of every pause. A single frame cannot tell when a pause ends, so pauses teach the policy to stall."""
+    q = np.asarray(q_deg, float).reshape(-1, 6)
+    qc = np.asarray(q_cmd_deg, float).reshape(-1, 6)
+    g = np.nan_to_num(np.asarray(gripper, float).reshape(-1))
+    gc = np.nan_to_num(np.asarray(gripper_cmd, float).reshape(-1))
+    n = len(q)
+    idle = np.zeros(n, bool)
+    for k in range(n):
+        j = min(n, k + horizon)
+        move = np.abs(wrap180(qc[k:j] - q[k])).max()
+        idle[k] = move < tol_deg and np.ptp(gc[k:j]) == 0 and abs(g[j - 1] - g[k]) < grip_tol
+    mask = ~idle
+    run = 0
+    for k in range(n):
+        run = run + 1 if idle[k] else 0
+        if idle[k] and run <= keep:
+            mask[k] = True
+    return mask
+
+
+def load_episode(ep_dir, size=SIZE, with_images=True, wrist=None, start_phase=None, drop_idle=False):
+    """Read one episode dir -> dict(meta, n, fps, instruction, state, actions, image, wrist_image, phases, notes).
+    wrist="normal": raise Skip if joint 4 ever enters the flipped family. start_phase: drop frames before the first
+    phase of that name (collect episodes only; DAgger corrections start at the policy's pose and keep their recovery).
+    drop_idle: drop scripted pauses (idle_keep_mask)."""
     ep = Path(ep_dir)
     meta = json.loads((ep / "meta.json").read_text())
     st = np.load(ep / "steps.npz")
     n = int(len(st["q"]))
+    if wrist == "normal" and wrist_flipped(st["q"]).any():
+        raise Skip(f"wrist flipped in {int(wrist_flipped(st['q']).sum())} of {n} steps")
     notes = []
     out = dict(meta=meta, fps=int(round(float(meta["fps"]))), instruction=str(meta.get("instruction", "")), notes=notes)
     if (ep / "phases.json").exists():
@@ -84,6 +122,21 @@ def load_episode(ep_dir, size=SIZE, with_images=True):
         out["image"], out["wrist_image"] = side[:m], wrist[:m]
         n = m
     state, actions = state_actions(st["q"][:n], st["gripper"][:n], st["q_cmd"][:n], st["gripper_cmd"][:n])
+    keep = np.ones(n, bool)
+    if start_phase and meta.get("mode", "collect") == "collect":      # DAgger corrections keep their recovery
+        i0 = next((int(p["i0"]) for p in out.get("phases", []) if p.get("name") == start_phase), None)
+        if i0 is not None:
+            keep[:min(i0, n)] = False
+            notes.append(f"starts at phase {start_phase} (frame {i0})")
+    if drop_idle:
+        idle_ok = idle_keep_mask(st["q"][:n], st["q_cmd"][:n], st["gripper"][:n], st["gripper_cmd"][:n])
+        notes.append(f"dropped {int((keep & ~idle_ok).sum())} idle frames")
+        keep &= idle_ok
+    if not keep.all():
+        idx = np.flatnonzero(keep)
+        state, actions, n = state[idx], actions[idx], len(idx)
+        if with_images:
+            out["image"], out["wrist_image"] = out["image"][idx], out["wrist_image"][idx]
     out.update(n=n, state=state, actions=actions)
     return out
 
@@ -137,7 +190,8 @@ def features(size=SIZE, videos=False):
     }
 
 
-def build_dataset(run_dir, name, episode_dirs, fps, overwrite=False, videos=False, size=SIZE, log=print):
+def build_dataset(run_dir, name, episode_dirs, fps, overwrite=False, videos=False, size=SIZE, log=print, wrist=None,
+                  start_phase=None, drop_idle=False):
     """Write the LeRobot dataset under runs/<run>/datasets/rlpj/<name>; returns the manifest dict."""
     run_dir = Path(run_dir).resolve()
     home = run_dir / "datasets"
@@ -154,11 +208,16 @@ def build_dataset(run_dir, name, episode_dirs, fps, overwrite=False, videos=Fals
                                features=features(size, videos), use_videos=videos, image_writer_threads=8)
     manifest = dict(repo_id=repo_id, root=str(root), fps=int(fps), image_size=size, image_dtype="video" if videos else "image",
                     state="[q1..q6 rad wrapped (-pi,pi], gripper reading/100]", actions="[q_cmd1..6 rad, gripper_cmd 0..1]",
-                    episodes=[], excluded=[], n_frames=0, created=time.strftime("%Y-%m-%d %H:%M:%S"))
+                    episodes=[], excluded=[], n_frames=0, created=time.strftime("%Y-%m-%d %H:%M:%S"),
+                    options=dict(wrist=wrist, start_phase=start_phase, drop_idle=drop_idle))
     for i, d in enumerate(episode_dirs):
         t0 = time.time()
         try:
-            ep = load_episode(d, size)
+            ep = load_episode(d, size, wrist=wrist, start_phase=start_phase, drop_idle=drop_idle)
+        except Skip as e:
+            manifest["excluded"].append(dict(dir=str(d), reason=str(e)))
+            log(f"[{i + 1}/{len(episode_dirs)}] {Path(d).name}: left out ({e})")
+            continue
         except Exception as e:
             manifest["excluded"].append(dict(dir=str(d), reason=f"load failed: {e!r}"))
             log(f"[{i + 1}/{len(episode_dirs)}] {d}: skipped ({e!r})")
@@ -195,6 +254,9 @@ def main(argv=None):
     p.add_argument("--fps", type=int, default=None, help="expected recording fps (default: first episode's)")
     p.add_argument("--limit", type=int, default=None, help="use at most this many episodes")
     p.add_argument("--dry-run", action="store_true", help="only list the selection (no lerobot needed)")
+    p.add_argument("--wrist", choices=["normal"], default=None, help="leave out episodes that use the flipped wrist (joint 4 90..270)")
+    p.add_argument("--start-phase", default=None, help="drop frames before this phase, e.g. approach (= the look pose)")
+    p.add_argument("--drop-idle", action="store_true", help="drop scripted pauses (keep 2 frames of each, keep gripper changes)")
     a = p.parse_args(argv)
     modes = tuple(m for m in a.modes.split(",") if m)
     used, excluded, fps = select_episodes(a.run_dir, a.episodes_glob, a.all, modes, a.fps)
@@ -208,7 +270,8 @@ def main(argv=None):
     if not used:
         print("nothing to convert", file=sys.stderr)
         return 2
-    manifest = build_dataset(a.run_dir, a.name, used, fps, a.overwrite, a.videos, a.size)
+    manifest = build_dataset(a.run_dir, a.name, used, fps, a.overwrite, a.videos, a.size, wrist=a.wrist,
+                             start_phase=a.start_phase, drop_idle=a.drop_idle)
     manifest["excluded"] = [dict(dir=d, reason=r) for d, r in excluded] + manifest["excluded"]
     (Path(manifest["root"]) / "manifest.json").write_text(json.dumps(manifest, indent=1))
     print(f"wrote {manifest['root']}: {manifest['n_episodes']} episodes, {manifest['n_frames']} frames")
