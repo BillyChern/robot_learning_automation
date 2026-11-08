@@ -10,8 +10,9 @@ sed -i -E 's|^  policy_host: .*$|  policy_host: local               # 4090 GPU f
 cat >> "$RUN/notes/learn.md" <<NOTE
 
 $EXP finished training at $(date '+%F %T') on the 4090: final checkpoint $LAST.
-Evaluate it now: rlpj eval $1 --checkpoint $LAST --n 20 (DAgger on; the default rollout fits it, since it uses the
-standard state and action representation, so do not pass a --rollout). The policy server runs on the 4090
+Evaluate it now: rlpj eval $1 --checkpoint $LAST --n 20 (DAgger on), with the rollout that matches the
+representation it was trained with: the default rollout for the stock config, your own rollout for a recipe that
+changes the actions or state (e.g. joint deltas, gripper-only state). The policy server runs on the 4090
 (hosts.policy_host local). If it is short of 70 %, convert a new dataset (all collection episodes plus DAgger
 corrections) and train the next full fine-tuning run on the 4090: >= 30k steps, --batch-size 4.
 NOTE
