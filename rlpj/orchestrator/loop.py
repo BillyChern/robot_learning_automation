@@ -1122,6 +1122,7 @@ class Pipeline:
             if r.returncode != 0:
                 self.op.notify(f"policy server start on {host} failed: {(r.stderr or r.stdout).strip()[-300:]}")
                 return False
+            self._remote_log = (host, log)
         self.op.notify(f"policy server starting on {host}:{port} for {checkpoint_dir} (log {log} on {host})")
         return True
 
@@ -1137,6 +1138,23 @@ class Pipeline:
                 return True
             except OSError:
                 time.sleep(5)
+            if p is None and self._remote_server_died():
+                return False
+        return False
+
+    def _remote_server_died(self):
+        """True when the remote server's log shows a Python traceback (it died; without this the wait ran 15 min)."""
+        host, log = getattr(self, "_remote_log", None) or (None, None)
+        if host is None:
+            return False
+        try:
+            r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-n", host, f"grep -q '^Traceback' {shlex.quote(str(log))}"],
+                               timeout=20, capture_output=True, text=True)
+        except subprocess.TimeoutExpired:
+            return False
+        if r.returncode == 0:
+            self.op.notify(f"policy server on {host} died (Traceback in {log} on {host})")
+            return True
         return False
 
     def _serve_program(self):
