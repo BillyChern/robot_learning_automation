@@ -515,3 +515,23 @@ def test_sim_check_keeps_the_gripper_out_of_the_curtain():
     ok, rep = sim.check(inside.q, KIN, inside.speed, keep_in={"y": [-0.45, 0.30]})
     assert ok and rep["keep_in_violations"] == 0
     assert sim.cell_keep_in().get("y") == [-0.45, 0.30]                   # from config/pipeline.yaml robot.keep_in
+
+
+def test_wait_for_watchdog_up_exit_and_timeout(tmp_path):
+    import subprocess, sys
+    from rlpj.robot.session import wait_for_watchdog
+    log = tmp_path / "watchdog_log.txt"
+    up = subprocess.Popen([sys.executable, "-c", f"import time; time.sleep(0.3); open({str(log)!r}, 'a').write('12:00:00 watchdog up, main pid 1\\n'); time.sleep(5)"])
+    try:
+        assert wait_for_watchdog(str(log), up, 5.0)
+    finally:
+        up.kill()
+    log.unlink()
+    dead = subprocess.Popen([sys.executable, "-c", "raise SystemExit(1)"])
+    t0 = time.time()
+    assert not wait_for_watchdog(str(log), dead, 5.0) and time.time() - t0 < 3.0      # exited: no waiting out the timeout
+    slow = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(5)"])
+    try:
+        assert not wait_for_watchdog(str(log), slow, 0.5)
+    finally:
+        slow.kill()

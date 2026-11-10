@@ -50,14 +50,20 @@ class Robot:
         self.udp = _Conn(self.ip, 10001, udp=True)
         self.base = BaseClient(self.tcp.router)
         self.cyc = BaseCyclicClient(self.udp.router)
-        for k in range(10):               # a fresh cyclic (UDP) session can refuse its first requests (INVALID_USER_SESSION_ACCESS)
+        # a fresh cyclic (UDP) session can refuse its first requests (INVALID_USER_SESSION_ACCESS) for seconds: 26 robot
+        # runs failed to start within 2 s (2026-11-09). Retry for ~10 s and open a new UDP session halfway.
+        for k in range(25):
             try:
                 self.cyc.RefreshFeedback()
                 break
             except Exception:
-                if k == 9:
+                if k == 24:
                     raise
-                time.sleep(0.2)
+                if k == 12:
+                    self.udp.close()
+                    self.udp = _Conn(self.ip, 10001, udp=True)
+                    self.cyc = BaseCyclicClient(self.udp.router)
+                time.sleep(0.4)
         self.lock = threading.Lock()      # serialises TCP calls between threads
         self.fb_lock = threading.Lock()
         self.gripper_cmd = float("nan")   # last commanded gripper value (0 open .. 1 closed)

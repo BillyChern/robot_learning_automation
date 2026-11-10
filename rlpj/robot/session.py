@@ -72,6 +72,25 @@ class Summary:
         return np.round(o, 4).tolist() if isinstance(o, np.ndarray) else float(o) if isinstance(o, np.floating) else str(o)
 
 
+WATCHDOG_WAIT_S = 25.0   # the watchdog connects to the arm (up to ~10 s of retries) and loads the model
+
+
+def wait_for_watchdog(log_path, proc, timeout):
+    """True once the watchdog has written "watchdog up" to its log; False if it exits first or the time runs out."""
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        try:
+            with open(log_path) as f:
+                if "watchdog up" in f.read():
+                    return True
+        except OSError:
+            pass
+        if proc.poll() is not None:
+            return False
+        time.sleep(0.1)
+    return False
+
+
 class RobotSession:
     """Context manager; exit codes 0 success, 2 fail, 130 operator stop, 3 exception (raised as SystemExit)."""
 
@@ -239,8 +258,17 @@ class RobotSession:
         if fk_err > FK_CHECK_MM:
             raise Abort(f"model FK disagrees with measured tool pose by {fk_err:.1f} mm (run python -m rlpj.robot.fit_kin)")
         if self.use_watchdog:
-            self.wd = subprocess.Popen([sys.executable, "-m", "rlpj.robot.watchdog", self.A, str(os.getpid())] + (["dry"] if self.dry else []),
-                                       cwd=str(config.ROOT), stdin=subprocess.PIPE, start_new_session=True)
+            for k in range(2):           # nothing moves until the watchdog is up (11 runs moved without one, 2026-11-09)
+                self.wd = subprocess.Popen([sys.executable, "-m", "rlpj.robot.watchdog", self.A, str(os.getpid())] + (["dry"] if self.dry else []),
+                                           cwd=str(config.ROOT), stdin=subprocess.PIPE, start_new_session=True)
+                if wait_for_watchdog(os.path.join(self.A, "watchdog_log.txt"), self.wd, WATCHDOG_WAIT_S):
+                    break
+                if self.wd.poll() is None:
+                    self.wd.kill()
+                self.log(f"watchdog did not come up (try {k + 1})")
+            else:
+                self.wd = None
+                raise Abort("watchdog did not start (see watchdog_log.txt and console.txt); nothing was moved")
             self.wd.stdin.write(("HOME " + " ".join(f"{v:.4f}" for v in self.q_home) + "\n").encode()); self.wd.stdin.flush()
             self.hb("idle")
 

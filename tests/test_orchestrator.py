@@ -564,7 +564,8 @@ def test_rollout_command_from_config(fakes, runs, tmp_path):
     cfg = _cfg()
     c = loop.Pipeline(st, _op(), cfg)._rollout_command()
     host = cfg["hosts"]["policy_server"]
-    assert f"-m rlpj.vla.rollout --host {host} --port 8000 --instruction 'put the foam bee in the tape roll' --max-seconds 150" in c
+    secs = cfg["evaluation"]["max_policy_seconds"]
+    assert f"-m rlpj.vla.rollout --host {host} --port 8000 --instruction 'put the foam bee in the tape roll' --max-seconds {secs}" in c
 
 
 def test_fetch_checkpoint_pulls_and_prunes(runs, tmp_path, monkeypatch):
