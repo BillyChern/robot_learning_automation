@@ -116,6 +116,7 @@ class RobotSession:
         self.table_z = calib.table_z()
         self.workspace = self._workspace()
         self.release_zone = self._task_key("release_zone")
+        self.gripper_check = self._task_key("gripper_check")
         self.q_home = self.q_sim = None
         self.side = self.wrist = self.view = self.robot = self.planner = self.executor = None
         self.wd = self.recorder = None
@@ -194,20 +195,49 @@ class RobotSession:
             return None
 
     def _check_release(self, value):
-        """Opening the gripper on a held object (reading in the task's release_zone.reading) only inside the zone and
-        low enough: anywhere else the object could fall off the table. Raises Abort (the object stays held)."""
+        """Opening the gripper on an object (reading in the task's release_zone.reading, or the object seen on the
+        fingers in the wrist image, task gripper_check) only inside the zone and low enough: anywhere else it could fall
+        off the table. Raises Abort (the object stays). Before the first gripper command of a program the measured
+        reading counts (2026-11-10: a correction opened at 0.27 m with the bee stuck on the closed fingers, reading 100)."""
         z = self.release_zone
-        if not z or self.grip_reading is None or value >= self.grip_frac - 0.02:
+        if not z:
+            return
+        reading = self.grip_reading
+        if reading is None:
+            try:
+                reading = float(np.nan_to_num(self.feedback()["gripper"]))
+            except Exception:
+                reading = None
+        closed = self.grip_frac if self.grip_cmd_sent else (reading or 0.0) / 100.0
+        if value >= closed - 0.02:
             return
         lo, hi = z.get("reading", (60.0, 92.0))
-        if not lo <= self.grip_reading <= hi:
-            return
+        if reading is not None and lo <= reading <= hi:
+            what = f"holding an object (gripper reading {reading:.1f})"
+        else:
+            f = self._object_on_fingers()
+            if f is None:
+                return
+            what = (f"the object is on the fingers (object colour {f:.2f} of the bottom of the wrist image; gripper "
+                    f"reading {reading if reading is None else round(reading, 1)})")
         x, y, h = (float(v) for v in self.feedback()["pose"][:3])
         h -= self.table_z
         if not (z["x"][0] <= x <= z["x"][1] and z["y"][0] <= y <= z["y"][1] and h <= z.get("max_height", 0.20)):
-            raise Abort(f"release refused: holding an object (gripper reading {self.grip_reading:.1f}) at "
-                        f"({x:.3f}, {y:.3f}), {h:.3f} m above the table, outside the release zone x {z['x']} y {z['y']} "
-                        f"below {z.get('max_height', 0.20)} m (task release_zone): put it down inside the zone")
+            raise Abort(f"release refused: {what} at ({x:.3f}, {y:.3f}), {h:.3f} m above the table, outside the release "
+                        f"zone x {z['x']} y {z['y']} below {z.get('max_height', 0.20)} m (task release_zone): put it down "
+                        f"inside the zone")
+
+    def _object_on_fingers(self):
+        """Share of object colour at the bottom of the wrist image when above the task's gripper_check.max_frac, else None."""
+        chk = self.gripper_check
+        if not chk or self.wrist is None:
+            return None
+        try:
+            from rlpj.perception.wrist import gripper_load
+            f = gripper_load(self.wrist.latest()[0], chk)
+        except Exception:
+            return None
+        return f if f is not None and f > chk["max_frac"] else None
 
     def _git_commit(self):
         try:

@@ -535,3 +535,29 @@ def test_wait_for_watchdog_up_exit_and_timeout(tmp_path):
         assert not wait_for_watchdog(str(log), slow, 0.5)
     finally:
         slow.kill()
+
+
+def test_session_refuses_to_open_with_the_bee_on_the_fingers_outside_the_zone(fakes, tmp_path):
+    """2026-11-10: the bee stuck on the closed fingers reads 100 ('closed on nothing'); a correction opened at 0.27 m
+    as its first gripper command and dropped it. The wrist image now counts, and so does the measured reading."""
+    from rlpj.robot.session import RobotSession
+    zone = dict(reading=[60, 92], x=[0.36, 0.60], y=[-0.22, 0.08], max_height=0.20)
+    chk = dict(hsv=[[0, 120, 110], [40, 255, 255]], bottom=0.15, max_frac=0.10)
+    A = tmp_path / "r2"
+    with RobotSession(program="test", attempt_dir=A, view_port=0, exit_on_close=False, kin=KIN) as s:
+        s.release_zone, s.gripper_check = zone, chk
+        s.robot.gripper_cmd = 1.0
+        s.wrist.color[:] = 0                                    # nothing on the fingers: opening anywhere is fine
+        s.grip_reading, s.grip_frac, s.grip_cmd_sent = 100.0, 1.0, True
+        s.gripper(0.0, "open, nothing held")
+        s.gripper(1.0, "close")
+        s.grip_reading = 100.0
+        s.wrist.color[:, :, 2] = 180                            # bee colour at the fingertips (FakeWristCam red)
+        s.gripper(0.0, "open over the bee area, low")           # inside the zone: allowed
+        s.gripper(1.0, "close")
+        s.grip_reading = 100.0
+        s.move_joint("high", KIN.ik(tool_down_T([0.45, 0.0, TZ + 0.27], 0.0), Q_HOME)[0], "normal")
+        s.gripper(0.0, "open high with the bee on the fingers") # refused
+        raise AssertionError("not reached")
+    S = json.load(open(A / "summary.json"))
+    assert s.exit_code == 2 and "release refused: the object is on the fingers" in S["stop"]["why"]
