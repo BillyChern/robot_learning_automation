@@ -51,7 +51,8 @@ class Robot:
         self.base = BaseClient(self.tcp.router)
         self.cyc = BaseCyclicClient(self.udp.router)
         # a fresh cyclic (UDP) session can refuse its first requests (INVALID_USER_SESSION_ACCESS) for seconds: 26 robot
-        # runs failed to start within 2 s (2026-11-09). Retry for ~10 s and open a new UDP session halfway.
+        # runs failed to start within 2 s (2026-11-09). Retry on the same session for ~10 s; opening another session
+        # here may invalidate the other process's (main program / watchdog) session, so it does not.
         for k in range(25):
             try:
                 self.cyc.RefreshFeedback()
@@ -59,10 +60,6 @@ class Robot:
             except Exception:
                 if k == 24:
                     raise
-                if k == 12:
-                    self.udp.close()
-                    self.udp = _Conn(self.ip, 10001, udp=True)
-                    self.cyc = BaseCyclicClient(self.udp.router)
                 time.sleep(0.4)
         self.lock = threading.Lock()      # serialises TCP calls between threads
         self.fb_lock = threading.Lock()
