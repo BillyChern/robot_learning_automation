@@ -1,0 +1,210 @@
+INFO:root:serving /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_v1/14999 with dataset id rlpj/bee_v1
+INFO:root:Loading model...
+INFO:2026-11-06 02:36:31,525:jax._src.xla_bridge:925: Unable to initialize backend 'rocm': module 'jaxlib.xla_extension' has no attribute 'GpuAllocatorConfig'
+INFO:jax._src.xla_bridge:Unable to initialize backend 'rocm': module 'jaxlib.xla_extension' has no attribute 'GpuAllocatorConfig'
+INFO:2026-11-06 02:36:31,526:jax._src.xla_bridge:925: Unable to initialize backend 'tpu': INTERNAL: Failed to open libtpu.so: libtpu.so: cannot open shared object file: No such file or directory
+INFO:jax._src.xla_bridge:Unable to initialize backend 'tpu': INTERNAL: Failed to open libtpu.so: libtpu.so: cannot open shared object file: No such file or directory
+INFO:absl:orbax-checkpoint version: 0.11.13
+INFO:absl:Created BasePyTreeCheckpointHandler: use_ocdbt=True, use_zarr3=False, pytree_metadata_options=PyTreeMetadataOptions(support_rich_types=False), array_metadata_store=<orbax.checkpoint._src.metadata.array_metadata_store.Store object at 0x7e6b79f2ced0>
+INFO:absl:Restoring checkpoint from /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_v1/14999/params.
+INFO:absl:[thread=MainThread] Failed to get flag value for EXPERIMENTAL_ORBAX_USE_DISTRIBUTED_PROCESS_ID.
+INFO:absl:[process=0] /jax/checkpoint/read/bytes_per_sec: 1.7 GiB/s (total bytes: 6.3 GiB) (time elapsed: 3 seconds) (per-host)
+INFO:absl:Finished restoring checkpoint in 3.74 seconds from /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_v1/14999/params.
+INFO:root:Norm stats not found in /home/r2r/robot_learning_final_pj/third_party/openpi/assets/pi05_kinova_lora/rlpj/bee_v1, skipping.
+INFO:root:Loaded norm stats from /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_v1/14999/assets/rlpj/bee_v1
+INFO:root:Creating server (host: ishitas-workstation, ip: 127.0.1.1)
+INFO:websockets.server:server listening on 0.0.0.0:8000
+ERROR:websockets.server:opening handshake failed
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 138, in parse
+    request_line = yield from parse_line(read_line)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 309, in parse_line
+    line = yield from read_line(MAX_LINE_LENGTH)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/streams.py", line 46, in read_line
+    raise EOFError(f"stream ends after {p} bytes, before end of line")
+EOFError: stream ends after 0 bytes, before end of line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 545, in parse
+    request = yield from Request.parse(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 140, in parse
+    raise EOFError("connection closed while reading HTTP request line") from exc
+EOFError: connection closed while reading HTTP request line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+websockets.exceptions.InvalidMessage: did not receive a valid HTTP request
+ERROR:websockets.server:opening handshake failed
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 138, in parse
+    request_line = yield from parse_line(read_line)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 309, in parse_line
+    line = yield from read_line(MAX_LINE_LENGTH)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/streams.py", line 46, in read_line
+    raise EOFError(f"stream ends after {p} bytes, before end of line")
+EOFError: stream ends after 0 bytes, before end of line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 545, in parse
+    request = yield from Request.parse(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 140, in parse
+    raise EOFError("connection closed while reading HTTP request line") from exc
+EOFError: connection closed while reading HTTP request line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+websockets.exceptions.InvalidMessage: did not receive a valid HTTP request
+ERROR:websockets.server:opening handshake failed
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 138, in parse
+    request_line = yield from parse_line(read_line)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 309, in parse_line
+    line = yield from read_line(MAX_LINE_LENGTH)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/streams.py", line 46, in read_line
+    raise EOFError(f"stream ends after {p} bytes, before end of line")
+EOFError: stream ends after 0 bytes, before end of line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 545, in parse
+    request = yield from Request.parse(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 140, in parse
+    raise EOFError("connection closed while reading HTTP request line") from exc
+EOFError: connection closed while reading HTTP request line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+websockets.exceptions.InvalidMessage: did not receive a valid HTTP request
+INFO:websockets.server:connection rejected (426 Upgrade Required)
+ERROR:websockets.server:opening handshake failed
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 138, in accept
+    ) = self.process_request(request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 233, in process_request
+    raise InvalidUpgrade(
+websockets.exceptions.InvalidUpgrade: missing Connection header
+INFO:websockets.server:connection rejected (426 Upgrade Required)
+ERROR:websockets.server:opening handshake failed
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 138, in accept
+    ) = self.process_request(request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 233, in process_request
+    raise InvalidUpgrade(
+websockets.exceptions.InvalidUpgrade: missing Connection header
+INFO:websockets.server:connection rejected (426 Upgrade Required)
+ERROR:websockets.server:opening handshake failed
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 138, in accept
+    ) = self.process_request(request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 233, in process_request
+    raise InvalidUpgrade(
+websockets.exceptions.InvalidUpgrade: missing Connection header
+INFO:websockets.server:connection rejected (426 Upgrade Required)
+ERROR:websockets.server:opening handshake failed
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 138, in accept
+    ) = self.process_request(request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 233, in process_request
+    raise InvalidUpgrade(
+websockets.exceptions.InvalidUpgrade: missing Connection header
+INFO:websockets.server:connection rejected (426 Upgrade Required)
+ERROR:websockets.server:opening handshake failed
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 138, in accept
+    ) = self.process_request(request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 233, in process_request
+    raise InvalidUpgrade(
+websockets.exceptions.InvalidUpgrade: missing Connection header
+INFO:websockets.server:connection rejected (426 Upgrade Required)
+ERROR:websockets.server:opening handshake failed
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 138, in accept
+    ) = self.process_request(request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 233, in process_request
+    raise InvalidUpgrade(
+websockets.exceptions.InvalidUpgrade: missing Connection header
+INFO:websockets.server:connection rejected (426 Upgrade Required)
+ERROR:websockets.server:opening handshake failed
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 138, in accept
+    ) = self.process_request(request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 233, in process_request
+    raise InvalidUpgrade(
+websockets.exceptions.InvalidUpgrade: missing Connection header
+INFO:websockets.server:connection rejected (426 Upgrade Required)
+ERROR:websockets.server:opening handshake failed
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 138, in accept
+    ) = self.process_request(request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 233, in process_request
+    raise InvalidUpgrade(
+websockets.exceptions.InvalidUpgrade: missing Connection header

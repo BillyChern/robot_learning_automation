@@ -1,0 +1,202 @@
+{
+ "id": "16_full_v6_30000",
+ "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v6/30000",
+ "zero_shot": false,
+ "requested": 20,
+ "n": 20,
+ "success": 2,
+ "fail": 16,
+ "unsure": 2,
+ "success_rate": 0.1,
+ "met": false,
+ "episodes": [
+  {
+   "episode": 456,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 177.4
+  },
+  {
+   "episode": 458,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 97.1
+  },
+  {
+   "episode": 459,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 184.3
+  },
+  {
+   "episode": 461,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=none, vlm=False)",
+   "duration": 162.3
+  },
+  {
+   "episode": 462,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=none, vlm=False)",
+   "duration": 178.2
+  },
+  {
+   "episode": 463,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 179.3
+  },
+  {
+   "episode": 464,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 65.1
+  },
+  {
+   "episode": 466,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 184.2
+  },
+  {
+   "episode": 467,
+   "final": "unsure",
+   "reason": "the independent checks disagree or one is missing (claim=none, perception=True, vlm=False)",
+   "duration": 179.3
+  },
+  {
+   "episode": 468,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 64.2
+  },
+  {
+   "episode": 470,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=none, vlm=False)",
+   "duration": 178.1
+  },
+  {
+   "episode": 471,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=none, vlm=False)",
+   "duration": 186.2
+  },
+  {
+   "episode": 472,
+   "final": "unsure",
+   "reason": "the independent checks disagree or one is missing (claim=none, perception=True, vlm=False)",
+   "duration": 175.3
+  },
+  {
+   "episode": 474,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 176.4
+  },
+  {
+   "episode": 476,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 189.4
+  },
+  {
+   "episode": 478,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 187.3
+  },
+  {
+   "episode": 480,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 59.3
+  },
+  {
+   "episode": 482,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 183.4
+  },
+  {
+   "episode": 484,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 186.1
+  },
+  {
+   "episode": 486,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 69.2
+  }
+ ],
+ "t_start": "2026-11-09T13:56:29",
+ "port": 8000,
+ "serve": "programs/proxy_serve.py",
+ "rollout": "programs/rollout_look.py",
+ "learn_commit": "4f21311",
+ "dagger": [
+  {
+   "episode": 457,
+   "of": 456,
+   "final": "success"
+  },
+  {
+   "episode": 460,
+   "of": 459,
+   "final": "success"
+  },
+  {
+   "episode": 465,
+   "of": 464,
+   "final": "success"
+  },
+  {
+   "episode": 469,
+   "of": 468,
+   "final": "success"
+  },
+  {
+   "episode": 473,
+   "of": 472,
+   "final": "success"
+  },
+  {
+   "episode": 475,
+   "of": 474,
+   "final": "success"
+  },
+  {
+   "episode": 477,
+   "of": 476,
+   "final": "success"
+  },
+  {
+   "episode": 479,
+   "of": 478,
+   "final": "fail"
+  },
+  {
+   "episode": 481,
+   "of": 480,
+   "final": "success"
+  },
+  {
+   "episode": 483,
+   "of": 482,
+   "final": "fail"
+  },
+  {
+   "episode": 485,
+   "of": 484,
+   "final": "success"
+  },
+  {
+   "episode": 487,
+   "of": 486,
+   "final": "success"
+  }
+ ],
+ "t_end": "2026-11-09T16:48:13"
+}

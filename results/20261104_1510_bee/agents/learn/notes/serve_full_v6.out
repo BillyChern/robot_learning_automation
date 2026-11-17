@@ -1,0 +1,251 @@
+INFO:root:torch 2.7.1+cu128 cuda 12.8 archs ['sm_75', 'sm_80', 'sm_86', 'sm_90', 'sm_100', 'sm_120', 'compute_120'] device NVIDIA GeForce RTX 5090
+INFO:datasets:PyTorch version 2.7.1+cu128 available.
+INFO:datasets:Polars version 1.30.0 available.
+INFO:datasets:JAX version 0.5.3 available.
+INFO:root:Loading model...
+INFO:openpi:train_config: KinovaTrainConfig(name='pi05_kinova_full', project_name='openpi', exp_name=<PropagatingMissingType id='124228534064976'>, model=Pi0Config(action_dim=32, action_horizon=10, max_token_len=200, dtype='bfloat16', paligemma_variant='gemma_2b', action_expert_variant='gemma_300m', pi05=True, discrete_state_input=True, pytorch_compile_mode=None), weight_loader=CheckpointWeightLoader(params_path='gs://openpi-assets/checkpoints/pi05_base/params'), pytorch_weight_path='/home/r2r/.cache/openpi/openpi-assets/checkpoints/pi05_base_pytorch', pytorch_training_precision='bfloat16', lr_schedule=CosineDecaySchedule(warmup_steps=500, peak_lr=5e-05, decay_steps=1000000, decay_lr=5e-05), optimizer=AdamW(b1=0.9, b2=0.95, eps=1e-08, weight_decay=1e-10, clip_gradient_norm=1.0), ema_decay=None, freeze_filter=Nothing(), data=LeRobotKinovaDataConfig(repo_id='rlpj/bee_v6', assets=AssetsConfig(assets_dir=None, asset_id=None), base_config=DataConfig(repo_id=None, asset_id=None, norm_stats=None, repack_transforms=Group(inputs=(), outputs=()), data_transforms=Group(inputs=(), outputs=()), model_transforms=Group(inputs=(), outputs=()), use_quantile_norm=False, action_sequence_keys=('actions',), prompt_from_task=True, rlds_data_dir=None, action_space=None, datasets=())), assets_base_dir='./assets', checkpoint_base_dir='./checkpoints', seed=42, batch_size=2, num_workers=2, num_train_steps=30000, log_interval=50, save_interval=5000, keep_period=10000, overwrite=False, resume=False, wandb_enabled=False, policy_metadata={'robot': 'kinova_gen3_6dof', 'state': 'q1..q6 rad wrapped to (-pi, pi], gripper reading / 100', 'actions': 'q1..q6 rad absolute targets, gripper command 0 open .. 1 closed', 'action_horizon': 10, 'image_size': 224}, fsdp_devices=1)
+INFO:root:Norm stats not found in /home/r2r/robot_learning_final_pj/third_party/openpi/assets/pi05_kinova_full/rlpj/bee_v6, skipping.
+INFO:root:Loaded norm stats from /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v6/30000/assets/rlpj/bee_v6
+INFO:root:serving /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v6/30000 (config pi05_kinova_full, dataset rlpj/bee_v6) on port 8000
+INFO:root:host ishitas-workstation
+INFO:websockets.server:server listening on 0.0.0.0:8000
+ERROR:websockets.server:opening handshake failed
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 138, in parse
+    request_line = yield from parse_line(read_line)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 309, in parse_line
+    line = yield from read_line(MAX_LINE_LENGTH)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/streams.py", line 46, in read_line
+    raise EOFError(f"stream ends after {p} bytes, before end of line")
+EOFError: stream ends after 0 bytes, before end of line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 545, in parse
+    request = yield from Request.parse(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 140, in parse
+    raise EOFError("connection closed while reading HTTP request line") from exc
+EOFError: connection closed while reading HTTP request line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+websockets.exceptions.InvalidMessage: did not receive a valid HTTP request
+ERROR:websockets.server:opening handshake failed
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 138, in parse
+    request_line = yield from parse_line(read_line)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 309, in parse_line
+    line = yield from read_line(MAX_LINE_LENGTH)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/streams.py", line 46, in read_line
+    raise EOFError(f"stream ends after {p} bytes, before end of line")
+EOFError: stream ends after 0 bytes, before end of line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 545, in parse
+    request = yield from Request.parse(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 140, in parse
+    raise EOFError("connection closed while reading HTTP request line") from exc
+EOFError: connection closed while reading HTTP request line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+websockets.exceptions.InvalidMessage: did not receive a valid HTTP request
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 47446) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 47446) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 38908) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 38908) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 54020) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 54020) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 42708) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 42708) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 37362) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 37362) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 34806) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 34806) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 47164) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 47164) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 58108) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 58108) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 41926) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 41926) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 51456) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 51456) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 59708) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 59708) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 32774) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 32774) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 58512) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 58512) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 42064) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 42064) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 36536) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 36536) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 42888) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 42888) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 57282) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 57282) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 35468) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 35468) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 46116) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 46116) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 48128) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 48128) closed
+ERROR:websockets.server:opening handshake failed
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 138, in parse
+    request_line = yield from parse_line(read_line)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 309, in parse_line
+    line = yield from read_line(MAX_LINE_LENGTH)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/streams.py", line 46, in read_line
+    raise EOFError(f"stream ends after {p} bytes, before end of line")
+EOFError: stream ends after 0 bytes, before end of line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 545, in parse
+    request = yield from Request.parse(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 140, in parse
+    raise EOFError("connection closed while reading HTTP request line") from exc
+EOFError: connection closed while reading HTTP request line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+websockets.exceptions.InvalidMessage: did not receive a valid HTTP request
+ERROR:websockets.server:opening handshake failed
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 138, in parse
+    request_line = yield from parse_line(read_line)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 309, in parse_line
+    line = yield from read_line(MAX_LINE_LENGTH)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/streams.py", line 46, in read_line
+    raise EOFError(f"stream ends after {p} bytes, before end of line")
+EOFError: stream ends after 0 bytes, before end of line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/server.py", line 545, in parse
+    request = yield from Request.parse(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/http11.py", line 140, in parse
+    raise EOFError("connection closed while reading HTTP request line") from exc
+EOFError: connection closed while reading HTTP request line
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 356, in conn_handler
+    await connection.handshake(
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/websockets/asyncio/server.py", line 207, in handshake
+    raise self.protocol.handshake_exc
+websockets.exceptions.InvalidMessage: did not receive a valid HTTP request
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 43652) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 43652) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 52832) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 52832) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 37320) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 37320) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 46048) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 46048) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 54886) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 54886) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 33544) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 33544) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 45124) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 45124) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 37408) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 37408) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 44542) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 44542) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 50280) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 50280) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 37834) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 37834) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 39516) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 39516) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 57890) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 57890) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 35436) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 35436) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 39002) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 39002) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 48822) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 48822) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 45520) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 45520) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 38478) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 38478) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 54254) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 54254) closed
+INFO:websockets.server:connection open
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 58852) opened
+INFO:openpi.serving.websocket_policy_server:Connection from ('100.99.148.110', 58852) closed

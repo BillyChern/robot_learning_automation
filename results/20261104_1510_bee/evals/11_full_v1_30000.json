@@ -1,0 +1,33 @@
+{
+ "id": "11_full_v1_30000",
+ "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/learn/ckpt/full_v1/30000",
+ "zero_shot": false,
+ "requested": 1,
+ "n": 1,
+ "success": 0,
+ "fail": 1,
+ "unsure": 0,
+ "success_rate": 0.0,
+ "met": false,
+ "episodes": [
+  {
+   "episode": 341,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 93.1
+  }
+ ],
+ "t_start": "2026-11-08T13:48:00",
+ "port": 8000,
+ "serve": "programs/serve_torch128.py",
+ "rollout": "programs/rollout_look.py",
+ "learn_commit": "1381560",
+ "dagger": [
+  {
+   "episode": 342,
+   "of": 341,
+   "final": "success"
+  }
+ ],
+ "t_end": "2026-11-08T13:57:20"
+}

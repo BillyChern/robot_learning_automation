@@ -1,0 +1,3 @@
+[proxy] checkpoint /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_v1/14999 (served upstream at ('100.122.29.80', 8000)), config pi05_kinova_lora
+[proxy] listening on 8000
+[proxy] client ('127.0.0.1', 48606)

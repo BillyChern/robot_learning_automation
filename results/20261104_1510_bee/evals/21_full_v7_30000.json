@@ -1,0 +1,20 @@
+{
+ "id": "21_full_v7_30000",
+ "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v7/30000",
+ "zero_shot": false,
+ "requested": 20,
+ "n": 0,
+ "success": 0,
+ "fail": 0,
+ "unsure": 0,
+ "success_rate": 0.0,
+ "met": false,
+ "episodes": [],
+ "t_start": "2026-11-10T09:28:18",
+ "port": 8000,
+ "serve": "programs/proxy_serve.py",
+ "rollout": "programs/rollout_look.py",
+ "learn_commit": "247a276",
+ "error": "stopped by the operator",
+ "t_end": "2026-11-10T10:16:21"
+}

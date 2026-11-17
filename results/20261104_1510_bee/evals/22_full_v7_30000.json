@@ -1,0 +1,152 @@
+{
+ "id": "22_full_v7_30000",
+ "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v7/30000",
+ "zero_shot": false,
+ "requested": 20,
+ "n": 20,
+ "success": 16,
+ "fail": 4,
+ "unsure": 0,
+ "success_rate": 0.8,
+ "met": true,
+ "episodes": [
+  {
+   "episode": 626,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 283.4
+  },
+  {
+   "episode": 628,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 163.2
+  },
+  {
+   "episode": 629,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 181.3
+  },
+  {
+   "episode": 630,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 197.2
+  },
+  {
+   "episode": 631,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 229.1
+  },
+  {
+   "episode": 632,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 211.4
+  },
+  {
+   "episode": 633,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 194.4
+  },
+  {
+   "episode": 634,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 190.3
+  },
+  {
+   "episode": 635,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 219.3
+  },
+  {
+   "episode": 636,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 210.3
+  },
+  {
+   "episode": 637,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 221.3
+  },
+  {
+   "episode": 638,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 289.4
+  },
+  {
+   "episode": 639,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 199.3
+  },
+  {
+   "episode": 640,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 281.3
+  },
+  {
+   "episode": 642,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 178.2
+  },
+  {
+   "episode": 643,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 159.2
+  },
+  {
+   "episode": 644,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 149.2
+  },
+  {
+   "episode": 645,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 172.2
+  },
+  {
+   "episode": 646,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 206.2
+  },
+  {
+   "episode": 647,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 277.3
+  }
+ ],
+ "t_start": "2026-11-10T15:40:37",
+ "port": 8000,
+ "serve": "programs/proxy_serve.py",
+ "rollout": "programs/rollout_look.py",
+ "learn_commit": "1bcc41d",
+ "dagger": [
+  {
+   "episode": 627,
+   "of": 626,
+   "final": "success"
+  },
+  {
+   "episode": 641,
+   "of": 640,
+   "final": "fail"
+  }
+ ],
+ "t_end": "2026-11-10T19:18:38"
+}

@@ -1,0 +1,231 @@
+{
+ "id": "04_lora_v1_14999",
+ "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_v1/14999",
+ "zero_shot": false,
+ "requested": 20,
+ "n": 20,
+ "success": 0,
+ "fail": 20,
+ "unsure": 0,
+ "success_rate": 0.0,
+ "met": false,
+ "episodes": [
+  {
+   "episode": 121,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 200.1
+  },
+  {
+   "episode": 123,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 204.3
+  },
+  {
+   "episode": 125,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=none, vlm=False)",
+   "duration": 144.3
+  },
+  {
+   "episode": 126,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 133.2
+  },
+  {
+   "episode": 128,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 89.1
+  },
+  {
+   "episode": 130,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 84.2
+  },
+  {
+   "episode": 132,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 195.3
+  },
+  {
+   "episode": 134,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 82.2
+  },
+  {
+   "episode": 136,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 196.2
+  },
+  {
+   "episode": 138,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 194.3
+  },
+  {
+   "episode": 140,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 210.3
+  },
+  {
+   "episode": 142,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 83.2
+  },
+  {
+   "episode": 143,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 83.1
+  },
+  {
+   "episode": 145,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 129.2
+  },
+  {
+   "episode": 147,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 192.4
+  },
+  {
+   "episode": 149,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 89.0
+  },
+  {
+   "episode": 151,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=none, vlm=False)",
+   "duration": 131.2
+  },
+  {
+   "episode": 153,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 199.3
+  },
+  {
+   "episode": 155,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 208.3
+  },
+  {
+   "episode": 157,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 85.2
+  }
+ ],
+ "t_start": "2026-11-06T18:09:47",
+ "port": 8000,
+ "rollout": "programs/rollout_v2.py",
+ "learn_commit": "0f565c6",
+ "dagger": [
+  {
+   "episode": 122,
+   "of": 121,
+   "final": "success"
+  },
+  {
+   "episode": 124,
+   "of": 123,
+   "final": "success"
+  },
+  {
+   "episode": 127,
+   "of": 126,
+   "final": "success"
+  },
+  {
+   "episode": 129,
+   "of": 128,
+   "final": "fail"
+  },
+  {
+   "episode": 131,
+   "of": 130,
+   "final": "success"
+  },
+  {
+   "episode": 133,
+   "of": 132,
+   "final": "success"
+  },
+  {
+   "episode": 135,
+   "of": 134,
+   "final": "fail"
+  },
+  {
+   "episode": 137,
+   "of": 136,
+   "final": "success"
+  },
+  {
+   "episode": 139,
+   "of": 138,
+   "final": "success"
+  },
+  {
+   "episode": 141,
+   "of": 140,
+   "final": "success"
+  },
+  {
+   "episode": 144,
+   "of": 143,
+   "final": "success"
+  },
+  {
+   "episode": 146,
+   "of": 145,
+   "final": "success"
+  },
+  {
+   "episode": 148,
+   "of": 147,
+   "final": "success"
+  },
+  {
+   "episode": 150,
+   "of": 149,
+   "final": "success"
+  },
+  {
+   "episode": 152,
+   "of": 151,
+   "final": "fail"
+  },
+  {
+   "episode": 154,
+   "of": 153,
+   "final": "success"
+  },
+  {
+   "episode": 156,
+   "of": 155,
+   "final": "fail"
+  },
+  {
+   "episode": 158,
+   "of": 157,
+   "final": "success"
+  }
+ ],
+ "t_end": "2026-11-06T21:48:01"
+}

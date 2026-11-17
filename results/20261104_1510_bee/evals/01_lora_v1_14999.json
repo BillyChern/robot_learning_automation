@@ -1,0 +1,17 @@
+{
+ "id": "01_lora_v1_14999",
+ "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_v1/14999",
+ "zero_shot": false,
+ "requested": 20,
+ "n": 0,
+ "success": 0,
+ "fail": 0,
+ "unsure": 0,
+ "success_rate": 0.0,
+ "met": false,
+ "episodes": [],
+ "t_start": "2026-11-06T02:27:50",
+ "port": 8000,
+ "error": "policy server 127.0.0.1:8000 did not come up",
+ "t_end": "2026-11-06T02:33:45"
+}

@@ -1,0 +1,92 @@
+{
+ "id": "15_full_v5_30000",
+ "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v5/30000",
+ "zero_shot": false,
+ "requested": 10,
+ "n": 10,
+ "success": 2,
+ "fail": 8,
+ "unsure": 0,
+ "success_rate": 0.2,
+ "met": false,
+ "episodes": [
+  {
+   "episode": 444,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 151.2
+  },
+  {
+   "episode": 445,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 183.3
+  },
+  {
+   "episode": 446,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 174.4
+  },
+  {
+   "episode": 447,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 66.3
+  },
+  {
+   "episode": 449,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 181.3
+  },
+  {
+   "episode": 450,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=none, vlm=False)",
+   "duration": 186.2
+  },
+  {
+   "episode": 451,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 194.2
+  },
+  {
+   "episode": 453,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 0.3
+  },
+  {
+   "episode": 454,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 0.3
+  },
+  {
+   "episode": 455,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 0.3
+  }
+ ],
+ "t_start": "2026-11-09T12:05:45",
+ "port": 8000,
+ "serve": "programs/proxy_serve.py",
+ "rollout": "programs/rollout_look.py",
+ "learn_commit": "873486c",
+ "dagger": [
+  {
+   "episode": 448,
+   "of": 447,
+   "final": "success"
+  },
+  {
+   "episode": 452,
+   "of": 451,
+   "final": "success"
+  }
+ ],
+ "t_end": "2026-11-09T13:43:15"
+}

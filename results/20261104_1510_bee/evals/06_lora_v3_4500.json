@@ -1,0 +1,44 @@
+{
+ "id": "06_lora_v3_4500",
+ "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_v3/4500",
+ "zero_shot": false,
+ "requested": 5,
+ "n": 2,
+ "success": 0,
+ "fail": 2,
+ "unsure": 0,
+ "success_rate": 0.0,
+ "met": false,
+ "episodes": [
+  {
+   "episode": 207,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 190.2
+  },
+  {
+   "episode": 209,
+   "final": "fail",
+   "reason": "program claimed fail (claim=none, perception=False, vlm=False)",
+   "duration": 193.4
+  }
+ ],
+ "t_start": "2026-11-07T12:11:44",
+ "port": 8000,
+ "rollout": "programs/rollout_v3.py",
+ "learn_commit": "ecec4f6",
+ "dagger": [
+  {
+   "episode": 208,
+   "of": 207,
+   "final": "success"
+  },
+  {
+   "episode": 210,
+   "of": 209,
+   "final": "unsure"
+  }
+ ],
+ "error": "stopped by the operator",
+ "t_end": "2026-11-07T12:45:46"
+}

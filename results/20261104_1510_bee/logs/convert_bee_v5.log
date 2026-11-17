@@ -1,0 +1,540 @@
+$ cd /home/r2r/robot_learning_final_pj/third_party/openpi && PYTHONPATH=/home/r2r/robot_learning_final_pj uv run --no-sync python -m rlpj.vla.convert --run-dir /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee --name bee_v5 --modes collect --wrist normal --start-phase approach --drop-idle
+200 episodes selected, 149 excluded, fps=15
+  excluded ep_000005: outcome.final='fail'
+  excluded ep_000008: outcome.final='unsure'
+  excluded ep_000016: outcome.final='fail'
+  excluded ep_000017: outcome.final='unsure'
+  excluded ep_000020: outcome.final='fail'
+  excluded ep_000030: missing steps.npz,side.mp4,wrist.mp4
+  excluded ep_000067: outcome.final='fail'
+  excluded ep_000073: outcome.final='fail'
+  excluded ep_000108: outcome.final='fail'
+  excluded ep_000109: outcome.final='fail'
+  excluded ep_000110: outcome.final='fail'
+  excluded ep_000111: outcome.final='fail'
+  excluded ep_000112: outcome.final='fail'
+  excluded ep_000113: outcome.final='fail'
+  excluded ep_000114: outcome.final='fail'
+  excluded ep_000115: outcome.final='fail'
+  excluded ep_000116: outcome.final='fail'
+  excluded ep_000117: outcome.final='fail'
+  excluded ep_000118: outcome.final='fail'
+  excluded ep_000119: outcome.final='fail'
+  excluded ep_000120: outcome.final='fail'
+  excluded ep_000121: outcome.final='fail'
+  excluded ep_000122: mode='dagger'
+  excluded ep_000123: outcome.final='fail'
+  excluded ep_000124: mode='dagger'
+  excluded ep_000125: outcome.final='fail'
+  excluded ep_000126: outcome.final='fail'
+  excluded ep_000127: mode='dagger'
+  excluded ep_000128: outcome.final='fail'
+  excluded ep_000129: outcome.final='fail'
+  excluded ep_000130: outcome.final='fail'
+  excluded ep_000131: mode='dagger'
+  excluded ep_000132: outcome.final='fail'
+  excluded ep_000133: mode='dagger'
+  excluded ep_000134: outcome.final='fail'
+  excluded ep_000135: outcome.final='fail'
+  excluded ep_000136: outcome.final='fail'
+  excluded ep_000137: mode='dagger'
+  excluded ep_000138: outcome.final='fail'
+  excluded ep_000139: mode='dagger'
+  excluded ep_000140: outcome.final='fail'
+  excluded ep_000141: mode='dagger'
+  excluded ep_000142: outcome.final='fail'
+  excluded ep_000143: outcome.final='fail'
+  excluded ep_000144: mode='dagger'
+  excluded ep_000145: outcome.final='fail'
+  excluded ep_000146: mode='dagger'
+  excluded ep_000147: outcome.final='fail'
+  excluded ep_000148: mode='dagger'
+  excluded ep_000149: outcome.final='fail'
+  excluded ep_000150: mode='dagger'
+  excluded ep_000151: outcome.final='fail'
+  excluded ep_000152: outcome.final='fail'
+  excluded ep_000153: outcome.final='fail'
+  excluded ep_000154: mode='dagger'
+  excluded ep_000155: outcome.final='fail'
+  excluded ep_000156: missing steps.npz,side.mp4,wrist.mp4
+  excluded ep_000157: outcome.final='fail'
+  excluded ep_000158: mode='dagger'
+  excluded ep_000171: outcome.final='fail'
+  excluded ep_000172: mode='dagger'
+  excluded ep_000173: outcome.final='fail'
+  excluded ep_000174: outcome.final='fail'
+  excluded ep_000175: mode='dagger'
+  excluded ep_000176: outcome.final='fail'
+  excluded ep_000177: mode='dagger'
+  excluded ep_000178: outcome.final='fail'
+  excluded ep_000179: mode='dagger'
+  excluded ep_000180: outcome.final='unsure'
+  excluded ep_000181: outcome.final='fail'
+  excluded ep_000182: outcome.final='fail'
+  excluded ep_000183: outcome.final='unsure'
+  excluded ep_000184: outcome.final='fail'
+  excluded ep_000185: outcome.final='fail'
+  excluded ep_000186: outcome.final='fail'
+  excluded ep_000187: mode='dagger'
+  excluded ep_000188: outcome.final='fail'
+  excluded ep_000189: outcome.final='fail'
+  excluded ep_000190: mode='dagger'
+  excluded ep_000191: outcome.final='fail'
+  excluded ep_000192: outcome.final='fail'
+  excluded ep_000193: mode='dagger'
+  excluded ep_000194: outcome.final='fail'
+  excluded ep_000195: outcome.final='fail'
+  excluded ep_000196: mode='dagger'
+  excluded ep_000197: outcome.final='fail'
+  excluded ep_000198: mode='dagger'
+  excluded ep_000199: outcome.final='fail'
+  excluded ep_000200: mode='dagger'
+  excluded ep_000201: outcome.final='fail'
+  excluded ep_000202: mode='dagger'
+  excluded ep_000203: outcome.final='fail'
+  excluded ep_000204: mode='dagger'
+  excluded ep_000205: outcome.final='fail'
+  excluded ep_000206: mode='dagger'
+  excluded ep_000207: outcome.final='fail'
+  excluded ep_000208: mode='dagger'
+  excluded ep_000209: outcome.final='fail'
+  excluded ep_000210: outcome.final='unsure'
+  excluded ep_000216: outcome.final='fail'
+  excluded ep_000253: outcome.final='fail'
+  excluded ep_000257: outcome.final='fail'
+  excluded ep_000284: outcome.final='fail'
+  excluded ep_000285: mode='dagger'
+  excluded ep_000286: outcome.final='fail'
+  excluded ep_000287: mode='dagger'
+  excluded ep_000288: outcome.final='fail'
+  excluded ep_000289: outcome.final='fail'
+  excluded ep_000290: mode='dagger'
+  excluded ep_000291: outcome.final='fail'
+  excluded ep_000292: outcome.final='fail'
+  excluded ep_000293: outcome.final='fail'
+  excluded ep_000294: outcome.final='fail'
+  excluded ep_000295: outcome.final='fail'
+  excluded ep_000296: outcome.final='fail'
+  excluded ep_000297: outcome.final='fail'
+  excluded ep_000298: outcome.final='fail'
+  excluded ep_000299: outcome.final='fail'
+  excluded ep_000300: outcome.final='fail'
+  excluded ep_000301: outcome.final='fail'
+  excluded ep_000302: outcome.final='fail'
+  excluded ep_000303: outcome.final='fail'
+  excluded ep_000304: outcome.final='fail'
+  excluded ep_000305: outcome.final='fail'
+  excluded ep_000306: outcome.final='fail'
+  excluded ep_000307: outcome.final='fail'
+  excluded ep_000308: outcome.final='unsure'
+  excluded ep_000309: outcome.final='fail'
+  excluded ep_000310: mode='dagger'
+  excluded ep_000311: outcome.final='fail'
+  excluded ep_000312: missing steps.npz,side.mp4,wrist.mp4
+  excluded ep_000313: outcome.final='fail'
+  excluded ep_000314: mode='dagger'
+  excluded ep_000315: outcome.final='fail'
+  excluded ep_000316: outcome.final='fail'
+  excluded ep_000317: outcome.final='fail'
+  excluded ep_000318: outcome.final='fail'
+  excluded ep_000319: outcome.final='fail'
+  excluded ep_000320: outcome.final='fail'
+  excluded ep_000336: outcome.final='fail'
+  excluded ep_000338: outcome.final='fail'
+  excluded ep_000341: outcome.final='fail'
+  excluded ep_000342: mode='dagger'
+  excluded ep_000343: outcome.final='fail'
+  excluded ep_000344: mode='dagger'
+  excluded ep_000345: outcome.final='unsure'
+  excluded ep_000346: outcome.final='fail'
+  excluded ep_000347: mode='dagger'
+  excluded ep_000348: missing meta.json,steps.npz,side.mp4,wrist.mp4
+[1/200] ep_000000: left out (wrist flipped in 1209 of 1707 steps)
+Map:   0%|          | 0/815 [00:00<?, ? examples/s]Map:  34%|███▎      | 275/815 [00:00<00:00, 2731.87 examples/s]Map:  68%|██████▊   | 555/815 [00:00<00:00, 2768.16 examples/s]Map: 100%|██████████| 815/815 [00:00<00:00, 2349.29 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 237.40ba/s]
+[2/200] ep_000001: 815 frames (4.0s)
+Map:   0%|          | 0/850 [00:00<?, ? examples/s]Map:  34%|███▍      | 290/850 [00:00<00:00, 2877.92 examples/s]Map:  84%|████████▍ | 716/850 [00:00<00:00, 2847.77 examples/s]Map: 100%|██████████| 850/850 [00:00<00:00, 2483.14 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 246.16ba/s]
+[3/200] ep_000002: 850 frames (4.1s)
+[4/200] ep_000003: left out (wrist flipped in 1141 of 1605 steps)
+Map:   0%|          | 0/838 [00:00<?, ? examples/s]Map:  35%|███▍      | 291/838 [00:00<00:00, 2892.83 examples/s]Map:  86%|████████▌ | 719/838 [00:00<00:00, 2859.32 examples/s]Map: 100%|██████████| 838/838 [00:00<00:00, 2421.24 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 204.33ba/s]
+[5/200] ep_000004: 838 frames (4.0s)
+[6/200] ep_000006: left out (wrist flipped in 1206 of 1695 steps)
+[7/200] ep_000007: left out (wrist flipped in 1253 of 1770 steps)
+[8/200] ep_000009: left out (wrist flipped in 1302 of 1843 steps)
+[9/200] ep_000010: left out (wrist flipped in 1281 of 1822 steps)
+[10/200] ep_000011: left out (wrist flipped in 1416 of 1910 steps)
+[11/200] ep_000012: left out (wrist flipped in 1251 of 1758 steps)
+[12/200] ep_000013: left out (wrist flipped in 1241 of 1752 steps)
+[13/200] ep_000014: left out (wrist flipped in 1342 of 1897 steps)
+[14/200] ep_000015: left out (wrist flipped in 1273 of 1803 steps)
+[15/200] ep_000018: left out (wrist flipped in 1256 of 1771 steps)
+[16/200] ep_000019: left out (wrist flipped in 1238 of 1727 steps)
+[17/200] ep_000021: left out (wrist flipped in 1305 of 1854 steps)
+[18/200] ep_000022: left out (wrist flipped in 1354 of 1908 steps)
+[19/200] ep_000023: left out (wrist flipped in 1256 of 1754 steps)
+[20/200] ep_000024: left out (wrist flipped in 1235 of 1729 steps)
+[21/200] ep_000025: left out (wrist flipped in 1264 of 1771 steps)
+[22/200] ep_000026: left out (wrist flipped in 1310 of 1845 steps)
+[23/200] ep_000027: left out (wrist flipped in 1351 of 1914 steps)
+[24/200] ep_000028: left out (wrist flipped in 1358 of 1921 steps)
+[25/200] ep_000029: left out (wrist flipped in 1328 of 1862 steps)
+[26/200] ep_000031: left out (wrist flipped in 1263 of 1793 steps)
+[27/200] ep_000032: left out (wrist flipped in 1261 of 1762 steps)
+[28/200] ep_000033: left out (wrist flipped in 1247 of 1760 steps)
+[29/200] ep_000034: left out (wrist flipped in 1316 of 1846 steps)
+[30/200] ep_000035: left out (wrist flipped in 1333 of 1850 steps)
+[31/200] ep_000036: left out (wrist flipped in 1322 of 1889 steps)
+[32/200] ep_000037: left out (wrist flipped in 1242 of 1744 steps)
+[33/200] ep_000038: left out (wrist flipped in 1347 of 1913 steps)
+[34/200] ep_000039: left out (wrist flipped in 1296 of 1840 steps)
+[35/200] ep_000040: left out (wrist flipped in 1271 of 1794 steps)
+[36/200] ep_000041: left out (wrist flipped in 1320 of 1888 steps)
+[37/200] ep_000042: left out (wrist flipped in 1246 of 1745 steps)
+[38/200] ep_000043: left out (wrist flipped in 1283 of 1839 steps)
+[39/200] ep_000044: left out (wrist flipped in 1173 of 1652 steps)
+[40/200] ep_000045: left out (wrist flipped in 1320 of 1855 steps)
+[41/200] ep_000046: left out (wrist flipped in 1260 of 1784 steps)
+[42/200] ep_000047: left out (wrist flipped in 1560 of 2135 steps)
+[43/200] ep_000048: left out (wrist flipped in 1438 of 2020 steps)
+[44/200] ep_000049: left out (wrist flipped in 1386 of 1900 steps)
+Map:   0%|          | 0/861 [00:00<?, ? examples/s]Map:  34%|███▎      | 290/861 [00:00<00:00, 2888.08 examples/s]Map:  68%|██████▊   | 585/861 [00:00<00:00, 2921.13 examples/s]Map: 100%|██████████| 861/861 [00:00<00:00, 2476.22 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 249.09ba/s]
+[45/200] ep_000050: 861 frames (4.4s)
+[46/200] ep_000051: left out (wrist flipped in 1384 of 1908 steps)
+[47/200] ep_000052: left out (wrist flipped in 1400 of 1931 steps)
+[48/200] ep_000053: left out (wrist flipped in 1466 of 2049 steps)
+[49/200] ep_000054: left out (wrist flipped in 1364 of 1888 steps)
+[50/200] ep_000055: left out (wrist flipped in 1372 of 1890 steps)
+[51/200] ep_000056: left out (wrist flipped in 1436 of 2030 steps)
+[52/200] ep_000057: left out (wrist flipped in 1345 of 1896 steps)
+[53/200] ep_000058: left out (wrist flipped in 1455 of 1970 steps)
+[54/200] ep_000059: left out (wrist flipped in 1326 of 1804 steps)
+[55/200] ep_000060: left out (wrist flipped in 1231 of 1752 steps)
+[56/200] ep_000061: left out (wrist flipped in 1265 of 1791 steps)
+[57/200] ep_000062: left out (wrist flipped in 1182 of 1655 steps)
+[58/200] ep_000063: left out (wrist flipped in 1264 of 1771 steps)
+[59/200] ep_000064: left out (wrist flipped in 1221 of 1687 steps)
+[60/200] ep_000065: left out (wrist flipped in 1174 of 1621 steps)
+[61/200] ep_000066: left out (wrist flipped in 1240 of 1746 steps)
+[62/200] ep_000068: left out (wrist flipped in 1263 of 1774 steps)
+[63/200] ep_000069: left out (wrist flipped in 1261 of 1766 steps)
+[64/200] ep_000070: left out (wrist flipped in 1163 of 1593 steps)
+[65/200] ep_000071: left out (wrist flipped in 1202 of 1659 steps)
+[66/200] ep_000072: left out (wrist flipped in 1218 of 1670 steps)
+[67/200] ep_000074: left out (wrist flipped in 1245 of 1756 steps)
+[68/200] ep_000075: left out (wrist flipped in 1246 of 1757 steps)
+[69/200] ep_000076: left out (wrist flipped in 1185 of 1646 steps)
+[70/200] ep_000077: left out (wrist flipped in 1241 of 1752 steps)
+[71/200] ep_000078: left out (wrist flipped in 1205 of 1700 steps)
+[72/200] ep_000079: left out (wrist flipped in 1234 of 1738 steps)
+[73/200] ep_000080: left out (wrist flipped in 1164 of 1615 steps)
+[74/200] ep_000081: left out (wrist flipped in 1210 of 1717 steps)
+[75/200] ep_000082: left out (wrist flipped in 1200 of 1662 steps)
+[76/200] ep_000083: left out (wrist flipped in 1154 of 1598 steps)
+[77/200] ep_000084: left out (wrist flipped in 1167 of 1614 steps)
+[78/200] ep_000085: left out (wrist flipped in 1277 of 1777 steps)
+[79/200] ep_000086: left out (wrist flipped in 1204 of 1696 steps)
+[80/200] ep_000087: left out (wrist flipped in 1284 of 1802 steps)
+[81/200] ep_000088: left out (wrist flipped in 1250 of 1759 steps)
+[82/200] ep_000089: left out (wrist flipped in 1240 of 1734 steps)
+[83/200] ep_000090: left out (wrist flipped in 1240 of 1738 steps)
+[84/200] ep_000091: left out (wrist flipped in 1200 of 1663 steps)
+[85/200] ep_000092: left out (wrist flipped in 1165 of 1610 steps)
+[86/200] ep_000093: left out (wrist flipped in 1187 of 1642 steps)
+[87/200] ep_000094: left out (wrist flipped in 1182 of 1626 steps)
+[88/200] ep_000095: left out (wrist flipped in 1173 of 1622 steps)
+[89/200] ep_000096: left out (wrist flipped in 1170 of 1625 steps)
+[90/200] ep_000097: left out (wrist flipped in 1251 of 1750 steps)
+[91/200] ep_000098: left out (wrist flipped in 1206 of 1674 steps)
+[92/200] ep_000099: left out (wrist flipped in 1161 of 1604 steps)
+[93/200] ep_000100: left out (wrist flipped in 1166 of 1608 steps)
+[94/200] ep_000101: left out (wrist flipped in 1214 of 1695 steps)
+[95/200] ep_000102: left out (wrist flipped in 1216 of 1711 steps)
+[96/200] ep_000103: left out (wrist flipped in 1248 of 1750 steps)
+[97/200] ep_000104: left out (wrist flipped in 1216 of 1711 steps)
+[98/200] ep_000105: left out (wrist flipped in 1251 of 1764 steps)
+[99/200] ep_000106: left out (wrist flipped in 1171 of 1619 steps)
+[100/200] ep_000107: left out (wrist flipped in 1238 of 1705 steps)
+[101/200] ep_000159: left out (wrist flipped in 1285 of 1770 steps)
+[102/200] ep_000160: left out (wrist flipped in 1290 of 1789 steps)
+[103/200] ep_000161: left out (wrist flipped in 1277 of 1782 steps)
+[104/200] ep_000162: left out (wrist flipped in 1282 of 1793 steps)
+[105/200] ep_000163: left out (wrist flipped in 1345 of 1900 steps)
+[106/200] ep_000164: left out (wrist flipped in 1350 of 1902 steps)
+[107/200] ep_000165: left out (wrist flipped in 1362 of 1923 steps)
+[108/200] ep_000166: left out (wrist flipped in 1272 of 1772 steps)
+[109/200] ep_000167: left out (wrist flipped in 1320 of 1852 steps)
+Map:   0%|          | 0/832 [00:00<?, ? examples/s]Map:  34%|███▍      | 287/832 [00:00<00:00, 2859.12 examples/s]Map:  86%|████████▌ | 715/832 [00:00<00:00, 2851.34 examples/s]Map: 100%|██████████| 832/832 [00:00<00:00, 2449.18 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 255.50ba/s]
+[110/200] ep_000168: 832 frames (4.1s)
+[111/200] ep_000169: left out (wrist flipped in 1264 of 1743 steps)
+Map:   0%|          | 0/843 [00:00<?, ? examples/s]Map:  34%|███▍      | 288/843 [00:00<00:00, 2858.74 examples/s]Map:  69%|██████▊   | 578/843 [00:00<00:00, 2877.60 examples/s]Map: 100%|██████████| 843/843 [00:00<00:00, 2442.07 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 259.59ba/s]
+[112/200] ep_000170: 843 frames (4.2s)
+Map:   0%|          | 0/963 [00:00<?, ? examples/s]Map:  30%|███       | 290/963 [00:00<00:00, 2879.48 examples/s]Map:  65%|██████▌   | 628/963 [00:00<00:00, 1940.88 examples/s]Map:  91%|█████████ | 878/963 [00:00<00:00, 2055.15 examples/s]Map: 100%|██████████| 963/963 [00:00<00:00, 1935.74 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 240.77ba/s]
+[113/200] ep_000211: 963 frames (4.9s)
+Map:   0%|          | 0/997 [00:00<?, ? examples/s]Map:  29%|██▊       | 286/997 [00:00<00:00, 2839.94 examples/s]Map:  72%|███████▏  | 716/997 [00:00<00:00, 2855.26 examples/s]Map: 100%|██████████| 997/997 [00:00<00:00, 2513.30 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 242.87ba/s]
+[114/200] ep_000212: 997 frames (4.9s)
+Map:   0%|          | 0/907 [00:00<?, ? examples/s]Map:  31%|███       | 282/907 [00:00<00:00, 2804.64 examples/s]Map:  63%|██████▎   | 570/907 [00:00<00:00, 2841.85 examples/s]Map:  95%|█████████▍| 859/907 [00:00<00:00, 2857.15 examples/s]Map: 100%|██████████| 907/907 [00:00<00:00, 2500.73 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 257.97ba/s]
+[115/200] ep_000213: 907 frames (4.5s)
+Map:   0%|          | 0/1037 [00:00<?, ? examples/s]Map:  27%|██▋       | 285/1037 [00:00<00:00, 2834.08 examples/s]Map:  55%|█████▌    | 572/1037 [00:00<00:00, 2849.79 examples/s]Map:  83%|████████▎ | 862/1037 [00:00<00:00, 2867.94 examples/s]Map: 100%|██████████| 1037/1037 [00:00<00:00, 2346.68 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/11 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 11/11 [00:00<00:00, 233.41ba/s]
+[116/200] ep_000214: 1037 frames (5.3s)
+Map:   0%|          | 0/978 [00:00<?, ? examples/s]Map:  25%|██▌       | 248/978 [00:00<00:00, 2464.66 examples/s]Map:  55%|█████▌    | 539/978 [00:00<00:00, 2723.36 examples/s]Map:  85%|████████▍ | 829/978 [00:00<00:00, 2799.42 examples/s]Map: 100%|██████████| 978/978 [00:00<00:00, 2386.91 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 241.52ba/s]
+[117/200] ep_000215: 978 frames (4.8s)
+Map:   0%|          | 0/991 [00:00<?, ? examples/s]Map:  29%|██▉       | 292/991 [00:00<00:00, 2902.08 examples/s]Map:  70%|███████   | 698/991 [00:00<00:00, 2765.19 examples/s]Map: 100%|█████████▉| 989/991 [00:00<00:00, 2815.48 examples/s]Map: 100%|██████████| 991/991 [00:00<00:00, 2389.60 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 230.34ba/s]
+[118/200] ep_000217: 991 frames (5.1s)
+Map:   0%|          | 0/997 [00:00<?, ? examples/s]Map:  15%|█▌        | 150/997 [00:00<00:00, 1047.26 examples/s]Map:  39%|███▉      | 392/997 [00:00<00:00, 1720.75 examples/s]Map:  67%|██████▋   | 664/997 [00:00<00:00, 2129.56 examples/s]Map:  94%|█████████▍| 937/997 [00:00<00:00, 2347.72 examples/s]Map: 100%|██████████| 997/997 [00:00<00:00, 1884.35 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 243.58ba/s]
+[119/200] ep_000218: 997 frames (5.2s)
+Map:   0%|          | 0/926 [00:00<?, ? examples/s]Map:  31%|███       | 286/926 [00:00<00:00, 2848.37 examples/s]Map:  77%|███████▋  | 712/926 [00:00<00:00, 2837.56 examples/s]Map: 100%|██████████| 926/926 [00:00<00:00, 2401.32 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 255.61ba/s]
+[120/200] ep_000219: 926 frames (4.7s)
+Map:   0%|          | 0/864 [00:00<?, ? examples/s]Map:  32%|███▏      | 274/864 [00:00<00:00, 2726.55 examples/s]Map:  64%|██████▎   | 550/864 [00:00<00:00, 2738.57 examples/s]Map:  96%|█████████▌| 826/864 [00:00<00:00, 2742.66 examples/s]Map: 100%|██████████| 864/864 [00:00<00:00, 2413.82 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 245.31ba/s]
+[121/200] ep_000220: 864 frames (4.3s)
+Map:   0%|          | 0/898 [00:00<?, ? examples/s]Map:  32%|███▏      | 286/898 [00:00<00:00, 2849.68 examples/s]Map:  79%|███████▊  | 705/898 [00:00<00:00, 2809.40 examples/s]Map: 100%|██████████| 898/898 [00:00<00:00, 2394.91 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 242.09ba/s]
+[122/200] ep_000221: 898 frames (4.3s)
+Map:   0%|          | 0/990 [00:00<?, ? examples/s]Map:  29%|██▉       | 290/990 [00:00<00:00, 2886.15 examples/s]Map:  59%|█████▉    | 586/990 [00:00<00:00, 2925.37 examples/s]Map:  89%|████████▉ | 881/990 [00:00<00:00, 2934.59 examples/s]Map: 100%|██████████| 990/990 [00:00<00:00, 2536.36 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 255.11ba/s]
+[123/200] ep_000222: 990 frames (4.9s)
+Map:   0%|          | 0/991 [00:00<?, ? examples/s]Map:  29%|██▉       | 287/991 [00:00<00:00, 2859.20 examples/s]Map:  59%|█████▊    | 581/991 [00:00<00:00, 2904.31 examples/s]Map:  88%|████████▊ | 876/991 [00:00<00:00, 2920.16 examples/s]Map: 100%|██████████| 991/991 [00:00<00:00, 2509.90 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 248.55ba/s]
+[124/200] ep_000223: 991 frames (5.0s)
+Map:   0%|          | 0/931 [00:00<?, ? examples/s]Map:  32%|███▏      | 296/931 [00:00<00:00, 2941.31 examples/s]Map:  78%|███████▊  | 728/931 [00:00<00:00, 2895.47 examples/s]Map: 100%|██████████| 931/931 [00:00<00:00, 2498.72 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 252.62ba/s]
+[125/200] ep_000224: 931 frames (4.4s)
+Map:   0%|          | 0/902 [00:00<?, ? examples/s]Map:  32%|███▏      | 293/902 [00:00<00:00, 2906.48 examples/s]Map:  65%|██████▌   | 588/902 [00:00<00:00, 2929.30 examples/s]Map: 100%|██████████| 902/902 [00:00<00:00, 2481.25 examples/s]Map: 100%|██████████| 902/902 [00:00<00:00, 2560.20 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 259.84ba/s]
+[126/200] ep_000225: 902 frames (4.5s)
+Map:   0%|          | 0/994 [00:00<?, ? examples/s]Map:  29%|██▉       | 291/994 [00:00<00:00, 2891.21 examples/s]Map:  73%|███████▎  | 725/994 [00:00<00:00, 2882.87 examples/s]Map: 100%|██████████| 994/994 [00:00<00:00, 2507.15 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 265.11ba/s]
+[127/200] ep_000226: 994 frames (5.0s)
+Map:   0%|          | 0/877 [00:00<?, ? examples/s]Map:  33%|███▎      | 291/877 [00:00<00:00, 2887.11 examples/s]Map:  67%|██████▋   | 584/877 [00:00<00:00, 2904.77 examples/s]Map: 100%|██████████| 877/877 [00:00<00:00, 2406.18 examples/s]Map: 100%|██████████| 877/877 [00:00<00:00, 2515.23 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 256.36ba/s]
+[128/200] ep_000227: 877 frames (4.5s)
+Map:   0%|          | 0/973 [00:00<?, ? examples/s]Map:  30%|███       | 295/973 [00:00<00:00, 2935.22 examples/s]Map:  75%|███████▌  | 730/973 [00:00<00:00, 2904.04 examples/s]Map: 100%|██████████| 973/973 [00:00<00:00, 2512.11 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 258.29ba/s]
+[129/200] ep_000228: 973 frames (5.1s)
+Map:   0%|          | 0/884 [00:00<?, ? examples/s]Map:  33%|███▎      | 292/884 [00:00<00:00, 2896.17 examples/s]Map:  78%|███████▊  | 692/884 [00:00<00:00, 2734.64 examples/s]Map: 100%|██████████| 884/884 [00:00<00:00, 2386.71 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 258.68ba/s]
+[130/200] ep_000229: 884 frames (4.6s)
+Map:   0%|          | 0/948 [00:00<?, ? examples/s]Map:  31%|███       | 294/948 [00:00<00:00, 2917.41 examples/s]Map:  77%|███████▋  | 731/948 [00:00<00:00, 2911.93 examples/s]Map: 100%|██████████| 948/948 [00:00<00:00, 2486.10 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 272.28ba/s]
+[131/200] ep_000230: 948 frames (5.1s)
+Map:   0%|          | 0/964 [00:00<?, ? examples/s]Map:  30%|███       | 293/964 [00:00<00:00, 2909.45 examples/s]Map:  61%|██████    | 588/964 [00:00<00:00, 2923.30 examples/s]Map: 100%|██████████| 964/964 [00:00<00:00, 2402.11 examples/s]Map: 100%|██████████| 964/964 [00:00<00:00, 2486.07 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 246.26ba/s]
+[132/200] ep_000231: 964 frames (4.8s)
+Map:   0%|          | 0/897 [00:00<?, ? examples/s]Map:  33%|███▎      | 292/897 [00:00<00:00, 2901.13 examples/s]Map:  81%|████████▏ | 731/897 [00:00<00:00, 2911.63 examples/s]Map: 100%|██████████| 897/897 [00:00<00:00, 2477.15 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 247.57ba/s]
+[133/200] ep_000232: 897 frames (4.6s)
+Map:   0%|          | 0/921 [00:00<?, ? examples/s]Map:  30%|███       | 280/921 [00:00<00:00, 2781.68 examples/s]Map:  62%|██████▏   | 569/921 [00:00<00:00, 2843.97 examples/s]Map:  94%|█████████▎| 862/921 [00:00<00:00, 2878.52 examples/s]Map: 100%|██████████| 921/921 [00:00<00:00, 2437.80 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 273.92ba/s]
+[134/200] ep_000233: 921 frames (4.8s)
+Map:   0%|          | 0/885 [00:00<?, ? examples/s]Map:  33%|███▎      | 296/885 [00:00<00:00, 2936.99 examples/s]Map:  83%|████████▎ | 736/885 [00:00<00:00, 2924.33 examples/s]Map: 100%|██████████| 885/885 [00:00<00:00, 2476.17 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 232.14ba/s]
+[135/200] ep_000234: 885 frames (4.5s)
+Map:   0%|          | 0/973 [00:00<?, ? examples/s]Map:  30%|███       | 292/973 [00:00<00:00, 2907.62 examples/s]Map:  60%|██████    | 585/973 [00:00<00:00, 2913.55 examples/s]Map:  91%|█████████ | 881/973 [00:00<00:00, 2932.77 examples/s]Map: 100%|██████████| 973/973 [00:00<00:00, 2515.67 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 241.23ba/s]
+[136/200] ep_000235: 973 frames (5.0s)
+Map:   0%|          | 0/922 [00:00<?, ? examples/s]Map:  22%|██▏       | 199/922 [00:00<00:00, 1394.44 examples/s]Map:  52%|█████▏    | 478/922 [00:00<00:00, 2090.19 examples/s]Map:  82%|████████▏ | 754/922 [00:00<00:00, 2363.58 examples/s]Map: 100%|██████████| 922/922 [00:00<00:00, 2057.53 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 260.70ba/s]
+[137/200] ep_000236: 922 frames (4.7s)
+Map:   0%|          | 0/946 [00:00<?, ? examples/s]Map:  31%|███       | 289/946 [00:00<00:00, 2879.18 examples/s]Map:  62%|██████▏   | 583/946 [00:00<00:00, 2910.58 examples/s]Map:  93%|█████████▎| 876/946 [00:00<00:00, 2916.61 examples/s]Map: 100%|██████████| 946/946 [00:00<00:00, 2496.88 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 224.73ba/s]
+[138/200] ep_000237: 946 frames (4.8s)
+Map:   0%|          | 0/885 [00:00<?, ? examples/s]Map:  30%|███       | 267/885 [00:00<00:00, 2650.36 examples/s]Map:  61%|██████    | 542/885 [00:00<00:00, 2701.79 examples/s]Map:  92%|█████████▏| 816/885 [00:00<00:00, 2715.15 examples/s]Map: 100%|██████████| 885/885 [00:00<00:00, 2303.74 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 264.80ba/s]
+[139/200] ep_000238: 885 frames (4.8s)
+Map:   0%|          | 0/888 [00:00<?, ? examples/s]Map:  33%|███▎      | 289/888 [00:00<00:00, 2869.74 examples/s]Map:  65%|██████▌   | 581/888 [00:00<00:00, 2891.63 examples/s]Map:  99%|█████████▊| 875/888 [00:00<00:00, 2905.60 examples/s]Map: 100%|██████████| 888/888 [00:00<00:00, 2545.20 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 241.97ba/s]
+[140/200] ep_000239: 888 frames (4.4s)
+Map:   0%|          | 0/1020 [00:00<?, ? examples/s]Map:  28%|██▊       | 286/1020 [00:00<00:00, 2834.48 examples/s]Map:  57%|█████▋    | 579/1020 [00:00<00:00, 2882.77 examples/s]Map:  86%|████████▌ | 875/1020 [00:00<00:00, 2914.65 examples/s]Map: 100%|██████████| 1020/1020 [00:00<00:00, 2567.09 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/11 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 11/11 [00:00<00:00, 282.17ba/s]
+[141/200] ep_000240: 1020 frames (5.3s)
+Map:   0%|          | 0/925 [00:00<?, ? examples/s]Map:  32%|███▏      | 292/925 [00:00<00:00, 2907.48 examples/s]Map:  63%|██████▎   | 586/925 [00:00<00:00, 2920.60 examples/s]Map:  96%|█████████▌| 885/925 [00:00<00:00, 2948.38 examples/s]Map: 100%|██████████| 925/925 [00:00<00:00, 2577.02 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 262.21ba/s]
+[142/200] ep_000241: 925 frames (4.3s)
+Map:   0%|          | 0/983 [00:00<?, ? examples/s]Map:  28%|██▊       | 277/983 [00:00<00:00, 2756.67 examples/s]Map:  71%|███████   | 695/983 [00:00<00:00, 2773.74 examples/s]Map: 100%|██████████| 983/983 [00:00<00:00, 2369.48 examples/s]Map: 100%|██████████| 983/983 [00:00<00:00, 2444.02 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 269.03ba/s]
+[143/200] ep_000242: 983 frames (4.8s)
+Map:   0%|          | 0/877 [00:00<?, ? examples/s]Map:  33%|███▎      | 291/877 [00:00<00:00, 2887.04 examples/s]Map:  81%|████████  | 711/877 [00:00<00:00, 2817.52 examples/s]Map: 100%|██████████| 877/877 [00:00<00:00, 2466.26 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 215.99ba/s]
+[144/200] ep_000243: 877 frames (4.3s)
+Map:   0%|          | 0/901 [00:00<?, ? examples/s]Map:  31%|███▏      | 282/901 [00:00<00:00, 2800.55 examples/s]Map:  63%|██████▎   | 570/901 [00:00<00:00, 2844.71 examples/s]Map:  96%|█████████▌| 861/901 [00:00<00:00, 2868.23 examples/s]Map: 100%|██████████| 901/901 [00:00<00:00, 2484.30 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 266.10ba/s]
+[145/200] ep_000244: 901 frames (4.3s)
+Map:   0%|          | 0/935 [00:00<?, ? examples/s]Map:  31%|███       | 287/935 [00:00<00:00, 2851.86 examples/s]Map:  62%|██████▏   | 580/935 [00:00<00:00, 2893.55 examples/s]Map:  94%|█████████▎| 876/935 [00:00<00:00, 2921.84 examples/s]Map: 100%|██████████| 935/935 [00:00<00:00, 2564.37 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 266.41ba/s]
+[146/200] ep_000245: 935 frames (4.5s)
+Map:   0%|          | 0/880 [00:00<?, ? examples/s]Map:  32%|███▏      | 285/880 [00:00<00:00, 2837.06 examples/s]Map:  65%|██████▌   | 574/880 [00:00<00:00, 2864.88 examples/s]Map:  98%|█████████▊| 864/880 [00:00<00:00, 2880.21 examples/s]Map: 100%|██████████| 880/880 [00:00<00:00, 2522.17 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 255.84ba/s]
+[147/200] ep_000246: 880 frames (4.2s)
+Map:   0%|          | 0/913 [00:00<?, ? examples/s]Map:  31%|███       | 283/913 [00:00<00:00, 2817.21 examples/s]Map:  63%|██████▎   | 574/913 [00:00<00:00, 2866.79 examples/s]Map:  95%|█████████▍| 867/913 [00:00<00:00, 2892.58 examples/s]Map: 100%|██████████| 913/913 [00:00<00:00, 2485.35 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 262.68ba/s]
+[148/200] ep_000247: 913 frames (4.5s)
+Map:   0%|          | 0/932 [00:00<?, ? examples/s]Map:  30%|███       | 284/932 [00:00<00:00, 2824.23 examples/s]Map:  62%|██████▏   | 576/932 [00:00<00:00, 2877.81 examples/s]Map:  93%|█████████▎| 870/932 [00:00<00:00, 2900.28 examples/s]Map: 100%|██████████| 932/932 [00:00<00:00, 2481.32 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 263.95ba/s]
+[149/200] ep_000248: 932 frames (4.8s)
+Map:   0%|          | 0/899 [00:00<?, ? examples/s]Map:  31%|███       | 275/899 [00:00<00:00, 2731.57 examples/s]Map:  62%|██████▏   | 555/899 [00:00<00:00, 2761.58 examples/s]Map:  94%|█████████▍| 844/899 [00:00<00:00, 2816.81 examples/s]Map: 100%|██████████| 899/899 [00:00<00:00, 2356.56 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 236.47ba/s]
+[150/200] ep_000249: 899 frames (4.4s)
+Map:   0%|          | 0/898 [00:00<?, ? examples/s]Map:  31%|███       | 279/898 [00:00<00:00, 2779.44 examples/s]Map:  63%|██████▎   | 562/898 [00:00<00:00, 2806.53 examples/s]Map:  95%|█████████▌| 855/898 [00:00<00:00, 2858.15 examples/s]Map: 100%|██████████| 898/898 [00:00<00:00, 2395.27 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 237.09ba/s]
+[151/200] ep_000250: 898 frames (4.3s)
+Map:   0%|          | 0/906 [00:00<?, ? examples/s]Map:  31%|███▏      | 285/906 [00:00<00:00, 2833.67 examples/s]Map:  76%|███████▋  | 691/906 [00:00<00:00, 2731.97 examples/s]Map: 100%|██████████| 906/906 [00:00<00:00, 2368.35 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 278.99ba/s]
+[152/200] ep_000251: 906 frames (4.6s)
+Map:   0%|          | 0/968 [00:00<?, ? examples/s]Map:  29%|██▊       | 276/968 [00:00<00:00, 2740.94 examples/s]Map:  58%|█████▊    | 561/968 [00:00<00:00, 2801.33 examples/s]Map:  88%|████████▊ | 850/968 [00:00<00:00, 2836.26 examples/s]Map: 100%|██████████| 968/968 [00:00<00:00, 2341.23 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 202.74ba/s]
+[153/200] ep_000252: 968 frames (5.0s)
+Map:   0%|          | 0/880 [00:00<?, ? examples/s]Map:  32%|███▏      | 282/880 [00:00<00:00, 2803.08 examples/s]Map:  65%|██████▍   | 568/880 [00:00<00:00, 2833.23 examples/s]Map: 100%|██████████| 880/880 [00:00<00:00, 2284.81 examples/s]Map: 100%|██████████| 880/880 [00:00<00:00, 2379.79 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 211.67ba/s]
+[154/200] ep_000254: 880 frames (4.7s)
+Map:   0%|          | 0/1008 [00:00<?, ? examples/s]Map:  27%|██▋       | 269/1008 [00:00<00:00, 2669.77 examples/s]Map:  54%|█████▍    | 545/1008 [00:00<00:00, 2712.72 examples/s]Map:  82%|████████▏ | 824/1008 [00:00<00:00, 2744.42 examples/s]Map: 100%|██████████| 1008/1008 [00:00<00:00, 2305.38 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/11 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 11/11 [00:00<00:00, 252.76ba/s]
+[155/200] ep_000255: 1008 frames (5.3s)
+Map:   0%|          | 0/881 [00:00<?, ? examples/s]Map:  32%|███▏      | 280/881 [00:00<00:00, 2782.54 examples/s]Map:  65%|██████▌   | 573/881 [00:00<00:00, 2860.71 examples/s]Map:  99%|█████████▉| 871/881 [00:00<00:00, 2906.93 examples/s]Map: 100%|██████████| 881/881 [00:00<00:00, 2517.04 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 217.02ba/s]
+[156/200] ep_000256: 881 frames (4.5s)
+Map:   0%|          | 0/911 [00:00<?, ? examples/s]Map:  32%|███▏      | 288/911 [00:00<00:00, 2865.57 examples/s]Map:  78%|███████▊  | 715/911 [00:00<00:00, 2847.83 examples/s]Map: 100%|██████████| 911/911 [00:00<00:00, 2486.85 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 227.05ba/s]
+[157/200] ep_000258: 911 frames (4.8s)
+Map:   0%|          | 0/939 [00:00<?, ? examples/s]Map:  30%|███       | 283/939 [00:00<00:00, 2812.63 examples/s]Map:  60%|██████    | 566/939 [00:00<00:00, 2815.15 examples/s]Map: 100%|██████████| 939/939 [00:00<00:00, 2268.21 examples/s]Map: 100%|██████████| 939/939 [00:00<00:00, 2358.49 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 226.45ba/s]
+[158/200] ep_000259: 939 frames (4.9s)
+Map:   0%|          | 0/881 [00:00<?, ? examples/s]Map:  32%|███▏      | 284/881 [00:00<00:00, 2824.63 examples/s]Map:  65%|██████▌   | 573/881 [00:00<00:00, 2860.53 examples/s]Map:  99%|█████████▊| 868/881 [00:00<00:00, 2894.38 examples/s]Map: 100%|██████████| 881/881 [00:00<00:00, 2528.43 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 230.45ba/s]
+[159/200] ep_000260: 881 frames (4.6s)
+Map:   0%|          | 0/876 [00:00<?, ? examples/s]Map:  33%|███▎      | 290/876 [00:00<00:00, 2881.42 examples/s]Map:  66%|██████▌   | 579/876 [00:00<00:00, 2881.08 examples/s]Map:  99%|█████████▉| 871/876 [00:00<00:00, 2895.22 examples/s]Map: 100%|██████████| 876/876 [00:00<00:00, 2486.70 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 223.19ba/s]
+[160/200] ep_000261: 876 frames (4.5s)
+Map:   0%|          | 0/1050 [00:00<?, ? examples/s]Map:  27%|██▋       | 284/1050 [00:00<00:00, 2826.85 examples/s]Map:  55%|█████▍    | 576/1050 [00:00<00:00, 2873.30 examples/s]Map:  82%|████████▏ | 865/1050 [00:00<00:00, 2878.58 examples/s]Map: 100%|██████████| 1050/1050 [00:00<00:00, 2394.34 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/11 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 11/11 [00:00<00:00, 234.22ba/s]
+[161/200] ep_000262: 1050 frames (5.4s)
+Map:   0%|          | 0/985 [00:00<?, ? examples/s]Map:  29%|██▊       | 282/985 [00:00<00:00, 2800.82 examples/s]Map:  58%|█████▊    | 570/985 [00:00<00:00, 2839.89 examples/s]Map: 100%|██████████| 985/985 [00:00<00:00, 2312.64 examples/s]Map: 100%|██████████| 985/985 [00:00<00:00, 2389.72 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 233.62ba/s]
+[162/200] ep_000263: 985 frames (5.1s)
+Map:   0%|          | 0/939 [00:00<?, ? examples/s]Map:  30%|██▉       | 281/939 [00:00<00:00, 2789.35 examples/s]Map:  61%|██████    | 569/939 [00:00<00:00, 2835.51 examples/s]Map:  91%|█████████▏| 857/939 [00:00<00:00, 2852.53 examples/s]Map: 100%|██████████| 939/939 [00:00<00:00, 2352.36 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 247.48ba/s]
+[163/200] ep_000264: 939 frames (5.2s)
+Map:   0%|          | 0/941 [00:00<?, ? examples/s]Map:  28%|██▊       | 265/941 [00:00<00:00, 2636.24 examples/s]Map:  59%|█████▊    | 552/941 [00:00<00:00, 2771.86 examples/s]Map:  89%|████████▉ | 841/941 [00:00<00:00, 2825.36 examples/s]Map: 100%|██████████| 941/941 [00:00<00:00, 2321.65 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 240.72ba/s]
+[164/200] ep_000265: 941 frames (4.8s)
+Map:   0%|          | 0/916 [00:00<?, ? examples/s]Map:  30%|██▉       | 273/916 [00:00<00:00, 2721.26 examples/s]Map:  60%|██████    | 552/916 [00:00<00:00, 2751.09 examples/s]Map:  91%|█████████ | 830/916 [00:00<00:00, 2763.07 examples/s]Map: 100%|██████████| 916/916 [00:00<00:00, 2392.84 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 249.51ba/s]
+[165/200] ep_000266: 916 frames (4.6s)
+Map:   0%|          | 0/938 [00:00<?, ? examples/s]Map:  28%|██▊       | 266/938 [00:00<00:00, 2648.80 examples/s]Map:  59%|█████▉    | 552/938 [00:00<00:00, 2768.12 examples/s]Map:  90%|████████▉ | 843/938 [00:00<00:00, 2829.92 examples/s]Map: 100%|██████████| 938/938 [00:00<00:00, 2388.37 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 249.90ba/s]
+[166/200] ep_000267: 938 frames (4.8s)
+Map:   0%|          | 0/952 [00:00<?, ? examples/s]Map:  31%|███       | 295/952 [00:00<00:00, 2932.95 examples/s]Map:  74%|███████▎  | 701/952 [00:00<00:00, 2769.39 examples/s]Map: 100%|██████████| 952/952 [00:00<00:00, 2358.10 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 249.20ba/s]
+[167/200] ep_000268: 952 frames (5.0s)
+Map:   0%|          | 0/855 [00:00<?, ? examples/s]Map:  33%|███▎      | 281/855 [00:00<00:00, 2787.64 examples/s]Map:  66%|██████▌   | 566/855 [00:00<00:00, 2815.10 examples/s]Map: 100%|█████████▉| 851/855 [00:00<00:00, 2826.82 examples/s]Map: 100%|██████████| 855/855 [00:00<00:00, 2445.51 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 203.83ba/s]
+[168/200] ep_000269: 855 frames (4.5s)
+Map:   0%|          | 0/985 [00:00<?, ? examples/s]Map:  27%|██▋       | 268/985 [00:00<00:00, 2660.98 examples/s]Map:  55%|█████▍    | 538/985 [00:00<00:00, 2679.75 examples/s]Map:  95%|█████████▍| 932/985 [00:00<00:00, 2645.39 examples/s]Map: 100%|██████████| 985/985 [00:00<00:00, 2279.37 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 233.02ba/s]
+[169/200] ep_000270: 985 frames (5.3s)
+Map:   0%|          | 0/936 [00:00<?, ? examples/s]Map:  29%|██▉       | 274/936 [00:00<00:00, 2717.78 examples/s]Map:  59%|█████▉    | 553/936 [00:00<00:00, 2752.42 examples/s]Map:  89%|████████▉ | 836/936 [00:00<00:00, 2782.53 examples/s]Map: 100%|██████████| 936/936 [00:00<00:00, 2349.24 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 233.85ba/s]
+[170/200] ep_000271: 936 frames (4.9s)
+Map:   0%|          | 0/887 [00:00<?, ? examples/s]Map:  31%|███▏      | 278/887 [00:00<00:00, 2760.20 examples/s]Map:  64%|██████▎   | 565/887 [00:00<00:00, 2821.94 examples/s]Map:  96%|█████████▌| 850/887 [00:00<00:00, 2830.04 examples/s]Map: 100%|██████████| 887/887 [00:00<00:00, 2434.79 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 223.31ba/s]
+[171/200] ep_000272: 887 frames (4.8s)
+Map:   0%|          | 0/967 [00:00<?, ? examples/s]Map:  29%|██▉       | 281/967 [00:00<00:00, 2788.05 examples/s]Map:  59%|█████▊    | 566/967 [00:00<00:00, 2819.56 examples/s]Map:  88%|████████▊ | 853/967 [00:00<00:00, 2838.71 examples/s]Map: 100%|██████████| 967/967 [00:00<00:00, 2344.97 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 233.98ba/s]
+[172/200] ep_000273: 967 frames (5.1s)
+Map:   0%|          | 0/884 [00:00<?, ? examples/s]Map:  32%|███▏      | 283/884 [00:00<00:00, 2814.93 examples/s]Map:  64%|██████▍   | 566/884 [00:00<00:00, 2817.67 examples/s]Map: 100%|██████████| 884/884 [00:00<00:00, 2329.20 examples/s]Map: 100%|██████████| 884/884 [00:00<00:00, 2413.59 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 208.80ba/s]
+[173/200] ep_000274: 884 frames (4.8s)
+Map:   0%|          | 0/936 [00:00<?, ? examples/s]Map:  30%|██▉       | 280/936 [00:00<00:00, 2779.30 examples/s]Map:  60%|██████    | 562/936 [00:00<00:00, 2799.32 examples/s]Map:  90%|█████████ | 846/936 [00:00<00:00, 2811.66 examples/s]Map: 100%|██████████| 936/936 [00:00<00:00, 2307.51 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 225.62ba/s]
+[174/200] ep_000275: 936 frames (5.0s)
+Map:   0%|          | 0/912 [00:00<?, ? examples/s]Map:  15%|█▌        | 138/912 [00:00<00:00, 1146.79 examples/s]Map:  39%|███▉      | 355/912 [00:00<00:00, 1664.74 examples/s]Map:  63%|██████▎   | 577/912 [00:00<00:00, 1898.88 examples/s]Map:  89%|████████▉ | 812/912 [00:00<00:00, 2066.45 examples/s]Map: 100%|██████████| 912/912 [00:00<00:00, 1776.77 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 238.78ba/s]
+[175/200] ep_000276: 912 frames (4.9s)
+Map:   0%|          | 0/914 [00:00<?, ? examples/s]Map:  31%|███       | 284/914 [00:00<00:00, 2816.71 examples/s]Map:  77%|███████▋  | 707/914 [00:00<00:00, 2814.14 examples/s]Map: 100%|██████████| 914/914 [00:00<00:00, 2432.59 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 242.98ba/s]
+[176/200] ep_000277: 914 frames (4.8s)
+Map:   0%|          | 0/1046 [00:00<?, ? examples/s]Map:  26%|██▌       | 268/1046 [00:00<00:00, 2663.18 examples/s]Map:  53%|█████▎    | 550/1046 [00:00<00:00, 2747.12 examples/s]Map:  92%|█████████▏| 963/1046 [00:00<00:00, 2745.80 examples/s]Map: 100%|██████████| 1046/1046 [00:00<00:00, 2337.85 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/11 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 11/11 [00:00<00:00, 238.19ba/s]
+[177/200] ep_000278: 1046 frames (5.7s)
+Map:   0%|          | 0/1004 [00:00<?, ? examples/s]Map:  28%|██▊       | 285/1004 [00:00<00:00, 2831.83 examples/s]Map:  57%|█████▋    | 570/1004 [00:00<00:00, 2837.43 examples/s]Map:  85%|████████▌ | 854/1004 [00:00<00:00, 2831.60 examples/s]Map: 100%|██████████| 1004/1004 [00:00<00:00, 2403.18 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/11 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 11/11 [00:00<00:00, 240.75ba/s]
+[178/200] ep_000279: 1004 frames (5.3s)
+Map:   0%|          | 0/909 [00:00<?, ? examples/s]Map:  31%|███       | 281/909 [00:00<00:00, 2790.08 examples/s]Map:  62%|██████▏   | 564/909 [00:00<00:00, 2803.33 examples/s]Map:  93%|█████████▎| 847/909 [00:00<00:00, 2808.47 examples/s]Map: 100%|██████████| 909/909 [00:00<00:00, 2453.48 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 241.08ba/s]
+[179/200] ep_000280: 909 frames (4.9s)
+Map:   0%|          | 0/905 [00:00<?, ? examples/s]Map:  32%|███▏      | 288/905 [00:00<00:00, 2860.89 examples/s]Map:  64%|██████▎   | 576/905 [00:00<00:00, 2863.46 examples/s]Map:  96%|█████████▌| 869/905 [00:00<00:00, 2886.89 examples/s]Map: 100%|██████████| 905/905 [00:00<00:00, 2505.51 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 243.95ba/s]
+[180/200] ep_000281: 905 frames (4.7s)
+Map:   0%|          | 0/900 [00:00<?, ? examples/s]Map:  32%|███▏      | 285/900 [00:00<00:00, 2838.92 examples/s]Map:  64%|██████▎   | 573/900 [00:00<00:00, 2854.75 examples/s]Map: 100%|██████████| 900/900 [00:00<00:00, 2163.35 examples/s]Map: 100%|██████████| 900/900 [00:00<00:00, 2278.03 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 210.02ba/s]
+[181/200] ep_000282: 900 frames (4.7s)
+Map:   0%|          | 0/939 [00:00<?, ? examples/s]Map:  30%|██▉       | 281/939 [00:00<00:00, 2796.63 examples/s]Map:  75%|███████▌  | 705/939 [00:00<00:00, 2807.03 examples/s]Map: 100%|██████████| 939/939 [00:00<00:00, 2408.61 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 235.09ba/s]
+[182/200] ep_000283: 939 frames (4.8s)
+Map:   0%|          | 0/910 [00:00<?, ? examples/s]Map:  31%|███       | 283/910 [00:00<00:00, 2807.29 examples/s]Map:  78%|███████▊  | 708/910 [00:00<00:00, 2818.64 examples/s]Map: 100%|██████████| 910/910 [00:00<00:00, 2402.50 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 237.30ba/s]
+[183/200] ep_000321: 910 frames (4.7s)
+Map:   0%|          | 0/913 [00:00<?, ? examples/s]Map:  31%|███       | 282/913 [00:00<00:00, 2803.57 examples/s]Map:  76%|███████▌  | 692/913 [00:00<00:00, 2748.92 examples/s]Map: 100%|██████████| 913/913 [00:00<00:00, 2421.20 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 248.27ba/s]
+[184/200] ep_000322: 913 frames (4.9s)
+Map:   0%|          | 0/903 [00:00<?, ? examples/s]Map:  30%|███       | 275/903 [00:00<00:00, 2731.26 examples/s]Map:  62%|██████▏   | 561/903 [00:00<00:00, 2799.39 examples/s]Map:  94%|█████████▎| 846/903 [00:00<00:00, 2818.22 examples/s]Map: 100%|██████████| 903/903 [00:00<00:00, 2405.67 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 248.88ba/s]
+[185/200] ep_000323: 903 frames (4.8s)
+Map:   0%|          | 0/1058 [00:00<?, ? examples/s]Map:  26%|██▌       | 275/1058 [00:00<00:00, 2728.62 examples/s]Map:  53%|█████▎    | 557/1058 [00:00<00:00, 2777.68 examples/s]Map:  79%|███████▉  | 841/1058 [00:00<00:00, 2794.72 examples/s]Map: 100%|██████████| 1058/1058 [00:00<00:00, 2312.56 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/11 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 11/11 [00:00<00:00, 230.19ba/s]
+[186/200] ep_000324: 1058 frames (5.5s)
+Map:   0%|          | 0/905 [00:00<?, ? examples/s]Map:  31%|███▏      | 285/905 [00:00<00:00, 2832.16 examples/s]Map:  77%|███████▋  | 701/905 [00:00<00:00, 2789.94 examples/s]Map: 100%|██████████| 905/905 [00:00<00:00, 2446.84 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 240.03ba/s]
+[187/200] ep_000325: 905 frames (4.8s)
+Map:   0%|          | 0/952 [00:00<?, ? examples/s]Map:  29%|██▉       | 278/952 [00:00<00:00, 2754.35 examples/s]Map:  59%|█████▊    | 559/952 [00:00<00:00, 2781.74 examples/s]Map:  89%|████████▊ | 844/952 [00:00<00:00, 2804.82 examples/s]Map: 100%|██████████| 952/952 [00:00<00:00, 2350.58 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 226.40ba/s]
+[188/200] ep_000326: 952 frames (5.0s)
+Map:   0%|          | 0/902 [00:00<?, ? examples/s]Map:  32%|███▏      | 290/902 [00:00<00:00, 2883.11 examples/s]Map:  64%|██████▍   | 580/902 [00:00<00:00, 2887.96 examples/s]Map:  97%|█████████▋| 871/902 [00:00<00:00, 2893.58 examples/s]Map: 100%|██████████| 902/902 [00:00<00:00, 2517.57 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 246.75ba/s]
+[189/200] ep_000327: 902 frames (4.7s)
+Map:   0%|          | 0/887 [00:00<?, ? examples/s]Map:  30%|███       | 268/887 [00:00<00:00, 2655.79 examples/s]Map:  62%|██████▏   | 554/887 [00:00<00:00, 2767.75 examples/s]Map:  95%|█████████▌| 844/887 [00:00<00:00, 2822.52 examples/s]Map: 100%|██████████| 887/887 [00:00<00:00, 2393.49 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 218.37ba/s]
+[190/200] ep_000328: 887 frames (4.6s)
+Map:   0%|          | 0/858 [00:00<?, ? examples/s]Map:  33%|███▎      | 285/858 [00:00<00:00, 2828.87 examples/s]Map:  67%|██████▋   | 574/858 [00:00<00:00, 2855.45 examples/s]Map: 100%|██████████| 858/858 [00:00<00:00, 2461.23 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 256.66ba/s]
+[191/200] ep_000329: 858 frames (4.3s)
+Map:   0%|          | 0/885 [00:00<?, ? examples/s]Map:  30%|███       | 269/885 [00:00<00:00, 2669.27 examples/s]Map:  61%|██████    | 540/885 [00:00<00:00, 2689.78 examples/s]Map:  92%|█████████▏| 815/885 [00:00<00:00, 2709.91 examples/s]Map: 100%|██████████| 885/885 [00:00<00:00, 2374.48 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 244.48ba/s]
+[192/200] ep_000330: 885 frames (4.6s)
+Map:   0%|          | 0/896 [00:00<?, ? examples/s]Map:  32%|███▏      | 289/896 [00:00<00:00, 2871.66 examples/s]Map:  80%|████████  | 720/896 [00:00<00:00, 2864.20 examples/s]Map: 100%|██████████| 896/896 [00:00<00:00, 2414.60 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 250.66ba/s]
+[193/200] ep_000331: 896 frames (4.4s)
+Map:   0%|          | 0/877 [00:00<?, ? examples/s]Map:  31%|███▏      | 275/877 [00:00<00:00, 2740.93 examples/s]Map:  65%|██████▍   | 566/877 [00:00<00:00, 2833.27 examples/s]Map:  98%|█████████▊| 859/877 [00:00<00:00, 2876.02 examples/s]Map: 100%|██████████| 877/877 [00:00<00:00, 2423.12 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/9 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 9/9 [00:00<00:00, 249.82ba/s]
+[194/200] ep_000332: 877 frames (4.3s)
+Map:   0%|          | 0/959 [00:00<?, ? examples/s]Map:  30%|███       | 291/959 [00:00<00:00, 2895.73 examples/s]Map:  74%|███████▍  | 708/959 [00:00<00:00, 2808.35 examples/s]Map: 100%|██████████| 959/959 [00:00<00:00, 2443.98 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 254.22ba/s]
+[195/200] ep_000333: 959 frames (5.4s)
+Map:   0%|          | 0/913 [00:00<?, ? examples/s]Map:  30%|███       | 277/913 [00:00<00:00, 2751.85 examples/s]Map:  61%|██████▏   | 561/913 [00:00<00:00, 2796.04 examples/s]Map:  92%|█████████▏| 844/913 [00:00<00:00, 2806.51 examples/s]Map: 100%|██████████| 913/913 [00:00<00:00, 2467.68 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 260.56ba/s]
+[196/200] ep_000334: 913 frames (4.4s)
+Map:   0%|          | 0/927 [00:00<?, ? examples/s]Map:  31%|███       | 286/927 [00:00<00:00, 2836.00 examples/s]Map:  62%|██████▏   | 572/927 [00:00<00:00, 2843.08 examples/s]Map: 100%|██████████| 927/927 [00:00<00:00, 2231.89 examples/s]Map: 100%|██████████| 927/927 [00:00<00:00, 2335.12 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 231.79ba/s]
+[197/200] ep_000335: 927 frames (4.5s)
+Map:   0%|          | 0/960 [00:00<?, ? examples/s]Map:  29%|██▉       | 282/960 [00:00<00:00, 2805.59 examples/s]Map:  73%|███████▎  | 702/960 [00:00<00:00, 2793.39 examples/s]Map: 100%|██████████| 960/960 [00:00<00:00, 2444.58 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 268.02ba/s]
+[198/200] ep_000337: 960 frames (4.6s)
+Map:   0%|          | 0/901 [00:00<?, ? examples/s]Map:  32%|███▏      | 286/901 [00:00<00:00, 2843.35 examples/s]Map:  78%|███████▊  | 707/901 [00:00<00:00, 2810.62 examples/s]Map: 100%|██████████| 901/901 [00:00<00:00, 2431.08 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 227.18ba/s]
+[199/200] ep_000339: 901 frames (4.5s)
+Map:   0%|          | 0/954 [00:00<?, ? examples/s]Map:  30%|██▉       | 283/954 [00:00<00:00, 2811.88 examples/s]Map:  74%|███████▎  | 702/954 [00:00<00:00, 2791.15 examples/s]Map: 100%|██████████| 954/954 [00:00<00:00, 2401.38 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/10 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 10/10 [00:00<00:00, 251.01ba/s]
+[200/200] ep_000340: 954 frames (5.1s)
+wrote /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/datasets/rlpj/bee_v5: 94 episodes, 87041 frames

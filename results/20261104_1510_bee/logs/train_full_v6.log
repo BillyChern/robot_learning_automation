@@ -1,0 +1,47 @@
+01:47:26.317 [I] Created experiment checkpoint directory: /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v6 (2175721:train_pytorch.py:340)
+01:47:26.324 [I] Using batch size per GPU: 4 (total batch size across 1 GPUs: 4)                  (2175721:train_pytorch.py:354)
+01:47:26.384 [I] Loaded norm stats from /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/assets/pi05_kinova_full/rlpj/bee_v6 (2175721:config.py:196)
+01:47:26.385 [I] data_config: DataConfig(repo_id='rlpj/bee_v6', asset_id='rlpj/bee_v6', norm_stats={'state': NormStats(mean=array([ 0.1074445 ,  0.52962428, -1.61375213, -0.02112597, -0.85129291,
+        1.31472695,  0.25612122]), std=array([0.18198547, 0.16836077, 0.27005839, 0.01077788, 0.53345549,
+       1.08713412, 0.34947568]), q01=array([-0.1434282 ,  0.15687828, -2.26167593, -0.03814685, -1.49520285,
+       -3.03921715,  0.00438597]), q99=array([ 4.59146401e-01,  9.00885781e-01, -1.08985334e+00, -4.26001146e-04,
+        9.45852733e-01,  3.03081712e+00,  8.99068383e-01])), 'actions': NormStats(mean=array([-5.53392165e-04, -1.10445241e-03, -4.45069373e-03,  3.07519645e-06,
+        1.07024331e-02,  1.39783404e-03,  3.33958387e-01]), std=array([0.01366975, 0.01624174, 0.02573998, 0.00123299, 0.03628554,
+       0.19394727, 0.47161117]), q01=array([-0.05834045, -0.06719326, -0.07924923, -0.0013174 , -0.06940972,
+       -0.08293101,  0.        ]), q99=array([0.05103676, 0.04867404, 0.09232149, 0.00117533, 0.15730273,
+       0.08286091, 0.9998    ]))}, repack_transforms=Group(inputs=[RepackTransform(structure={'image': 'image', 'wrist_image': 'wrist_image', 'state': 'state', 'actions': 'actions', 'prompt': 'prompt'})], outputs=()), data_transforms=Group(inputs=(KinovaInputs(model_type=<ModelType.PI05: 'pi05'>), DeltaActions(mask=(True, True, True, True, True, True, False))), outputs=(AbsoluteActions(mask=(True, True, True, True, True, True, False)), KinovaOutputs())), model_transforms=Group(inputs=[InjectDefaultPrompt(prompt=None), ResizeImages(height=224, width=224), TokenizePrompt(tokenizer=<openpi.models.tokenizer.PaligemmaTokenizer object at 0x7a0352623810>, discrete_state_input=True), PadStatesAndActions(model_action_dim=32)], outputs=()), use_quantile_norm=True, action_sequence_keys=('actions',), prompt_from_task=True, rlds_data_dir=None, action_space=None, datasets=()) (2175721:data_loader.py:243)
+01:47:27.291 [I] local_batch_size: 4                                                              (2175721:data_loader.py:324)
+INFO:2026-11-09 01:47:27,613:jax._src.xla_bridge:925: Unable to initialize backend 'rocm': module 'jaxlib.xla_extension' has no attribute 'GpuAllocatorConfig'
+01:47:27.613 [I] Unable to initialize backend 'rocm': module 'jaxlib.xla_extension' has no attribute 'GpuAllocatorConfig' (2175721:xla_bridge.py:925)
+INFO:2026-11-09 01:47:27,614:jax._src.xla_bridge:925: Unable to initialize backend 'tpu': INTERNAL: Failed to open libtpu.so: libtpu.so: cannot open shared object file: No such file or directory
+01:47:27.614 [I] Unable to initialize backend 'tpu': INTERNAL: Failed to open libtpu.so: libtpu.so: cannot open shared object file: No such file or directory (2175721:xla_bridge.py:925)
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/r2r/robot_learning_final_pj/rlpj/vla/openpi_entry.py", line 220, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/r2r/robot_learning_final_pj/rlpj/vla/openpi_entry.py", line 215, in main
+    COMMANDS[argv[0]](argv[1:])
+  File "/home/r2r/robot_learning_final_pj/rlpj/vla/openpi_entry.py", line 195, in cmd_train_pytorch
+    tp.train_loop(config)
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/scripts/train_pytorch.py", line 409, in train_loop
+    model = openpi.models_pytorch.pi0_pytorch.PI0Pytorch(model_cfg).to(device)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1355, in to
+    return self._apply(convert)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 915, in _apply
+    module._apply(fn)
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 915, in _apply
+    module._apply(fn)
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 915, in _apply
+    module._apply(fn)
+  [Previous line repeated 5 more times]
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 942, in _apply
+    param_applied = fn(param)
+                    ^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1341, in convert
+    return t.to(
+           ^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 64.00 MiB. GPU 0 has a total capacity of 23.52 GiB of which 35.06 MiB is free. Process 2151806 has 4.76 GiB memory in use. Process 2151936 has 7.70 GiB memory in use. Process 2152174 has 4.00 GiB memory in use. Process 2152471 has 1.36 GiB memory in use. Process 2152472 has 1.32 GiB memory in use. Including non-PyTorch memory, this process has 4.27 GiB memory in use. Of the allocated memory 3.89 GiB is allocated by PyTorch, and 4.25 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)

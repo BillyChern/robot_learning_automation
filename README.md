@@ -204,3 +204,15 @@ tests/           .venv/bin/python -m pytest -q
 docs/            DESIGN.md
 runs/            all outputs (git-ignored)
 ```
+
+## Results: run 20261104_1510_bee (toy bee into a bowl)
+
+Claude Code agents (Claude Opus 5.5) were given one goal: fine-tune π0.5 to pick up the toy bee and put it into the
+bowl with at least 70 % success on a Kinova Gen3. They wrote the robot programs, collected and reset their own data,
+trained, evaluated, ran DAgger and retrained. full_v7 reached 16/20 (80 %) after 6 days; a person stepped in 9 times.
+
+- `results/20261104_1510_bee/`: REPORT.md, OPERATOR_LOG.md (every human intervention), events and usage logs, training
+  logs, the agents' programs and notes, readable agent transcripts, the zero-shot test, X post texts and figures.
+  Exported by `scripts/export_results.sh`; checkpoints, datasets and raw recordings are not included (235 GB).
+- Showcase videos: release [bee-run-videos](https://github.com/BillyChern/robot_learning_automation/releases/tag/bee-run-videos).
+- `scripts/sync_github.sh` keeps this repository up to date (runs every 30 minutes in tmux session `github_sync`).

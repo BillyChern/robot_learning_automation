@@ -1,0 +1,226 @@
+{
+ "id": "08_full_v1_30000",
+ "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/learn/ckpt/full_v1/30000",
+ "zero_shot": false,
+ "requested": 20,
+ "n": 20,
+ "success": 0,
+ "fail": 20,
+ "unsure": 0,
+ "success_rate": 0.0,
+ "met": false,
+ "episodes": [
+  {
+   "episode": 284,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 31.1
+  },
+  {
+   "episode": 286,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=none, vlm=False)",
+   "duration": 188.3
+  },
+  {
+   "episode": 288,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 30.2
+  },
+  {
+   "episode": 289,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 31.3
+  },
+  {
+   "episode": 291,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 32.1
+  },
+  {
+   "episode": 292,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 33.0
+  },
+  {
+   "episode": 293,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 31.0
+  },
+  {
+   "episode": 295,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 33.1
+  },
+  {
+   "episode": 297,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 30.3
+  },
+  {
+   "episode": 299,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 188.3
+  },
+  {
+   "episode": 301,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 31.3
+  },
+  {
+   "episode": 303,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 190.0
+  },
+  {
+   "episode": 305,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 33.3
+  },
+  {
+   "episode": 307,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 41.3
+  },
+  {
+   "episode": 309,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 32.2
+  },
+  {
+   "episode": 311,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 26.0
+  },
+  {
+   "episode": 313,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 31.0
+  },
+  {
+   "episode": 315,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 31.2
+  },
+  {
+   "episode": 317,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 35.1
+  },
+  {
+   "episode": 319,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 31.2
+  }
+ ],
+ "t_start": "2026-11-08T02:33:10",
+ "port": 8000,
+ "rollout": "programs/rollout_std.py",
+ "learn_commit": "af184d6",
+ "dagger": [
+  {
+   "episode": 285,
+   "of": 284,
+   "final": "success"
+  },
+  {
+   "episode": 287,
+   "of": 286,
+   "final": "success"
+  },
+  {
+   "episode": 290,
+   "of": 289,
+   "final": "success"
+  },
+  {
+   "episode": 294,
+   "of": 293,
+   "final": "fail"
+  },
+  {
+   "episode": 296,
+   "of": 295,
+   "final": "fail"
+  },
+  {
+   "episode": 298,
+   "of": 297,
+   "final": "fail"
+  },
+  {
+   "episode": 300,
+   "of": 299,
+   "final": "fail"
+  },
+  {
+   "episode": 302,
+   "of": 301,
+   "final": "fail"
+  },
+  {
+   "episode": 304,
+   "of": 303,
+   "final": "fail"
+  },
+  {
+   "episode": 306,
+   "of": 305,
+   "final": "fail"
+  },
+  {
+   "episode": 308,
+   "of": 307,
+   "final": "unsure"
+  },
+  {
+   "episode": 310,
+   "of": 309,
+   "final": "success"
+  },
+  {
+   "episode": 312,
+   "of": 311,
+   "final": "fail"
+  },
+  {
+   "episode": 314,
+   "of": 313,
+   "final": "success"
+  },
+  {
+   "episode": 316,
+   "of": 315,
+   "final": "fail"
+  },
+  {
+   "episode": 318,
+   "of": 317,
+   "final": "fail"
+  },
+  {
+   "episode": 320,
+   "of": 319,
+   "final": "fail"
+  }
+ ],
+ "t_end": "2026-11-08T04:56:00"
+}

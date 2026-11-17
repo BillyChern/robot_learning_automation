@@ -1,0 +1,1940 @@
+{
+ "run_id": "20261104_1510_bee",
+ "task": "bee_in_bowl",
+ "condition": "text",
+ "created": "2026-11-04T15:10:35",
+ "phase": "done",
+ "counters": {
+  "episodes": {
+   "total": 289,
+   "success": 275,
+   "fail": 12,
+   "unsure": 2
+  },
+  "evals": {
+   "total": 267,
+   "success": 68,
+   "fail": 189,
+   "unsure": 10
+  },
+  "resets": {
+   "total": 678,
+   "ok": 544,
+   "fail": 134,
+   "manual": 0
+  },
+  "consecutive_failures": {
+   "execute": 0,
+   "reset": 0
+  },
+  "dagger": {
+   "total": 117,
+   "success": 85,
+   "fail": 27,
+   "unsure": 5
+  }
+ },
+ "agents": {
+  "execute": {
+   "status": "done",
+   "session_id": "033e27b3-987b-4c19-8332-df75960f7e93",
+   "model": "claude-opus-5-5",
+   "started": "2026-11-04T15:10:40",
+   "ended": "2026-11-04T15:17:11",
+   "attempts": 4,
+   "robot_attempts": 1,
+   "turns": 821,
+   "cost_usd": 709.0897713999998,
+   "input_tokens": 1588,
+   "output_tokens": 354378,
+   "cache_read": 96878502,
+   "cache_creation": 134876698,
+   "duration_s": 6157.180000000004,
+   "first_success_attempt": 1,
+   "first_success_after_attempts": 3,
+   "time_to_first_success_s": 339.0,
+   "repairs": 0,
+   "rounds": 0,
+   "program_command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
+   "last_report": "One real attempt succeeded: attempt 3 (commit 81a5f7f, exit 0, 110 s). The bee went into the bowl. The program only checked that the bee was gone from the table, but the wrist photo taken after release (wrist_bowl_after.jpg) shows the bee inside the bowl. The final commit 3be82ca has not run on the robot. Its only change is one threshold, tested by a dry run.\n\nWhat the program does:\n- **Find the objects:** it uses the side depth camera's table blobs. The bowl is the blob 5.5\u20139.5 cm tall and 11\u201319 cm across; its centre comes from a circle fit to the rim, then gets corrected with the wrist camera from 32 cm above. The bee is the largest blob 1.5\u20135.8 cm tall and 3\u201313 cm across with at least 250 points. Its centre and long axis come from the shape of its upper part.\n- **Grasp:** fully open, the jaws close across the bee's short side. The arm comes down slowly to 52 mm above the table and closes once. A reading of 96 or more means nothing was grasped.\n- **Place:** slow lift, carry 23 cm above the table, slow lowering until the bee's bottom is 3 cm above the rim at the bowl centre, open, slow rise, a wrist photo, then back home.\n- **Verify:** the side camera looks again. Success needs the bowl still there, moved less than 5 cm and 5.5\u20139.5 cm tall (so still upright), no bee-sized blob at the bee's start spot or anywhere else on the table, the bee held through lift and carry, and the gripper opened on release.\n\nAttempt 3 numbers:\n\n| Check | Value |\n|---|---|\n| Gripper reading after closing | 82.0 |\n| Reading after lift | 82.0 |\n| Reading after release | 0.4 |\n| Wrist correction of the bowl centre | about 9 mm, to (0.462, -0.016) |\n| Bowl movement | 2 mm |\n| Bowl height afterwards | 7.4 cm |\n| Bee at its start spot / stray bee-sized blobs | 0 / 0 |\n| Worst tracking error | 0.52 mm |\n\nThe independent geometric check returned no result: it saw nothing inside the bowl and no bee elsewhere, possibly because the bee is hidden. So far only the wrist photo shows the bee in the bowl.\n\nChanged after attempt 3 (commit 3be82ca): the side depth camera reported a small object at about (0.32\u20130.36, -0.09) where the table is empty. It had 75\u2013143 points, against about 1100 for the bee. A blob now needs at least 250 points to count as the bee. In dry-run attempt 4 the bee was still in the bowl, and the program correctly found no bee and stopped before any motion (exit 2). The 250-point threshold is untested on hardware with the bee on the table.\n\nNot yet seen on hardware:\n- Other bee and bowl positions and orientations; only one scene was run, with the bee at (0.51, -0.21) and the bowl at (0.47, -0.01).\n- A bee hidden from the side camera behind the bowl. The program would stop with \"no bee-sized blob\".\n- A bee within 8 cm of the false object.\n- A failed or missed drop.\n\nReuse decisions are in notes/reuse.md.",
+   "reflections": 295
+  },
+  "reset": {
+   "status": "done",
+   "session_id": "2b89b1e4-2f96-48ce-b0aa-28de8fe2e14d",
+   "model": "claude-opus-5-5",
+   "started": "2026-11-04T15:17:11",
+   "ended": "2026-11-04T16:11:36",
+   "attempts": 75,
+   "robot_attempts": 69,
+   "turns": 1467,
+   "cost_usd": 814.2060332000009,
+   "input_tokens": 2790,
+   "output_tokens": 699878,
+   "cache_read": 325395062,
+   "cache_creation": 145296038,
+   "duration_s": 7731.950999999997,
+   "first_success_attempt": 2,
+   "first_success_after_attempts": 4,
+   "time_to_first_success_s": 838.8,
+   "repairs": 62,
+   "rounds": 0,
+   "program_command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py",
+   "last_report": "Repair of attempts 724/725 is done (commit 0bfdb53). Test run 726 used the same targets and succeeded: the orchestrator's layout check passed, and all 3 of my layout frames saw both objects. Bowl ended 0.9 cm from its target, bee 1.6 cm.\n\nCause: the targets put the bee only 18.3 cm from the bowl, toward the base and \u2212y. In that position the side camera joins the two into one blob and the orchestrator finds neither object. Past attempts show such merges in this direction (\u2212110 to \u2212130\u00b0) at distances up to 19.9 cm.\n- In 724 only 1 of 3 of my layout frames was merged, so the program claimed success and ran no correction.\n- In 725 the correction aimed 2.5 cm further out, but the bee landed 1.5 cm short and still merged.\n\nFix:\n- Any layout frame with both objects missing now counts as merged and triggers the bee correction.\n- The first placement pushes the bee 2.5 cm away from the bowl (was 1.5 cm) when the targets are under 21 cm apart.\n- The merge correction pushes 3.5 cm (was 2.5 cm).\n\nTrade-off: the bigger pushes use more of the 4 cm tolerance, so bee errors near the bowl will run higher (1.6 cm in 726).",
+   "reflections": 298
+  },
+  "learn": {
+   "status": "done",
+   "session_id": "b16c8a93-6e0c-43eb-ab9e-a0d9db62c0c8",
+   "model": "claude-opus-5-5",
+   "started": "2026-11-05T18:29:10",
+   "ended": "2026-11-11T03:01:06",
+   "attempts": 0,
+   "robot_attempts": 0,
+   "turns": 374,
+   "cost_usd": 98.04319179999996,
+   "input_tokens": 682,
+   "output_tokens": 208302,
+   "cache_read": 52860108,
+   "cache_creation": 15650201,
+   "duration_s": 3560.4549999999986,
+   "first_success_attempt": null,
+   "first_success_after_attempts": null,
+   "time_to_first_success_s": null,
+   "repairs": 0,
+   "rounds": 14,
+   "program_command": null,
+   "last_report": "Target met: full_v7/30000 scored 16/20 = 80% in eval 22_full_v7_30000, above the 70% target. full_v8/30000 scored lower, 11/20 = 55% (one more rollout unsure), in eval 23_full_v8_30000. The checkpoint to deploy is /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v7/30000.\n\nBoth evaluations used the same protocol: 20 rollouts \"policy from the look pose\", 240 s policy time, DAgger on, policy served from the 5090 (programs/serve_torch128.py, cu128 torch) through the TCP proxy programs/proxy_serve.py on the 4090. A scripted camera move (perceive, to_ready, look_bowl, using execute.py's functions) puts the arm above the bowl. The policy then does the grasp, lift, carry and release itself. The rollout program is programs/rollout_look.py with programs/rollout_floor.py, which keeps the 8 mm fingertip floor, a closed-gripper lift margin, eased chunks, re-reads the joints before planning, and lets the policy continue after a refused release.\n\nModels:\n- **full_v7:** full fine-tune of pi05_kinova_full (stock state and action representation) on bee_v8 (113 episodes: clean normal-wrist demos trimmed to the approach phase with idle frames dropped, plus 10 DAgger corrections of full_v5's own failures). Initialised from full_v5/30000, constant LR 1e-5, 30k steps, batch 4; trained on the 5090.\n- **Comparison:** full_v5/30000 scored 13/20 and 12/20 under the same conditions (evals 18 and 19). full_v8 is full_v7's recipe on bee_v9 (169 demos + 8 corrections) and did worse, 55%.\n\nWhat made the difference, in order:\n1. Starting at the look pose and training only on normal-wrist episodes. The old demos mixed two wrist solutions at that pose.\n2. Rollout safety fixes that had been ending real grasps early.\n3. Raising the policy time limit to 240 s.\n4. Fine-tuning from full_v5 at a low LR with only full_v5's own corrections. full_v6, trained further on more corrections, regressed to 3/19.\n\nUnverified: each rate rests on a single 20-rollout evaluation. full_v7 has not been evaluated with a server on the 4090 (latency about 135 ms instead of about 260 ms) or under different lighting. The commits are in the workspace history, latest \"eval 23: full_v8 55%; final summary\"; details are in notes/learn.md. No training is running and the 5090 server is stopped."
+  }
+ },
+ "datasets": {
+  "bee_v1": {
+   "command": "cd /home/r2r/robot_learning_final_pj && uv run rlpj vla convert --run-dir /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee --name bee_v1",
+   "exit_code": 0,
+   "duration_s": 1037.8,
+   "t": "2026-11-05T18:47:54",
+   "only_success": false,
+   "episodes": {
+    "total": 108,
+    "success": 100,
+    "fail": 6,
+    "unsure": 2
+   },
+   "path": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/datasets/bee_v1"
+  },
+  "probe": {
+   "command": "rlpj vla convert --run-dir /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee --name probe --dry-run > /dev/null 2>&1; mkdir -p /tmp/beecheck && RLPJ_ATTEMPT_DIR=/tmp/beecheck timeout 120 .venv/bin/python -c \"\nimport cv2, numpy as np\nfrom rlpj.robot.session import RobotSession\nwith RobotSession(program='inspect') as s:\n    img,_=s.wrist.latest(); side,_,_=s.side.latest(); fb=s.feedback()\n    cv2.imwrite('/tmp/beecheck/wrist.jpg', cv2.resize(img,(640,360))); cv2.imwrite('/tmp/beecheck/side.jpg', cv2.resize(side,(640,360)))\n    print('pose', np.round(fb['pose'][:3],3).tolist(), 'gripper', fb['gripper'])\n    s.claim('fail')\n\" 2>&1 | grep -E \"pose|Error|error\" | tail -3; rsync -a /tmp/beecheck/wrist.jpg /tmp/beecheck/side.jpg Worksation_5090:/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/learn/notes/ && echo copied",
+   "exit_code": 0,
+   "duration_s": 4.0,
+   "t": "2026-11-10T10:16:54",
+   "only_success": false,
+   "episodes": {
+    "total": 289,
+    "success": 275,
+    "fail": 12,
+    "unsure": 2
+   },
+   "path": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/datasets/probe"
+  },
+  "bee_v2": {
+   "command": "rlpj vla convert --run-dir /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee --name bee_v2 --modes collect,dagger",
+   "exit_code": 0,
+   "duration_s": 1186.1,
+   "t": "2026-11-06T22:10:00",
+   "only_success": false,
+   "episodes": {
+    "total": 108,
+    "success": 100,
+    "fail": 6,
+    "unsure": 2
+   },
+   "path": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/datasets/bee_v2"
+  },
+  "bee_v3": {
+   "command": "rlpj vla convert --run-dir /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee --name bee_v3 --modes collect,dagger",
+   "exit_code": 0,
+   "duration_s": 1459.2,
+   "t": "2026-11-07T09:13:13",
+   "only_success": false,
+   "episodes": {
+    "total": 120,
+    "success": 112,
+    "fail": 6,
+    "unsure": 2
+   },
+   "path": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/datasets/bee_v3"
+  },
+  "bee_v4": {
+   "command": "echo IiIiRXBpc29kZSBzZWxlY3Rpb24gZm9yIGJlZV92NDogc3VjY2Vzc2Z1bCBjb2xsZWN0L2RhZ2dlciBlcGlzb2RlcyB3aG9zZSB0b29sIG5ldmVyIGdvZXMgcGFzdCB5ID0gVEhSICh0aGUgY3VydGFpbgpzd2luZyBiZXR3ZWVuIEhvbWUgYW5kIHRoZSBib3dsLWxvb2sgcG9zZSByZWFjaGVzIHkgMC4yOS0wLjMwOyB0aGUgcm9ib3Qgbm93IHJlZnVzZXMgZ3JpcHBlciBwb2ludHMgcGFzdCB5IDAuMzApLgpXcml0ZXMgc3ltbGlua3MgPHdvcmtzcGFjZT4vc2VsLzxuYW1lPi9lcF8qIC0+IHJ1bnMvPHJ1bj4vZXBpc29kZXMvZXBfKiBmb3IgcmxwaiB2bGEgY29udmVydCAtLWVwaXNvZGVzLWdsb2IuCnVzYWdlOiBweXRob24gc2VsZWN0X2VwaXNvZGVzLnB5IDxydW5fZGlyPiA8bmFtZT4gW3Rocl0iIiIKaW1wb3J0IGpzb24KaW1wb3J0IG9zCmltcG9ydCBzeXMKZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgppbXBvcnQgbnVtcHkgYXMgbnAKCnJ1biwgbmFtZSA9IFBhdGgoc3lzLmFyZ3ZbMV0pLCBzeXMuYXJndlsyXQp0aHIgPSBmbG9hdChzeXMuYXJndlszXSkgaWYgbGVuKHN5cy5hcmd2KSA+IDMgZWxzZSAwLjI2Cm91dCA9IFBhdGgoIi9ob21lL3Iyci9yb2JvdF9sZWFybmluZ19maW5hbF9wai9ydW5zLzIwMjYxMTA0XzE1MTBfYmVlL2FnZW50cy9sZWFybi9zZWwiKSAvIG5hbWUKb3V0Lm1rZGlyKHBhcmVudHM9VHJ1ZSwgZXhpc3Rfb2s9VHJ1ZSkKZm9yIHAgaW4gb3V0Lmdsb2IoImVwXyoiKToKICAgIHAudW5saW5rKCkKcm93cyA9IFtdCmZvciBkIGluIHNvcnRlZCgocnVuIC8gImVwaXNvZGVzIikuZ2xvYigiZXBfKiIpKToKICAgIHRyeToKICAgICAgICBtID0ganNvbi5sb2FkcygoZCAvICJtZXRhLmpzb24iKS5yZWFkX3RleHQoKSkKICAgICAgICBpZiBtLmdldCgibW9kZSIpIG5vdCBpbiAoImNvbGxlY3QiLCAiZGFnZ2VyIikgb3IgKG0uZ2V0KCJvdXRjb21lIikgb3Ige30pLmdldCgiZmluYWwiKSAhPSAic3VjY2VzcyI6CiAgICAgICAgICAgIGNvbnRpbnVlCiAgICAgICAgdHAgPSBucC5sb2FkKGQgLyAic3RlcHMubnB6IilbInRvb2xfcG9zZSJdCiAgICBleGNlcHQgRXhjZXB0aW9uOgogICAgICAgIGNvbnRpbnVlCiAgICByb3dzLmFwcGVuZCgoZCwgbVsibW9kZSJdLCBmbG9hdCh0cFs6LCAxXS5tYXgoKSkpKQp5cyA9IG5wLmFycmF5KFtyWzJdIGZvciByIGluIHJvd3NdKQpmb3IgdCBpbiAoMC4yMiwgMC4yNCwgMC4yNiwgMC4yOCwgMC4zMCk6CiAgICBwcmludChmIm1heCB0b29sIHkgPD0ge3Q6LjJmfToge2ludCgoeXMgPD0gdCkuc3VtKCkpfSBvZiB7bGVuKHlzKX0iKQprZWVwID0gW3IgZm9yIHIgaW4gcm93cyBpZiByWzJdIDw9IHRocl0KZm9yIGQsIG1vZGUsIHkgaW4ga2VlcDoKICAgIG9zLnN5bWxpbmsoc3RyKGQucmVzb2x2ZSgpKSwgb3V0IC8gZC5uYW1lKQpwcmludChmInNlbGVjdGVkIHtsZW4oa2VlcCl9IChjb2xsZWN0IHtzdW0oclsxXSA9PSAnY29sbGVjdCcgZm9yIHIgaW4ga2VlcCl9LCBkYWdnZXIge3N1bShyWzFdID09ICdkYWdnZXInIGZvciByIGluIGtlZXApfSkgIgogICAgICBmIndpdGggbWF4IHRvb2wgeSA8PSB7dGhyfSBpbnRvIHtvdXR9IikK | base64 -d > /tmp/sel_v4.py && .venv/bin/python /tmp/sel_v4.py /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee bee_v4 0.26 && rlpj vla convert --run-dir /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee --name bee_v4 --modes collect,dagger --episodes-glob 'agents/learn/sel/bee_v4/ep_*' 2>&1 | grep -E '^\\[|wrote|excluded|rror' | tail -6",
+   "exit_code": 0,
+   "duration_s": 1045.8,
+   "t": "2026-11-08T05:15:21",
+   "only_success": false,
+   "episodes": {
+    "total": 193,
+    "success": 182,
+    "fail": 9,
+    "unsure": 2
+   },
+   "path": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/datasets/bee_v4"
+  },
+  "bee_v6": {
+   "command": "rlpj vla convert --run-dir /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee --name bee_v6 --modes collect,dagger --wrist normal --start-phase approach --drop-idle 2>&1 | grep -E \"wrote|selected|excluded.*wrist|dropped|episodes\" | tail -6; echo \"== dagger corrections (ep >= 341): ep final start_tool_yaw q6\"; .venv/bin/python -c \"\nimport json,glob,numpy as np\nfor d in sorted(glob.glob('runs/20261104_1510_bee/episodes/ep_*')):\n    i=int(d[-6:])\n    if i<341: continue\n    try: m=json.load(open(d+'/meta.json')); s=np.load(d+'/steps.npz')\n    except Exception: continue\n    if m.get('mode')!='dagger': continue\n    tp=s['tool_pose']; q=s['q']\n    print(i, (m.get('outcome') or {}).get('final'), round(float(tp[0,5]),0), round(float(q[0,5]),0), 'q4', round(float(q[0,3]),0))\n\"",
+   "exit_code": 0,
+   "duration_s": 572.2,
+   "t": "2026-11-09T01:37:00",
+   "only_success": false,
+   "episodes": {
+    "total": 225,
+    "success": 211,
+    "fail": 12,
+    "unsure": 2
+   },
+   "path": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/datasets/bee_v6"
+  },
+  "bee_v7": {
+   "command": "rlpj vla convert --run-dir /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee --name bee_v7 --modes collect,dagger --wrist normal --start-phase approach --drop-idle 2>&1 | grep -E \"^wrote|selected\" | tail -3; nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader",
+   "exit_code": 0,
+   "duration_s": 642.6,
+   "t": "2026-11-09T13:54:19",
+   "only_success": false,
+   "episodes": {
+    "total": 225,
+    "success": 211,
+    "fail": 12,
+    "unsure": 2
+   },
+   "path": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/datasets/bee_v7"
+  }
+ },
+ "training_runs": {
+  "lora_v1": {
+   "dataset": "bee_v1",
+   "command": "cd /home/r2r/robot_learning_final_pj && uv run rlpj vla train --run-dir /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee --dataset bee_v1 --exp-name lora_v1 --num-train-steps 15000 --batch-size 16 --overwrite",
+   "exit_code": 0,
+   "duration_s": 27549.9,
+   "t": "2026-11-06T02:27:20",
+   "checkpoint_dir": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_v1",
+   "round": 1
+  },
+  "lora_h30": {
+   "dataset": "bee_v2",
+   "command": "RLPJ_CONFIG=pi05_kinova_lora_h30 RLPJ_RECIPE=/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/learn/programs/recipe_h30.py setsid nohup bash scripts/train.sh /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee bee_v2 lora_h30 --overwrite > /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/learn/notes/train_lora_h30.out 2>&1 < /dev/null & sleep 600; grep -E \"Progress on|Error|error\" /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/learn/notes/train_lora_h30.out | tail -5",
+   "exit_code": 255,
+   "duration_s": 1200.3,
+   "t": "2026-11-06T22:52:08",
+   "checkpoint_dir": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_h30",
+   "round": 6
+  },
+  "run_3": {
+   "dataset": null,
+   "command": "bash /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/learn/programs/wait_train.sh lora_h30",
+   "exit_code": 0,
+   "duration_s": 60.4,
+   "t": "2026-11-06T22:31:49",
+   "checkpoint_dir": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/run_3",
+   "round": 6
+  },
+  "run_4": {
+   "dataset": null,
+   "command": "bash /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/learn/programs/wait_train.sh lora_h30",
+   "exit_code": 0,
+   "duration_s": 1142.2,
+   "t": "2026-11-06T23:11:34",
+   "checkpoint_dir": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/run_4",
+   "round": 6
+  },
+  "run_5": {
+   "dataset": null,
+   "command": "bash /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/learn/programs/wait_train.sh lora_h30",
+   "exit_code": 0,
+   "duration_s": 1142.0,
+   "t": "2026-11-06T23:30:49",
+   "checkpoint_dir": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/run_5",
+   "round": 6
+  },
+  "run_6": {
+   "dataset": null,
+   "command": "bash /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/learn/programs/wait_train.sh lora_h30",
+   "exit_code": 0,
+   "duration_s": 1142.1,
+   "t": "2026-11-06T23:49:56",
+   "checkpoint_dir": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/run_6",
+   "round": 6
+  },
+  "lora_v3": {
+   "dataset": "bee_v3",
+   "command": "rlpj vla train --run-dir /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee --dataset bee_v3 --exp-name lora_v3 --config pi05_kinova_lora_v3 --recipe /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/learn/programs/recipe_v3.py",
+   "exit_code": 255,
+   "duration_s": 10670.9,
+   "t": "2026-11-07T12:11:18",
+   "checkpoint_dir": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_v3",
+   "round": 7
+  },
+  "full_v6": {
+   "dataset": "bee_v6",
+   "command": "rlpj vla train --run-dir /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee --dataset bee_v6 --exp-name full_v6 --config pi05_kinova_full --num-train-steps 30000 --batch-size 4 --pytorch-weight-path /home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v5/30000",
+   "exit_code": 1,
+   "duration_s": 638.1,
+   "t": "2026-11-09T01:47:57",
+   "checkpoint_dir": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v6",
+   "round": 11
+  }
+ },
+ "evals": {
+  "01_lora_v1_14999": {
+   "id": "01_lora_v1_14999",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_v1/14999",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 0,
+   "success": 0,
+   "fail": 0,
+   "unsure": 0,
+   "success_rate": 0.0,
+   "met": false,
+   "t_start": "2026-11-06T02:27:50",
+   "port": 8000,
+   "error": "policy server 127.0.0.1:8000 did not come up",
+   "t_end": "2026-11-06T02:33:45"
+  },
+  "02_lora_v1_14999": {
+   "id": "02_lora_v1_14999",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_v1/14999",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 0,
+   "success": 0,
+   "fail": 0,
+   "unsure": 0,
+   "success_rate": 0.0,
+   "met": false,
+   "t_start": "2026-11-06T02:34:15",
+   "port": 8000,
+   "error": "policy server 127.0.0.1:8000 did not come up",
+   "t_end": "2026-11-06T02:34:45"
+  },
+  "03_lora_v1_14999": {
+   "id": "03_lora_v1_14999",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_v1/14999",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 12,
+   "success": 0,
+   "fail": 12,
+   "unsure": 0,
+   "success_rate": 0.0,
+   "met": false,
+   "t_start": "2026-11-06T11:30:43",
+   "port": 8000,
+   "error": "stopped by the operator",
+   "t_end": "2026-11-06T13:22:54"
+  },
+  "04_lora_v1_14999": {
+   "id": "04_lora_v1_14999",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_v1/14999",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 20,
+   "success": 0,
+   "fail": 20,
+   "unsure": 0,
+   "success_rate": 0.0,
+   "met": false,
+   "t_start": "2026-11-06T18:09:47",
+   "port": 8000,
+   "rollout": "programs/rollout_v2.py",
+   "learn_commit": "0f565c6",
+   "dagger": [
+    {
+     "episode": 122,
+     "of": 121,
+     "final": "success"
+    },
+    {
+     "episode": 124,
+     "of": 123,
+     "final": "success"
+    },
+    {
+     "episode": 127,
+     "of": 126,
+     "final": "success"
+    },
+    {
+     "episode": 129,
+     "of": 128,
+     "final": "fail"
+    },
+    {
+     "episode": 131,
+     "of": 130,
+     "final": "success"
+    },
+    {
+     "episode": 133,
+     "of": 132,
+     "final": "success"
+    },
+    {
+     "episode": 135,
+     "of": 134,
+     "final": "fail"
+    },
+    {
+     "episode": 137,
+     "of": 136,
+     "final": "success"
+    },
+    {
+     "episode": 139,
+     "of": 138,
+     "final": "success"
+    },
+    {
+     "episode": 141,
+     "of": 140,
+     "final": "success"
+    },
+    {
+     "episode": 144,
+     "of": 143,
+     "final": "success"
+    },
+    {
+     "episode": 146,
+     "of": 145,
+     "final": "success"
+    },
+    {
+     "episode": 148,
+     "of": 147,
+     "final": "success"
+    },
+    {
+     "episode": 150,
+     "of": 149,
+     "final": "success"
+    },
+    {
+     "episode": 152,
+     "of": 151,
+     "final": "fail"
+    },
+    {
+     "episode": 154,
+     "of": 153,
+     "final": "success"
+    },
+    {
+     "episode": 156,
+     "of": 155,
+     "final": "fail"
+    },
+    {
+     "episode": 158,
+     "of": 157,
+     "final": "success"
+    }
+   ],
+   "t_end": "2026-11-06T21:48:01"
+  },
+  "05_lora_h30_11999": {
+   "id": "05_lora_h30_11999",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_h30/11999",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 20,
+   "success": 0,
+   "fail": 19,
+   "unsure": 1,
+   "success_rate": 0.0,
+   "met": false,
+   "t_start": "2026-11-07T05:07:16",
+   "port": 8000,
+   "rollout": "programs/rollout_v3.py",
+   "learn_commit": "125647e",
+   "dagger": [
+    {
+     "episode": 172,
+     "of": 171,
+     "final": "success"
+    },
+    {
+     "episode": 175,
+     "of": 174,
+     "final": "success"
+    },
+    {
+     "episode": 177,
+     "of": 176,
+     "final": "success"
+    },
+    {
+     "episode": 179,
+     "of": 178,
+     "final": "success"
+    },
+    {
+     "episode": 181,
+     "of": 180,
+     "final": "fail"
+    },
+    {
+     "episode": 183,
+     "of": 182,
+     "final": "unsure"
+    },
+    {
+     "episode": 185,
+     "of": 184,
+     "final": "fail"
+    },
+    {
+     "episode": 187,
+     "of": 186,
+     "final": "success"
+    },
+    {
+     "episode": 190,
+     "of": 189,
+     "final": "success"
+    },
+    {
+     "episode": 193,
+     "of": 192,
+     "final": "success"
+    },
+    {
+     "episode": 196,
+     "of": 195,
+     "final": "success"
+    },
+    {
+     "episode": 198,
+     "of": 197,
+     "final": "success"
+    },
+    {
+     "episode": 200,
+     "of": 199,
+     "final": "success"
+    },
+    {
+     "episode": 202,
+     "of": 201,
+     "final": "success"
+    },
+    {
+     "episode": 204,
+     "of": 203,
+     "final": "success"
+    },
+    {
+     "episode": 206,
+     "of": 205,
+     "final": "success"
+    }
+   ],
+   "t_end": "2026-11-07T08:45:20"
+  },
+  "06_lora_v3_4500": {
+   "id": "06_lora_v3_4500",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/lora_v3/4500",
+   "zero_shot": false,
+   "requested": 5,
+   "n": 2,
+   "success": 0,
+   "fail": 2,
+   "unsure": 0,
+   "success_rate": 0.0,
+   "met": false,
+   "t_start": "2026-11-07T12:11:44",
+   "port": 8000,
+   "rollout": "programs/rollout_v3.py",
+   "learn_commit": "ecec4f6",
+   "dagger": [
+    {
+     "episode": 208,
+     "of": 207,
+     "final": "success"
+    },
+    {
+     "episode": 210,
+     "of": 209,
+     "final": "unsure"
+    }
+   ],
+   "error": "stopped by the operator",
+   "t_end": "2026-11-07T12:45:46"
+  },
+  "07_full_v1_30000": {
+   "id": "07_full_v1_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v1/30000",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 0,
+   "success": 0,
+   "fail": 0,
+   "unsure": 0,
+   "success_rate": 0.0,
+   "met": false,
+   "t_start": "2026-11-08T02:32:05",
+   "port": 8000,
+   "error": "policy server 127.0.0.1:8000 did not come up",
+   "t_end": "2026-11-08T02:32:10"
+  },
+  "08_full_v1_30000": {
+   "id": "08_full_v1_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/learn/ckpt/full_v1/30000",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 20,
+   "success": 0,
+   "fail": 20,
+   "unsure": 0,
+   "success_rate": 0.0,
+   "met": false,
+   "t_start": "2026-11-08T02:33:10",
+   "port": 8000,
+   "rollout": "programs/rollout_std.py",
+   "learn_commit": "af184d6",
+   "dagger": [
+    {
+     "episode": 285,
+     "of": 284,
+     "final": "success"
+    },
+    {
+     "episode": 287,
+     "of": 286,
+     "final": "success"
+    },
+    {
+     "episode": 290,
+     "of": 289,
+     "final": "success"
+    },
+    {
+     "episode": 294,
+     "of": 293,
+     "final": "fail"
+    },
+    {
+     "episode": 296,
+     "of": 295,
+     "final": "fail"
+    },
+    {
+     "episode": 298,
+     "of": 297,
+     "final": "fail"
+    },
+    {
+     "episode": 300,
+     "of": 299,
+     "final": "fail"
+    },
+    {
+     "episode": 302,
+     "of": 301,
+     "final": "fail"
+    },
+    {
+     "episode": 304,
+     "of": 303,
+     "final": "fail"
+    },
+    {
+     "episode": 306,
+     "of": 305,
+     "final": "fail"
+    },
+    {
+     "episode": 308,
+     "of": 307,
+     "final": "unsure"
+    },
+    {
+     "episode": 310,
+     "of": 309,
+     "final": "success"
+    },
+    {
+     "episode": 312,
+     "of": 311,
+     "final": "fail"
+    },
+    {
+     "episode": 314,
+     "of": 313,
+     "final": "success"
+    },
+    {
+     "episode": 316,
+     "of": 315,
+     "final": "fail"
+    },
+    {
+     "episode": 318,
+     "of": 317,
+     "final": "fail"
+    },
+    {
+     "episode": 320,
+     "of": 319,
+     "final": "fail"
+    }
+   ],
+   "t_end": "2026-11-08T04:56:00"
+  },
+  "09_full_v1_30000": {
+   "id": "09_full_v1_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/learn/ckpt/full_v1/30000",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 0,
+   "success": 0,
+   "fail": 0,
+   "unsure": 0,
+   "success_rate": 0.0,
+   "met": false,
+   "t_start": "2026-11-08T13:06:33",
+   "port": 8000,
+   "rollout": "programs/rollout_look.py",
+   "learn_commit": "d27eed1",
+   "error": "policy server 100.122.29.80:8000 did not come up",
+   "t_end": "2026-11-08T13:21:39"
+  },
+  "10_full_v1_30000": {
+   "id": "10_full_v1_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v1/30000",
+   "zero_shot": false,
+   "requested": 1,
+   "n": 0,
+   "success": 0,
+   "fail": 0,
+   "unsure": 0,
+   "success_rate": 0.0,
+   "met": false,
+   "t_start": "2026-11-08T13:22:02",
+   "port": 8000,
+   "rollout": "programs/rollout_look.py",
+   "learn_commit": "fcba08a",
+   "error": "policy server 100.122.29.80:8000 did not come up",
+   "t_end": "2026-11-08T13:37:08"
+  },
+  "11_full_v1_30000": {
+   "id": "11_full_v1_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/learn/ckpt/full_v1/30000",
+   "zero_shot": false,
+   "requested": 1,
+   "n": 1,
+   "success": 0,
+   "fail": 1,
+   "unsure": 0,
+   "success_rate": 0.0,
+   "met": false,
+   "t_start": "2026-11-08T13:48:00",
+   "port": 8000,
+   "serve": "programs/serve_torch128.py",
+   "rollout": "programs/rollout_look.py",
+   "learn_commit": "1381560",
+   "dagger": [
+    {
+     "episode": 342,
+     "of": 341,
+     "final": "success"
+    }
+   ],
+   "t_end": "2026-11-08T13:57:20"
+  },
+  "12_full_v1_30000": {
+   "id": "12_full_v1_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v1/30000",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 20,
+   "success": 0,
+   "fail": 19,
+   "unsure": 1,
+   "success_rate": 0.0,
+   "met": false,
+   "t_start": "2026-11-08T14:02:59",
+   "port": 8000,
+   "serve": "programs/serve_torch128.py",
+   "rollout": "programs/rollout_look.py",
+   "learn_commit": "0e11b99",
+   "dagger": [
+    {
+     "episode": 344,
+     "of": 343,
+     "final": "success"
+    },
+    {
+     "episode": 347,
+     "of": 346,
+     "final": "success"
+    },
+    {
+     "episode": 349,
+     "of": 348,
+     "final": "success"
+    },
+    {
+     "episode": 352,
+     "of": 351,
+     "final": "success"
+    },
+    {
+     "episode": 354,
+     "of": 353,
+     "final": "success"
+    },
+    {
+     "episode": 357,
+     "of": 356,
+     "final": "success"
+    },
+    {
+     "episode": 360,
+     "of": 359,
+     "final": "success"
+    },
+    {
+     "episode": 362,
+     "of": 361,
+     "final": "success"
+    },
+    {
+     "episode": 364,
+     "of": 363,
+     "final": "success"
+    },
+    {
+     "episode": 367,
+     "of": 366,
+     "final": "success"
+    },
+    {
+     "episode": 370,
+     "of": 369,
+     "final": "success"
+    },
+    {
+     "episode": 372,
+     "of": 371,
+     "final": "success"
+    },
+    {
+     "episode": 374,
+     "of": 373,
+     "final": "success"
+    }
+   ],
+   "t_end": "2026-11-08T16:54:06"
+  },
+  "13_full_v5_30000": {
+   "id": "13_full_v5_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v5/30000",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 20,
+   "success": 7,
+   "fail": 12,
+   "unsure": 1,
+   "success_rate": 0.35,
+   "met": false,
+   "t_start": "2026-11-08T22:59:55",
+   "port": 8000,
+   "rollout": "programs/rollout_look.py",
+   "learn_commit": "081aa41",
+   "dagger": [
+    {
+     "episode": 391,
+     "of": 390,
+     "final": "success"
+    },
+    {
+     "episode": 393,
+     "of": 392,
+     "final": "fail"
+    },
+    {
+     "episode": 397,
+     "of": 396,
+     "final": "success"
+    },
+    {
+     "episode": 400,
+     "of": 399,
+     "final": "success"
+    },
+    {
+     "episode": 406,
+     "of": 405,
+     "final": "fail"
+    },
+    {
+     "episode": 410,
+     "of": 409,
+     "final": "success"
+    }
+   ],
+   "t_end": "2026-11-09T01:27:08"
+  },
+  "14_full_v6_30000": {
+   "id": "14_full_v6_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v6/30000",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 20,
+   "success": 2,
+   "fail": 16,
+   "unsure": 2,
+   "success_rate": 0.1,
+   "met": false,
+   "t_start": "2026-11-09T09:03:50",
+   "port": 8000,
+   "serve": "programs/proxy_serve.py",
+   "rollout": "programs/rollout_look.py",
+   "learn_commit": "18fa42a",
+   "dagger": [
+    {
+     "episode": 415,
+     "of": 414,
+     "final": "success"
+    },
+    {
+     "episode": 417,
+     "of": 416,
+     "final": "fail"
+    },
+    {
+     "episode": 420,
+     "of": 419,
+     "final": "success"
+    },
+    {
+     "episode": 424,
+     "of": 423,
+     "final": "unsure"
+    },
+    {
+     "episode": 426,
+     "of": 425,
+     "final": "success"
+    },
+    {
+     "episode": 428,
+     "of": 427,
+     "final": "success"
+    },
+    {
+     "episode": 430,
+     "of": 429,
+     "final": "success"
+    },
+    {
+     "episode": 432,
+     "of": 431,
+     "final": "success"
+    },
+    {
+     "episode": 438,
+     "of": 437,
+     "final": "success"
+    },
+    {
+     "episode": 441,
+     "of": 440,
+     "final": "success"
+    }
+   ],
+   "t_end": "2026-11-09T12:01:36"
+  },
+  "15_full_v5_30000": {
+   "id": "15_full_v5_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v5/30000",
+   "zero_shot": false,
+   "requested": 10,
+   "n": 10,
+   "success": 2,
+   "fail": 8,
+   "unsure": 0,
+   "success_rate": 0.2,
+   "met": false,
+   "t_start": "2026-11-09T12:05:45",
+   "port": 8000,
+   "serve": "programs/proxy_serve.py",
+   "rollout": "programs/rollout_look.py",
+   "learn_commit": "873486c",
+   "dagger": [
+    {
+     "episode": 448,
+     "of": 447,
+     "final": "success"
+    },
+    {
+     "episode": 452,
+     "of": 451,
+     "final": "success"
+    }
+   ],
+   "t_end": "2026-11-09T13:43:15"
+  },
+  "16_full_v6_30000": {
+   "id": "16_full_v6_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v6/30000",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 20,
+   "success": 2,
+   "fail": 16,
+   "unsure": 2,
+   "success_rate": 0.1,
+   "met": false,
+   "t_start": "2026-11-09T13:56:29",
+   "port": 8000,
+   "serve": "programs/proxy_serve.py",
+   "rollout": "programs/rollout_look.py",
+   "learn_commit": "4f21311",
+   "dagger": [
+    {
+     "episode": 457,
+     "of": 456,
+     "final": "success"
+    },
+    {
+     "episode": 460,
+     "of": 459,
+     "final": "success"
+    },
+    {
+     "episode": 465,
+     "of": 464,
+     "final": "success"
+    },
+    {
+     "episode": 469,
+     "of": 468,
+     "final": "success"
+    },
+    {
+     "episode": 473,
+     "of": 472,
+     "final": "success"
+    },
+    {
+     "episode": 475,
+     "of": 474,
+     "final": "success"
+    },
+    {
+     "episode": 477,
+     "of": 476,
+     "final": "success"
+    },
+    {
+     "episode": 479,
+     "of": 478,
+     "final": "fail"
+    },
+    {
+     "episode": 481,
+     "of": 480,
+     "final": "success"
+    },
+    {
+     "episode": 483,
+     "of": 482,
+     "final": "fail"
+    },
+    {
+     "episode": 485,
+     "of": 484,
+     "final": "success"
+    },
+    {
+     "episode": 487,
+     "of": 486,
+     "final": "success"
+    }
+   ],
+   "t_end": "2026-11-09T16:48:13"
+  },
+  "17_full_v6_30000": {
+   "id": "17_full_v6_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v6/30000",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 20,
+   "success": 3,
+   "fail": 17,
+   "unsure": 0,
+   "success_rate": 0.15,
+   "met": false,
+   "t_start": "2026-11-09T16:49:56",
+   "port": 8000,
+   "serve": "programs/proxy_serve.py",
+   "rollout": "programs/rollout_look.py",
+   "learn_commit": "f969519",
+   "dagger": [
+    {
+     "episode": 495,
+     "of": 494,
+     "final": "success"
+    },
+    {
+     "episode": 497,
+     "of": 496,
+     "final": "success"
+    },
+    {
+     "episode": 502,
+     "of": 501,
+     "final": "success"
+    },
+    {
+     "episode": 507,
+     "of": 506,
+     "final": "fail"
+    },
+    {
+     "episode": 509,
+     "of": 508,
+     "final": "success"
+    },
+    {
+     "episode": 512,
+     "of": 511,
+     "final": "success"
+    },
+    {
+     "episode": 514,
+     "of": 513,
+     "final": "fail"
+    }
+   ],
+   "t_end": "2026-11-09T20:08:43"
+  },
+  "18_full_v5_30000": {
+   "id": "18_full_v5_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v5/30000",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 20,
+   "success": 13,
+   "fail": 6,
+   "unsure": 1,
+   "success_rate": 0.65,
+   "met": false,
+   "t_start": "2026-11-09T20:13:46",
+   "port": 8000,
+   "serve": "programs/proxy_serve.py",
+   "rollout": "programs/rollout_look.py",
+   "learn_commit": "20aa4e3",
+   "dagger": [
+    {
+     "episode": 521,
+     "of": 520,
+     "final": "success"
+    },
+    {
+     "episode": 527,
+     "of": 526,
+     "final": "success"
+    }
+   ],
+   "t_end": "2026-11-09T23:05:59"
+  },
+  "19_full_v5_30000": {
+   "id": "19_full_v5_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v5/30000",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 20,
+   "success": 12,
+   "fail": 8,
+   "unsure": 0,
+   "success_rate": 0.6,
+   "met": false,
+   "t_start": "2026-11-09T23:23:27",
+   "port": 8000,
+   "serve": "programs/proxy_serve.py",
+   "rollout": "programs/rollout_look.py",
+   "learn_commit": "977c9d8",
+   "dagger": [
+    {
+     "episode": 539,
+     "of": 538,
+     "final": "fail"
+    },
+    {
+     "episode": 549,
+     "of": 548,
+     "final": "success"
+    },
+    {
+     "episode": 559,
+     "of": 558,
+     "final": "success"
+    }
+   ],
+   "t_end": "2026-11-10T02:11:54"
+  },
+  "20_full_v7_30000": {
+   "id": "20_full_v7_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v7/30000",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 1,
+   "success": 0,
+   "fail": 0,
+   "unsure": 1,
+   "success_rate": 0.0,
+   "met": false,
+   "t_start": "2026-11-10T09:01:10",
+   "port": 8000,
+   "serve": "programs/proxy_serve.py",
+   "rollout": "programs/rollout_look.py",
+   "learn_commit": "731cd80",
+   "dagger": [
+    {
+     "episode": 625,
+     "of": 624,
+     "final": "fail"
+    }
+   ],
+   "error": "stopped by the operator",
+   "t_end": "2026-11-10T09:28:07"
+  },
+  "21_full_v7_30000": {
+   "id": "21_full_v7_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v7/30000",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 0,
+   "success": 0,
+   "fail": 0,
+   "unsure": 0,
+   "success_rate": 0.0,
+   "met": false,
+   "t_start": "2026-11-10T09:28:18",
+   "port": 8000,
+   "serve": "programs/proxy_serve.py",
+   "rollout": "programs/rollout_look.py",
+   "learn_commit": "247a276",
+   "error": "stopped by the operator",
+   "t_end": "2026-11-10T10:16:21"
+  },
+  "22_full_v7_30000": {
+   "id": "22_full_v7_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v7/30000",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 20,
+   "success": 16,
+   "fail": 4,
+   "unsure": 0,
+   "success_rate": 0.8,
+   "met": true,
+   "t_start": "2026-11-10T15:40:37",
+   "port": 8000,
+   "serve": "programs/proxy_serve.py",
+   "rollout": "programs/rollout_look.py",
+   "learn_commit": "1bcc41d",
+   "dagger": [
+    {
+     "episode": 627,
+     "of": 626,
+     "final": "success"
+    },
+    {
+     "episode": 641,
+     "of": 640,
+     "final": "fail"
+    }
+   ],
+   "t_end": "2026-11-10T19:18:38"
+  },
+  "23_full_v8_30000": {
+   "id": "23_full_v8_30000",
+   "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v8/30000",
+   "zero_shot": false,
+   "requested": 20,
+   "n": 20,
+   "success": 11,
+   "fail": 8,
+   "unsure": 1,
+   "success_rate": 0.55,
+   "met": false,
+   "t_start": "2026-11-10T23:45:23",
+   "port": 8000,
+   "serve": "programs/proxy_serve.py",
+   "rollout": "programs/rollout_look.py",
+   "learn_commit": "08d06c5",
+   "dagger": [
+    {
+     "episode": 651,
+     "of": 650,
+     "final": "success"
+    },
+    {
+     "episode": 656,
+     "of": 655,
+     "final": "unsure"
+    },
+    {
+     "episode": 664,
+     "of": 663,
+     "final": "success"
+    },
+    {
+     "episode": 669,
+     "of": 668,
+     "final": "success"
+    },
+    {
+     "episode": 672,
+     "of": 671,
+     "final": "success"
+    }
+   ],
+   "t_end": "2026-11-11T03:00:45"
+  }
+ },
+ "deployable_checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v7/30000",
+ "zero_shot": null,
+ "collection": {
+  "round": 3,
+  "round_successes": 75,
+  "round_target": 100,
+  "window": {
+   "n": 292,
+   "success": 274,
+   "fail": 12,
+   "unsure": 6,
+   "failed": [
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_10",
+     "episode 5: fail - program claimed fail (claim=fail, perception=False, vlm=False)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_13",
+     "episode 8: unsure - independent checks disagree (claim=success, perception=False, vlm=True)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_21",
+     "episode 16: fail - program claimed fail (claim=fail, perception=False, vlm=False)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_22",
+     "episode 17: unsure - independent checks disagree (claim=success, perception=False, vlm=True)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_25",
+     "episode 20: fail - program claimed fail (claim=fail, perception=False, vlm=False)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_35",
+     "episode 30: fail - program claimed fail (claim=fail, perception=False, vlm=False)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_65",
+     "episode 60: unsure - independent checks disagree (claim=success, perception=False, vlm=True)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_73",
+     "episode 67: fail - program claimed fail (claim=fail, perception=False, vlm=False)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_79",
+     "episode 73: fail - program claimed fail (claim=fail, perception=False, vlm=False)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_163",
+     "episode 212: unsure - program claimed fail but an independent check says success (claim=fail, perception=True, vlm=True)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_168",
+     "episode 216: fail - program claimed fail (claim=fail, perception=False, vlm=False)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_205",
+     "episode 253: fail - program claimed fail (claim=fail, perception=False, vlm=False)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_209",
+     "episode 257: fail - program claimed fail but an independent check says success (claim=fail, perception=True, vlm=False)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_231",
+     "episode 279: unsure - independent checks disagree (claim=success, perception=False, vlm=True)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_254",
+     "episode 321: unsure - program claimed fail but an independent check says success (claim=fail, perception=True, vlm=True)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_270",
+     "episode 336: fail - program claimed fail (claim=fail, perception=False, vlm=False)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_272",
+     "episode 338: fail - program claimed fail (claim=fail, perception=False, vlm=False)"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/execute/attempts/attempt_289",
+     "episode 376: fail - program claimed fail (claim=fail, perception=False, vlm=False)"
+    ]
+   ],
+   "reset_failed": [
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_21",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_22",
+     "layout check failed: bee: 16.5 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_24",
+     "layout check failed: bee: 8.9 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_27",
+     "layout check failed: bowl: 15.1 cm off; bee: 36.3 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_30",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_32",
+     "layout check failed: bowl: 8.3 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_36",
+     "layout check failed: bowl: 3.2 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_54",
+     "layout check failed: bee: 5.1 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_60",
+     "layout check failed: bowl: 21.4 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_61",
+     "layout check failed: bowl: 22.3 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_64",
+     "layout check failed: bowl: 22.1 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_65",
+     "layout check failed: bowl: 21.2 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_67",
+     "layout check failed: bowl: 22.3 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_68",
+     "layout check failed: bowl: 22.3 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_72",
+     "layout check failed: bowl: 15.9 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_73",
+     "layout check failed: bowl: 14.7 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_76",
+     "layout check failed: bee: 31.7 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_77",
+     "layout check failed: bee: 31.7 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_79",
+     "layout check failed: bee: 31.7 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_80",
+     "layout check failed: bee: 31.6 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_81",
+     "layout check failed: bowl: 8.8 cm off; bee: 15.3 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_82",
+     "layout check failed: bowl: 8.5 cm off; bee: 15.1 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_88",
+     "layout check failed: bee: 4.1 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_92",
+     "layout check failed: bowl: 4.4 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_93",
+     "layout check failed: bowl: 4.5 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_97",
+     "layout check failed: bowl: 4.5 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_98",
+     "layout check failed: bowl: 4.7 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_100",
+     "layout check failed: bowl: 4.5 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_101",
+     "layout check failed: bowl: 4.5 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_113",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_114",
+     "layout check failed: bowl: 6.5 cm off; bee: 4.9 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_119",
+     "layout check failed: bowl: 16.5 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_120",
+     "layout check failed: bowl: 16.4 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_122",
+     "layout check failed: bowl: 15.2 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_123",
+     "layout check failed: bowl: 16.6 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_125",
+     "layout check failed: bowl: 15.8 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_126",
+     "layout check failed: bowl: 16.5 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_143",
+     "layout check failed: bowl: 14.5 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_151",
+     "layout check failed: bee: 19.4 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_152",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_165",
+     "layout check failed: bowl: not found; bee: 43.0 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_181",
+     "layout check failed: bowl: 15.2 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_182",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_190",
+     "layout check failed: bowl: 4.1 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_193",
+     "layout check failed: bowl: 16.1 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_202",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_205",
+     "layout check failed: bee: 11.6 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_209",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_210",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_212",
+     "layout check failed: bee: 22.4 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_213",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_215",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_216",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_218",
+     "layout check failed: bowl: 18.3 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_219",
+     "layout check failed: bowl: 18.1 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_224",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_229",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_230",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_241",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_253",
+     "layout check failed: bowl: 16.8 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_254",
+     "layout check failed: bowl: 16.1 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_259",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_280",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_281",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_285",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_286",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_288",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_289",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_291",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_292",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_293",
+     "layout check failed: bee: 11.8 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_294",
+     "layout check failed: bee: 11.7 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_306",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_322",
+     "layout check failed: bowl: 18.1 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_333",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_334",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_347",
+     "layout check failed: bowl: 12.6 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_348",
+     "layout check failed: bowl: 12.6 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_354",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_355",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_358",
+     "layout check failed: bowl: 4.5 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_364",
+     "layout check failed: bowl: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_366",
+     "layout check failed: bowl: 4.4 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_384",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_392",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_402",
+     "layout check failed: bee: 5.2 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_405",
+     "layout check failed: bowl: 5.1 cm off; bee: 6.1 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_406",
+     "layout check failed: bowl: 5.3 cm off; bee: 6.3 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_412",
+     "layout check failed: bowl: 21.6 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_413",
+     "layout check failed: bowl: 21.4 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_419",
+     "layout check failed: bowl: 13.2 cm off; bee: 7.6 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_420",
+     "layout check failed: bowl: 5.3 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_425",
+     "layout check failed: bowl: 4.3 cm off; bee: 12.7 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_440",
+     "layout check failed: bowl: 19.4 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_450",
+     "layout check failed: bowl: 5.4 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_462",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_467",
+     "layout check failed: bowl: 4.2 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_501",
+     "layout check failed: bee: 17.8 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_521",
+     "layout check failed: bowl: 4.2 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_522",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_526",
+     "layout check failed: bee: 19.9 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_566",
+     "layout check failed: bowl: 7.3 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_571",
+     "layout check failed: bee: 20.5 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_604",
+     "layout check failed: bowl: 7.4 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_650",
+     "layout check failed: bowl: 19.6 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_653",
+     "layout check failed: bee: 11.1 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_679",
+     "layout check failed: bee: 20.4 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_680",
+     "layout check failed: bee: 18.5 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_682",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_683",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_685",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_686",
+     "layout check failed: bee: 14.9 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_687",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_688",
+     "layout check failed: bee: 14.0 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_690",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_691",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_697",
+     "layout check failed: bowl: 7.7 cm off; bee: 8.6 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_698",
+     "layout check failed: bowl: 7.5 cm off; bee: 9.3 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_699",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_700",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_704",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_705",
+     "layout check failed: bowl: 4.5 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_708",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_712",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_714",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_716",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_717",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_724",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_725",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_727",
+     "layout check failed: bowl: 4.3 cm off; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_730",
+     "layout check failed: bee: 4.5 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_744",
+     "layout check failed: bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_747",
+     "layout check failed: bowl: not found; bee: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_752",
+     "layout check failed: bee: 4.4 cm off"
+    ]
+   ]
+  },
+  "discarded": 4
+ },
+ "next_episode": 673,
+ "next_reset": 678,
+ "vlm": {
+  "calls": 678,
+  "cost_usd": 22.904383
+ },
+ "operator_notes": []
+}

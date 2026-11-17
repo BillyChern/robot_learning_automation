@@ -1,0 +1,157 @@
+{
+ "id": "19_full_v5_30000",
+ "checkpoint": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v5/30000",
+ "zero_shot": false,
+ "requested": 20,
+ "n": 20,
+ "success": 12,
+ "fail": 8,
+ "unsure": 0,
+ "success_rate": 0.6,
+ "met": false,
+ "episodes": [
+  {
+   "episode": 537,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 198.2
+  },
+  {
+   "episode": 538,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 286.3
+  },
+  {
+   "episode": 540,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=none, vlm=False)",
+   "duration": 272.2
+  },
+  {
+   "episode": 541,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 263.3
+  },
+  {
+   "episode": 542,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 273.2
+  },
+  {
+   "episode": 543,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 172.2
+  },
+  {
+   "episode": 544,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 141.3
+  },
+  {
+   "episode": 545,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 275.3
+  },
+  {
+   "episode": 546,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=none, vlm=False)",
+   "duration": 119.2
+  },
+  {
+   "episode": 547,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 186.3
+  },
+  {
+   "episode": 548,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 273.3
+  },
+  {
+   "episode": 550,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 272.3
+  },
+  {
+   "episode": 551,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 169.3
+  },
+  {
+   "episode": 552,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 11.0
+  },
+  {
+   "episode": 553,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 160.2
+  },
+  {
+   "episode": 554,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 152.1
+  },
+  {
+   "episode": 555,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 272.1
+  },
+  {
+   "episode": 556,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 161.3
+  },
+  {
+   "episode": 557,
+   "final": "success",
+   "reason": "both independent checks say success (claim=none, perception=True, vlm=True)",
+   "duration": 257.3
+  },
+  {
+   "episode": 558,
+   "final": "fail",
+   "reason": "no independent check says success (claim=none, perception=False, vlm=False)",
+   "duration": 66.2
+  }
+ ],
+ "t_start": "2026-11-09T23:23:27",
+ "port": 8000,
+ "serve": "programs/proxy_serve.py",
+ "rollout": "programs/rollout_look.py",
+ "learn_commit": "977c9d8",
+ "dagger": [
+  {
+   "episode": 539,
+   "of": 538,
+   "final": "fail"
+  },
+  {
+   "episode": 549,
+   "of": 548,
+   "final": "success"
+  },
+  {
+   "episode": 559,
+   "of": 558,
+   "final": "success"
+  }
+ ],
+ "t_end": "2026-11-10T02:11:54"
+}
