@@ -34,7 +34,9 @@ PULL = 0.065              # first pull with the pin grasp
 PIN_T = -0.088            # pin t (wrist triangulation, attempts 9-10)
 PIN_H = 0.052             # pin height above the table
 PIN_OUT = 0.010           # pad centre in front of the front plane
-PIN_VARIANTS = [(0.0026, 0.022, 0.004, -0.0025), (0.0026, 0.022, 0.006, -0.004)]  # + tool-frame (dy, dz): attempt 14 showed the tab passing over the fingertips (+y side)   # pre-closed tip (out, h); pads lie above/behind the tip (attempt 12: pin above the tips)
+PIN_BASE = (0.0026, 0.022)   # pre-closed fingertip (out, h) before the tool-frame offset
+PIN_SWEEP = [(0.0, 0.0025), (0.002, 0.0015), (0.0, 0.0015), (0.004, -0.001)]   # (dy, dz) tool frame; all pass the keep-out model with the gripper at 0.706 and 0.91
+PINCH = 0.90
 PIN_TILT = 50.0           # deg, gripper pointing down and into the cabinet
 PIN_PHI = 20.0            # deg roll about the normal
 PIN_ZT = 0.041            # fingertip along the tool z when pre-closed
@@ -43,7 +45,7 @@ PRECLOSE = 0.706          # ~25 mm opening
 L_DEFAULT = 0.13          # drawer depth until measured
 HOLD_MAX = 97.0           # gripper reading below this = holding something
 TOL = 0.05
-GOOD = 0.02               # correct when the error is above this
+GOOD = 0.025              # correct when the error is above this
 SAFE_H = 0.20             # tool height above the table for transfers
 PIN_HI = 0.14             # tool height of the tilted pose above the pin
 READY_XYZ = (0.40, -0.10, 0.25)   # tool-down waypoint (above table) between home and the work poses
@@ -78,6 +80,7 @@ class Reset:
         self.rng = np.random.default_rng(int(time.time()))
         self.k = 0
         self.pin_dy = self.pin_dz = 0.0
+        self.bias = np.array([0.02, 0.03])   # box centre - blob centre, default from attempt 19
 
     # ------------------------------------------------------------ helpers
     def log(self, m):
@@ -113,6 +116,21 @@ class Reset:
     def go_home(self, name):
         self.to_ready()
         self.s.move_joint(name, HOME_Q, "normal")
+        self.set_home()
+
+    def set_home(self):
+        """Make HOME_Q the session's (and watchdog's) return pose: a run that started elsewhere (a stopped run left
+        the arm low) must not return there on abort (attempt 19 went back down onto the drawer)."""
+        s = self.s
+        if s.q_home is not None and np.abs(wrap180(np.asarray(s.q_home) - HOME_Q)).max() < 1:
+            return
+        s.q_home = HOME_Q.copy()
+        if getattr(s, "wd", None) is not None:
+            try:
+                s.wd.stdin.write(("HOME " + " ".join(f"{v:.4f}" for v in HOME_Q) + "\n").encode()); s.wd.stdin.flush()
+            except Exception as e:
+                s.log(f"watchdog home update failed: {e}")
+        s.log("session home set to HOME_Q")
 
     def escape(self):
         """Start away from home and low (a stopped run): back off along -N and up, keeping the orientation."""
@@ -120,8 +138,15 @@ class Reset:
         if T[2, 3] > self.tz + 0.15:
             return
         self.s.decide(f"start pose low ({T[2, 3] - self.tz:.3f} m above the table): back off and up first")
-        T2 = T.copy(); T2[:2, 3] -= 0.04 * N; T2[2, 3] = self.tz + 0.16
-        self.line("escape_up", T2, "slow")
+        ds = (0.0,) if T[2, 2] < -0.9 else (0.08, 0.05, 0.03, 0.0)   # tool pointing down (may straddle a drawer wall): straight up
+        for d in ds:
+            T2 = T.copy(); T2[:2, 3] -= d * N; T2[2, 3] = max(T[2, 3], self.tz + 0.10) + 0.06
+            try:
+                self.line("escape_up", T2, "slow", tip_margin=PIN_MARGIN)
+                return
+            except Abort as e:
+                self.log(f"escape back {d} refused: {str(e)[:100]}")
+        self.s.require(False, "no escape path from the start pose")
 
     def T_now(self):
         return calib.pose_to_T(self.s.feedback()["pose"])
@@ -197,43 +222,58 @@ class Reset:
         return T
 
     def pull_pin(self, k=0):
-        """Pinch the pin (variant k of its position), pull PULL along -N, release, lift, back to READY."""
+        """Pinch the pull tab, sweeping PIN_SWEEP tool-frame offsets (dy, dz) until the gripper holds it; pull PULL
+        along -N, release, lift, back to READY. The pinch closes to PINCH so a held tab shows as a lower reading."""
         global PIN_OUT, PIN_H
         s = self.s
-        PIN_OUT, PIN_H, self.pin_dy, self.pin_dz = PIN_VARIANTS[k % len(PIN_VARIANTS)]
+        PIN_OUT, PIN_H = PIN_BASE
         self.pin_t = PIN_T
-        Tg = self.pin_T(PIN_OUT)
-        z = Tg[:3, 2]
-        T_pre = Tg.copy(); T_pre[:3, 3] -= 0.05 * z
-        T_hi = T_pre.copy(); T_hi[2, 3] = self.tz + PIN_HI; T_hi[:2, 3] -= 0.04 * N
-        s.decide(f"pin try {k}: fingertips {PIN_OUT:.3f} m in front of the yaml front, {PIN_H:.3f} m above the table, t {self.pin_t:.3f}, tilt {PIN_TILT}, roll {PIN_PHI}")
+        self.pin_dy = self.pin_dz = 0.0
+        T0 = self.pin_T(PIN_OUT)
+        z = T0[:3, 2]
+        T_hi = T0.copy(); T_hi[:3, 3] -= 0.05 * z; T_hi[2, 3] = self.tz + PIN_HI; T_hi[:2, 3] -= 0.04 * N
         if np.abs(wrap180(self.q_now() - self.ik(tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0), [SEED_DOWN]))).max() > 3:
             self.to_ready()
-        s.gripper(PRECLOSE, "pre-close to ~25 mm for the pin")
+        s.gripper(PRECLOSE, "pre-close to ~25 mm for the pull tab")
         q = self.ik(T_hi, [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (20.0, 40.0, 60.0) for j6 in (-90.0, 90.0)])
         s.require(wrap180(q[4]) > 15, f"pin pose IK gave a wrist near the singularity or flipped {np.round(q, 0).tolist()}")
         s.move_joint("above_pin", q, "normal")
-        self.line("down_to_pin_pre", T_pre, "normal")
-        self.save(f"wrist_pin_pre{k}", s.wrist.latest()[0])
-        self.line("approach_pin", Tg, "slow", tip_margin=PIN_MARGIN)
-        self.save(f"wrist_pin_at{k}", s.wrist.latest()[0])
-        g = s.gripper(1.0, "pinch the pin")
-        s.summary(**{f"pin_grip{k}": round(g, 1)})
-        img = s.wrist.latest()[0]
-        if img is not None:
-            cv2.imwrite(os.path.join(s.A, f"wrist_pin_closed{k}.jpg"), img[360:720, 320:960])
-        held = g < HOLD_MAX or s.dry
-        if not held:
-            s.decide(f"pin grasp reading {g:.1f}: nothing held")
-            s.gripper(PRECLOSE, "open, missed pin")
-            self.line("back_from_pin", T_pre, "slow", tip_margin=PIN_MARGIN)
-            self.line("up_from_pin", T_hi, "normal")
-        else:
-            T_out = Tg.copy(); T_out[:3, 3] -= np.r_[PULL * N, 0.0]
-            self.line("pull_drawer", T_out, "slow", tip_margin=PIN_MARGIN)
-            s.gripper(0.55, "release the pin (partly, keeps the lower finger off the table)")
-            T_up = T_out.copy(); T_up[2, 3] += 0.06
+        held, tries = False, []
+        for i, (dy, dz) in enumerate(PIN_SWEEP):
+            self.pin_dy, self.pin_dz = dy, dz
+            Tg = self.pin_T(PIN_OUT)
+            T_pre = Tg.copy(); T_pre[:3, 3] -= 0.05 * z
+            s.decide(f"pin try {k}.{i}: offset dy {dy:+.3f} dz {dz:+.3f} (tool frame)")
+            self.line(f"to_pin_pre{i}", T_pre, "normal" if i == 0 else "slow", tip_margin=PIN_MARGIN)
+            self.line(f"approach_pin{i}", Tg, "slow", tip_margin=PIN_MARGIN)
+            g = s.gripper(PINCH, "pinch the tab")
+            img = s.wrist.latest()[0]
+            if img is not None:
+                cv2.imwrite(os.path.join(s.A, f"wrist_pin_closed{k}_{i}.jpg"), img[360:720, 320:960])
+            tries.append([dy, dz, round(g, 1)])
+            s.summary(**{f"pin_sweep{k}": tries})
+            held = g < PINCH * 100 - 2.5 or s.dry
+            if held:
+                s.decide(f"tab held at offset {i} (reading {g:.1f})")
+                s.gripper(min(g / 100 + 0.008, 0.90), "keep squeezing (sets the model gripper close to the real one)")
+                T_out = Tg.copy(); T_out[:3, 3] -= np.r_[PULL * N, 0.0]
+                try:
+                    self.line("pull_drawer", T_out, "slow", tip_margin=PIN_MARGIN)
+                    break
+                except Abort as e:
+                    s.decide(f"pull refused by the model at offset {i}: {str(e)[:120]}; release and try the next offset")
+                    held = False
+            s.gripper(PRECLOSE, "open, missed")
+            self.line(f"back_pin{i}", T_pre, "slow", tip_margin=PIN_MARGIN)
+        if held:
+            s.gripper(0.55, "release the tab (partly, keeps the lower finger off the table)")
+            # the drawer now sticks out (the model does not know it): lift 12 cm straight up so the joint move to
+            # READY passes above it (attempt 17 hit the drawer after a 6 cm lift)
+            T_up = T_out.copy(); T_up[2, 3] += 0.12
             self.line("up_from_pin", T_up, "slow", tip_margin=PIN_MARGIN)
+        else:
+            T_hi2 = T_pre.copy(); T_hi2[2, 3] = self.tz + PIN_HI; T_hi2[:2, 3] -= 0.04 * N
+            self.line("up_from_pin", T_hi2, "normal")
         self.to_ready()
         return held
 
@@ -268,8 +308,10 @@ class Reset:
         g2 = float(s.feedback()["gripper"])
         s.require(g2 < HOLD_MAX or s.dry, f"drawer lost while sliding out (gripper reading {g2:.1f})")
         # drawer bottom below the tool frame, from the in-slot front face bottom
-        drop = (Tg[2, 3] - self.tz) - max(o["h_bot"], 0.0)
-        return dict(yaw_pick=yaw, d0=N.copy(), L=L_DEFAULT, drop=drop)
+        # drawer bottom below the tool: the side-depth front bottom is clipped at 2.5 cm and the drawer can tilt when
+        # hanging from its front wall (attempt 18 touched the table early): assume the bottom at 1.0 cm in the slot
+        drop = (Tg[2, 3] - self.tz) - 0.010
+        return dict(yaw_pick=yaw, d0=N.copy(), L=L_DEFAULT, drop=drop, release=0.025)
 
     # ------------------------------------------------------------ table pick
     def pick_table(self, c):
@@ -288,9 +330,17 @@ class Reset:
         T_pre = Tg.copy(); T_pre[2, 3] += 0.05
         s.decide(f"table drawer obb {np.round(ctr, 3).tolist()} L {L:.3f} W {c['W']:.3f} yaw {c['yaw']:.0f}; grasp end wall at {np.round(e, 3).tolist()} top {h_top:.3f}")
         s.gripper(0.4, "open to straddle the end wall")
+        self.to_ready()
         self.joint_to("above_drawer_wall", T_hi)
         self.line("down_to_wall_pre", T_pre, "normal")
-        self.save("wrist_wall_pre", s.wrist.latest()[0])
+        time.sleep(0.4)
+        img = s.wrist.latest()[0]
+        self.save("wrist_wall_pre", img)
+        sh = self.refine_wall(img, e, d0, h_top)
+        if sh is not None:
+            e = e + sh * d0
+            Tg[:2, 3] = e; T_pre[:2, 3] = e
+            self.line("wall_correct", T_pre, "slow")
         self.line("down_to_wall", Tg, "slow")
         g = s.gripper(1.0, "grasp the end wall")
         s.summary(table_grip=round(g, 1))
@@ -304,6 +354,45 @@ class Reset:
         self.lift_to("lift_drawer", SAFE_H, "normal")
         return dict(yaw_pick=yaw, d0=d0, L=max(L, 0.08), drop=tip_h + TIP_OPEN)
 
+    def refine_wall(self, img, e, d_in, h_top, half=0.04, max_shift=0.03):
+        """Wrist-camera refinement of a drawer wall seen from above: intensity profile along d_in (toward the drawer
+        centre) across the expected wall top line at height h_top; the outer edge (bright table -> darker wood,
+        going inward) is the strongest negative step. Returns the shift (m, along d_in) of the wall centre, or None."""
+        s = self.s
+        if img is None or s.dry:
+            return None
+        try:
+            from rlpj.perception.wrist import project_base_to_wrist
+            T = calib.pose_to_T(s.feedback()["pose"])
+            g = cv2.GaussianBlur(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (5, 5), 0).astype(float)
+            w = np.array([-d_in[1], d_in[0]])
+            ss = np.arange(-half, half + 1e-9, 0.001)
+            prof = []
+            for sv in ss:
+                P = np.array([np.r_[e + sv * d_in + a * w, self.tz + h_top] for a in np.linspace(-0.02, 0.02, 9)])
+                uv = project_base_to_wrist(P, T)
+                ok = np.all(np.isfinite(uv), 1) & (uv[:, 0] >= 0) & (uv[:, 0] < g.shape[1] - 1) & (uv[:, 1] >= 0) & (uv[:, 1] < g.shape[0] - 1)
+                prof.append(np.median(g[uv[ok, 1].astype(int), uv[ok, 0].astype(int)]) if ok.sum() >= 3 else np.nan)
+            prof = np.array(prof)
+            if np.isnan(prof).mean() > 0.3:
+                s.log("refine_wall: profile out of the image"); return None
+            prof = np.where(np.isnan(prof), np.nanmedian(prof), prof)
+            grad = np.correlate(prof, [1, 1, 0, -1, -1], "same")   # prof(s-2..s-1) - prof(s+1..s+2): + where it gets darker inward
+            grad[:3] = grad[-3:] = 0
+            k = int(np.argmax(grad))
+            outer = ss[k]                       # outer edge position along d_in
+            shift = outer + 0.006               # e should sit ~6 mm inside the outer edge (expected edge at -0.007)
+            s.summary(wall_refine=dict(profile=np.round(prof[::4], 0).tolist(), grad_max=round(float(grad[k]), 1), outer=round(outer, 4), shift=round(shift, 4)))
+            s.log(f"refine_wall: outer edge at {outer:+.3f} along d_in, step {grad[k]:.0f}, shift {shift:+.3f}")
+            if grad[k] < 40 or abs(shift) > max_shift:
+                s.decide(f"wall refinement rejected (step {grad[k]:.0f}, shift {shift:+.3f})")
+                return None
+            s.decide(f"wall refined by wrist camera: shift {shift:+.3f} m toward the drawer centre")
+            return float(shift)
+        except Exception as ex:
+            s.log(f"refine_wall failed: {ex}")
+            return None
+
     # ------------------------------------------------------------ place
     def place(self, held, target, delta=None):
         s = self.s
@@ -311,8 +400,10 @@ class Reset:
             delta = float(self.rng.uniform(-25, 25))
         a = rot2(N, delta)
         yaw = wrapd(held["yaw_pick"] + wrapd(ang(a) - ang(held["d0"])))
-        g = np.asarray(target) - a * (held["L"] / 2 - 0.007)
-        h_tool = held["drop"] + 0.008
+        # aim so that the side camera's blob centre (what the orchestrator measures) lands on the target: the blob
+        # centre sits self.bias away from the drawer's box centre (attempt 19: ~2-4 cm toward the camera)
+        g = np.asarray(target) + self.bias - a * (held["L"] / 2 - 0.007)
+        h_tool = held["drop"] + held.get("release", 0.008)
         Tp = tool_down_T(np.r_[g, self.tz + h_tool], yaw)
         T_hi = Tp.copy(); T_hi[2, 3] = self.tz + SAFE_H
         T_pre = Tp.copy(); T_pre[2, 3] += 0.05
@@ -331,6 +422,11 @@ class Reset:
         tgt = np.asarray(self.targets["drawer"], float)
         s.phase("perceive")
         if np.abs(wrap180(self.q_now() - HOME_Q)).max() > 3:
+            g0 = float(s.feedback()["gripper"])
+            if 3.0 < g0 < 97.0 and self.T_now()[2, 3] < self.tz + 0.15:
+                s.decide(f"start: gripper reads {g0:.1f} low near the cabinet (maybe still on the pull tab): open first")
+                if g0 > 100 * PRECLOSE + 2:
+                    s.gripper(PRECLOSE, "let go before backing off")
             self.escape()
             self.go_home("home_start")
         p = self.perceive("start")
@@ -342,7 +438,7 @@ class Reset:
         self.to_ready()
         if st == "slot":
             s.phase("pull_out")
-            for k in range(2):
+            for k in range(1):
                 ok = self.pull_pin(k)
                 self.go_home(f"home_after_pull{k}")
                 p = self.perceive(f"after_pull{k}")
@@ -376,6 +472,7 @@ class Reset:
                 s.require(s.dry and held is not None, f"drawer not seen on the table (state {st})")
                 break
             c = p["cand"][0]
+            self.bias = np.array(c["obb_c"]) - np.array(c["xy"])
             err = float(np.linalg.norm(np.array(c["xy"]) - tgt))
             s.summary(**{f"err_check{it}": round(err, 4)})
             if err <= GOOD or (held is not None and it >= 3):
@@ -396,6 +493,7 @@ class Reset:
         s.require(st == "table" or s.dry, f"final: drawer not seen on the table (state {st})")
         if st == "table":
             c = p["cand"][0]
+            self.bias = np.array(c["obb_c"]) - np.array(c["xy"])
             err = float(np.linalg.norm(np.array(c["xy"]) - tgt))
             yaw_axis = c["yaw"]
             dev = wrapd(yaw_axis - ang(N)); dev = dev - 180 if dev > 90 else dev + 180 if dev < -90 else dev

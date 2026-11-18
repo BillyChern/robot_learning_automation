@@ -32,3 +32,27 @@
   the pad width (tool y). Fingers flank it in the image but close on nothing: the tab passes over the fingertips
   on the camera (+y) side (real finger +y edge appears at ~+0.006, not +0.011). -> tool-frame shift dy +4..6 mm,
   dz -2.5..-4 mm (keeps the model's forward finger point inside the box slack).
+- attempt 16 (real): TAB HELD (reading 86.9) at tool-frame offset dy 0, dz +0.003 from PIN_BASE; pull refused by the
+  keep-out model because the gripper was re-commanded to 0.90 (model tips deeper). -> re-command reading+0.8,
+  sweep (0,.0025),(.002,.0015),(0,.0015),(.004,-.001); refused pull -> release and next offset; open first at start.
+- attempt 17 (real, box widened by the operator at the slot opening): tab held at sweep offset (0.002, 0.0015),
+  drawer pulled 6.5 cm (force up to 22 N). Then 6 cm lift + joint move to READY swept the fingers into the
+  protruding drawer (30.8 N stop). -> 12 cm vertical lift before the joint move (offline: path stays above 0.117 m
+  in the drawer zone). Backing along -N from the pinch pose is refused (j3 limit).
+- attempt 18 (real): from the 6.9 cm-out state: front-wall grasp (reading 86.9), slide out 20 cm (24 N), carry OK;
+  place_down hit the table at 57 % (27 N): bottom estimate clipped at 2.5 cm + tilt. -> release 2.5 cm higher
+  with the bottom assumed at 1 cm. Arm left holding the drawer near the target.
+- attempt 19 (real): table pick (end wall, reading 88.6) + place works; drawer is ~square (obb 0.154 x 0.14-0.15,
+  h 0.074), upright after placing. Errors (blob xy vs target) 0.044/0.058/0.048: blob xy (= orchestrator's
+  measure) sits 2-4 cm from the box centre. Orchestrator said "not found": session return_home went back to the
+  low start pose above the drawer (occluding it, 15.8 N). -> set_home() makes HOME_Q the session/watchdog home;
+  placement aims box centre = target + (box centre - blob xy).
+- attempt 20 (real): both table picks missed (99.1): wrist image at the pre-pose shows the wall ~2 cm from the tool
+  axis (side-camera box error), outer finger on the wall top. -> refine_wall(): intensity profile along the jaw
+  axis at the wall-top height via project_base_to_wrist, strongest bright->dark step = outer edge, e = edge + 6 mm.
+  Offline on the attempt-20 image: step 72, edge found where the wall is. Also pick_table goes via READY.
+- attempt 21 (real): SCATTERED RESET OK: wall refine shift +1.0 cm (step 125), grasp 87.8, placed, err 1.7 cm,
+  orchestrator layout ok. Local config/tasks/drawer_rl.yaml still has the old keep_out: tools/offline.py rebuilds
+  the operator's new boxes (slot opening 3 cm, front 1 cm, body from 3 cm).
+- insert.py: scene setup for the done-state test (pull side from depth, front-wall grasp, slide in to 6.5 cm out,
+  pinch tab (attempt-17 offset) shifted by the measured protrusion, push flush).
