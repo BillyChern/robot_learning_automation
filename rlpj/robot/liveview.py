@@ -271,11 +271,12 @@ class LiveView:
         d.mkdir(parents=True, exist_ok=True)
         ok, j = cv2.imencode(".jpg", fr, [cv2.IMWRITE_JPEG_QUALITY, 80])
         if ok:
-            (d / "latest.jpg.tmp").write_bytes(j.tobytes())
-            os.replace(d / "latest.jpg.tmp", d / "latest.jpg")
-            (d / "latest.json.tmp").write_text(json.dumps(dict(t=now, attempt=str(self.A), program=getattr(self, "program", ""),
-                                                                 phase=self.st.get("phase"))))
-            os.replace(d / "latest.json.tmp", d / "latest.json")
+            tmp = f".tmp{os.getpid()}"                 # per process: two publishers must not share a temp file
+            (d / f"latest.jpg{tmp}").write_bytes(j.tobytes())
+            os.replace(d / f"latest.jpg{tmp}", d / "latest.jpg")
+            (d / f"latest.json{tmp}").write_text(json.dumps(dict(t=now, attempt=str(self.A), program=getattr(self, "program", ""),
+                                                                    phase=self.st.get("phase"))))
+            os.replace(d / f"latest.json{tmp}", d / "latest.json")
 
     def snapshot(self, prefix):
         """Save the current overlaid frames as <prefix>_side.jpg / <prefix>_wrist.jpg (640x360)."""
