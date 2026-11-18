@@ -59,13 +59,13 @@ class Executor:
                 if fb.get("state") and fb["state"] not in ("ARMSTATE_SERVOING_READY", "ARMSTATE_SERVOING_MANUALLY_CONTROLLED"):
                     r["reason"] = f"arm state {fb['state']}"; break
                 f = fb.get("force")
-                if self.force_limit and f is not None:
+                if f is not None:                              # always logged; a stop only with a limit set
                     if f0 is None or t < FORCE_SKIP_S:
                         f0 = np.asarray(f, float)
                     else:
                         df = float(np.linalg.norm(np.asarray(f, float) - f0))
                         r["max_force_n"] = round(max(r.get("max_force_n", 0.0), df), 1)
-                        if df > self.force_limit:
+                        if self.force_limit and df > self.force_limit:
                             r["reason"] = f"contact force {df:.1f} N > {self.force_limit:.0f} N at t={t:.2f}s"; break
                 if dev > DEV_DEG or dmm > DEV_MM:
                     r["reason"] = f"tracking deviation {dev:.2f} deg / {dmm:.1f} mm at t={t:.2f}s"; break
