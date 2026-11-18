@@ -8406,3 +8406,727 @@ Structured output provided successfully
 ```
 </details>
 
+**01:31:49 reset agent:** No response requested.
+
+### 01:31:49 orchestrator -> reset agent
+
+```text
+repair your program; it failed 2 times in a row during the resets between episodes:
+--- attempt_50: layout check failed: drawer: not found
+# attempt_50: exit code 2; outcome: fail
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_50/targets.json; what: reset for the next episode; commit: 97f960e; duration_s: 14.3; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "97f960ef95",
+"command": "programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_50/targets.json",
+"step": "perceive",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [345.67, 40.48, 264.8, 359.07, 315.43, 2.66], "tool_pose": [0.4753, 0.1237, 0.0855, -179.9858, 0.0932, 16.8804], "gripper": 45.9},
+"fk_check_mm": 1.3,
+"targets": {"drawer": [0.394, -0.115]},
+"measured": null,
+"decisions": ["start: gripper reads 45.9 low near the cabinet (maybe still on the pull tab): open first", "start pose low (0.101 m above the table): back off and up first"],
+"stop": {"kind": "failed check", "why": "no escape path from the start pose", "step": "perceive", "segment": null, "q_now": [345.67, 40.48, 264.8, 359.07, 315.43, 2.66], "gripper": 45.9},
+"first_failed_check": "no escape path from the start pose",
+"return_home": "already at default pose",
+"segments": [],
+"exit_code": 2,
+"gripper_final": {"cmd": 0.0, "reading": null},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 9 lines; last 9:
+[01:31:06] session reset: attempt /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_50 dry=False record=None
+[01:31:06] arm state ARMSTATE_SERVOING_READY, joints [345.67, 40.48, 264.8, 359.07, 315.43, 2.66], gripper 45.9
+[01:31:06] model FK vs measured tool_pose at start: 1.3 mm
+[01:31:07] == phase: perceive
+[01:31:07] DECISION: start: gripper reads 45.9 low near the cabinet (maybe still on the pull tab): open first
+[01:31:07] DECISION: start pose low (0.101 m above the table): back off and up first
+[01:31:09] plan 01_escape_up: T=6.1s check ok=False tip>0.074 vmax=2.6deg/s lin=0.018m/s
+[01:31:09] escape back 0.0 refused: model check failed for 01_escape_up: {'joint_limit_violations': 0, 'max_joint_speed': 2.637748315275
+[01:31:09] STOP RECORD: {'kind': 'failed check', 'why': 'no escape path from the start pose', 'step': 'perceive', 'segment': None, 'q_now': [345.67, 40.48, 264.8, 359.07, 315.43, 2.66], 'gripper': 45.9}
+
+images (Read one only if needed, <= 640 px):
+  plans/01_escape_up_end.jpg  44 KB
+  stop_overlay_side.jpg  62 KB
+  stop_overlay_wrist.jpg  52 KB
+  stop_side.jpg  60 KB
+  stop_wrist.jpg  52 KB
+
+other files: command.txt (1 KB), console.txt (1 KB), dashboard.mp4 (1232 KB), ended (1 KB), plans/01_escape_up.json (1 KB), plans/01_escape_up.mp4 (504 KB), plans/01_escape_up.npz (52 KB), started (1 KB), targets.json (1 KB), watchdog_log.txt (1 KB)
+
+An attempt the operator stopped (exit code 130) counts as a failure, whatever the program claims. Decide the next action from this digest; end your turn with the structured action.
+--- attempt_51: layout check failed: drawer: not found
+# attempt_51: exit code 2; outcome: fail
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_51/targets.json; what: reset for the next episode; commit: 97f960e; duration_s: 14.2; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "97f960ef95",
+"command": "programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_51/targets.json",
+"step": "perceive",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q
+... (2540 more characters)
+```
+
+**01:32:08 reset agent:** Both resets stopped before moving: the straight-up escape from a low pose by the cabinet was refused by the model. Reading why.
+
+**01:32:10 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_51 && python3 -c "
+import json;d=json.load(open('plans/01_escape_up.json'));print(d['check'])"; cd /home/r2r/robot_learning_final_pj && uv run python -c "
+import numpy as np,sys,os; os.environ['RLPJ_TASK']='drawer_rl'; sys.path.insert(0,'runs/20261117_2026_drawer/agents/reset/programs')
+import scene
+from rlpj.robot import calib
+T=calib.pose_to_T([0.4753, 0.1237, 0.0855, -179.9858, 0.0932, 16.8804]); p=T[:3,3]; q=scene.nt(p[:2]); print('out',round(scene.OFF-q[0],3),'t',round(q[1],3),'h',round(p[2]+0.016,3))"
+```
+
+<details><summary>01:32:10 result</summary>
+
+```text
+{'joint_limit_violations': 0, 'max_joint_speed': 2.6377497728127253, 'joint_speed_ok': True, 'keep_in_violations': 0, 'keep_out_violations': ['cabinet_front'], 'min_tip_above_table': 0.07386920825158953, 'min_body_above_table': 0.14088762283058298, 'min_link_z': 0.26555757281459347, 'max_lin_speed': 0.01836008999697401, 'max_radius': 0.49228114757013264, 'ok': False}
+out 0.035 t -0.062 h 0.102
+```
+</details>
+
+**01:32:27 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && grep -n "def escape" -A18 programs/reset.py
+```
+
+<details><summary>01:32:27 result</summary>
+
+```text
+145:    def escape(self):
+146-        """Start away from home and low (a stopped run): back off along -N and up, keeping the orientation."""
+147-        T = self.T_now()
+148-        if T[2, 3] > self.tz + 0.15:
+149-            return
+150-        self.s.decide(f"start pose low ({T[2, 3] - self.tz:.3f} m above the table): back off and up first")
+151-        ds = (0.0,) if T[2, 2] < -0.9 else (0.08, 0.05, 0.03, 0.0)   # tool pointing down (may straddle a drawer wall): straight up
+152-        for d in ds:
+153-            T2 = T.copy(); T2[:2, 3] -= d * N; T2[2, 3] = max(T[2, 3], self.tz + 0.10) + 0.06
+154-            try:
+155-                self.line("escape_up", T2, "slow", tip_margin=PIN_MARGIN)
+156-                return
+157-            except Abort as e:
+158-                self.log(f"escape back {d} refused: {str(e)[:100]}")
+159-        self.s.require(False, "no escape path from the start pose")
+160-
+161-    def T_now(self):
+162-        return calib.pose_to_T(self.s.feedback()["pose"])
+163-
+```
+</details>
+
+**01:32:39 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+p='programs/reset.py'; s=open(p).read()
+a=s.index('    def escape(self):'); b=s.index('    def T_now(self):')
+s=s[:a]+'''    def escape(self):
+        """Start away from home and low (a stopped run or an RL episode left the arm there): get up and clear.
+        Tool pointing down (attempts 50-51: 3.5 cm in front of the cabinet, gripper around the drawer front wall):
+        open fully first, then straight up, else back off along -N while rising, else straight back then up.
+        Other orientations (tilted at the pull): back off along -N and up."""
+        s = self.s
+        T = self.T_now()
+        if T[2, 3] > self.tz + 0.15:
+            return
+        s.decide(f"start pose low ({T[2, 3] - self.tz:.3f} m above the table): back off and up first")
+        up = max(T[2, 3
+... (1397 more characters)
+```
+
+<details><summary>01:32:40 result</summary>
+
+```text
+start pose low (0.100 m above the table): back off and up first
+   escape_up: ok=True T=6.1 tip=0.073 body=0.140 ko=None r=0.48 q1=[346.0, 35.0, 268.0, 359.0, 307.0, 2.0]
+   ready: ok=True T=5.5 tip=0.133 body=0.200 ko=None r=0.48 q1=[374.0, 19.0, 261.0, 360.0, 299.0, 14.0]
+   home_start: ok=True T=11.9 tip=0.200 body=0.263 ko=None r=0.59 q1=[360.0, 15.0, 230.0, 360.0, 415.0, 90.0]
+#### OK
+```
+</details>
+
+**01:32:46 reset agent:** My local copy of the keep-out boxes accepts straight up, so it isn't exact. Checking that the two fallback escapes pass from this pose too.
+
+**01:32:49 tool Bash:**
+
+```bash
+cat > /tmp/esc6.py <<'EOF'
+__file__='runs/20261117_2026_drawer/agents/reset/tools/offline.py'; exec(open(__file__).read().split('def run(')[0])
+for d,zup in ((0.04,True),(0.06,False)):
+    s=FS(); s.q=np.array([345.67, 40.48, 264.8, 359.07, 315.43, 2.66]); r=R.Reset(s,{}); r.tz=calib.table_z()
+    T=r.T_now(); up=max(T[2,3],r.tz+0.10)+0.06; T2=T.copy(); T2[:2,3]-=d*R.N; T2[2,3]=up if zup else T[2,3]
+    r.line('e',T2,'slow',tip_margin=0.004)
+    if not zup: T3=T2.copy(); T3[2,3]=up; r.line('e2',T3,'slow',tip_margin=0.004)
+    r.go_home('h'); print('#### OK',d)
+EOF
+uv run python /tmp/esc6.py 2>&1 | grep "####\|ok=False"
+```
+
+<details><summary>01:32:50 result</summary>
+
+```text
+#### OK 0.04
+#### OK 0.06
+```
+</details>
+
+**01:32:55 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && echo "- attempts 50-51: arm left pointing down 3.5 cm in front of the cabinet (gripper 45.9 around the drawer front wall); straight-up escape refused (body ring at the 1 cm front keep-out) and escape allowed only straight up -> open fully, then up / back 4 cm + up / back 6 cm then up." >> notes/notes.md && git add -A && git commit -qm "attempt 52: escape from a low pointing-down pose: open, then up / back+up / back then up" && echo ok
+```
+
+<details><summary>01:32:55 result</summary>
+
+```text
+ok
+```
+</details>
+
+**01:33:00 reset agent:** The arm is presumably still at that pose (neither failed run moved it). Running the real reset from there.
+
+**01:33:02 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_51/targets.json",
+ "moves_robot": true,
+ "what": "REAL reset from the stuck pose (gripper pointing down 3.5 cm in front of the cabinet, around the drawer wall): open fully, escape up/back, home; then perceive the drawer, take it out if needed, place with the pull facing the robot at (0.394,-0.115), judge check, verify.",
+ "report": ""
+}
+```
+
+<details><summary>01:33:02 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**01:41:36 reset agent:** No response requested.
+
+### 01:41:36 orchestrator -> reset agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+KEEP-OUT ESCAPE (01:40): resets 13-14 stopped with "no escape path from the start pose": the arm, left at the cabinet by
+RL attempt 17, had the gripper 0.5 mm inside the cabinet's front keep-out layer, and the model check refused every
+move that touched the box, including moves out of it. The check now lets a move that STARTS inside a keep-out box
+leave it, as long as no gripper point goes deeper than at the start (+1 mm). Verified from that pose: "back 3 cm"
+passes, "2 cm deeper" is refused. Your escape planner should now find a path; plan it straight back along -normal first.
+
+# attempt_52: exit code 2; outcome: fail
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_51/targets.json; what: REAL reset from the stuck pose (gripper pointing down 3.5 cm in front of the cabinet, around the drawer wall): open fully, escape up/back, home; then perceive the drawer, take it out if needed, place with the pull facing the robot at (0.394,-0.115), judge check, verify.; commit: 5887ee1; duration_s: 497.3; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "5887ee13aa",
+"command": "programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_51/targets.json",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [345.67, 40.48, 264.8, 359.07, 315.43, 2.66], "tool_pose": [0.4753, 0.1237, 0.0855, -179.9858, 0.0932, 16.8804], "gripper": 45.9},
+"fk_check_mm": 1.3,
+"targets": {"drawer": [0.394, -0.115]},
+"measured": {"drawer": [0.4272, -0.1274]},
+"decisions": ["start: gripper reads 45.9 low near the cabinet (maybe still on the pull tab): open first", "start pose low (0.101 m above the table): back off and up first", "start state: out", "front wall at n-OFF=-0.066 t=-0.088 top 0.073: top-down grasp, jaws along the normal", "outer wall has NO 
+"segments": [["escape_up", true, 0.034, 0.18, 6.19, 39.7], ["ready", true, 0.074, 0.69, 5.66, 39.8], ["home_start", true, 0.114, 0.34, 11.86, 39.9], ["ready", true, 0.123, 0.38, 11.86, 39.9], ["ready", true, 0.008, 0.01, 0.56, 37.5], ["above_front_wall", true, 0.019, 0.19, 4.48, 39.7], ["down_to_fro
+"start_state": "out",
+"start_perception": {"tag": "start", "table_z": -0.0155, "front_top": 0.0693, "blobs": 3, "drawer_blobs": [], "protr": 0.0716, "front_pts": 1856, "face_pts": 636, "inside_pts": 1, "out": {"t": -0.0878, "h_top": 0.0731, "h_bot": 0.0265, "n": 763}},
+"front_tab_score": 0.0,
+"front_grip": 86.9,
+"vlm_check0_q1": {"success": false, "conf": 0.75, "reason": "The drawer is out of the slot and upright on the table, but no metal pull shows on its visible walls, including the one facing lower left, so the pull must be on a wall facing away."},
+"vlm_check0_q2": {"success": false, "conf": 0.7, "reason": "The drawer is out of the cabinet and sitting upright on the table, but its outer walls facing the camera and the lower right are plain wood, with no metal pull visible on them, so the pull seems to fa"},
+"err_check0": 0.0314,
+"pull_vs_robot_deg0": 180.0,
+"wall_refine": {"profile": [140.0, 143.0, 143.0, 144.0, 142.0, 147.0, 160.0, 165.0, 167.0, 164.0, 117.0, 115.0, 116.0, 113.0, 109.0, 91.0, 86.0, 79.0, 47.0, 46.0, 52.0, 54.0, 69.0, 86.0, 77.0, 85.0], "grad_max": 80.0, "outer": -0.012, "shift": -0.006},
+"table_grip": 99.1,
+"vlm_check1_q1": {"success": false, "conf": 0.75, "reason": "The drawer is out of the cabinet and upright on the table, open side up, but I can't see a metal pull on either wall facing the camera, including the lower-left one, so the pull must be facing away fr"},
+"vlm_check1_q2": {"success": false, "conf": 0.7, "reason": "The drawer is out of the slot and sitting upright on the table, but the wall facing the lowe
+... (10213 more characters)
+```
+
+**01:41:44 reset agent:** Progress: the escape worked, the drawer was taken out, and the program correctly saw that its outer wall had no tab (backwards) and turned it. But the judge then said the pull was on a hidden far wall, and all three table re-picks closed on nothing (99.1). Looking at the last pre-grasp wrist image.
+
+**01:41:45 tool Read:** `/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_52/wrist_wall_pre.jpg`
+
+<details><summary>01:41:45 result</summary>
+
+```text
+[image]
+```
+</details>
+
+**01:42:21 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+p='programs/reset.py'; s=open(p).read()
+def rep(old,new):
+    global s
+    assert s.count(old)==1, old[:70]
+    s=s.replace(old,new)
+# refine: inner edge (drop into the dark interior)
+rep('''            grad = np.correlate(prof, [1, 1, 0, -1, -1], "same")   # prof(s-2..s-1) - prof(s+1..s+2): + where it gets darker inward
+            grad[:3] = grad[-3:] = 0
+            k = int(np.argmax(grad))
+            outer = ss[k]                       # outer edge position along d_in
+            shift = outer + 0.006               # e should sit ~6 mm inside the outer edge (expected edge at -0.007)
+            s.summary(wall_refine=dict(profile=np.round(prof[::4], 0).tolist(), grad_max=round(float(grad[k]), 1), outer=round(outer, 4), shift=round(shift, 4)))
+            s.log(f"refin
+... (1647 more characters)
+```
+
+<details><summary>01:42:21 result</summary>
+
+```text
+561:    def refine_wall(self, img, e, d_in, h_top, half=0.05, max_shift=0.04):
+562-        """Wrist-camera refinement of a drawer wall seen from above: intensity profile along d_in (toward the drawer
+563-        centre) across the expected wall top line at height h_top; the outer edge (bright table -> darker wood,
+564-        going inward) is the strongest negative step. Returns the shift (m, along d_in) of the wall centre, or None."""
+```
+</details>
+
+**01:42:32 reset agent:** Testing the new refinement offline on stored pre-grasp images: attempt 52 (failed) and attempts 21 and 32 (worked with the old method), using each run's plan pose.
+
+**01:42:33 tool Bash:**
+
+```bash
+for a in 21 32 52; do grep -h "grasp end wall at" attempts/attempt_$a/log.txt | tail -1 | cut -c1-200; grep -h "plan .*down_to_wall_pre" attempts/attempt_$a/log.txt | tail -1 | cut -c1-60; done
+```
+
+<details><summary>01:42:33 result</summary>
+
+```text
+[21:55:28] DECISION: table drawer obb [0.36, -0.189] L 0.149 W 0.142 yaw 5; grasp end wall at [0.292, -0.195] top 0.072
+[21:55:47] plan 06_down_to_wall_pre: T=1.9s check ok=True ti
+[22:42:16] DECISION: table drawer obb [0.413, -0.085] L 0.165 W 0.141 yaw 28; grasp end wall at [0.346, -0.121] top 0.073
+[22:42:36] plan 06_down_to_wall_pre: T=1.9s check ok=True ti
+[01:39:15] DECISION: table drawer obb [0.433, -0.102] L 0.161 W 0.135 yaw -89; grasp end wall at [0.432, -0.028] top 0.068
+[01:39:43] plan 38_down_to_wall_pre: T=2.0s check ok=True ti
+```
+</details>
+
+**01:42:44 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj && cat > /tmp/ref2.py <<'EOF'
+__file__='runs/20261117_2026_drawer/agents/reset/tools/offline.py'; exec(open(__file__).read().split('def run(')[0])
+import json, cv2
+C='runs/20261117_2026_drawer/agents/reset/inputs/calibration'
+Ttc=np.array(json.load(open(C+'/handeye_kinova.json'))['T_tool_cam']); f=json.load(open(C+'/intrinsics_kinova_1280x720.json'))['factory']
+K=np.array([[f['fx'],0,f['cx']],[0,f['fy'],f['cy']],[0,0,1.]]); dd=np.array(f['coeffs'],float)
+import rlpj.perception.wrist as W
+W._cam=lambda a,b,c: (K,dd,Ttc)
+for att,plan,ctr,e,h,old in ((21,'06_down_to_wall_pre',(0.36,-0.189),(0.292,-0.195),0.072,0.010),(32,'06_down_to_wall_pre',(0.413,-0.085),(0.346,-0.121),0.073,0.016),(52,'38_down_to_wall_pre',(0.433,-0.102),(0.432,-0.028),0.068,-0.006)):
+
+... (609 more characters)
+```
+
+<details><summary>01:42:45 result</summary>
+
+```text
+21 new shift -0.003999999999999958 old shift 0.01 {'table': 183.0, 'inner': np.float64(0.001), 'step': 93.0, 'shift': np.float64(-0.004)}
+32 new shift 0.0040000000000000495 old shift 0.016 {'table': 179.0, 'inner': np.float64(0.009), 'step': 114.0, 'shift': np.float64(0.004)}
+52 new shift 0.007000000000000052 old shift -0.006 {'table': 139.0, 'inner': np.float64(0.012), 'step': 66.0, 'shift': np.float64(0.007)}
+```
+</details>
+
+**01:43:02 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && python3 - <<'EOF'
+p='programs/reset.py'; s=open(p).read()
+def rep(old,new):
+    global s
+    assert s.count(old)==1, old[:70]
+    s=s.replace(old,new)
+rep('''        s.gripper(0.4, "open to straddle the end wall")''','''        s.gripper(TABLE_OPEN, "open wide (~72 mm) to straddle the end wall")''')
+rep('''            s.gripper(0.4, "open, missed")
+            self.line("up_from_wall", T_pre, "slow")''','''            s.gripper(TABLE_OPEN, "open, missed")
+            self.line("up_from_wall", T_pre, "slow")''')
+rep('''L_DEFAULT = 0.13 ''','''TABLE_OPEN = 0.15          # table pick opening (~72 mm): +-3 cm around a 1 cm wall (attempt 52 missed at 51 mm)
+L_DEFAULT = 0.13 ''')
+open(p,'w').write(s)
+EOF
+cd /home/r2r/
+... (121 more characters)
+```
+
+<details><summary>01:43:10 result</summary>
+
+```text
+5
+```
+</details>
+
+**01:43:17 reset agent:** Now the vision-judge question for a drawer sticking out of the slot, asked from home before the extraction, with the wrist tab score kept only as a fallback.
+
+**01:43:22 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && python3 - <<'EOF'
+p='programs/reset.py'; s=open(p).read()
+def rep(old,new):
+    global s
+    assert s.count(old)==1, old[:70]
+    s=s.replace(old,new)
+rep('''        if st == "out":
+            s.phase("extract")''','''        if st == "out":
+            # which way round is it? ask the vision judge (arm at home, drawer sticking out toward the lower left)
+            path = self.side_full("out")
+            if path is not None:
+                ans = self.ask(path, "A wooden drawer sticks out of the cabinet's bottom slot toward the robot. The outer wall of "
+                               "that drawer (the one facing the lower left of the image, toward the robot base) carries the "
+                               
+... (940 more characters)
+```
+
+<details><summary>01:43:31 result</summary>
+
+```text
+5
+```
+</details>
+
+**01:43:35 reset agent:** Per the operator's note, I'll also make the escape for a downward-pointing gripper try straight back along −N first (gripper already fully open), then straight up, then back while rising.
+
+**01:43:40 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && python3 - <<'EOF'
+p='programs/reset.py'; s=open(p).read()
+old='''            cands = [(0.0, up), (0.04, up), (0.06, T[2, 3])]'''
+new='''            cands = [(0.04, T[2, 3]), (0.0, up), (0.04, up)]   # 01:40 note: straight back along -N first'''
+assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+EOF
+cd /home/r2r/robot_learning_final_pj && uv run python /tmp/esc5.py 2>&1 | grep -v "^   grip" | tail -3 && cd runs/20261117_2026_drawer/agents/reset && cat >> notes/notes.md <<'EOF'
+- attempt 52 (real): escape OK; tab score 0.0 -> treated as backwards and flipped, judge then said the pull was hidden
+  (tab score likely a false negative); 3 table picks missed: refine took the table->outer-face step (obli
+... (499 more characters)
+```
+
+<details><summary>01:43:41 result</summary>
+
+```text
+ready: ok=True T=4.9 tip=0.133 body=0.200 ko=None r=0.44 q1=[374.0, 19.0, 261.0, 360.0, 299.0, 14.0]
+   home_start: ok=True T=11.9 tip=0.200 body=0.263 ko=None r=0.59 q1=[360.0, 15.0, 230.0, 360.0, 415.0, 90.0]
+#### OK
+ok
+```
+</details>
+
+**01:43:47 reset agent:** The drawer is on the table with its pull on a hidden far wall, so this run exercises the judge-driven turn plus the new refinement and wide grasp. Running for real.
+
+**01:43:49 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets test_targets.json",
+ "moves_robot": true,
+ "what": "REAL reset: drawer on the table with the pull on a far wall -> judge decides, pick (wide 72 mm grasp, interior-edge refine), turn so the pull faces the robot, place at (0.42,-0.08), judge check, verify.",
+ "report": ""
+}
+```
+
+<details><summary>01:43:49 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**01:51:04 reset agent:** No response requested.
+
+### 01:51:04 orchestrator -> reset agent
+
+```text
+repair your program; it failed 1 times in a row during the resets between episodes:
+--- attempt_54: layout check failed: drawer: not found
+# attempt_54: exit code 0; outcome: success
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_54/targets.json; what: reset for the next episode; commit: 249c806; duration_s: 185.4; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "249c80605b",
+"command": "programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_54/targets.json",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9578, 0.5609, 90.4582], "gripper": 39.7},
+"fk_check_mm": 0.18,
+"targets": {"drawer": [0.401, -0.03]},
+"measured": {"drawer": [0.4135, -0.0239]},
+"start_state": "table",
+"start_perception": {"tag": "start", "table_z": -0.0154, "front_top": null, "blobs": 4, "drawer_blobs": [{"xy": [0.4129, -0.0827], "obb_c": [0.4384, -0.056], "L": 0.17, "W": 0.144, "yaw": 85.9, "h": 0.0686, "n": 4995}], "protr": 0.0, "front_pts": 9, "face_pts": 11, "inside_pts": 125, "out": null},
+"decisions": ["start state: table", "table drawer obb [0.443, -0.063] L 0.181 W 0.146 yaw 88; grasp end wall at [0.446, 0.02] top 0.069", "wall refined by wrist camera: shift +0.022 m toward the drawer centre", "place: pull known, turn 40 deg, pull wall toward -142 deg (robot side, normal 22 + 16), 
+"segments": [["ready", true, 0.045, 0.21, 11.87, 39.8], ["ready", true, 0.003, 0.01, 0.57, 36.8], ["home_for_check", true, 0.04, 0.2, 11.87, 39.8], ["ready", true, 0.124, 0.42, 11.85, 39.8], ["above_drawer_wall", true, 0.117, 0.17, 7.33, 39.8], ["down_to_wall_pre", true, 0.069, 0.28, 2.03, 39.4], ["
+"vlm_check0_q1": {"success": true, "conf": 0.75, "reason": "The drawer is out of the cabinet and upright on the table with its open side up, and its metal pull is on the left wall, which faces the robot base and away from the cabinet; the upper slots are empty"},
+"err_check0": 0.0586,
+"pull_vs_robot_deg0": 0.0,
+"wall_refine": {"profile": [146.0, 147.0, 147.0, 153.0, 152.0, 156.0, 156.0, 160.0, 169.0, 166.0, 163.0, 140.0, 116.0, 111.0, 102.0, 103.0, 97.0, 89.0, 92.0, 89.0, 48.0, 45.0, 45.0, 87.0, 87.0, 86.0], "table": 147.0, "inner": 0.027, "step": 88.0, "shift": 0.022},
+"table_grip": 89.1,
+"vlm_check1_q1": {"success": true, "conf": 0.8, "reason": "The drawer is out of the cabinet and sits upright on the table with its open side up, and its metal pull is on the wall facing lower left toward the robot base; the cabinet is in place and its upper s"},
+"err_check1": 0.0135,
+"pull_vs_robot_deg1": 0.0,
+"pull_vs_robot_deg": 0.0,
+"errors": {"drawer": 0.0139},
+"target": {"drawer": [0.401, -0.03]},
+"verify": {"obb_center": [0.4273, 0.0069], "L": 0.165, "W": 0.162, "height": 0.0688, "yaw_vs_normal_deg": 11.8, "tol": 0.05},
+"return_home": "already at default pose",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.4, "reading": 39.73799133300781},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 65 lines; last 40:
+[01:49:01] refine_wall: inner edge at +0.027 along d_in, step 88, shift +0.022
+[01:49:01] DECISION: wall refined by wrist camera: shift +0.022 m toward the drawer centre
+[01:49:02] plan 07_wall_correct: T=2.3s check ok=True tip>0.101 vmax=2.4deg/s lin=0.018m/s
+[01:49:04] exec 07_wall_correct: {'segment': 'wall_correct', 'ok': True, 'reason': '', 'T_plan': 2.25, 'max_dev_deg': 0.032, 'max_dev_mm': 0.14, 'n': 91, 'max_force_n': 2.6, 't_exec': 2.32, 'rate_hz': 39.2, 'final_err_deg': 0.01}
+[01:49:05] plan 08_down_to_wall: T=5.1s check ok=True tip>0.051 vmax=2.8deg/s lin=0.018m/s
+[01:49:11] exec 08_down_to_wall: {'segment': 'down_to_wall', 'ok': True, 'reason': '', 'T_plan': 5.1, 
+... (6839 more characters)
+```
+
+**01:51:20 reset agent:** My program measured the drawer 1.4 cm from its target and the judge confirmed the orientation, yet the orchestrator reported "not found". Checking whether its after-measurement image exists and what it shows.
+
+**01:51:21 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_54 && ls | grep -v "^plans$" ; ls -la scene_after.jpg orientation_side.jpg 2>&1 | head
+```
+
+<details><summary>01:51:21 result</summary>
+
+```text
+attempt.json
+command.txt
+console.txt
+dashboard.mp4
+ended
+exit_code
+log.txt
+side_check0.jpg
+side_check1.jpg
+side_final.jpg
+side_start.jpg
+started
+summary.json
+targets.json
+vlm_check0.jpg
+vlm_check1.jpg
+watchdog_log.txt
+wrist_wall_pre.jpg
+ls: cannot access 'scene_after.jpg': No such file or directory
+ls: cannot access 'orientation_side.jpg': No such file or directory
+```
+</details>
+
+**01:51:25 reset agent:** The orchestrator's measurement images aren't in this attempt directory (for episode resets they're stored elsewhere), so I'll look at my own final side image.
+
+**01:51:26 tool Read:** `/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_54/side_final.jpg`
+
+<details><summary>01:51:26 result</summary>
+
+```text
+[image]
+```
+</details>
+
+**01:51:58 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && python3 - <<'EOF'
+p='programs/reset.py'; s=open(p).read()
+def rep(old,new):
+    global s
+    assert s.count(old)==1, old[:70]
+    s=s.replace(old,new)
+rep('''    def place(self, held, target, delta=None):
+        s = self.s
+        if delta is None:
+            delta = float(self.rng.uniform(-25, 25))
+        a = rot2(N, delta)''','''    def cab_clear(self, centre, axis):
+        """Smallest distance (m) from the drawer footprint (0.14 x 0.14 box at centre, axis = its front-back axis) to the
+        cabinet's footprint (front plane - 1 cm .. +30 cm, t -0.155..-0.005)."""
+        w = np.array([-axis[1], axis[0]])
+        pts = np.array([centre + i * 0.07 * axis + j * 0.07 * w for i in np.linspace(-1, 1, 9) for j 
+... (1993 more characters)
+```
+
+<details><summary>01:52:07 result</summary>
+
+```text
+[0.401, -0.03] [0.029, 0.052, 0.041]
+[0.44, -0.02] [0.0, 0.012, 0.01]
+[0.34, -0.2] [0.181, 0.184, 0.207]
+[0.4, -0.1] [0.065, 0.079, 0.093]
+5
+```
+</details>
+
+**01:52:19 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && python3 - <<'EOF'
+p='programs/reset.py'; s=open(p).read()
+s=s.replace("away = unit(-N) * min(0.02, 0.05 - clr)","away = unit(-N) * min(0.025, 0.05 - clr)")
+assert s.count("            self.place(held, tgt, delta)")==1
+s=s.replace("            self.place(held, tgt, delta)","            self.place(held, tgt)")
+open(p,'w').write(s)
+EOF
+cd /home/r2r/robot_learning_final_pj && uv run python runs/20261117_2026_drawer/agents/reset/tools/offline.py 2>&1 | grep -c "#### OK" && cd runs/20261117_2026_drawer/agents/reset && echo '{"drawer": [0.401, -0.03]}' > test_targets.json && echo "- attempt 54 (episode reset): placed at (0.413,-0.024) for target (0.401,-0.03), turned 34 deg; corner almost at the cabinet -> orchestrator
+... (310 more characters)
+```
+
+<details><summary>01:52:27 result</summary>
+
+```text
+5
+ok
+```
+</details>
+
+**01:52:34 reset agent:** Testing on the robot with the same corner target as attempt 54, (0.401, −0.03).
+
+**01:52:36 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets test_targets.json",
+ "moves_robot": true,
+ "what": "REAL reset to the same near-cabinet target as attempt 54, (0.401,-0.03): pick, choose a yaw keeping the drawer >= 5 cm from the cabinet, pull facing the robot, judge check, verify.",
+ "report": ""
+}
+```
+
+<details><summary>01:52:36 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**01:54:11 reset agent:** No response requested.
+
+### 01:54:11 orchestrator -> reset agent
+
+```text
+# attempt_55: exit code 0; outcome: success
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets test_targets.json; what: REAL reset to the same near-cabinet target as attempt 54, (0.401,-0.03): pick, choose a yaw keeping the drawer >= 5 cm from the cabinet, pull facing the robot, judge check, verify.; commit: eeb8b9b; duration_s: 81.2; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "eeb8b9b33d",
+"command": "programs/reset.py --targets test_targets.json",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9574, 0.5638, 90.4583], "gripper": 39.7},
+"fk_check_mm": 0.18,
+"targets": {"drawer": [0.401, -0.03]},
+"measured": {"drawer": [0.4092, -0.0273]},
+"start_state": "table",
+"start_perception": {"tag": "start", "table_z": -0.0156, "front_top": 0.0671, "blobs": 5, "drawer_blobs": [{"xy": [0.4107, -0.0204], "obb_c": [0.4244, 0.0153], "L": 0.156, "W": 0.153, "yaw": 43.2, "h": 0.0662, "n": 4333}], "protr": 0.1929, "front_pts": 688, "face_pts": 11, "inside_pts": 145, "out": 
+"decisions": ["start state: table"],
+"segments": [["ready", true, 0.045, 0.24, 11.85, 39.8], ["ready", true, 0.003, 0.01, 0.56, 37.5], ["home_for_check", true, 0.087, 0.31, 11.86, 39.9], ["ready", true, 0.057, 0.25, 11.85, 39.8], ["home_final", true, 0.045, 0.22, 11.86, 39.9]],
+"vlm_check0_q1": {"success": true, "conf": 0.8, "reason": "The drawer is out of the cabinet, sitting upright on the table with the open side up, and its metal pull is on the wall facing lower left toward the robot base; the gripper is not holding it."},
+"err_check0": 0.0168,
+"pull_vs_robot_deg0": 0.0,
+"pull_vs_robot_deg": 0.0,
+"errors": {"drawer": 0.0086},
+"target": {"drawer": [0.401, -0.03]},
+"verify": {"obb_center": [0.4347, 0.0035], "L": 0.175, "W": 0.164, "height": 0.0703, "yaw_vs_normal_deg": -4.7, "tol": 0.05},
+"return_home": "already at default pose",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.0, "reading": null},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 22 lines; last 22:
+[01:52:46] session reset: attempt /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_55 dry=False record=None
+[01:52:46] arm state ARMSTATE_SERVOING_READY, joints [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], gripper 39.7
+[01:52:46] model FK vs measured tool_pose at start: 0.2 mm
+[01:52:48] == phase: perceive
+[01:52:48] perceive start: {'tag': 'start', 'table_z': -0.0156, 'front_top': 0.0671, 'blobs': 5, 'drawer_blobs': [{'xy': [0.4107, -0.0204], 'obb_c': [0.4244, 0.0153], 'L': 0.156, 'W': 0.153, 'yaw': 43.2, 'h': 0.0662, 'n': 4333}], 'protr': 0.1929, 'front_pts': 688, 'face_pts': 11, 'inside_pts': 145, 
+[01:52:48] DECISION: start state: table
+[01:52:51] plan 01_ready: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[01:53:03] exec 01_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.045, 'max_dev_mm': 0.24, 'n': 472, 'max_force_n': 5.4, 't_exec': 11.85, 'rate_hz': 39.8, 'final_err_deg': 0.013}
+[01:53:03] == phase: check0
+[01:53:03] plan 02_ready: T=0.5s check ok=True tip>0.222 vmax=0.0deg/s lin=0.000m/s
+[01:53:04] exec 02_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.003, 'max_dev_mm': 0.01, 'n': 21, 'max_force_n': 0.3, 't_exec': 0.56, 'rate_hz': 37.5, 'final_err_deg': 0.001}
+[01:53:06] plan 03_home_for_check: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[01:53:18] exec 03_home_for_check: {'segment': 'home_for_check', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.087, 'max_dev_mm': 0.31, 'n': 473, 'max_force_n': 7.7, 't_exec': 11.86, 'rate_hz': 39.9, 'final_err_deg': 0.014}
+[01:53:18] perceive check0: {'tag': 'check0', 'table_z': -0.0156, 'front_top': 0.0702, 'blobs': 4, 'drawer_blobs': [{'xy': [0.415, -0
+... (2631 more characters)
+```
+
+**01:54:21 reset agent:** The orchestrator found the drawer this time (layout ok) at essentially the same spot where attempt 54 reported "not found". So that failure was at least partly intermittent, a borderline merge with the cabinet. This run didn't move anything (already within 1.7 cm and correctly oriented), so the new clearance logic is untested. Running once more with a target that forces a placement near the cabinet, (0.43, −0.05).
+
+**01:54:23 tool Bash:**
+
+```bash
+echo '{"drawer": [0.43, -0.05]}' > test_targets.json && echo "- attempt 55: same spot as 54 already within 1.7 cm -> no motion; orchestrator found it this time (54 was a borderline merge). Clearance logic untested -> attempt 56 target (0.43,-0.05)." >> notes/notes.md && git add -A && git commit -qm "test target near the cabinet" -q && echo ok
+```
+
+<details><summary>01:54:23 result</summary>
+
+```text
+ok
+```
+</details>
+
+**01:54:28 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets test_targets.json",
+ "moves_robot": true,
+ "what": "REAL reset to a near-cabinet target (0.43,-0.05): pick the drawer, choose a yaw keeping it >= 5 cm from the cabinet (nudge if needed), pull facing the robot, judge check, verify.",
+ "report": ""
+}
+```
+
+<details><summary>01:54:28 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

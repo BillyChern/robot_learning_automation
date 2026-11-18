@@ -95,3 +95,12 @@
   Q2 = "pull on the {image-quadrant} wall" for the other visible wall; else assume a far wall -> turn 180, re-check.
 - attempt 45 (real): judge-driven 180 deg turn worked (Q1 true x3, orchestrator layout+orientation ok) but err 0.046 -> re-picks missed (refine shift 0.033 rejected) -> abort. -> GOOD 0.035, refine max 0.04, no abort on pick count.
 - attempt 46 (real): OK (orchestrator layout+orientation ok) but Q1-true gave pull=None -> first placement turned it away, fixed in the next round. -> Q1 true returns the robot-facing wall as the pull.
+- attempt 47 (real, commit 97f960e): one pick, turn 4 deg (pull kept toward the robot), err 1.2 cm, judge conf 0.85, orchestrator layout+orientation ok, 183 s.
+- attempts 50-51: arm left pointing down 3.5 cm in front of the cabinet (gripper 45.9 around the drawer front wall); straight-up escape refused (body ring at the 1 cm front keep-out) and escape allowed only straight up -> open fully, then up / back 4 cm + up / back 6 cm then up.
+- attempt 52 (real): escape OK; tab score 0.0 -> treated as backwards and flipped, judge then said the pull was hidden
+  (tab score likely a false negative); 3 table picks missed: refine took the table->outer-face step (oblique face)
+  and moved the grasp 6 mm the wrong way (wall ~3 cm off). -> refine uses the drop into the dark interior (inner
+  edge), table grasp opens to 72 mm; 'out' state orientation asked to the vision judge (tab score only as fallback);
+  escape tries straight back along -N first (operator: moves out of a keep-out box are allowed now).
+- attempt 54 (episode reset): placed at (0.413,-0.024) for target (0.401,-0.03), turned 34 deg; corner almost at the cabinet -> orchestrator 'not found' (blob likely merged with the cabinet). -> place() picks the yaw keeping the footprint >= 5 cm from the cabinet, else nudges the aim <= 2.5 cm away.
+- attempt 55: same spot as 54 already within 1.7 cm -> no motion; orchestrator found it this time (54 was a borderline merge). Clearance logic untested -> attempt 56 target (0.43,-0.05).

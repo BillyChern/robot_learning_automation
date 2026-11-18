@@ -48,6 +48,7 @@ BACK_TILT = 40.0          # oblique pinch of the protruding wall's top edge: jaw
 BACK_ZC = 0.035           # slot centre, tilted BACK_TILT; pinch centre BACK_ZC along the tool z
 BACK_OPEN = 0.45
 T_C = -0.087              # drawer centre line along the front
+TABLE_OPEN = 0.15          # table pick opening (~72 mm): +-3 cm around a 1 cm wall (attempt 52 missed at 51 mm)
 L_DEFAULT = 0.13          # drawer depth until measured
 HOLD_MAX = 97.0           # gripper reading below this = holding something
 TOL = 0.05
@@ -87,6 +88,7 @@ class Reset:
         self.k = 0
         self.backwards = False
         self.final_facing = None
+        self.out_judged = None
         self.rgbd = (None, None, None)
         self.pin_dy = self.pin_dz = 0.0
         self.retried = False
@@ -143,20 +145,34 @@ class Reset:
         s.log("session home set to HOME_Q")
 
     def escape(self):
-        """Start away from home and low (a stopped run): back off along -N and up, keeping the orientation."""
+        """Start away from home and low (a stopped run or an RL episode left the arm there): get up and clear.
+        Tool pointing down (attempts 50-51: 3.5 cm in front of the cabinet, gripper around the drawer front wall):
+        open fully first, then straight up, else back off along -N while rising, else straight back then up.
+        Other orientations (tilted at the pull): back off along -N and up."""
+        s = self.s
         T = self.T_now()
         if T[2, 3] > self.tz + 0.15:
             return
-        self.s.decide(f"start pose low ({T[2, 3] - self.tz:.3f} m above the table): back off and up first")
-        ds = (0.0,) if T[2, 2] < -0.9 else (0.08, 0.05, 0.03, 0.0)   # tool pointing down (may straddle a drawer wall): straight up
-        for d in ds:
-            T2 = T.copy(); T2[:2, 3] -= d * N; T2[2, 3] = max(T[2, 3], self.tz + 0.10) + 0.06
+        s.decide(f"start pose low ({T[2, 3] - self.tz:.3f} m above the table): back off and up first")
+        up = max(T[2, 3], self.tz + 0.10) + 0.06
+        if T[2, 2] < -0.9:
+            g0 = float(s.feedback()["gripper"])
+            if g0 > 3.0:
+                s.gripper(0.0, "open fully before backing off (fingers away from any wall)")
+            cands = [(0.04, T[2, 3]), (0.0, up), (0.04, up)]   # 01:40 note: straight back along -N first
+        else:
+            cands = [(d, up) for d in (0.08, 0.05, 0.03, 0.0)]
+        for d, z in cands:
+            T2 = T.copy(); T2[:2, 3] -= d * N; T2[2, 3] = z
             try:
-                self.line("escape_up", T2, "slow", tip_margin=PIN_MARGIN)
+                self.line("escape_up" if z > T[2, 3] else "escape_back", T2, "slow", tip_margin=PIN_MARGIN)
+                if z <= T[2, 3]:
+                    T3 = T2.copy(); T3[2, 3] = up
+                    self.line("escape_up", T3, "slow", tip_margin=PIN_MARGIN)
                 return
             except Abort as e:
-                self.log(f"escape back {d} refused: {str(e)[:100]}")
-        self.s.require(False, "no escape path from the start pose")
+                self.log(f"escape (back {d}, to {z - self.tz:.3f}) refused: {str(e)[:120]}")
+        s.require(False, "no escape path from the start pose")
 
     def T_now(self):
         return calib.pose_to_T(self.s.feedback()["pose"])
@@ -480,7 +496,7 @@ class Reset:
         if img is not None and not s.dry:
             sc, _ = self.tab_score(img, calib.pose_to_T(s.feedback()["pose"]), xy_of(wall_n, o["t"]), -N, 0.035)
             s.summary(front_tab_score=None if sc is None else round(sc, 3))
-            if sc is not None:
+            if sc is not None and self.out_judged is None:
                 self.backwards = sc < 0.03
                 s.decide(f"outer wall {'has NO pull tab: drawer is in backwards' if self.backwards else 'carries the pull tab'} (tab score {sc:.3f})")
         self.line("down_to_front_wall", Tg, "slow")
@@ -519,7 +535,7 @@ class Reset:
         T_hi = Tg.copy(); T_hi[2, 3] = self.tz + SAFE_H
         T_pre = Tg.copy(); T_pre[2, 3] += 0.05
         s.decide(f"table drawer obb {np.round(ctr, 3).tolist()} L {L:.3f} W {c['W']:.3f} yaw {c['yaw']:.0f}; grasp end wall at {np.round(e, 3).tolist()} top {h_top:.3f}")
-        s.gripper(0.4, "open to straddle the end wall")
+        s.gripper(TABLE_OPEN, "open wide (~72 mm) to straddle the end wall")
         self.to_ready()
         self.joint_to("above_drawer_wall", T_hi)
         self.line("down_to_wall_pre", T_pre, "normal")
@@ -536,7 +552,7 @@ class Reset:
         s.summary(table_grip=round(g, 1))
         if g >= HOLD_MAX and not s.dry:
             s.decide(f"end wall grasp reading {g:.1f}: nothing held")
-            s.gripper(0.4, "open, missed")
+            s.gripper(TABLE_OPEN, "open, missed")
             self.line("up_from_wall", T_pre, "slow")
             self.lift_to("lift_empty", SAFE_H, "normal")
             return None
@@ -567,15 +583,25 @@ class Reset:
             if np.isnan(prof).mean() > 0.3:
                 s.log("refine_wall: profile out of the image"); return None
             prof = np.where(np.isnan(prof), np.nanmedian(prof), prof)
-            grad = np.correlate(prof, [1, 1, 0, -1, -1], "same")   # prof(s-2..s-1) - prof(s+1..s+2): + where it gets darker inward
-            grad[:3] = grad[-3:] = 0
-            k = int(np.argmax(grad))
-            outer = ss[k]                       # outer edge position along d_in
-            shift = outer + 0.006               # e should sit ~6 mm inside the outer edge (expected edge at -0.007)
-            s.summary(wall_refine=dict(profile=np.round(prof[::4], 0).tolist(), grad_max=round(float(grad[k]), 1), outer=round(outer, 4), shift=round(shift, 4)))
-            s.log(f"refine_wall: outer edge at {outer:+.3f} along d_in, step {grad[k]:.0f}, shift {shift:+.3f}")
-            if grad[k] < 40 or abs(shift) > max_shift:
-                s.decide(f"wall refinement rejected (step {grad[k]:.0f}, shift {shift:+.3f})")
+            # attempt 52: the outer step (table -> wall) is blurred by the wall's outer face seen obliquely; the drop into
+            # the drawer's shadowed interior is sharp: inner edge = first sample where the profile stays dark
+            table = float(np.median(prof[:8]))
+            dark = prof < 0.6 * table
+            k = None
+            for i in range(len(prof) - 6):
+                if dark[i:i + 6].all():
+                    k = i; break
+            grad = np.correlate(prof, [1, 1, 0, -1, -1], "same"); grad[:3] = grad[-3:] = 0
+            if k is None:
+                s.log("refine_wall: no dark interior along the profile"); return None
+            inner = ss[k]
+            shift = inner - 0.005 - 0.0          # e at the wall centre, ~5 mm outside the inner face
+            step = float(table - prof[k:k + 6].mean())
+            s.summary(wall_refine=dict(profile=np.round(prof[::4], 0).tolist(), table=round(table, 0), inner=round(inner, 4), step=round(step, 0), shift=round(shift, 4)))
+            s.log(f"refine_wall: inner edge at {inner:+.3f} along d_in, step {step:.0f}, shift {shift:+.3f}")
+            k = 0; grad[k] = step
+            if step < 50 or abs(shift) > max_shift:
+                s.decide(f"wall refinement rejected (step {step:.0f}, shift {shift:+.3f})")
                 return None
             s.decide(f"wall refined by wrist camera: shift {shift:+.3f} m toward the drawer centre")
             return float(shift)
@@ -584,10 +610,32 @@ class Reset:
             return None
 
     # ------------------------------------------------------------ place
+    def cab_clear(self, centre, axis):
+        """Smallest distance (m) from the drawer footprint (0.14 x 0.14 box at centre, axis = its front-back axis) to the
+        cabinet's footprint (front plane - 1 cm .. +30 cm, t -0.155..-0.005)."""
+        w = np.array([-axis[1], axis[0]])
+        pts = np.array([centre + i * 0.07 * axis + j * 0.07 * w for i in np.linspace(-1, 1, 9) for j in np.linspace(-1, 1, 9)])
+        q = nt(pts)
+        dn = np.maximum(OFF - 0.01 - q[:, 0], 0.0)
+        dt = np.maximum(np.maximum(-0.155 - q[:, 1], q[:, 1] + 0.005), 0.0)
+        return float(np.min(np.hypot(dn, dt)))
+
     def place(self, held, target, delta=None):
         s = self.s
+        target = np.asarray(target, float)
         if delta is None:
-            delta = float(self.rng.uniform(-25, 25))
+            # attempt 54: a drawer placed next to the cabinet corner merged with it in the orchestrator's measurement
+            # ("not found"): pick a yaw that keeps the footprint >= 5 cm from the cabinet; else nudge the aim away
+            box = target + self.bias
+            cands = [float(d) for d in self.rng.permutation(np.arange(-25, 26, 5))]
+            ok = [d for d in cands if self.cab_clear(box, rot2(N, d)) >= 0.05]
+            delta = ok[0] if ok else max(cands, key=lambda d: self.cab_clear(box, rot2(N, d)))
+            clr = self.cab_clear(box, rot2(N, delta))
+            if clr < 0.05:
+                away = unit(-N) * min(0.025, 0.05 - clr)
+                s.decide(f"placement {clr:.3f} m from the cabinet: aim {np.linalg.norm(away):.3f} m away from it")
+                target = target + away
+            s.summary(cabinet_clearance=round(self.cab_clear(target + self.bias, rot2(N, delta)), 3))
         a = rot2(N, delta)            # drawer axis from its front (pull) wall toward its back: pull faces the robot
         if held.get("pull") is not None:
             turn = wrapd(ang(-a) - ang(held["pull"]))
@@ -662,6 +710,16 @@ class Reset:
                 p = dict(p, out=dict(t=self.pin_t, h_top=0.088, h_bot=0.03, n=0), protr=PULL - 0.002); st = "out"
         delta = None
         if st == "out":
+            # which way round is it? ask the vision judge (arm at home, drawer sticking out toward the lower left)
+            path = self.side_full("out")
+            if path is not None:
+                ans = self.ask(path, "A wooden drawer sticks out of the cabinet's bottom slot toward the robot. The outer wall of "
+                               "that drawer (the one facing the lower left of the image, toward the robot base) carries the "
+                               "metal pull: a small grey metal label frame with a short tab below it.", "out_q")
+                if ans is not None:
+                    self.out_judged = bool(ans)
+                    self.backwards = not ans
+                    s.decide(f"vision judge: the drawer is in {'the right way round' if ans else 'BACKWARDS'}")
             s.phase("extract")
             for k in range(2):
                 held = self.extract(p)
@@ -718,7 +776,7 @@ class Reset:
             if held is None:
                 continue
             s.phase(f"place{it}")
-            self.place(held, tgt, delta)
+            self.place(held, tgt)
         # final measurement (arm at home)
         s.phase("verify")
         self.go_home("home_final")
