@@ -50,7 +50,9 @@ shaping; when to stop training. Its notes must say why.
 ## 6. Implementation (2026-11-17)
 
 - Task `config/tasks/drawer_rl.yaml` (`mode: rl`): fixtures (cabinet front plane, bottom-slot window), `keep_out`
-  (cabinet body from 1 cm behind the front plane), drawer layout and priors, `rl` settings.
+  (cabinet body from 1 cm behind the front plane; the bottom-slot opening, 1.5-9.5 cm above the table, open to 3 cm
+  because closed fingertips are modelled ~1 cm too deep: reset attempt 16 held the tab yet was refused), drawer layout
+  and priors, `rl` settings.
 - `rlpj.orchestrator.loop`: `run-all` for RL is check -> develop reset -> develop execute (the RL agent; prompt
   `rlpj/agents/prompts/rl.md`, its episode program keeps the name `programs/execute.py`) -> `rl_train` -> report.
   `rl_train`: reset -> episode (mode `rl`, no self-claim: both independent checks must say yes) -> `programs/learner.py`

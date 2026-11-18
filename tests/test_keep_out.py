@@ -27,5 +27,13 @@ def test_front_of_cabinet_is_allowed():
     assert in_boxes(at(0.005, -0.08, 0.05), B) == []         # touching the front plane
 
 
+def test_slot_opening_is_open_to_3cm():
+    assert in_boxes(at(0.012, -0.08, 0.05), B) == []          # closed fingertips at the drawer face, modelled 1.2 cm deep
+    assert in_boxes(at(0.011, -0.077, 0.029), B) == []        # reset attempt 16: holding the pull tab
+    assert in_boxes(at(0.035, -0.08, 0.05), B) == ["cabinet"]
+    assert in_boxes(at(0.015, -0.08, 0.15), B) == ["cabinet_front"]   # same depth above the slot: refused
+    assert in_boxes(at(0.015, -0.14, 0.05), B) == ["cabinet_front"]   # beside the slot opening: refused
+
+
 def test_beside_cabinet_is_allowed():
     assert in_boxes(at(0.05, -0.25, 0.05), B) == []

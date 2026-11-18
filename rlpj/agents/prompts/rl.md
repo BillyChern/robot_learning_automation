@@ -38,9 +38,10 @@ hand-tuned script. Scripted parts (finding and grasping the drawer, carrying it 
   estimated tool force changes by more than {RL_FORCE_LIMIT_N} N within a motion segment (a force stop ends the
   episode as a failure). `s.feedback()["force"]` gives that estimate (N, base frame) for your observations and reward.
   Keep learned actions small and slow near the cabinet; jamming the drawer is a failure, not a reason to push harder.
-  A keep-out box (task yaml `keep_out`) refuses any motion that puts a gripper point (fingertips, and a 45 mm-radius
-  cylinder around the tool axis from flange to knuckles) more than 1 cm behind the cabinet's front plane across its
-  width and height: a vertical gripper must keep its axis ~5.5 cm in front of the plane at cabinet height. Check
+  Keep-out boxes (task yaml `keep_out`) refuse any motion that puts a gripper point (fingertips, and a 45 mm-radius
+  cylinder around the tool axis from flange to knuckles) more than 1 cm behind the cabinet's front plane, except in
+  the bottom-slot opening (1.5-9.5 cm above the table), which is open to 3 cm (closed fingertips are modelled ~1 cm
+  deeper than they are). A vertical gripper must keep its axis ~5.5 cm in front of the plane at cabinet height. Check
   segments offline with `rlpj.robot.sim.check`; learned actions that would enter the box are refused the same way.
 - The loop: reset (the reset agent's program) -> your episode (recorded) -> independent verdict -> your learner, a
   fixed evaluation of {RL_EVAL_EPISODES} episodes with `RLPJ_RL_MODE=eval` every {RL_EVAL_EVERY} training episodes,

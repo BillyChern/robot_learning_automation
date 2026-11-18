@@ -26,8 +26,14 @@ fixtures:                          # measured 2026-11-17 after the side-camera r
   flush_tol: 0.012                 # |distance to the front plane| for a flush point (m)
 
 keep_out:                          # model check: no gripper point inside (rlpj.robot.sim); base frame, m, yaw about z
-  # the cabinet body from 1 cm behind its front plane (the gripper may touch the front to push the drawer flush)
-  - {name: cabinet, center: [0.6634, 0.1798, 0.134], half: [0.15, 0.075, 0.155], yaw_deg: 21.85}
+  # the cabinet body from 1 cm behind its front plane, except the bottom-slot opening (1.5-9.5 cm above the table), which is open to 3 cm: the
+  # modelled fingertips of a closed gripper sit ~1 cm deeper than the real ones (2026-11-17, reset attempt 16: holding
+  # the tab in front of the drawer face, modelled 10 mm behind it). The drawer face and the force stop cover the rest.
+  - {name: cabinet, center: [0.6726, 0.1835, 0.1340], half: [0.1400, 0.0750, 0.1550], yaw_deg: 21.85}
+  - {name: cabinet_front, center: [0.5334, 0.1277, -0.0110], half: [0.0100, 0.0750, 0.0100], yaw_deg: 21.85}
+  - {name: cabinet_front, center: [0.5334, 0.1277, 0.1840], half: [0.0100, 0.0750, 0.1050], yaw_deg: 21.85}
+  - {name: cabinet_front, center: [0.5548, 0.0743, 0.0390], half: [0.0100, 0.0175, 0.0400], yaw_deg: 21.85}
+  - {name: cabinet_front, center: [0.5129, 0.1788, 0.0390], half: [0.0100, 0.0200, 0.0400], yaw_deg: 21.85}
 
 layout:                            # reset target for the drawer centre on the table (base frame, m)
   drawer: {x: [0.34, 0.44], y: [-0.20, -0.02]}    # in front of and beside the cabinet, clear of its front by > 10 cm
