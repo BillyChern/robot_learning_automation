@@ -23,7 +23,7 @@ reuse the libraries listed in the task yaml. Compared on time, tokens, cost and 
 
 ## 2. Machines
 
-| | 4090 `zen-System-Product-Name` (this repo's home) | 5090 `Worksation_5090` (ssh alias; `WorkStation_4090` from there) |
+| | 4090 `zen-System-Product-Name` (this repo's home) | 5090 `WorkStation_5090` (ssh alias; `WorkStation_4090` from there) |
 |---|---|---|
 | has | arm network, side RealSense, repo venv `.venv` (uv, `--extra robot`), demos | Claude Code (subscription), openpi venv `third_party/openpi/.venv`, GPU 32 GB |
 | runs | orchestrator, robot programs, policy rollouts (policy server if `hosts.policy_host: local`) | agents, VLM judge, training, policy server (port 8000; `hosts.policy_host` default since 2026-11-06: the 4090 GPU is shared) |

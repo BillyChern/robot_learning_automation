@@ -1,9 +1,9 @@
 #!/bin/bash
 # Serve a checkpoint with openpi's websocket policy server (4090 by default, or 5090).  bash scripts/serve.sh <checkpoint_dir> [port]
 #   <checkpoint_dir> = <run_dir>/checkpoints/<exp_name>/<step>  (params/ for JAX or model.safetensors for PyTorch, and assets/)
-#   rlpj eval does this itself (hosts.policy_host). On the 5090 by hand:  ssh Worksation_5090 'nohup bash ~/robot_learning_final_pj/scripts/serve.sh \
+#   rlpj eval does this itself (hosts.policy_host). On the 5090 by hand:  ssh WorkStation_5090 'nohup bash ~/robot_learning_final_pj/scripts/serve.sh \
 #       ~/robot_learning_final_pj/runs/r1/checkpoints/lora_5k/4999 8000 >/dev/null 2>&1 &'
-#   stop:  ssh Worksation_5090 'pkill -f "rlpj.vla.openpi_entry serve"'
+#   stop:  ssh WorkStation_5090 'pkill -f "rlpj.vla.openpi_entry serve"'
 # Env: RLPJ_CONFIG / RLPJ_RECIPE (default: from <exp>/train_info.json, else pi05_kinova_lora), RLPJ_SERVE_PROGRAM
 # (agent 3's server: --checkpoint --port --config); JAX does not preallocate so training can share the GPU.
 set -euo pipefail

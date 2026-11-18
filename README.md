@@ -10,7 +10,7 @@ with `rlpj --task <name> ...` or `RLPJ_TASK`.
 
 ## Machines
 
-| | 4090 (this machine) | 5090 (`ssh Worksation_5090`) |
+| | 4090 (this machine) | 5090 (`ssh WorkStation_5090`) |
 |---|---|---|
 | runs | orchestrator, robot programs, policy rollouts, **policy server (default)** | Claude Code agents, VLM judge, openpi train |
 | has | arm `192.168.2.9`, side RealSense, `.venv`, RTX 4090 24 GB, openpi `.venv` (serve only) | RTX 5090 32 GB, openpi `.venv` + `pi05_base`, Claude subscription |
@@ -18,7 +18,7 @@ with `rlpj --task <name> ...` or `RLPJ_TASK`.
 
 The 4090 is the source of truth. Every `rlpj` command that uses the 5090 pushes the repo first; episodes are pushed before
 each convert; a checkpoint's `params/` + `assets/` (6 GB) are pulled to the same path on the 4090 before it is served.
-Serve on the 5090 instead: `hosts.policy_host: Worksation_5090`, `hosts.policy_server: 100.122.29.80` in `pipeline.yaml`.
+Serve on the 5090 instead: `hosts.policy_host: WorkStation_5090`, `hosts.policy_server: 100.122.29.80` in `pipeline.yaml`.
 
 The 5090 cannot reach the arm. Only the orchestrator on the 4090 may set `RLPJ_MOTION=1`.
 
@@ -28,7 +28,7 @@ The 5090 cannot reach the arm. Only the orchestrator on the 4090 may set `RLPJ_M
 uv sync --extra robot
 bash scripts/setup_openpi.sh --serve-only                                            # 4090: openpi venv for serving
 bash scripts/sync.sh push
-ssh Worksation_5090 'cd ~/robot_learning_final_pj && bash scripts/setup_openpi.sh'   # 5090: openpi + pi05_base (~12 GB)
+ssh WorkStation_5090 'cd ~/robot_learning_final_pj && bash scripts/setup_openpi.sh'   # 5090: openpi + pi05_base (~12 GB)
 ```
 
 ## Prompt templates (yes)

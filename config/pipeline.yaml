@@ -8,7 +8,7 @@ robot:
                                    # y +0.31..+0.37 (2026-11-07: a policy rollout reached y 0.295 and grasped it, faulting the arm)
 
 hosts:
-  agent: Worksation_5090           # 5090 (100.122.29.80): agents, VLM judge, training (no route to the arm)
+  agent: WorkStation_5090           # 5090 (100.122.29.80): agents, VLM judge, training (no route to the arm)
   policy_host: local               # 4090 GPU free after training (set by after_training.sh)
   policy_server: 127.0.0.1         # 100.122.29.80 when policy_host is the 5090
   policy_port: 8000

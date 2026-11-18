@@ -5,7 +5,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HOST="${RLPJ_AGENT_HOST:-$(sed -n 's/^ *agent: *\([^ #]*\).*/\1/p' "$ROOT/config/pipeline.yaml" | head -1)}"
-HOST="${HOST:-Worksation_5090}"
+HOST="${HOST:-WorkStation_5090}"
 EXCLUDES=(--exclude /.venv --exclude /runs --exclude /third_party --exclude /.git --exclude /.pytest_cache --exclude __pycache__ --exclude '*.pyc')
 
 usage() { echo "usage: bash scripts/sync.sh push|pull [path]"; exit 1; }

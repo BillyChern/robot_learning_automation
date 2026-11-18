@@ -4,7 +4,7 @@
 # Serving is left as it is (agent 3 serves from the 5090 through its proxy while the 4090's GPU is taken).
 #   bash scripts/after_training_remote.sh <run_id> <exp_name> [host]
 set -uo pipefail
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"; RUN="$ROOT/runs/$1"; EXP="$2"; HOST="${3:-Worksation_5090}"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"; RUN="$ROOT/runs/$1"; EXP="$2"; HOST="${3:-WorkStation_5090}"
 CK="$RUN/checkpoints/$EXP"
 until ssh -o BatchMode=yes -o ConnectTimeout=10 "$HOST" "test -f $CK/train_info.json"; do sleep 120; done
 LAST=$(ssh -o BatchMode=yes "$HOST" "ls -d $CK/[0-9]* | sort -V | tail -1")
