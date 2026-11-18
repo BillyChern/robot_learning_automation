@@ -476,6 +476,11 @@ class Reset:
         if on_vis:
             msg, pull = f"pull on the visible {lab} wall", vis
         else:
+            # attempts 77/78: in dim light the same scene got 'yes' (0.6) and 'no' (0.75): one more look before a turn
+            path2 = self.side_full(tag + "b")
+            if path2 is not None and self.ask(path2, t.get("reset_orientation", ""), f"{tag}_q1b"):
+                self.s.decide("vision judge: second look confirms the pull faces the robot")
+                return True, robot
             msg, pull = "pull on a far (hidden) wall: assume opposite the robot-facing wall, turn 180 deg and re-check", -robot
         self.s.decide(f"vision judge: {msg}")
         return False, pull
@@ -580,6 +585,10 @@ class Reset:
             from rlpj.perception.wrist import project_base_to_wrist
             T = calib.pose_to_T(s.feedback()["pose"])
             g = cv2.GaussianBlur(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (5, 5), 0).astype(float)
+            if float(np.median(g)) < 40:     # attempt 78: at night the wrist image is nearly black (median ~1-16) and
+                s.log(f"refine_wall: wrist image too dark (median {np.median(g):.0f}), no refinement")   # the gripper
+                s.summary(wall_refine=dict(skipped="dark", median=round(float(np.median(g)), 1)))       # shadow
+                return None                                                                               # fakes edges
             w = np.array([-d_in[1], d_in[0]])
             ss = np.arange(-half, half + 1e-9, 0.001)
             prof = []
@@ -609,7 +618,7 @@ class Reset:
             s.summary(wall_refine=dict(profile=np.round(prof[::4], 0).tolist(), table=round(table, 0), inner=round(inner, 4), step=round(step, 0), shift=round(shift, 4)))
             s.log(f"refine_wall: inner edge at {inner:+.3f} along d_in, step {step:.0f}, shift {shift:+.3f}")
             k = 0; grad[k] = step
-            if step < max(0.3 * table, 5.0) or abs(shift) > max_shift:     # relative: the wrist image is dim at night
+            if step < 50 or abs(shift) > max_shift:
                 s.decide(f"wall refinement rejected (step {step:.0f}, shift {shift:+.3f})")
                 return None
             s.decide(f"wall refined by wrist camera: shift {shift:+.3f} m toward the drawer centre")

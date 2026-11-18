@@ -117,3 +117,6 @@
   pull invisible. -> pull aimed at -N + 20 deg (+-5) like attempts 46/47 (seen, judged lower left); judge images
   gamma-brightened to mean ~120 when dim; wall-refine step threshold relative (0.3 x table).
 - attempt 77 (real): brightened judge image -> tab seen on the left (robot-facing) wall, success without motion; orchestrator ok. -> table OBB length clamped to 0.155 when the outline is < 0.145 (partial view).
+- attempt 78 (real, dark): wrist image mean ~4 (gripper shadow fakes the 'dark interior'): the relaxed refine
+  threshold accepted a bogus -3.3 cm shift -> picks missed; judge flipped on the attempt-77 scene. -> refine skipped
+  when the wrist image median < 40 (absolute 50 step threshold restored); 'hidden' verdicts get a second Q1 look.
