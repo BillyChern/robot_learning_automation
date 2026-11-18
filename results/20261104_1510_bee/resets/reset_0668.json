@@ -1,0 +1,142 @@
+{
+ "reset": 668,
+ "t": "2026-11-11T01:40:52",
+ "targets": {
+  "bowl": [
+   0.512,
+   -0.003
+  ],
+  "bee": [
+   0.42,
+   -0.161
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.04,
+  "objects": {
+   "bowl": {
+    "target": [
+     0.512,
+     -0.003
+    ],
+    "found": null,
+    "dist": null,
+    "ok": false
+   },
+   "bee": {
+    "target": [
+     0.42,
+     -0.161
+    ],
+    "found": null,
+    "dist": null,
+    "ok": false
+   }
+  },
+  "extra_blobs": 5,
+  "reason": "bowl: not found; bee: not found"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.2461,
+    0.1863
+   ],
+   "z_top": 0.2794,
+   "height": 0.2951,
+   "extent": [
+    0.0513,
+    0.026
+   ],
+   "n": 2137,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.4918,
+    -0.0124
+   ],
+   "z_top": 0.0544,
+   "height": 0.0701,
+   "extent": [
+    0.2052,
+    0.2689
+   ],
+   "n": 5581,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0527,
+   "outer_r": 0.1201
+  },
+  {
+   "xy": [
+    0.6879,
+    -0.2805
+   ],
+   "z_top": 0.0016,
+   "height": 0.0173,
+   "extent": [
+    0.0215,
+    0.0187
+   ],
+   "n": 103,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0056,
+   "outer_r": 0.0115
+  },
+  {
+   "xy": [
+    0.7451,
+    -0.261
+   ],
+   "z_top": -0.0018,
+   "height": 0.0139,
+   "extent": [
+    0.0623,
+    0.0219
+   ],
+   "n": 211,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0054,
+   "outer_r": 0.0124
+  },
+  {
+   "xy": [
+    0.8525,
+    -0.2344
+   ],
+   "z_top": 0.0084,
+   "height": 0.0242,
+   "extent": [
+    0.0398,
+    0.0181
+   ],
+   "n": 116,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": {
+  "bowl": [
+   0.486,
+   -0.015
+  ],
+  "bee": [
+   0.427,
+   -0.171
+  ]
+ },
+ "claimed_outcome": "success",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_747",
+ "exit_code": 0,
+ "outcome": "success",
+ "duration": 398.4
+}

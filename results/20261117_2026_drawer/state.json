@@ -1,0 +1,79 @@
+{
+ "run_id": "20261117_2026_drawer",
+ "task": "drawer_rl",
+ "condition": "text",
+ "created": "2026-11-17T20:26:49",
+ "phase": "develop_reset",
+ "counters": {
+  "episodes": {
+   "total": 0,
+   "success": 0,
+   "fail": 0,
+   "unsure": 0
+  },
+  "evals": {
+   "total": 0,
+   "success": 0,
+   "fail": 0,
+   "unsure": 0
+  },
+  "resets": {
+   "total": 0,
+   "ok": 0,
+   "fail": 0,
+   "manual": 0
+  },
+  "consecutive_failures": {
+   "execute": 0,
+   "reset": 0
+  }
+ },
+ "agents": {
+  "reset": {
+   "status": "developing",
+   "session_id": "28a976d6-48ea-4fad-b363-10f157ffb977",
+   "model": "claude-opus-5-5",
+   "started": "2026-11-17T20:27:03",
+   "ended": null,
+   "attempts": 10,
+   "robot_attempts": 5,
+   "turns": 109,
+   "cost_usd": 6.409695599999999,
+   "input_tokens": 186,
+   "output_tokens": 97956,
+   "cache_read": 13225118,
+   "cache_creation": 225601,
+   "duration_s": 1091.4299999999998,
+   "first_success_attempt": null,
+   "first_success_after_attempts": null,
+   "time_to_first_success_s": null,
+   "repairs": 0,
+   "rounds": 0,
+   "program_command": null,
+   "last_report": null
+  }
+ },
+ "datasets": {},
+ "training_runs": {},
+ "evals": {},
+ "deployable_checkpoint": null,
+ "zero_shot": null,
+ "collection": {
+  "round": 0,
+  "round_successes": 0,
+  "round_target": null
+ },
+ "next_episode": 0,
+ "next_reset": 0,
+ "vlm": {
+  "calls": 0,
+  "cost_usd": 0.0
+ },
+ "operator_notes": [],
+ "rl": {
+  "episodes": 0,
+  "evals": [],
+  "since_review": 0,
+  "learner_fails": 0
+ }
+}

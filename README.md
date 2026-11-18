@@ -216,3 +216,11 @@ trained, evaluated, ran DAgger and retrained. full_v7 reached 16/20 (80 %) after
   Exported by `scripts/export_results.sh`; checkpoints, datasets and raw recordings are not included (235 GB).
 - Showcase videos: release [bee-run-videos](https://github.com/BillyChern/robot_learning_automation/releases/tag/bee-run-videos).
 - `scripts/sync_github.sh` keeps this repository up to date (runs every 30 minutes in tmux session `github_sync`).
+
+## Second experiment: agent-run real-world RL (run 20261117_2026_drawer, in progress)
+
+Same arm, new task: put a drawer back into the bottom slot of a small cabinet. One agent learns it with reinforcement
+learning on the real robot (it designs the reward, the learner, the hyperparameters and optionally a simulation); the
+other resets the scene by pulling the drawer out. Design: [docs/RL_DESIGN.md](docs/RL_DESIGN.md). Live results:
+`results/20261117_2026_drawer/` (events, learning curve `rl_curve.jsonl`, agents' programs, notes and transcripts),
+updated by the sync.

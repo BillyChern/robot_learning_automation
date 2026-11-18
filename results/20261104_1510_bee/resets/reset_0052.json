@@ -1,0 +1,142 @@
+{
+ "reset": 52,
+ "t": "2026-11-04T21:59:42",
+ "targets": {
+  "bowl": [
+   0.532,
+   -0.162
+  ],
+  "bee": [
+   0.441,
+   0.076
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.04,
+  "objects": {
+   "bowl": {
+    "target": [
+     0.532,
+     -0.162
+    ],
+    "found": [
+     0.5598,
+     -0.1586
+    ],
+    "dist": 0.028,
+    "ok": true
+   },
+   "bee": {
+    "target": [
+     0.441,
+     0.076
+    ],
+    "found": [
+     0.7518,
+     0.0159
+    ],
+    "dist": 0.3166,
+    "ok": false
+   }
+  },
+  "extra_blobs": 3,
+  "reason": "bee: 31.7 cm off"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.2819,
+    -0.0909
+   ],
+   "z_top": -0.0017,
+   "height": 0.0141,
+   "extent": [
+    0.0416,
+    0.0328
+   ],
+   "n": 124,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0094,
+   "outer_r": 0.0187
+  },
+  {
+   "xy": [
+    0.3014,
+    0.0065
+   ],
+   "z_top": -0.0038,
+   "height": 0.012,
+   "extent": [
+    0.047,
+    0.0444
+   ],
+   "n": 163,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0106,
+   "outer_r": 0.0235
+  },
+  {
+   "xy": [
+    0.4907,
+    0.144
+   ],
+   "z_top": -0.0032,
+   "height": 0.0126,
+   "extent": [
+    0.0238,
+    0.0199
+   ],
+   "n": 80,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0061,
+   "outer_r": 0.0111
+  },
+  {
+   "xy": [
+    0.5598,
+    -0.1586
+   ],
+   "z_top": 0.0535,
+   "height": 0.0693,
+   "extent": [
+    0.1476,
+    0.1426
+   ],
+   "n": 4274,
+   "hollow": true,
+   "hole_xy": [
+    0.5583,
+    -0.1565
+   ],
+   "inner_r": 0.0661,
+   "outer_r": 0.0754
+  },
+  {
+   "xy": [
+    0.7518,
+    0.0159
+   ],
+   "z_top": 0.0273,
+   "height": 0.0431,
+   "extent": [
+    0.0734,
+    0.0861
+   ],
+   "n": 1918,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0078,
+   "outer_r": 0.034
+  }
+ ],
+ "claimed": null,
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_76",
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration": 14.2
+}

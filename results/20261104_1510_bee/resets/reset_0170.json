@@ -1,0 +1,139 @@
+{
+ "reset": 170,
+ "t": "2026-11-06T13:22:45",
+ "targets": {
+  "bowl": [
+   0.476,
+   0.043
+  ],
+  "bee": [
+   0.542,
+   -0.172
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.04,
+  "objects": {
+   "bowl": {
+    "target": [
+     0.476,
+     0.043
+    ],
+    "found": [
+     0.4694,
+     0.0411
+    ],
+    "dist": 0.0069,
+    "ok": true
+   },
+   "bee": {
+    "target": [
+     0.542,
+     -0.172
+    ],
+    "found": null,
+    "dist": null,
+    "ok": false
+   }
+  },
+  "extra_blobs": 4,
+  "reason": "bee: not found"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.2435,
+    0.1266
+   ],
+   "z_top": -0.0014,
+   "height": 0.0143,
+   "extent": [
+    0.0255,
+    0.0285
+   ],
+   "n": 66,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.321,
+    0.0419
+   ],
+   "z_top": 0.001,
+   "height": 0.0168,
+   "extent": [
+    0.0295,
+    0.0248
+   ],
+   "n": 66,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.3278,
+    -0.0828
+   ],
+   "z_top": -0.0013,
+   "height": 0.0145,
+   "extent": [
+    0.0282,
+    0.0296
+   ],
+   "n": 81,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.4694,
+    0.0411
+   ],
+   "z_top": 0.0546,
+   "height": 0.0704,
+   "extent": [
+    0.1384,
+    0.152
+   ],
+   "n": 4282,
+   "hollow": true,
+   "hole_xy": [
+    0.5105,
+    0.0562
+   ],
+   "inner_r": 0.0472,
+   "outer_r": 0.0578
+  },
+  {
+   "xy": [
+    0.7606,
+    -0.2597
+   ],
+   "z_top": 0.006,
+   "height": 0.0217,
+   "extent": [
+    0.0275,
+    0.0089
+   ],
+   "n": 64,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": null,
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_216",
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration": 55.2
+}

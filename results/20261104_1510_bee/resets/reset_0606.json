@@ -1,0 +1,148 @@
+{
+ "reset": 606,
+ "t": "2026-11-10T08:28:00",
+ "targets": {
+  "bowl": [
+   0.472,
+   -0.16
+  ],
+  "bee": [
+   0.48,
+   0.033
+  ]
+ },
+ "ok": true,
+ "report": {
+  "tolerance": 0.04,
+  "objects": {
+   "bowl": {
+    "target": [
+     0.472,
+     -0.16
+    ],
+    "found": [
+     0.4665,
+     -0.1534
+    ],
+    "dist": 0.0086,
+    "ok": true
+   },
+   "bee": {
+    "target": [
+     0.48,
+     0.033
+    ],
+    "found": [
+     0.4978,
+     0.0471
+    ],
+    "dist": 0.0227,
+    "ok": true
+   }
+  },
+  "extra_blobs": 3,
+  "reason": "layout ok"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.3493,
+    0.0359
+   ],
+   "z_top": -0.0031,
+   "height": 0.0125,
+   "extent": [
+    0.0411,
+    0.024
+   ],
+   "n": 86,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.4665,
+    -0.1534
+   ],
+   "z_top": 0.0552,
+   "height": 0.0709,
+   "extent": [
+    0.1402,
+    0.1401
+   ],
+   "n": 3946,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0239,
+   "outer_r": 0.0646
+  },
+  {
+   "xy": [
+    0.4978,
+    0.0471
+   ],
+   "z_top": 0.0292,
+   "height": 0.0449,
+   "extent": [
+    0.0898,
+    0.065
+   ],
+   "n": 1011,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0095,
+   "outer_r": 0.0224
+  },
+  {
+   "xy": [
+    0.735,
+    -0.2649
+   ],
+   "z_top": -0.0007,
+   "height": 0.0149,
+   "extent": [
+    0.0237,
+    0.0147
+   ],
+   "n": 76,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.8522,
+    -0.2343
+   ],
+   "z_top": 0.0082,
+   "height": 0.0238,
+   "extent": [
+    0.0323,
+    0.0172
+   ],
+   "n": 87,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": {
+  "bowl": [
+   0.489,
+   -0.136
+  ],
+  "bee": [
+   0.498,
+   0.047
+  ]
+ },
+ "claimed_outcome": "success",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_672",
+ "exit_code": 0,
+ "outcome": "success",
+ "duration": 212.3
+}

@@ -1,0 +1,139 @@
+{
+ "reset": 460,
+ "t": "2026-11-09T13:34:07",
+ "targets": {
+  "bowl": [
+   0.452,
+   -0.165
+  ],
+  "bee": [
+   0.523,
+   0.037
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.04,
+  "objects": {
+   "bowl": {
+    "target": [
+     0.452,
+     -0.165
+    ],
+    "found": [
+     0.4697,
+     -0.17
+    ],
+    "dist": 0.0184,
+    "ok": true
+   },
+   "bee": {
+    "target": [
+     0.523,
+     0.037
+    ],
+    "found": [
+     0.3861,
+     -0.1072
+    ],
+    "dist": 0.1988,
+    "ok": false
+   }
+  },
+  "extra_blobs": 3,
+  "reason": "bee: 19.9 cm off"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.2709,
+    0.0006
+   ],
+   "z_top": -0.0038,
+   "height": 0.0119,
+   "extent": [
+    0.0443,
+    0.0276
+   ],
+   "n": 97,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0076,
+   "outer_r": 0.019
+  },
+  {
+   "xy": [
+    0.376,
+    -0.0543
+   ],
+   "z_top": -0.0036,
+   "height": 0.012,
+   "extent": [
+    0.0242,
+    0.0229
+   ],
+   "n": 63,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.3861,
+    -0.1072
+   ],
+   "z_top": 0.0132,
+   "height": 0.0289,
+   "extent": [
+    0.0583,
+    0.0316
+   ],
+   "n": 101,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.4697,
+    -0.17
+   ],
+   "z_top": 0.0546,
+   "height": 0.0703,
+   "extent": [
+    0.2013,
+    0.1841
+   ],
+   "n": 4980,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0641,
+   "outer_r": 0.0742
+  },
+  {
+   "xy": [
+    0.7362,
+    -0.2646
+   ],
+   "z_top": -0.0025,
+   "height": 0.0132,
+   "extent": [
+    0.0272,
+    0.0147
+   ],
+   "n": 89,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": null,
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_526",
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration": 215.4
+}

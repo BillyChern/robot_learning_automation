@@ -1,0 +1,142 @@
+{
+ "reset": 361,
+ "t": "2026-11-08T11:39:27",
+ "targets": {
+  "bowl": [
+   0.493,
+   -0.149
+  ],
+  "bee": [
+   0.478,
+   0.047
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.04,
+  "objects": {
+   "bowl": {
+    "target": [
+     0.493,
+     -0.149
+    ],
+    "found": [
+     0.5361,
+     -0.1541
+    ],
+    "dist": 0.0434,
+    "ok": false
+   },
+   "bee": {
+    "target": [
+     0.478,
+     0.047
+    ],
+    "found": [
+     0.5289,
+     0.1637
+    ],
+    "dist": 0.1273,
+    "ok": false
+   }
+  },
+  "extra_blobs": 3,
+  "reason": "bowl: 4.3 cm off; bee: 12.7 cm off"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.3469,
+    -0.3407
+   ],
+   "z_top": -0.0042,
+   "height": 0.0114,
+   "extent": [
+    0.0286,
+    0.0264
+   ],
+   "n": 62,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.5289,
+    0.1637
+   ],
+   "z_top": 0.0269,
+   "height": 0.0426,
+   "extent": [
+    0.0683,
+    0.0874
+   ],
+   "n": 1299,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0091,
+   "outer_r": 0.0245
+  },
+  {
+   "xy": [
+    0.5361,
+    -0.1541
+   ],
+   "z_top": 0.0553,
+   "height": 0.071,
+   "extent": [
+    0.1394,
+    0.1399
+   ],
+   "n": 4156,
+   "hollow": true,
+   "hole_xy": [
+    0.5304,
+    -0.1577
+   ],
+   "inner_r": 0.0607,
+   "outer_r": 0.0694
+  },
+  {
+   "xy": [
+    0.6767,
+    -0.2857
+   ],
+   "z_top": 0.0044,
+   "height": 0.0201,
+   "extent": [
+    0.0287,
+    0.0132
+   ],
+   "n": 84,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.7362,
+    -0.2645
+   ],
+   "z_top": -0.0026,
+   "height": 0.0131,
+   "extent": [
+    0.0327,
+    0.0189
+   ],
+   "n": 95,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": null,
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_425",
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration": 306.4
+}

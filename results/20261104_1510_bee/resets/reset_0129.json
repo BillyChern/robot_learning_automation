@@ -1,0 +1,136 @@
+{
+ "reset": 129,
+ "t": "2026-11-05T15:34:02",
+ "targets": {
+  "bowl": [
+   0.514,
+   0.018
+  ],
+  "bee": [
+   0.541,
+   -0.184
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.04,
+  "objects": {
+   "bowl": {
+    "target": [
+     0.514,
+     0.018
+    ],
+    "found": null,
+    "dist": null,
+    "ok": false
+   },
+   "bee": {
+    "target": [
+     0.541,
+     -0.184
+    ],
+    "found": [
+     0.2979,
+     0.1702
+    ],
+    "dist": 0.4296,
+    "ok": false
+   }
+  },
+  "extra_blobs": 4,
+  "reason": "bowl: not found; bee: 43.0 cm off"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.2979,
+    0.1702
+   ],
+   "z_top": 0.0108,
+   "height": 0.0255,
+   "extent": [
+    0.053,
+    0.0249
+   ],
+   "n": 125,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.3742,
+    0.1412
+   ],
+   "z_top": 0.0096,
+   "height": 0.0243,
+   "extent": [
+    0.0147,
+    0.0333
+   ],
+   "n": 92,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.4439,
+    0.1893
+   ],
+   "z_top": 0.0028,
+   "height": 0.0175,
+   "extent": [
+    0.0444,
+    0.0232
+   ],
+   "n": 165,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0068,
+   "outer_r": 0.0158
+  },
+  {
+   "xy": [
+    0.4511,
+    -0.1885
+   ],
+   "z_top": 0.0777,
+   "height": 0.0924,
+   "extent": [
+    0.138,
+    0.2132
+   ],
+   "n": 4835,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.8536,
+    -0.2363
+   ],
+   "z_top": -0.0033,
+   "height": 0.0115,
+   "extent": [
+    0.0164,
+    0.0126
+   ],
+   "n": 68,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": null,
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_165",
+ "exit_code": 3,
+ "outcome": "error",
+ "duration": 3.0
+}

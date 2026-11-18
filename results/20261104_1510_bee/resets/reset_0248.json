@@ -1,0 +1,151 @@
+{
+ "reset": 248,
+ "t": "2026-11-07T18:14:35",
+ "targets": {
+  "bowl": [
+   0.499,
+   0.037
+  ],
+  "bee": [
+   0.407,
+   -0.132
+  ]
+ },
+ "ok": true,
+ "report": {
+  "tolerance": 0.04,
+  "objects": {
+   "bowl": {
+    "target": [
+     0.499,
+     0.037
+    ],
+    "found": [
+     0.4977,
+     0.0357
+    ],
+    "dist": 0.0018,
+    "ok": true
+   },
+   "bee": {
+    "target": [
+     0.407,
+     -0.132
+    ],
+    "found": [
+     0.4294,
+     -0.1211
+    ],
+    "dist": 0.0249,
+    "ok": true
+   }
+  },
+  "extra_blobs": 3,
+  "reason": "layout ok"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.258,
+    -0.0033
+   ],
+   "z_top": -0.0053,
+   "height": 0.0103,
+   "extent": [
+    0.0331,
+    0.0334
+   ],
+   "n": 82,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0063,
+   "outer_r": 0.0161
+  },
+  {
+   "xy": [
+    0.4294,
+    -0.1211
+   ],
+   "z_top": 0.0313,
+   "height": 0.0469,
+   "extent": [
+    0.0814,
+    0.0962
+   ],
+   "n": 1035,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0419,
+   "outer_r": 0.0499
+  },
+  {
+   "xy": [
+    0.4977,
+    0.0357
+   ],
+   "z_top": 0.0544,
+   "height": 0.0701,
+   "extent": [
+    0.1438,
+    0.1406
+   ],
+   "n": 4082,
+   "hollow": true,
+   "hole_xy": [
+    0.5006,
+    0.0371
+   ],
+   "inner_r": 0.0671,
+   "outer_r": 0.0749
+  },
+  {
+   "xy": [
+    0.6909,
+    -0.2781
+   ],
+   "z_top": -0.0008,
+   "height": 0.0148,
+   "extent": [
+    0.0199,
+    0.0168
+   ],
+   "n": 79,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.7356,
+    -0.266
+   ],
+   "z_top": -0.0029,
+   "height": 0.0128,
+   "extent": [
+    0.0269,
+    0.0137
+   ],
+   "n": 69,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": {
+  "bowl": [
+   0.495,
+   0.035
+  ],
+  "bee": [
+   0.429,
+   -0.121
+  ]
+ },
+ "claimed_outcome": "success",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_303",
+ "exit_code": 0,
+ "outcome": "success",
+ "duration": 385.3
+}

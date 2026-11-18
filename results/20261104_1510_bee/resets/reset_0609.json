@@ -1,0 +1,148 @@
+{
+ "reset": 609,
+ "t": "2026-11-10T08:45:30",
+ "targets": {
+  "bowl": [
+   0.411,
+   -0.13
+  ],
+  "bee": [
+   0.498,
+   0.045
+  ]
+ },
+ "ok": true,
+ "report": {
+  "tolerance": 0.04,
+  "objects": {
+   "bowl": {
+    "target": [
+     0.411,
+     -0.13
+    ],
+    "found": [
+     0.4139,
+     -0.1389
+    ],
+    "dist": 0.0094,
+    "ok": true
+   },
+   "bee": {
+    "target": [
+     0.498,
+     0.045
+    ],
+    "found": [
+     0.5233,
+     0.0543
+    ],
+    "dist": 0.027,
+    "ok": true
+   }
+  },
+  "extra_blobs": 3,
+  "reason": "layout ok"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.254,
+    0.1557
+   ],
+   "z_top": 0.001,
+   "height": 0.0172,
+   "extent": [
+    0.036,
+    0.0228
+   ],
+   "n": 80,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.4139,
+    -0.1389
+   ],
+   "z_top": 0.0548,
+   "height": 0.0711,
+   "extent": [
+    0.1443,
+    0.1936
+   ],
+   "n": 3976,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.5233,
+    0.0543
+   ],
+   "z_top": 0.0306,
+   "height": 0.0468,
+   "extent": [
+    0.0946,
+    0.0793
+   ],
+   "n": 1150,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0106,
+   "outer_r": 0.0242
+  },
+  {
+   "xy": [
+    0.6917,
+    -0.2755
+   ],
+   "z_top": -0.0033,
+   "height": 0.0129,
+   "extent": [
+    0.0159,
+    0.0159
+   ],
+   "n": 65,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.7361,
+    -0.2653
+   ],
+   "z_top": -0.0024,
+   "height": 0.0139,
+   "extent": [
+    0.0317,
+    0.0174
+   ],
+   "n": 103,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": {
+  "bowl": [
+   0.42,
+   -0.138
+  ],
+  "bee": [
+   0.503,
+   0.057
+  ]
+ },
+ "claimed_outcome": "success",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_675",
+ "exit_code": 0,
+ "outcome": "success",
+ "duration": 209.4
+}

@@ -1,0 +1,139 @@
+{
+ "reset": 619,
+ "t": "2026-11-10T09:29:35",
+ "targets": {
+  "bowl": [
+   0.5,
+   0.049
+  ],
+  "bee": [
+   0.449,
+   -0.175
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.04,
+  "objects": {
+   "bowl": {
+    "target": [
+     0.5,
+     0.049
+    ],
+    "found": [
+     0.4813,
+     0.045
+    ],
+    "dist": 0.0191,
+    "ok": true
+   },
+   "bee": {
+    "target": [
+     0.449,
+     -0.175
+    ],
+    "found": null,
+    "dist": null,
+    "ok": false
+   }
+  },
+  "extra_blobs": 4,
+  "reason": "bee: not found"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.3079,
+    0.1222
+   ],
+   "z_top": -0.0051,
+   "height": 0.0111,
+   "extent": [
+    0.0534,
+    0.0263
+   ],
+   "n": 78,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.3465,
+    -0.1812
+   ],
+   "z_top": -0.0024,
+   "height": 0.0138,
+   "extent": [
+    0.0378,
+    0.0375
+   ],
+   "n": 109,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0078,
+   "outer_r": 0.0161
+  },
+  {
+   "xy": [
+    0.4813,
+    0.045
+   ],
+   "z_top": 0.054,
+   "height": 0.0702,
+   "extent": [
+    0.1436,
+    0.1405
+   ],
+   "n": 4042,
+   "hollow": true,
+   "hole_xy": [
+    0.4866,
+    0.0459
+   ],
+   "inner_r": 0.0651,
+   "outer_r": 0.0746
+  },
+  {
+   "xy": [
+    0.7334,
+    -0.2656
+   ],
+   "z_top": -0.003,
+   "height": 0.0131,
+   "extent": [
+    0.0357,
+    0.0208
+   ],
+   "n": 103,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.8383,
+    -0.242
+   ],
+   "z_top": 0.0028,
+   "height": 0.019,
+   "extent": [
+    0.0261,
+    0.0143
+   ],
+   "n": 61,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": null,
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_687",
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration": 62.3
+}

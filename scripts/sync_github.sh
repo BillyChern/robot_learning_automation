@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Keep github.com/BillyChern/robot_learning_automation up to date: export the run's results, commit code + results on
+# Keep github.com/BillyChern/robot_learning_automation up to date: export the runs' results (RUNS), commit code + results on
 # the current branch, push it to the remote's main and to a branch of the same name, and upload changed showcase
 # videos to the release "bee-run-videos". Repeats every EVERY seconds (ONCE=1 for a single pass).
 #
@@ -8,17 +8,20 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 REMOTE=${REMOTE:-github}
 EVERY=${EVERY:-1800}
-RUN=${RUN:-20261104_1510_bee}
+RUNS=${RUNS:-"20261104_1510_bee 20261117_2026_drawer"}   # runs exported to results/
+RUN=20261104_1510_bee                                    # the run whose showcase videos go to the release
 TAG=bee-run-videos
 export GH_TOKEN="$(gh auth token -u "${GH_USER:-BillyChern}")"   # this account only, the machine default stays
-SECRETS="sk-ant-[A-Za-z0-9_-]{10}|gh[pousr]_[A-Za-z0-9]{20}|AKIA[0-9A-Z]{16}|hf_[A-Za-z0-9]{30}|PRIVATE KEY|@gmail\.com|@cs\.cmu\.edu|@andrew\.cmu\.edu"
+SECRETS="sk-ant-[A-Za-z0-9_-]{10}|gh[pousr]_[A-Za-z0-9]{20}|AKIA[0-9A-Z]{16}|hf_[A-Za-z0-9]{30}|PRIVATE[ ]KEY|@gmail\.com|@cs\.cmu\.edu|@andrew\.cmu\.edu"
 
 sync_once() {
-    bash scripts/export_results.sh "$RUN" || return 1
+    for r in $RUNS; do bash scripts/export_results.sh "$r" || return 1; done
     git add -A
     if ! git diff --cached --quiet; then
-        if git diff --cached | grep -qE "$SECRETS"; then
-            echo "$(date '+%F %T') secret-looking text staged; nothing committed"; git reset -q; return 1
+        if git diff --cached | grep -E '^\+' | grep -qE "$SECRETS"; then      # added lines only
+            echo "$(date '+%F %T') secret-looking text staged; nothing committed. Files:"
+            git diff --cached --name-only | while read -r f; do git show ":$f" 2>/dev/null | grep -qE "$SECRETS" && echo "  $f"; done
+            git reset -q; return 1
         fi
         git commit -q -m "Sync: $(date '+%F %H:%M')" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
     fi

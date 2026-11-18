@@ -1,0 +1,148 @@
+{
+ "reset": 256,
+ "t": "2026-11-07T19:00:04",
+ "targets": {
+  "bowl": [
+   0.424,
+   0.039
+  ],
+  "bee": [
+   0.406,
+   -0.183
+  ]
+ },
+ "ok": true,
+ "report": {
+  "tolerance": 0.04,
+  "objects": {
+   "bowl": {
+    "target": [
+     0.424,
+     0.039
+    ],
+    "found": [
+     0.4175,
+     0.0329
+    ],
+    "dist": 0.0089,
+    "ok": true
+   },
+   "bee": {
+    "target": [
+     0.406,
+     -0.183
+    ],
+    "found": [
+     0.4189,
+     -0.1916
+    ],
+    "dist": 0.0155,
+    "ok": true
+   }
+  },
+  "extra_blobs": 3,
+  "reason": "layout ok"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.2897,
+    -0.0984
+   ],
+   "z_top": -0.0049,
+   "height": 0.0107,
+   "extent": [
+    0.0772,
+    0.0242
+   ],
+   "n": 123,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.4175,
+    0.0329
+   ],
+   "z_top": 0.0556,
+   "height": 0.0713,
+   "extent": [
+    0.1367,
+    0.1449
+   ],
+   "n": 3787,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0499,
+   "outer_r": 0.0562
+  },
+  {
+   "xy": [
+    0.4189,
+    -0.1916
+   ],
+   "z_top": 0.0343,
+   "height": 0.0499,
+   "extent": [
+    0.0669,
+    0.1176
+   ],
+   "n": 1027,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.7376,
+    -0.2632
+   ],
+   "z_top": -0.0015,
+   "height": 0.0142,
+   "extent": [
+    0.0296,
+    0.0199
+   ],
+   "n": 112,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.8509,
+    -0.2349
+   ],
+   "z_top": 0.0086,
+   "height": 0.0242,
+   "extent": [
+    0.03,
+    0.0198
+   ],
+   "n": 77,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": {
+  "bowl": [
+   0.425,
+   0.034
+  ],
+  "bee": [
+   0.42,
+   -0.19
+  ]
+ },
+ "claimed_outcome": "success",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_311",
+ "exit_code": 0,
+ "outcome": "success",
+ "duration": 199.4
+}

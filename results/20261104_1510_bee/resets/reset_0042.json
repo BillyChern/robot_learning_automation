@@ -1,0 +1,105 @@
+{
+ "reset": 42,
+ "t": "2026-11-04T20:29:33",
+ "targets": {
+  "bowl": [
+   0.426,
+   -0.151
+  ],
+  "bee": [
+   0.356,
+   0.098
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.04,
+  "objects": {
+   "bowl": {
+    "target": [
+     0.426,
+     -0.151
+    ],
+    "found": [
+     0.5006,
+     0.0595
+    ],
+    "dist": 0.2233,
+    "ok": false
+   },
+   "bee": {
+    "target": [
+     0.356,
+     0.098
+    ],
+    "found": null,
+    "dist": null,
+    "ok": false
+   }
+  },
+  "extra_blobs": 2,
+  "reason": "bowl: 22.3 cm off; bee: not found"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.2378,
+    0.1311
+   ],
+   "z_top": -0.0044,
+   "height": 0.0113,
+   "extent": [
+    0.0203,
+    0.0336
+   ],
+   "n": 62,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.318,
+    0.1648
+   ],
+   "z_top": 0.0008,
+   "height": 0.0166,
+   "extent": [
+    0.0485,
+    0.032
+   ],
+   "n": 96,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.5006,
+    0.0595
+   ],
+   "z_top": 0.0551,
+   "height": 0.0708,
+   "extent": [
+    0.139,
+    0.1541
+   ],
+   "n": 4005,
+   "hollow": true,
+   "hole_xy": [
+    0.4997,
+    0.0599
+   ],
+   "inner_r": 0.0622,
+   "outer_r": 0.0711
+  }
+ ],
+ "claimed": null,
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_61",
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration": 129.3
+}

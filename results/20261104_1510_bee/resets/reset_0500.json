@@ -1,0 +1,139 @@
+{
+ "reset": 500,
+ "t": "2026-11-09T19:35:08",
+ "targets": {
+  "bowl": [
+   0.499,
+   -0.165
+  ],
+  "bee": [
+   0.46,
+   0.038
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.04,
+  "objects": {
+   "bowl": {
+    "target": [
+     0.499,
+     -0.165
+    ],
+    "found": [
+     0.431,
+     -0.1388
+    ],
+    "dist": 0.0729,
+    "ok": false
+   },
+   "bee": {
+    "target": [
+     0.46,
+     0.038
+    ],
+    "found": null,
+    "dist": null,
+    "ok": false
+   }
+  },
+  "extra_blobs": 4,
+  "reason": "bowl: 7.3 cm off; bee: not found"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.2566,
+    -0.004
+   ],
+   "z_top": -0.0004,
+   "height": 0.0153,
+   "extent": [
+    0.0525,
+    0.0943
+   ],
+   "n": 346,
+   "hollow": true,
+   "hole_xy": [
+    0.2587,
+    -0.0124
+   ],
+   "inner_r": 0.0165,
+   "outer_r": 0.0311
+  },
+  {
+   "xy": [
+    0.352,
+    0.0301
+   ],
+   "z_top": -0.0037,
+   "height": 0.012,
+   "extent": [
+    0.0385,
+    0.0192
+   ],
+   "n": 82,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.431,
+    -0.1388
+   ],
+   "z_top": 0.0556,
+   "height": 0.0713,
+   "extent": [
+    0.1349,
+    0.17
+   ],
+   "n": 3850,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0591,
+   "outer_r": 0.0708
+  },
+  {
+   "xy": [
+    0.6928,
+    -0.2762
+   ],
+   "z_top": -0.0012,
+   "height": 0.0145,
+   "extent": [
+    0.0174,
+    0.0147
+   ],
+   "n": 68,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.7347,
+    -0.2651
+   ],
+   "z_top": -0.0019,
+   "height": 0.0138,
+   "extent": [
+    0.0303,
+    0.0155
+   ],
+   "n": 89,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": null,
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_566",
+ "exit_code": 3,
+ "outcome": "error",
+ "duration": 28.3
+}

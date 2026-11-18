@@ -1,0 +1,85 @@
+{
+ "reset": 230,
+ "t": "2026-11-07T08:35:37",
+ "targets": {
+  "bowl": [
+   0.421,
+   -0.116
+  ],
+  "bee": [
+   0.551,
+   0.03
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.04,
+  "objects": {
+   "bowl": {
+    "target": [
+     0.421,
+     -0.116
+    ],
+    "found": [
+     0.4403,
+     -0.1235
+    ],
+    "dist": 0.0207,
+    "ok": true
+   },
+   "bee": {
+    "target": [
+     0.551,
+     0.03
+    ],
+    "found": null,
+    "dist": null,
+    "ok": false
+   }
+  },
+  "extra_blobs": 1,
+  "reason": "bee: not found"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.4403,
+    -0.1235
+   ],
+   "z_top": 0.0537,
+   "height": 0.0695,
+   "extent": [
+    0.1364,
+    0.1411
+   ],
+   "n": 3741,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0629,
+   "outer_r": 0.0725
+  },
+  {
+   "xy": [
+    0.496,
+    0.041
+   ],
+   "z_top": 0.2824,
+   "height": 0.2982,
+   "extent": [
+    0.1497,
+    0.1242
+   ],
+   "n": 4162,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": null,
+ "claimed_outcome": null,
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_280",
+ "exit_code": 139,
+ "outcome": "error",
+ "duration": 303.9
+}

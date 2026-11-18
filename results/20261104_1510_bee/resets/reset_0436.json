@@ -1,0 +1,148 @@
+{
+ "reset": 436,
+ "t": "2026-11-09T09:58:36",
+ "targets": {
+  "bowl": [
+   0.415,
+   -0.145
+  ],
+  "bee": [
+   0.545,
+   0.016
+  ]
+ },
+ "ok": true,
+ "report": {
+  "tolerance": 0.04,
+  "objects": {
+   "bowl": {
+    "target": [
+     0.415,
+     -0.145
+    ],
+    "found": [
+     0.4243,
+     -0.1589
+    ],
+    "dist": 0.0167,
+    "ok": true
+   },
+   "bee": {
+    "target": [
+     0.545,
+     0.016
+    ],
+    "found": [
+     0.5709,
+     0.0124
+    ],
+    "dist": 0.0261,
+    "ok": true
+   }
+  },
+  "extra_blobs": 3,
+  "reason": "layout ok"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.4093,
+    0.045
+   ],
+   "z_top": -0.0029,
+   "height": 0.0127,
+   "extent": [
+    0.0372,
+    0.0496
+   ],
+   "n": 131,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.4243,
+    -0.1589
+   ],
+   "z_top": 0.0519,
+   "height": 0.0676,
+   "extent": [
+    0.2005,
+    0.2144
+   ],
+   "n": 3612,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.5709,
+    0.0124
+   ],
+   "z_top": 0.0295,
+   "height": 0.0451,
+   "extent": [
+    0.0855,
+    0.0809
+   ],
+   "n": 1235,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0098,
+   "outer_r": 0.0225
+  },
+  {
+   "xy": [
+    0.8477,
+    -0.1308
+   ],
+   "z_top": 0.0047,
+   "height": 0.0203,
+   "extent": [
+    0.0145,
+    0.0196
+   ],
+   "n": 110,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.8636,
+    -0.1712
+   ],
+   "z_top": -0.0038,
+   "height": 0.0118,
+   "extent": [
+    0.0137,
+    0.0143
+   ],
+   "n": 80,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0039,
+   "outer_r": 0.0071
+  }
+ ],
+ "claimed": {
+  "bowl": [
+   0.434,
+   -0.152
+  ],
+  "bee": [
+   0.57,
+   0.011
+  ]
+ },
+ "claimed_outcome": "success",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_500",
+ "exit_code": 0,
+ "outcome": "success",
+ "duration": 357.3
+}

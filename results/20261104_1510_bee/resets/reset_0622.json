@@ -1,0 +1,139 @@
+{
+ "reset": 622,
+ "t": "2026-11-10T09:35:03",
+ "targets": {
+  "bowl": [
+   0.5,
+   0.049
+  ],
+  "bee": [
+   0.449,
+   -0.175
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.04,
+  "objects": {
+   "bowl": {
+    "target": [
+     0.5,
+     0.049
+    ],
+    "found": [
+     0.4825,
+     0.0455
+    ],
+    "dist": 0.0178,
+    "ok": true
+   },
+   "bee": {
+    "target": [
+     0.449,
+     -0.175
+    ],
+    "found": null,
+    "dist": null,
+    "ok": false
+   }
+  },
+  "extra_blobs": 4,
+  "reason": "bee: not found"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.4825,
+    0.0455
+   ],
+   "z_top": 0.0544,
+   "height": 0.07,
+   "extent": [
+    0.1453,
+    0.1383
+   ],
+   "n": 3941,
+   "hollow": true,
+   "hole_xy": [
+    0.4822,
+    0.0451
+   ],
+   "inner_r": 0.065,
+   "outer_r": 0.0736
+  },
+  {
+   "xy": [
+    0.4345,
+    -0.2151
+   ],
+   "z_top": -0.0039,
+   "height": 0.0117,
+   "extent": [
+    0.0276,
+    0.0246
+   ],
+   "n": 67,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.6901,
+    -0.2755
+   ],
+   "z_top": -0.0014,
+   "height": 0.0142,
+   "extent": [
+    0.0234,
+    0.0142
+   ],
+   "n": 68,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.7385,
+    -0.2637
+   ],
+   "z_top": -0.003,
+   "height": 0.0126,
+   "extent": [
+    0.028,
+    0.0195
+   ],
+   "n": 86,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.8409,
+    -0.2396
+   ],
+   "z_top": 0.0059,
+   "height": 0.0215,
+   "extent": [
+    0.0317,
+    0.0143
+   ],
+   "n": 95,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": null,
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/agents/reset/attempts/attempt_691",
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration": 63.2
+}
