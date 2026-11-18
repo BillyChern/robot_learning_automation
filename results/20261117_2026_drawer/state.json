@@ -18,9 +18,9 @@
    "unsure": 0
   },
   "resets": {
-   "total": 0,
-   "ok": 0,
-   "fail": 0,
+   "total": 4,
+   "ok": 2,
+   "fail": 2,
    "manual": 0
   },
   "consecutive_failures": {
@@ -35,38 +35,38 @@
    "model": "claude-opus-5-5",
    "started": "2026-11-17T20:27:03",
    "ended": "2026-11-17T22:12:06",
-   "attempts": 28,
-   "robot_attempts": 21,
-   "turns": 238,
-   "cost_usd": 19.949097400000007,
-   "input_tokens": 418,
-   "output_tokens": 249208,
-   "cache_read": 54767727,
-   "cache_creation": 501215,
-   "duration_s": 2841.5809999999988,
+   "attempts": 30,
+   "robot_attempts": 23,
+   "turns": 251,
+   "cost_usd": 21.287410200000007,
+   "input_tokens": 442,
+   "output_tokens": 255186,
+   "cache_read": 60054491,
+   "cache_creation": 521378,
+   "duration_s": 2918.9609999999984,
    "first_success_attempt": 16,
    "first_success_after_attempts": 21,
    "time_to_first_success_s": 5425.0,
-   "repairs": 0,
+   "repairs": 1,
    "rounds": 0,
    "program_command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py",
-   "last_report": "`programs/reset.py` (last robot run on commit 577861e) puts the drawer back on the table within tolerance from a scattered start and from a drawer stuck part-way out of the slot. A complete run starting with the drawer pushed flush into the slot (the task's done state) was never done; only its pieces were tested separately.\n\nReal runs:\n- **Scattered start (attempt 21):** the drawer was upright on the table. Program error 1.7 cm; the orchestrator's layout check passed.\n- **Drawer stuck ~8.5 cm out of the slot, gripper still on it (attempt 28):** the program let go, lifted, took the drawer out of the slot and placed it. Program error 1.3 cm; the layout check passed.\n- **Pulling a flush drawer (attempt 17):** the tab pinch held (gripper reading 84.3) and pulled the drawer 6.5 cm out at up to 22 N. The joint move afterwards hit the protruding drawer (30.8 N stop); the lift after the pull is now 12 cm, which is untested on the robot.\n- **Taking the partly-out drawer out and carrying it:** worked in attempts 18 and 28. In attempt 18 the first set-down hit the table (27 N); it now releases ~2.5 cm higher, which worked in attempt 28.\n\nWhat the program does:\n- **Start:** if the arm is not at home, it opens the gripper if holding something, lifts clear, and makes the home pose the abort return pose.\n- **Perception:** works out from side depth whether the drawer is in the slot, partly out, on the table, or missing.\n- **Pulling a flush drawer:** pinches the pull tab with the gripper tilted 50\u00b0 and rolled 20\u00b0. It tries 4 small pose offsets (attempt 17 held at the second one) and checks the hold by the gripper reading. Then it pulls 6.5 cm, releases, and lifts 12 cm before moving away.\n- **Drawer partly out:** grasps the front wall from above, slides the drawer 20 cm out, carries it, and releases it about 2.5 cm above the table.\n- **Drawer on the table:** grasps a wall from above, after using the wrist camera to correct the side camera's ~1\u20132 cm position error.\n- **Placement and claim:** aims so the side-camera blob centre (what the orchestrator measures) lands on the target, with a random yaw of \u00b125\u00b0 around facing the cabinet. It corrects up to twice and claims from a final measurement taken from home.\n\nNot verified, and risks:\n- **Flush start, end to end:** never run in one go. I could not set it up myself: pushing the drawer back in stalled at the 25 N contact-force stop (25.4 N, then 28 N). In attempt 17 the first pinch offset was refused for slightly too much force (26.4 N) and the second one worked.\n- **Friction near the force limit:** the drawer needs 20\u201326 N to slide, against the 25 N stop, so pulls and slide-outs can be refused.\n- **Which way the drawer faces:** the program doesn't check which wall carries the pull when it places the drawer, so it can end up with the pull facing the cabinet. The next flush pull would then fail; nothing on hardware has shown this yet.\n- **Real pull position:** about 1 cm behind the cabinet front plane given in the task file, measured by triangulating wrist-camera images (attempts 9\u201310). Pinch poses are hard-coded from that measurement.\n\nAlso in `programs/`: `insert.py` and `look_pin.py` / `diag_pin.py` are one-off setup and diagnostic programs. `tools/offline.py` replays every planned move through the safety model with the operator's widened keep-out box rebuilt locally, because this machine's task file still has the old box. Notes are in `notes/notes.md`; latest commit 96fe84b."
+   "last_report": "reset.py is fixed. A real run started the way you start resets (targets in a file) placed the drawer 1.5 cm from its target, and your layout check passed (attempt 32, commit 8737b8d).\n\n**Why attempts 29 and 30 failed:** you pass `--targets` as a path to a JSON file, but reset.py tried to read the argument itself as JSON. It crashed before the robot session started, so no summary.json was written. It now accepts either a file path or inline JSON. It reads the targets inside the session, so a bad argument ends as a clean fail with a summary.json.\n\n**Second problem, found while testing (attempt 31):** a segment was stopped for \"tracking deviation 47 deg\". Joint 5 read 360.0 (0\u00b0) where the plan had 312.9\u00b0. A 47\u00b0 jump in 0.67 s is impossible at the 20\u00b0/s speed limit, so it was a single bad feedback sample, not a collision. The arm returned home safely. reset.py now retries the table pick once after a tracking-deviation stop: it lifts slowly from the measured pose and re-plans. Any other stop, or a second one, still fails the run.\n\n**Test run (attempt 32):** the drawer was upright on the table; the target came from `test_targets.json`. The wrist camera corrected the grasp point by 1.6 cm, the grasp held, and the drawer was placed. Program error 1.5 cm.\n\n**Earlier results still valid:**\n- Scattered drawer: 1.7 cm (attempt 21).\n- Drawer stuck ~8.5 cm out of the slot: 1.3 cm (attempt 28).\n- Flush drawer pulled 6.5 cm out by pinching its pull tab (attempt 17).\n\n**Not yet tested:** a whole reset starting with the drawer flush in the slot, run end to end. With the force stop now removed, the pulls and slide-outs that needed 22\u201328 N should no longer be cut off, but I haven't run them since the change. The program also doesn't check which wall the pull is on when it places the drawer.\n\nNotes are in `notes/notes.md`; latest commit 4403757."
   },
   "execute": {
    "status": "developing",
-   "session_id": null,
+   "session_id": "b7058a73-f4cd-48cd-8da8-e30a617818a8",
    "model": "claude-opus-5-5",
    "started": "2026-11-17T22:12:06",
    "ended": null,
-   "attempts": 0,
-   "robot_attempts": 0,
-   "turns": 0,
-   "cost_usd": 0.0,
-   "input_tokens": 0,
-   "output_tokens": 0,
-   "cache_read": 0,
-   "cache_creation": 0,
-   "duration_s": 0.0,
+   "attempts": 5,
+   "robot_attempts": 2,
+   "turns": 23,
+   "cost_usd": 5.731345800000001,
+   "input_tokens": 40,
+   "output_tokens": 13473,
+   "cache_read": 3622967,
+   "cache_creation": 44991,
+   "duration_s": 207.565,
    "first_success_attempt": null,
    "first_success_after_attempts": null,
    "time_to_first_success_s": null,
@@ -84,10 +84,27 @@
  "collection": {
   "round": 0,
   "round_successes": 0,
-  "round_target": null
+  "round_target": null,
+  "window": {
+   "n": 0,
+   "success": 0,
+   "fail": 0,
+   "unsure": 0,
+   "failed": [],
+   "reset_failed": [
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_29",
+     "layout check failed: drawer: 9.1 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_30",
+     "layout check failed: drawer: 12.6 cm off"
+    ]
+   ]
+  }
  },
  "next_episode": 0,
- "next_reset": 0,
+ "next_reset": 4,
  "vlm": {
   "calls": 0,
   "cost_usd": 0.0

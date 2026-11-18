@@ -12,6 +12,12 @@ Interventions, stops and mid-run changes by the operator (the user, or Claude Co
 | 22:04 | orchestrator | Reset agent stopped at its budget: 25 runs (18 on the robot), $18.68, no accepted done | `agents.max_attempts` |
 | 22:05 | Claude | Relaunched run-all: the reset agent resumes with a fresh budget of 25 runs | steady progress on every part (pull-out attempt 17, carry 18, table pick and place 21 success); arm left holding the drawer half in the slot, the agent's next run starts from there |
 | 22:12 | orchestrator | Reset agent's done accepted (28 runs, 21 on the robot); RL agent started (develop_execute) | resets passed the layout check from the scattered (21) and part-out (28) starts; a flush start was never run end to end (agent's own report) |
+| 22:38 | user / Claude | Contact-force stop removed: `rl.force_limit_n` null (was 25 N); peak force still logged per segment; notes to both agents | user: "no force cap at all! just get it done"; drawer pulls and pushes needed 22-28 N |
+| 22:38 | orchestrator | Two resets crashed in 0.4 s (`--targets` given as a file, the program parsed it as JSON); reset agent asked to repair | contract mismatch the reset agent's own tests never hit |
+| 22:50 | Claude | Executor ignores one bad joint reading and stops only when the deviation persists for 2 samples (commit above) | reset attempt 31 stopped on a 47 deg / 230 mm "deviation": joint 5 read exactly 360.0 vs planned 312.9 for one sample; the wrist camera did not move |
+| 22:52 | Claude | Note to the RL agent: remove its own 40 N force stop (F_STOP in programs/execute.py) | user: no force cap at all; RL attempt 3 stopped at 40.3 N mid-insertion |
+| 22:58 | orchestrator / RL agent | RL attempt 5 (no force cap): after a good insertion to ~4.5 cm out, the release left a finger under the rail above the slot; the 6 cm lift reached 99.6 N, tracking-deviation stop at 9.8 mm; **cabinet moved 6.0 cm**; arm left at the cabinet; RL agent asked for a person | no force stop by the user's choice; the deviation stop is the only contact stop |
+| 23:05 | Claude | Stopped the pipeline (Ctrl-C at a safe point, no robot program running) | cabinet off its measured pose: keep-out boxes and the success check no longer match it |
 
 Force stops so far (25 N limit) were all real contacts: finger dragging on the pulled-out drawer (30.8 N), drawer meeting the
 table while placing (27.3 N), lifting while still gripping (26.6 N), drawer edge meeting the slot (25.4 N). Free moves: at

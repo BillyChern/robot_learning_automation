@@ -80,6 +80,7 @@ class Reset:
         self.rng = np.random.default_rng(int(time.time()))
         self.k = 0
         self.pin_dy = self.pin_dz = 0.0
+        self.retried = False
         self.bias = np.array([0.02, 0.03])   # box centre - blob centre, default from attempt 19
 
     # ------------------------------------------------------------ helpers
@@ -479,7 +480,18 @@ class Reset:
                 break
             s.require(tries < 3, f"drawer still {err:.3f} m from the target after {tries} picks")
             s.phase(f"pick{it}")
-            held = self.pick_table(c)
+            try:
+                held = self.pick_table(c)
+            except Abort as e:
+                # attempt 31: a single bad joint sample (j5 read 0 instead of -47 deg) aborted a segment as a
+                # 47 deg "tracking deviation"; retry the pick once from a lifted pose, anything else is a failure
+                if "tracking deviation" not in str(e) or self.retried:
+                    raise
+                self.retried = True
+                s.decide(f"segment stopped by a tracking deviation ({str(e)[:100]}); lift and retry the pick once")
+                time.sleep(1.0)
+                self.lift_to("lift_after_glitch", SAFE_H, "slow")
+                held = None
             tries += 1
             if held is None:
                 continue
@@ -506,12 +518,26 @@ class Reset:
             s.claim("fail")
 
 
+def load_targets(arg):
+    """--targets: inline JSON or a path to a JSON file (the orchestrator passes a file)."""
+    arg = (arg or "").strip()
+    if arg and not arg.startswith("{") and os.path.exists(arg):
+        with open(arg) as f:
+            return json.load(f)
+    return json.loads(arg)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--targets", required=True)
-    a = ap.parse_args()
-    targets = json.loads(a.targets)
+    a, _ = ap.parse_known_args()
     with RobotSession(program="reset") as s:
+        try:
+            targets = load_targets(a.targets)
+            s.require(isinstance(targets, dict) and "drawer" in targets, f"targets without 'drawer': {targets}")
+        except (ValueError, OSError) as e:
+            s.summary(measured=None)
+            raise Abort(f"cannot read --targets {a.targets!r}: {e}")
         s.summary(targets=targets, measured=None)
         Reset(s, targets).run()
 

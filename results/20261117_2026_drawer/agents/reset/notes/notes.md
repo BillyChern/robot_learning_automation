@@ -61,3 +61,16 @@
   partly in the slot, gripper on its front wall. -> insert.py resumes: open, escape up, push flush via tab pinch.
 - attempt 26: insert resume: drawer sticks out 0.089; tab pinch shifted that far is out of reach (j3). Offline: shift
   <= 0.07 reachable when routed done-hi -> done-pre -> line out. -> front-wall top-down push to 6 cm first.
+- attempt 27: front-wall push-in jams at 28 N (> 25 N contact limit) -> flush insertion not possible within the limit;
+  done-state setup skipped.
+- attempt 28 (real, reset.py commit 577861e): from the drawer stuck 8.5 cm out with the arm on its front wall:
+  open/escape/home, state 'out', front-wall grasp, slide-out 20 cm (24.2 N!), carry, place, err 1.3 cm, orchestrator ok.
+## Status
+- Hardware-verified: scattered reset (attempt 21, 1.7 cm), out-state reset (attempt 28, 1.3 cm), pull of a flush
+  drawer by the tab pinch (attempt 17, offset (0.002, 0.0015), 22 N), extraction+carry (18, 28).
+- Unverified as one run: flush done state -> table (pull + extract + place); the 12 cm lift after the pull is untested.
+- Risk: drawer friction 20-26 N vs the 25 N contact-force stop (pull, slide-out).
+- attempts 29-30 (orchestrator resets): crash before the session: --targets is a FILE path, reset.py did json.loads on it
+  -> load_targets() accepts a path or inline JSON, parsed inside the session (summary written on failure).
+- 22:30 operator: contact-force stop removed (rl.force_limit_n null).
+- attempt 31: targets file OK; a single bad j5 sample (360.0 vs plan 312.9) aborted a segment as tracking deviation -> one retry of the table pick after lifting.

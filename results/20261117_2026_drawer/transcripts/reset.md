@@ -6605,3 +6605,415 @@ Structured output provided successfully
 ```
 </details>
 
+**22:38:52 reset agent:** No response requested.
+
+### 22:38:52 orchestrator -> reset agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+The contact-force stop is removed (user's decision, 22:30): task yaml `rl.force_limit_n` is now null, so no motion segment
+stops for "contact force ... > 25 N" any more. Drawer pulls and pushes needed 22-28 N and kept being stopped. The peak
+force change of every segment is still logged (`max_force_n` in the exec lines), and `s.feedback()["force"]` still
+reads the estimate. The other checks stay: model check, keep-in and keep-out boxes, speed limits, tracking deviation,
+and the arm's own Kinova protections. Push and pull slowly; get the drawer in and out.
+
+repair your program; it failed 2 times in a row during the resets between episodes:
+--- attempt_29: layout check failed: drawer: 9.1 cm off
+# attempt_29: exit code 1; outcome: error
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_29/targets.json; what: reset for the next episode; commit: 577861e; duration_s: 0.4; moves_robot: True
+
+summary.json: MISSING (the program must write it, also on failure)
+
+log.txt: 15 lines; last 15:
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/programs/reset.py", line 520, in <module>
+    main()
+  File "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/programs/reset.py", line 513, in main
+    targets = json.loads(a.targets)
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sonic/uv-python/cpython-3.12.14-linux-x86_64-gnu/lib/python3.12/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sonic/uv-python/cpython-3.12.14-linux-x86_64-gnu/lib/python3.12/json/decoder.py", line 338, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sonic/uv-python/cpython-3.12.14-linux-x86_64-gnu/lib/python3.12/json/decoder.py", line 356, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+other files: command.txt (1 KB), console.txt (1 KB), ended (1 KB), started (1 KB), targets.json (1 KB)
+
+An attempt the operator stopped (exit code 130) counts as a failure, whatever the program claims. Decide the next action from this digest; end your turn with the structured action.
+--- attempt_30: layout check failed: drawer: 12.6 cm off
+# attempt_30: exit code 1; outcome: error
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_30/targets.json; what: reset for the next episode; commit: 577861e; duration_s: 0.4; moves_robot: True
+
+summary.json: MISSING (the program must write it, also on failure)
+
+log.txt: 15 lines; last 15:
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/programs/reset.py", line 520, in <module>
+    main()
+  File "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/programs/reset.py", line 513, in main
+    targets = json.loads(a.targets)
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sonic/uv-python/cpython-3.12.14-linux-x86_64-gnu/lib/python3.12/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sonic/uv-python/cpython-3.12.14-linux-x86_64-gnu/lib/python3.12/json/decoder.py", line 338, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sonic/uv-python/cpython-3.12.14-linux-x86_64-gnu/lib/python3.12/json/decoder.py", line 356, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError:
+... (435 more characters)
+```
+
+**22:38:55 reset agent:** Cause: the orchestrator passes `--targets` as a path to a JSON file, but reset.py only parsed inline JSON, and it crashed before the session existed, so no summary.json was written. Fixing it to accept both, and to parse inside the session so a bad argument still produces a summary.
+
+**22:38:55 tool Bash:**
+
+```bash
+sed -n '/^def main/,$p' programs/reset.py
+```
+
+<details><summary>22:38:55 result</summary>
+
+```text
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--targets", required=True)
+    a = ap.parse_args()
+    targets = json.loads(a.targets)
+    with RobotSession(program="reset") as s:
+        s.summary(targets=targets, measured=None)
+        Reset(s, targets).run()
+
+
+if __name__ == "__main__":
+    main()
+```
+</details>
+
+**22:39:01 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+p='programs/reset.py'; s=open(p).read()
+old=s[s.index('def main():'):]
+new='''def load_targets(arg):
+    """--targets: inline JSON or a path to a JSON file (the orchestrator passes a file)."""
+    arg = (arg or "").strip()
+    if arg and not arg.startswith("{") and os.path.exists(arg):
+        with open(arg) as f:
+            return json.load(f)
+    return json.loads(arg)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--targets", required=True)
+    a, _ = ap.parse_known_args()
+    with RobotSession(program="reset") as s:
+        try:
+            targets = load_targets(a.targets)
+            s.require(isinstance(targets, dict) and "drawer" in targets, f"targets without 'drawer': {targets}")
+        except (ValueError, OSError) as e:
+            s.sum
+... (678 more characters)
+```
+
+<details><summary>22:39:02 result</summary>
+
+```text
+{'drawer': [0.4, -0.1]} {'drawer': [0.37, -0.08]}
+```
+</details>
+
+**22:39:06 reset agent:** Both forms parse now. Committing, then testing on the robot with a targets *file*, the same form the orchestrator uses.
+
+**22:39:08 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && echo '{"drawer": [0.42, -0.06]}' > test_targets.json && cat >> notes/notes.md <<'EOF'
+- attempts 29-30 (orchestrator resets): crash before the session: --targets is a FILE path, reset.py did json.loads on it
+  -> load_targets() accepts a path or inline JSON, parsed inside the session (summary written on failure).
+- 22:30 operator: contact-force stop removed (rl.force_limit_n null).
+EOF
+git add -A && git commit -qm "attempt 31: --targets accepts a file path (orchestrator form); parse inside the session" && echo ok
+```
+
+<details><summary>22:39:09 result</summary>
+
+```text
+ok
+```
+</details>
+
+**22:39:12 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets test_targets.json",
+ "moves_robot": true,
+ "what": "REAL reset with targets given as a file (orchestrator form): perceive the drawer (table, slot or partly out), take it out if needed, place it at (0.42,-0.06), verify.",
+ "report": ""
+}
+```
+
+<details><summary>22:39:12 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**22:40:51 reset agent:** No response requested.
+
+### 22:40:51 orchestrator -> reset agent
+
+```text
+# attempt_31: exit code 2; outcome: fail
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets test_targets.json; what: REAL reset with targets given as a file (orchestrator form): perceive the drawer (table, slot or partly out), take it out if needed, place it at (0.42,-0.06), verify.; commit: 00b295e; duration_s: 88.1; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "00b295e353",
+"command": "programs/reset.py --targets test_targets.json",
+"step": "return_home",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9583, 0.5617, 90.4589], "gripper": 39.7},
+"fk_check_mm": 0.18,
+"targets": {"drawer": [0.42, -0.06]},
+"measured": null,
+"start_state": "table",
+"start_perception": {"tag": "start", "table_z": -0.0157, "blobs": 3, "drawer_blobs": [{"xy": [0.394, -0.1119], "obb_c": [0.4125, -0.0825], "L": 0.159, "W": 0.149, "yaw": -60.1, "h": 0.0681, "n": 5300}], "protr": -0.0046, "front_pts": 33, "face_pts": 48, "inside_pts": 100, "out": null},
+"decisions": ["start state: table", "table drawer obb [0.409, -0.079] L 0.160 W 0.147 yaw -60; grasp end wall at [0.372, -0.016] top 0.069"],
+"segments": [["ready", true, 0.118, 0.44, 11.85, 39.8], ["ready", true, 0.003, 0.01, 0.57, 36.8], ["home_for_check", true, 0.17, 0.48, 11.85, 39.8], ["ready", true, 0.146, 0.5, 11.86, 39.8], ["above_drawer_wall", true, 0.122, 0.16, 7.29, 39.8], ["down_to_wall_pre", false, 47.144, 230.29, 0.72, 37.5]
+"err_check0": 0.0627,
+"stop": {"kind": "failed check", "why": "06_down_to_wall_pre: tracking deviation 47.14 deg / 230.3 mm at t=0.67s", "step": "pick0", "segment": "down_to_wall_pre", "progress": 0.337, "t": 0.67, "q_meas": [2.69, 20.0, 246.63, 358.95, 360.0, -56.54], "q_plan": [2.68, 20.02, 246.61, 358.94, 312.86, -56.
+"first_failed_check": "06_down_to_wall_pre: tracking deviation 47.14 deg / 230.3 mm at t=0.67s",
+"return_home": [["return_lift", true], ["return_home", true]],
+"exit_code": 2,
+"gripper_final": {"cmd": 0.4, "reading": 39.73799133300781},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.9]
+}
+
+log.txt: 31 lines; last 31:
+[22:39:21] session reset: attempt /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_31 dry=False record=None
+[22:39:21] arm state ARMSTATE_SERVOING_READY, joints [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], gripper 39.7
+[22:39:21] model FK vs measured tool_pose at start: 0.2 mm
+[22:39:21] == phase: perceive
+[22:39:22] perceive start: {'tag': 'start', 'table_z': -0.0157, 'blobs': 3, 'drawer_blobs': [{'xy': [0.394, -0.1119], 'obb_c': [0.4125, -0.0825], 'L': 0.159, 'W': 0.149, 'yaw': -60.1, 'h': 0.0681, 'n': 5300}], 'protr': -0.0046, 'front_pts': 33, 'face_pts': 48, 'inside_pts': 100, 'out': None}
+[22:39:22] DECISION: start state: table
+[22:39:24] plan 01_ready: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[22:39:36] exec 01_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.118, 'max_dev_mm': 0.44, 'n': 472, 'max_force_n': 5.2, 't_exec': 11.85, 'rate_hz': 39.8, 'final_err_deg': 0.013}
+[22:39:36] == phase: check0
+[22:39:36] plan 02_ready: T=0.5s check ok=True tip>0.222 vmax=0.0deg/s lin=0.000m/s
+[22:39:37] exec 02_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.003, 'max_dev_mm': 0.01, 'n': 21, 'max_force_n': 0.3, 't_exec': 0.57, 'rate_hz': 36.8, 'final_err_deg': 0.0}
+[22:39:39] plan 03_home_for_check: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[22:39:51] exec 03_home_for_check: {'segment': 'home_for_check', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.17, 'max_dev_mm': 0.48, 'n': 472, 'max_force_n': 6.9, 't_exec': 11.85, 'rate_hz': 39.8, 'final_err_deg': 0.013}
+[22:39:51] perceive check0: {'tag': 'check0', 'table_z': -0.0157, 'blobs': 2, 'drawer_blobs': [{'xy': [0
+... (3986 more characters)
+```
+
+**22:41:07 reset agent:** The targets file now works: the program ran and wrote its summary. The new stop is a tracking-deviation abort with joint 5 reading exactly 360.0 (0°) against a planned 312.9°. A 47° jump in 0.67 s at a 20°/s speed limit is physically impossible, so it was a bad feedback sample, not a collision. I'll make the table pick retry once after a tracking-deviation abort: lift from the measured pose and re-plan. Any real collision still gets caught by the model checks and the next deviation check.
+
+**22:41:08 tool Bash:**
+
+```bash
+grep -n "held = self.pick_table(c)" programs/reset.py
+```
+
+<details><summary>22:41:08 result</summary>
+
+```text
+482:            held = self.pick_table(c)
+```
+</details>
+
+**22:41:14 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+p='programs/reset.py'; s=open(p).read()
+old='''            held = self.pick_table(c)'''
+new='''            try:
+                held = self.pick_table(c)
+            except Abort as e:
+                # attempt 31: a single bad joint sample (j5 read 0 instead of -47 deg) aborted a segment as a
+                # 47 deg "tracking deviation"; retry the pick once from a lifted pose, anything else is a failure
+                if "tracking deviation" not in str(e) or self.retried:
+                    raise
+                self.retried = True
+                s.decide(f"segment stopped by a tracking deviation ({str(e)[:100]}); lift and retry the pick once")
+                time.sleep(1.0)
+                s.cur_seg = None
+                self.lift_to("lift_after_glitch", SAFE_H, "
+... (422 more characters)
+```
+
+<details><summary>22:41:14 result</summary>
+
+```text
+83:        self.retried = False
+488:                if "tracking deviation" not in str(e) or self.retried:
+490:                self.retried = True
+114:        self.cur_seg = None
+454:    def last_ref(self):
+455:        return self.cur_seg.q[-1] if self.cur_seg is not None else self.q_home
+486:        self.cur_seg = seg
+```
+</details>
+
+**22:41:21 tool Bash:**
+
+```bash
+sed -i '/^                s.cur_seg = None$/d' programs/reset.py && sed -n 480,500p programs/reset.py && cd /home/r2r/robot_learning_final_pj && uv run python runs/20261117_2026_drawer/agents/reset/tools/offline.py 2>&1 | grep -c "#### OK" && cd runs/20261117_2026_drawer/agents/reset && echo "- attempt 31: targets file OK; a single bad j5 sample (360.0 vs plan 312.9) aborted a segment as tracking deviation -> one retry of the table pick after lifting." >> notes/notes.md && git add -A && git commit -qm "attempt 32: retry the table pick once after a tracking-deviation abort (feedback glitch)" && echo ok
+```
+
+<details><summary>22:41:30 result</summary>
+
+```text
+break
+            s.require(tries < 3, f"drawer still {err:.3f} m from the target after {tries} picks")
+            s.phase(f"pick{it}")
+            try:
+                held = self.pick_table(c)
+            except Abort as e:
+                # attempt 31: a single bad joint sample (j5 read 0 instead of -47 deg) aborted a segment as a
+                # 47 deg "tracking deviation"; retry the pick once from a lifted pose, anything else is a failure
+                if "tracking deviation" not in str(e) or self.retried:
+                    raise
+                self.retried = True
+                s.decide(f"segment stopped by a tracking deviation ({str(e)[:100]}); lift and retry the pick once")
+                time.sleep(1.0)
+                self.lift_to("lift_after_glitch", SAFE_H, "slow")
+                held = None
+            tries += 1
+            if held is None:
+                continue
+            s.phase(f"place{it}")
+            self.place(held, tgt, delta)
+        # final measurement (arm at home)
+5
+ok
+[This command modified 1 file you've previously read: programs/reset.py. Call Read before editing.]
+```
+</details>
+
+**22:41:35 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets test_targets.json",
+ "moves_robot": true,
+ "what": "REAL reset with targets as a file: pick the drawer from the table (one retry if a segment stops on a feedback glitch), place at (0.42,-0.06), verify.",
+ "report": ""
+}
+```
+
+<details><summary>22:41:35 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**22:44:20 reset agent:** No response requested.
+
+### 22:44:21 orchestrator -> reset agent
+
+```text
+# attempt_32: exit code 0; outcome: success
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets test_targets.json; what: REAL reset with targets as a file: pick the drawer from the table (one retry if a segment stops on a feedback glitch), place at (0.42,-0.06), verify.; commit: 8737b8d; duration_s: 151.2; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "8737b8d834",
+"command": "programs/reset.py --targets test_targets.json",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [0.0, 15.0, 230.0, 359.99, 55.02, 90.02], "tool_pose": [0.5791, 0.0048, 0.4274, 89.9525, 0.5674, 90.4524], "gripper": 39.7},
+"fk_check_mm": 0.18,
+"targets": {"drawer": [0.42, -0.06]},
+"measured": {"drawer": [0.4068, -0.0676]},
+"start_state": "table",
+"start_perception": {"tag": "start", "table_z": -0.0155, "blobs": 4, "drawer_blobs": [{"xy": [0.3931, -0.1217], "obb_c": [0.4127, -0.0812], "L": 0.161, "W": 0.148, "yaw": 33.7, "h": 0.0716, "n": 5090}], "protr": -0.0007, "front_pts": 130, "face_pts": 122, "inside_pts": 54, "out": null},
+"decisions": ["start state: table", "table drawer obb [0.413, -0.085] L 0.165 W 0.141 yaw 28; grasp end wall at [0.346, -0.121] top 0.073", "wall refined by wrist camera: shift +0.016 m toward the drawer centre", "place: drawer axis 39 deg (normal 22 + 18), grasp point [0.381, -0.072], tool 0.094 ab
+"segments": [["ready", true, 0.192, 0.57, 11.85, 39.9], ["ready", true, 0.003, 0.01, 0.57, 36.8], ["home_for_check", true, 0.202, 0.66, 11.87, 39.8], ["ready", true, 0.12, 0.47, 11.87, 39.5], ["above_drawer_wall", true, 0.097, 0.11, 3.5, 39.4], ["down_to_wall_pre", true, 0.09, 0.34, 1.99, 39.2], ["w
+"err_check0": 0.0664,
+"wall_refine": {"profile": [172.0, 172.0, 174.0, 177.0, 175.0, 172.0, 171.0, 170.0, 168.0, 163.0, 149.0, 138.0, 135.0, 77.0, 67.0, 52.0, 48.0, 40.0, 47.0, 44.0, 48.0], "grad_max": 137.0, "outer": 0.01, "shift": 0.016},
+"table_grip": 88.2,
+"err_check1": 0.0127,
+"errors": {"drawer": 0.0152},
+"target": {"drawer": [0.42, -0.06]},
+"verify": {"obb_center": [0.4209, -0.0336], "L": 0.169, "W": 0.16, "height": 0.0671, "yaw_vs_normal_deg": -70.6, "tol": 0.05},
+"return_home": "already at default pose",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.4, "reading": 39.73799133300781},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 64 lines; last 40:
+[22:42:38] refine_wall: outer edge at +0.010 along d_in, step 137, shift +0.016
+[22:42:38] DECISION: wall refined by wrist camera: shift +0.016 m toward the drawer centre
+[22:42:38] plan 07_wall_correct: T=1.6s check ok=True tip>0.099 vmax=2.3deg/s lin=0.018m/s
+[22:42:40] exec 07_wall_correct: {'segment': 'wall_correct', 'ok': True, 'reason': '', 'T_plan': 1.63, 'max_dev_deg': 0.022, 'max_dev_mm': 0.1, 'n': 65, 'max_force_n': 3.6, 't_exec': 1.69, 'rate_hz': 38.5, 'final_err_deg': 0.011}
+[22:42:41] plan 08_down_to_wall: T=5.1s check ok=True tip>0.050 vmax=3.3deg/s lin=0.018m/s
+[22:42:46] exec 08_down_to_wall: {'segment': 'down_to_wall', 'ok': True, 'reason': '', 'T_plan': 5.1, 'max_dev_deg': 0.02, 'max_dev_mm': 0.11, 'n': 205, 'max_force_n': 4.3, 't_exec': 5.17, 'rate_hz': 39.7, 'final_err_deg': 0.008}
+[22:42:46] gripper -> 1.00 (grasp the end wall)
+[22:42:47] gripper reading 88.2
+[22:42:48] plan 09_lift_drawer_slow: T=5.1s check ok=True tip>0.038 vmax=3.3deg/s lin=0.018m/s
+[22:42:53] exec 09_lift_drawer_slow: {'segment': 'lift_drawer_slow', 'ok': True, 'reason': '', 'T_plan': 5.11, 'max_dev_deg': 0.02, 'max_dev_mm': 0.12, 'n': 206, 'max_force_n': 12.6, 't_exec': 5.18, 'rate_hz': 39.8, 'final_err_deg': 0.008}
+[22:42:54] plan 10_lift_drawer: T=1.9s check ok=True tip>0.088 vmax=11.4deg/s lin=0.063m/s
+[22:42:56] exec 10_lift_drawer: {'segment': 'lift_drawer', 'ok': True, 'reason': '', 'T_plan': 1.93, 'max_dev_deg': 0.079, 'max_dev_mm': 0.3, 'n': 78, 'max_force_n': 2.7, 't_exec': 1.98, 'rate_hz': 39.4, 'final_err_deg': 0
+... (5795 more characters)
+```
+
+**22:44:25 tool Bash:**
+
+```bash
+echo "- attempt 32 (real, commit 8737b8d): targets as a file, table pick (refine +1.6 cm, grasp 88.2), placed, err 1.5 cm, orchestrator layout ok." >> notes/notes.md && git add -A && git commit -qm "notes: attempt 32 ok" && git log --oneline | head -1
+```
+
+<details><summary>22:44:25 result</summary>
+
+```text
+4403757 notes: attempt 32 ok
+```
+</details>
+
+**22:44:34 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Fixed reset.py's --targets crash; a real run with a targets file placed the drawer within 1.5 cm (attempt 32, orchestrator check ok).",
+ "report": "reset.py is fixed. A real run started the way you start resets (targets in a file) placed the drawer 1.5 cm from its target, and your layout check passed (attempt 32, commit 8737b8d).\n\n**Why attempts 29 and 30 failed:** you pass `--targets` as a path to a JSON file, but reset.py tried to read the argument itself as JSON. It crashed before the robot session started, so no summary.json was written. It now accepts either a file path or inline JSON. It reads the targets inside the session, so a bad argument ends as a clean fail with a summary.json.\n\n**Second problem, found wh
+... (1319 more characters)
+```
+
+<details><summary>22:44:34 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
