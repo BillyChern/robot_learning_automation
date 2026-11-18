@@ -1,0 +1,1 @@
+python escape2.py b2 z20 b10 z40

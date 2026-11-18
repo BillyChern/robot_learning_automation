@@ -2745,3 +2745,386 @@ LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.11
 [00:01:19] STOP RECORD: {'kind': 'failed check', 'why': 'no drawer on the table', 'step': 'perceive', 'segment': None, 'q_now': [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], 'gripper': 45.0}
 summary: /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute/attempts/attempt_11/summary.json outcome: fail exit 2
 == attempt_11 finished: exit 2, outcome fail, 13 s
+== ROBOT: Real RL episode with the new orientation step: grasp the robot-facing wall; if the pull is not seen on it, turn the held drawer at 0.20 m to find it, put it down so the pull faces the robot and grasp it again. Then carry, learned insertion, release at 0.75, learned push, retreat, verify
+   $ RLPJ_RL_MODE=train RLPJ_EPISODE=-1 /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py
+   starting in 5 s (Enter=now, n=refuse, s=skip)    starting in 4 s (Enter=now, n=refuse, s=skip)    starting in 3 s (Enter=now, n=refuse, s=skip)    starting in 2 s (Enter=now, n=refuse, s=skip)    starting in 1 s (Enter=now, n=refuse, s=skip)    go                                            
+== attempt_12 [ROBOT] $ RLPJ_RL_MODE=train RLPJ_EPISODE=-1 /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py
+COMMIT c398fe8eefbefa3147cc5b3c132ee94855780877
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[00:03:43] session execute: attempt /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute/attempts/attempt_12 dry=False record=None
+[00:03:43] arm state ARMSTATE_SERVOING_READY, joints [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], gripper 45.0
+[00:03:43] model FK vs measured tool_pose at start: 0.2 mm
+[00:03:44] == phase: perceive
+[00:03:45] STOP RECORD: {'kind': 'failed check', 'why': 'no drawer on the table', 'step': 'perceive', 'segment': None, 'q_now': [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], 'gripper': 45.0}
+summary: /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute/attempts/attempt_12/summary.json outcome: fail exit 2
+== attempt_12 finished: exit 2, outcome fail, 13 s
+== restart requested (fresh resets after an interrupted reset repair): exiting at a safe point
+== code sync to the agent host: ok
+== dry: Dry run of extract.py: measure the drawer protrusion from side depth and check pinch, pull, top-down extraction and turned placement against the model
+   $ /home/r2r/robot_learning_final_pj/.venv/bin/python programs/extract.py
+== attempt_13 [dry] $ /home/r2r/robot_learning_final_pj/.venv/bin/python programs/extract.py
+COMMIT afb918541686049aacca9a70d58664a0103e38c1
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[00:05:58] session execute: attempt /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute/attempts/attempt_13 dry=True record=None
+[00:05:58] arm state ARMSTATE_SERVOING_READY, joints [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], gripper 45.0
+[00:05:58] model FK vs measured tool_pose at start: 0.2 mm
+[00:06:00] == phase: perceive
+[00:06:00] front state start: {'n_front': 1743, 'protr': 0.0866, 't': -0.0839, 'h_top': 0.074, 'table_drawer': None}
+[00:06:00] == phase: extract
+[00:06:00] gripper -> 0.45 (open to straddle the wall)
+[00:06:03] plan 01_ready: T=11.8s check ok=True tip>0.197 vmax=18.4deg/s lin=0.053m/s
+[00:06:04] plan 02_above_wall: T=4.2s check ok=True tip>0.163 vmax=11.2deg/s lin=0.089m/s
+[00:06:04] plan 03_down_pre: T=1.9s check ok=True tip>0.102 vmax=9.7deg/s lin=0.061m/s
+[00:06:05] plan 04_down_wall: T=5.1s check ok=True tip>0.052 vmax=2.8deg/s lin=0.018m/s
+[00:06:05] gripper -> 1.00 (grasp the wall)
+[00:06:10] plan 05_slide_out: T=20.4s check ok=True tip>0.041 vmax=3.3deg/s lin=0.018m/s
+[00:06:11] plan 06_lift: T=2.8s check ok=True tip>0.044 vmax=18.1deg/s lin=0.071m/s
+[00:06:11] == phase: place
+[00:06:14] plan 07_above_target: T=16.9s check ok=True tip>0.152 vmax=18.4deg/s lin=0.024m/s
+[00:06:15] plan 08_down_target_pre: T=1.6s check ok=True tip>0.106 vmax=8.4deg/s lin=0.053m/s
+[00:06:16] plan 09_place: T=5.1s check ok=True tip>0.056 vmax=2.8deg/s lin=0.018m/s
+[00:06:16] gripper -> 0.40 (release)
+[00:06:17] plan 10_up_target: T=5.1s check ok=True tip>0.068 vmax=2.8deg/s lin=0.018m/s
+[00:06:18] plan 11_clear: T=1.6s check ok=True tip>0.118 vmax=8.1deg/s lin=0.053m/s
+[00:06:21] plan 12_ready: T=16.3s check ok=True tip>0.164 vmax=18.4deg/s lin=0.008m/s
+[00:06:23] plan 13_home_end: T=11.8s check ok=True tip>0.198 vmax=18.4deg/s lin=0.053m/s
+[00:06:24] front state end: {'n_front': 1926, 'protr': 0.088, 't': -0.0843, 'h_top': 0.0749, 'table_drawer': None}
+[00:06:24] CLAIM fail
+summary: /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute/attempts/attempt_13/summary.json outcome: fail exit 2
+== attempt_13 finished: exit 2, outcome fail, 27 s
+== operator note delivered to the execute agent
+== ROBOT: Real RL episode after a fresh reset, with the orientation check: grasp the robot-facing wall, look for the pull (turn the held drawer at 0.20 m if needed, re-place turned and re-grasp), carry, learned insertion, release at 0.75, learned push, retreat, verify
+   $ RLPJ_RL_MODE=train RLPJ_EPISODE=-1 /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py
+   starting in 5 s (Enter=now, n=refuse, s=skip)    starting in 4 s (Enter=now, n=refuse, s=skip)    starting in 3 s (Enter=now, n=refuse, s=skip)    starting in 2 s (Enter=now, n=refuse, s=skip)    starting in 1 s (Enter=now, n=refuse, s=skip)    go                                            
+== ROBOT: reset to drawer (0.43, -0.09)
+   $ /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_39/targets.json
+   starting in 5 s (Enter=now, n=refuse, s=skip)    starting in 4 s (Enter=now, n=refuse, s=skip)    starting in 3 s (Enter=now, n=refuse, s=skip)    starting in 2 s (Enter=now, n=refuse, s=skip)    starting in 1 s (Enter=now, n=refuse, s=skip)    go                                            
+== attempt_39 [ROBOT] $ /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_39/targets.json
+COMMIT fdc902dbc0b86b06d47bc1fbfd2a058fe96d8d97
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[00:06:46] session reset: attempt /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_39 dry=False record=None
+[00:06:46] arm state ARMSTATE_SERVOING_READY, joints [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], gripper 45.0
+[00:06:46] model FK vs measured tool_pose at start: 0.2 mm
+[00:06:47] == phase: perceive
+[00:06:48] perceive start: {'tag': 'start', 'table_z': -0.0155, 'front_top': 0.0692, 'blobs': 3, 'drawer_blobs': [], 'protr': 0.0854, 'front_pts': 1662, 'face_pts': 487, 'inside_pts': 0, 'out': {'t': -0.0823, 'h_top': 0.0723, 'h_bot': 0.0269, 'n': 596}}
+[00:06:48] DECISION: start state: out
+[00:06:51] plan 01_ready: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[00:07:03] exec 01_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.085, 'max_dev_mm': 0.34, 'n': 473, 'max_force_n': 5.3, 't_exec': 11.87, 'rate_hz': 39.8, 'final_err_deg': 0.014}
+[00:07:03] == phase: extract
+[00:07:03] DECISION: front wall at n-OFF=-0.079 t=-0.082 top 0.072: top-down grasp, jaws along the normal
+[00:07:03] gripper -> 0.45 (open to straddle the front wall)
+[00:07:03] gripper reading 45.0
+[00:07:04] plan 02_above_front_wall: T=4.3s check ok=True tip>0.163 vmax=11.1deg/s lin=0.089m/s
+[00:07:09] exec 02_above_front_wall: {'segment': 'above_front_wall', 'ok': True, 'reason': '', 'T_plan': 4.28, 'max_dev_deg': 0.08, 'max_dev_mm': 0.65, 'n': 172, 'max_force_n': 4.2, 't_exec': 4.33, 'rate_hz': 39.7, 'final_err_deg': 0.009}
+[00:07:09] plan 03_down_to_front_pre: T=1.9s check ok=True tip>0.100 vmax=9.8deg/s lin=0.062m/s
+[00:07:11] exec 03_down_to_front_pre: {'segment': 'down_to_front_pre', 'ok': True, 'reason': '', 'T_plan': 1.9, 'max_dev_deg': 0.072, 'max_dev_mm': 0.31, 'n': 77, 'max_force_n': 2.9, 't_exec': 1.96, 'rate_hz': 39.3, 'final_err_deg': 0.049}
+[00:07:12] plan 04_down_to_front_wall: T=5.1s check ok=True tip>0.050 vmax=2.8deg/s lin=0.018m/s
+[00:07:17] exec 04_down_to_front_wall: {'segment': 'down_to_front_wall', 'ok': True, 'reason': '', 'T_plan': 5.09, 'max_dev_deg': 0.03, 'max_dev_mm': 0.16, 'n': 204, 'max_force_n': 2.2, 't_exec': 5.15, 'rate_hz': 39.6, 'final_err_deg': 0.007}
+[00:07:17] gripper -> 1.00 (grasp the front wall)
+[00:07:18] gripper reading 89.1
+[00:07:22] plan 05_slide_out: T=20.5s check ok=True tip>0.040 vmax=3.3deg/s lin=0.018m/s
+[00:07:43] exec 05_slide_out: {'segment': 'slide_out', 'ok': True, 'reason': '', 'T_plan': 20.52, 'max_dev_deg': 0.028, 'max_dev_mm': 0.3, 'n': 822, 'max_force_n': 24.8, 't_exec': 20.6, 'rate_hz': 39.9, 'final_err_deg': 0.007}
+[00:07:44] plan 06_lift_drawer: T=2.9s check ok=True tip>0.043 vmax=18.1deg/s lin=0.071m/s
+[00:07:46] exec 06_lift_drawer: {'segment': 'lift_drawer', 'ok': True, 'reason': '', 'T_plan': 2.85, 'max_dev_deg': 0.105, 'max_dev_mm': 0.34, 'n': 115, 'max_force_n': 5.3, 't_exec': 2.92, 'rate_hz': 39.4, 'final_err_deg': 0.072}
+[00:07:46] == phase: place
+[00:07:46] DECISION: place: pull known, turn 12 deg, pull wall toward -146 deg (robot side, normal 22 + 12), grasp point [0.401, -0.088], tool 0.102 above table
+[00:07:47] plan 07_above_target: T=3.8s check ok=True tip>0.152 vmax=13.8deg/s lin=0.089m/s
+[00:07:51] exec 07_above_target: {'segment': 'above_target', 'ok': True, 'reason': '', 'T_plan': 3.76, 'max_dev_deg': 0.068, 'max_dev_mm': 0.21, 'n': 151, 'max_force_n': 3.7, 't_exec': 3.83, 'rate_hz': 39.4, 'final_err_deg': 0.044}
+[00:07:52] plan 08_down_to_place_pre: T=1.7s check ok=True tip>0.104 vmax=9.3deg/s lin=0.054m/s
+[00:07:53] exec 08_down_to_place_pre: {'segment': 'down_to_place_pre', 'ok': True, 'reason': '', 'T_plan': 1.66, 'max_dev_deg': 0.104, 'max_dev_mm': 0.44, 'n': 68, 'max_force_n': 3.0, 't_exec': 1.73, 'rate_hz': 39.3, 'final_err_deg': 0.05}
+[00:07:54] plan 09_place_down: T=5.1s check ok=True tip>0.054 vmax=3.1deg/s lin=0.018m/s
+[00:08:00] exec 09_place_down: {'segment': 'place_down', 'ok': True, 'reason': '', 'T_plan': 5.09, 'max_dev_deg': 0.022, 'max_dev_mm': 0.14, 'n': 204, 'max_force_n': 2.1, 't_exec': 5.15, 'rate_hz': 39.6, 'final_err_deg': 0.008}
+[00:08:00] gripper -> 0.40 (release the drawer)
+[00:08:00] gripper reading 39.7
+[00:08:01] plan 10_up_from_drawer: T=5.1s check ok=True tip>0.066 vmax=3.1deg/s lin=0.018m/s
+[00:08:07] exec 10_up_from_drawer: {'segment': 'up_from_drawer', 'ok': True, 'reason': '', 'T_plan': 5.11, 'max_dev_deg': 0.018, 'max_dev_mm': 0.11, 'n': 205, 'max_force_n': 3.9, 't_exec': 5.17, 'rate_hz': 39.7, 'final_err_deg': 0.008}
+[00:08:07] plan 11_clear_up: T=1.7s check ok=True tip>0.116 vmax=9.2deg/s lin=0.054m/s
+[00:08:09] exec 11_clear_up: {'segment': 'clear_up', 'ok': True, 'reason': '', 'T_plan': 1.66, 'max_dev_deg': 0.076, 'max_dev_mm': 0.3, 'n': 67, 'max_force_n': 2.7, 't_exec': 1.72, 'rate_hz': 39.0, 'final_err_deg': 0.052}
+[00:08:09] == phase: check0
+[00:08:09] plan 12_ready: T=3.3s check ok=True tip>0.164 vmax=18.4deg/s lin=0.029m/s
+[00:08:13] exec 12_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 3.32, 'max_dev_deg': 0.097, 'max_dev_mm': 0.23, 'n': 133, 'max_force_n': 2.6, 't_exec': 3.38, 'rate_hz': 39.3, 'final_err_deg': 0.069}
+[00:08:15] plan 13_home_for_check: T=11.8s check ok=True tip>0.198 vmax=18.4deg/s lin=0.053m/s
+[00:08:27] exec 13_home_for_check: {'segment': 'home_for_check', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.109, 'max_dev_mm': 0.37, 'n': 473, 'max_force_n': 6.8, 't_exec': 11.86, 'rate_hz': 39.9, 'final_err_deg': 0.014}
+[00:08:28] perceive check0: {'tag': 'check0', 'table_z': -0.0156, 'front_top': 0.098, 'blobs': 6, 'drawer_blobs': [{'xy': [0.4375, -0.0834], 'obb_c': [0.4548, -0.059], 'L': 0.177, 'W': 0.14, 'yaw': 31.6, 'h': 0.0722, 'n': 5176}], 'protr': -0.0011, 'front_pts': 334, 'face_pts': 216, 'inside_pts': 32, 'out': None}
+[00:08:28] == phase: verify
+[00:08:30] plan 14_ready: T=11.8s check ok=True tip>0.198 vmax=18.4deg/s lin=0.053m/s
+[00:08:42] exec 14_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.117, 'max_dev_mm': 0.36, 'n': 472, 'max_force_n': 5.5, 't_exec': 11.86, 'rate_hz': 39.8, 'final_err_deg': 0.012}
+[00:08:45] plan 15_home_final: T=11.8s check ok=True tip>0.198 vmax=18.4deg/s lin=0.053m/s
+[00:08:56] exec 15_home_final: {'segment': 'home_final', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.084, 'max_dev_mm': 0.31, 'n': 473, 'max_force_n': 7.0, 't_exec': 11.85, 'rate_hz': 39.9, 'final_err_deg': 0.013}
+[00:08:57] perceive final: {'tag': 'final', 'table_z': -0.0155, 'front_top': 0.0994, 'blobs': 7, 'drawer_blobs': [{'xy': [0.436, -0.0833], 'obb_c': [0.4573, -0.0638], 'L': 0.179, 'W': 0.132, 'yaw': 20.4, 'h': 0.0718, 'n': 5139}], 'protr': -0.0006, 'front_pts': 404, 'face_pts': 239, 'inside_pts': 24, 'out': None}
+[00:08:57] CLAIM success
+summary: /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_39/summary.json outcome: success exit 0
+== attempt_39 finished: exit 0, outcome success, 142 s
+== attempt_14 [ROBOT] $ RLPJ_RL_MODE=train RLPJ_EPISODE=-1 /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py
+COMMIT 21b75053576436dbc79651f0692f80f86e41fa8b
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[00:09:13] session execute: attempt /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute/attempts/attempt_14 dry=False record=None
+[00:09:13] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_SERVOING_MANUALLY_CONTROLLED)
+[00:09:14] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_SERVOING_MANUALLY_CONTROLLED)
+[00:09:15] arm state ARMSTATE_SERVOING_READY, joints [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], gripper 39.7
+[00:09:15] model FK vs measured tool_pose at start: 0.2 mm
+[00:09:15] == phase: perceive
+[00:09:16] == phase: grasp
+[00:09:16] DECISION: front wall at [0.394, -0.1] (face +4 deg from facing the robot), top 0.073, depth 0.118
+[00:09:16] gripper -> 0.40 (open)
+[00:09:16] gripper reading 39.7
+[00:09:19] plan 01_ready: T=11.8s check ok=True tip>0.198 vmax=18.4deg/s lin=0.053m/s
+[00:09:31] exec 01_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.194, 'max_dev_mm': 0.6, 'n': 473, 'max_force_n': 5.5, 't_exec': 11.85, 'rate_hz': 39.9, 'final_err_deg': 0.013}
+[00:09:32] plan 02_above_front: T=2.6s check ok=True tip>0.164 vmax=18.4deg/s lin=0.036m/s
+[00:09:34] exec 02_above_front: {'segment': 'above_front', 'ok': True, 'reason': '', 'T_plan': 2.64, 'max_dev_deg': 0.185, 'max_dev_mm': 0.25, 'n': 107, 'max_force_n': 5.2, 't_exec': 2.71, 'rate_hz': 39.5, 'final_err_deg': 0.084}
+[00:09:35] plan 03_down_to_front_pre: T=1.9s check ok=True tip>0.100 vmax=10.7deg/s lin=0.062m/s
+[00:09:37] exec 03_down_to_front_pre: {'segment': 'down_to_front_pre', 'ok': True, 'reason': '', 'T_plan': 1.92, 'max_dev_deg': 0.082, 'max_dev_mm': 0.32, 'n': 78, 'max_force_n': 3.7, 't_exec': 1.98, 'rate_hz': 39.4, 'final_err_deg': 0.054}
+[00:09:37] refine_wall: step 126, shift +0.016
+[00:09:38] plan 04_front_correct: T=1.6s check ok=True tip>0.100 vmax=2.8deg/s lin=0.018m/s
+[00:09:39] exec 04_front_correct: {'segment': 'front_correct', 'ok': True, 'reason': '', 'T_plan': 1.63, 'max_dev_deg': 0.02, 'max_dev_mm': 0.14, 'n': 66, 'max_force_n': 3.5, 't_exec': 1.69, 'rate_hz': 39.1, 'final_err_deg': 0.01}
+[00:09:41] plan 05_down_to_front: T=5.1s check ok=True tip>0.050 vmax=3.0deg/s lin=0.018m/s
+[00:09:46] exec 05_down_to_front: {'segment': 'down_to_front', 'ok': True, 'reason': '', 'T_plan': 5.1, 'max_dev_deg': 0.018, 'max_dev_mm': 0.11, 'n': 205, 'max_force_n': 4.0, 't_exec': 5.16, 'rate_hz': 39.7, 'final_err_deg': 0.008}
+[00:09:46] gripper -> 1.00 (grasp the front wall)
+[00:09:46] gripper reading 90.0
+[00:09:47] plan 06_lift_slow: T=5.1s check ok=True tip>0.038 vmax=3.0deg/s lin=0.018m/s
+[00:09:53] exec 06_lift_slow: {'segment': 'lift_slow', 'ok': True, 'reason': '', 'T_plan': 5.11, 'max_dev_deg': 0.017, 'max_dev_mm': 0.11, 'n': 205, 'max_force_n': 4.8, 't_exec': 5.17, 'rate_hz': 39.7, 'final_err_deg': 0.007}
+[00:09:53] plan 07_lift: T=1.9s check ok=True tip>0.088 vmax=10.5deg/s lin=0.062m/s
+[00:09:55] exec 07_lift: {'segment': 'lift', 'ok': True, 'reason': '', 'T_plan': 1.92, 'max_dev_deg': 0.076, 'max_dev_mm': 0.29, 'n': 77, 'max_force_n': 2.6, 't_exec': 1.98, 'rate_hz': 38.9, 'final_err_deg': 0.052}
+[00:09:55] == phase: orient
+[00:09:59] plan 08_turn180: T=18.3s check ok=True tip>0.152 vmax=18.4deg/s lin=0.000m/s
+[00:10:17] exec 08_turn180: {'segment': 'turn180', 'ok': True, 'reason': '', 'T_plan': 18.29, 'max_dev_deg': 0.112, 'max_dev_mm': 0.11, 'n': 733, 'max_force_n': 1.9, 't_exec': 18.36, 'rate_hz': 39.9, 'final_err_deg': 0.008}
+[00:10:20] plan 09_turn90: T=9.2s check ok=True tip>0.152 vmax=18.4deg/s lin=0.000m/s
+[00:10:29] exec 09_turn90: {'segment': 'turn90', 'ok': True, 'reason': '', 'T_plan': 9.16, 'max_dev_deg': 0.157, 'max_dev_mm': 0.07, 'n': 367, 'max_force_n': 2.8, 't_exec': 9.21, 'rate_hz': 39.8, 'final_err_deg': 0.02}
+[00:10:33] plan 10_turn270: T=18.3s check ok=True tip>0.152 vmax=18.4deg/s lin=0.000m/s
+[00:10:52] exec 10_turn270: {'segment': 'turn270', 'ok': True, 'reason': '', 'T_plan': 18.27, 'max_dev_deg': 0.129, 'max_dev_mm': 0.09, 'n': 731, 'max_force_n': 3.4, 't_exec': 18.32, 'rate_hz': 39.9, 'final_err_deg': 0.007}
+[00:10:52] DECISION: orientation: pull wall None (A = grasped; best grey {'A': 0.044, 'C': 0.548, 'B': 0.932, 'D': 0.328})
+[00:10:54] plan 11_turn_back: T=9.2s check ok=True tip>0.152 vmax=18.4deg/s lin=0.000m/s
+[00:11:04] exec 11_turn_back: {'segment': 'turn_back', 'ok': True, 'reason': '', 'T_plan': 9.18, 'max_dev_deg': 0.069, 'max_dev_mm': 0.07, 'n': 367, 'max_force_n': 3.7, 't_exec': 9.23, 'rate_hz': 39.8, 'final_err_deg': 0.021}
+[00:11:04] == phase: carry
+[00:11:04] plan 12_above_slot_front_back: T=3.7s check ok=True tip>0.152 vmax=12.1deg/s lin=0.088m/s
+[00:11:08] exec 12_above_slot_front_back: {'segment': 'above_slot_front_back', 'ok': True, 'reason': '', 'T_plan': 3.66, 'max_dev_deg': 0.055, 'max_dev_mm': 0.2, 'n': 147, 'max_force_n': 2.9, 't_exec': 3.71, 'rate_hz': 39.6, 'final_err_deg': 0.038}
+[00:11:09] plan 13_forward_above_slot: T=2.0s check ok=True tip>0.152 vmax=10.2deg/s lin=0.065m/s
+[00:11:11] exec 13_forward_above_slot: {'segment': 'forward_above_slot', 'ok': True, 'reason': '', 'T_plan': 2.01, 'max_dev_deg': 0.046, 'max_dev_mm': 0.31, 'n': 82, 'max_force_n': 3.1, 't_exec': 2.08, 'rate_hz': 39.4, 'final_err_deg': 0.029}
+[00:11:11] plan 14_down_in_front_of_slot: T=1.7s check ok=True tip>0.099 vmax=11.1deg/s lin=0.057m/s
+[00:11:13] exec 14_down_in_front_of_slot: {'segment': 'down_in_front_of_slot', 'ok': True, 'reason': '', 'T_plan': 1.75, 'max_dev_deg': 0.081, 'max_dev_mm': 0.34, 'n': 71, 'max_force_n': 3.6, 't_exec': 1.8, 'rate_hz': 39.4, 'final_err_deg': 0.054}
+[00:11:14] plan 15_down_to_insert_start: T=4.1s check ok=True tip>0.059 vmax=3.5deg/s lin=0.018m/s
+[00:11:18] exec 15_down_to_insert_start: {'segment': 'down_to_insert_start', 'ok': True, 'reason': '', 'T_plan': 4.07, 'max_dev_deg': 0.04, 'max_dev_mm': 0.19, 'n': 164, 'max_force_n': 2.0, 't_exec': 4.14, 'rate_hz': 39.6, 'final_err_deg': 0.012}
+[00:11:18] DECISION: held drawer: t err -0.012 yaw err -9.5 (1372 pts); insertion from n-OFF -0.185
+[00:11:18] == phase: insert_learned
+[00:11:19] plan 16_ins00: T=1.4s check ok=True tip>0.057 vmax=3.2deg/s lin=0.018m/s
+[00:11:20] exec 16_ins00: {'segment': 'ins00', 'ok': True, 'reason': '', 'T_plan': 1.42, 'max_dev_deg': 0.022, 'max_dev_mm': 0.17, 'n': 58, 'max_force_n': 3.7, 't_exec': 1.48, 'rate_hz': 39.2, 'final_err_deg': 0.009}
+[00:11:20] insert step 0: a [0.83, -0.32, -0.64, 0.46] (mu [0.564, 0.015, -0.058, -0.039]) -> ok  n-OFF -0.1713 dt -0.0013 dz -0.0019 dyaw +0.9 peak 3.7 N r +0.117
+[00:11:21] plan 17_ins01: T=1.2s check ok=True tip>0.057 vmax=3.3deg/s lin=0.018m/s
+[00:11:22] exec 17_ins01: {'segment': 'ins01', 'ok': True, 'reason': '', 'T_plan': 1.23, 'max_dev_deg': 0.02, 'max_dev_mm': 0.14, 'n': 50, 'max_force_n': 1.3, 't_exec': 1.29, 'rate_hz': 38.8, 'final_err_deg': 0.013}
+[00:11:22] insert step 1: a [0.61, -0.13, -0.23, 0.16] (mu [0.563, 0.016, -0.056, -0.038]) -> ok  n-OFF -0.1592 dt -0.0018 dz -0.0026 dyaw +1.2 peak 1.3 N r +0.100
+[00:11:22] plan 18_ins02: T=1.4s check ok=True tip>0.055 vmax=3.2deg/s lin=0.018m/s
+[00:11:24] exec 18_ins02: {'segment': 'ins02', 'ok': True, 'reason': '', 'T_plan': 1.39, 'max_dev_deg': 0.022, 'max_dev_mm': 0.17, 'n': 56, 'max_force_n': 2.4, 't_exec': 1.44, 'rate_hz': 38.9, 'final_err_deg': 0.01}
+[00:11:24] insert step 2: a [0.79, 0.13, -0.68, 0.25] (mu [0.564, 0.017, -0.053, -0.036]) -> ok  n-OFF -0.1458 dt -0.0013 dz -0.0046 dyaw +1.7 peak 2.4 N r +0.115
+[00:11:24] plan 19_ins03: T=1.5s check ok=True tip>0.053 vmax=3.4deg/s lin=0.018m/s
+[00:11:26] exec 19_ins03: {'segment': 'ins03', 'ok': True, 'reason': '', 'T_plan': 1.46, 'max_dev_deg': 0.028, 'max_dev_mm': 0.19, 'n': 58, 'max_force_n': 2.5, 't_exec': 1.52, 'rate_hz': 38.2, 'final_err_deg': 0.011}
+[00:11:26] insert step 3: a [0.89, -0.48, -0.4, 0.38] (mu [0.565, 0.017, -0.049, -0.033]) -> ok  n-OFF -0.1316 dt -0.0032 dz -0.0058 dyaw +2.5 peak 2.5 N r +0.122
+[00:11:26] plan 20_ins04: T=1.4s check ok=True tip>0.053 vmax=3.5deg/s lin=0.018m/s
+[00:11:27] exec 20_ins04: {'segment': 'ins04', 'ok': True, 'reason': '', 'T_plan': 1.38, 'max_dev_deg': 0.023, 'max_dev_mm': 0.15, 'n': 55, 'max_force_n': 1.7, 't_exec': 1.43, 'rate_hz': 38.5, 'final_err_deg': 0.012}
+[00:11:27] insert step 4: a [0.79, -0.29, 0.15, 0.43] (mu [0.566, 0.018, -0.047, -0.032]) -> ok  n-OFF -0.1182 dt -0.0044 dz -0.0054 dyaw +3.4 peak 1.7 N r +0.114
+[00:11:28] plan 21_ins05: T=0.6s check ok=True tip>0.053 vmax=3.3deg/s lin=0.018m/s
+[00:11:28] exec 21_ins05: {'segment': 'ins05', 'ok': True, 'reason': '', 'T_plan': 0.6, 'max_dev_deg': 0.04, 'max_dev_mm': 0.22, 'n': 25, 'max_force_n': 1.9, 't_exec': 0.66, 'rate_hz': 37.9, 'final_err_deg': 0.023}
+[00:11:28] insert step 5: a [-0.33, -0.73, -0.6, -0.1] (mu [0.566, 0.018, -0.046, -0.031]) -> ok  n-OFF -0.1132 dt -0.0073 dz -0.0060 dyaw +3.2 peak 1.9 N r +0.030
+[00:11:28] plan 22_ins06: T=1.0s check ok=True tip>0.053 vmax=3.7deg/s lin=0.018m/s
+[00:11:30] exec 22_ins06: {'segment': 'ins06', 'ok': True, 'reason': '', 'T_plan': 0.99, 'max_dev_deg': 0.052, 'max_dev_mm': 0.21, 'n': 40, 'max_force_n': 1.7, 't_exec': 1.05, 'rate_hz': 38.1, 'final_err_deg': 0.018}
+[00:11:30] insert step 6: a [0.26, -0.33, 0.57, 0.27] (mu [0.567, 0.02, -0.046, -0.032]) -> ok  n-OFF -0.1037 dt -0.0086 dz -0.0043 dyaw +3.7 peak 1.7 N r +0.075
+[00:11:30] plan 23_ins07: T=1.3s check ok=True tip>0.055 vmax=3.6deg/s lin=0.018m/s
+[00:11:31] exec 23_ins07: {'segment': 'ins07', 'ok': True, 'reason': '', 'T_plan': 1.31, 'max_dev_deg': 0.028, 'max_dev_mm': 0.17, 'n': 53, 'max_force_n': 1.5, 't_exec': 1.36, 'rate_hz': 39.0, 'final_err_deg': 0.012}
+[00:11:31] insert step 7: a [0.7, -0.06, 0.14, -0.38] (mu [0.565, 0.022, -0.047, -0.032]) -> ok  n-OFF -0.0909 dt -0.0089 dz -0.0039 dyaw +2.9 peak 1.5 N r +0.108
+[00:11:31] plan 24_ins08: T=0.7s check ok=True tip>0.055 vmax=3.4deg/s lin=0.018m/s
+[00:11:32] exec 24_ins08: {'segment': 'ins08', 'ok': True, 'reason': '', 'T_plan': 0.71, 'max_dev_deg': 0.035, 'max_dev_mm': 0.32, 'n': 29, 'max_force_n': 21.8, 't_exec': 0.77, 'rate_hz': 37.7, 'final_err_deg': 0.015}
+[00:11:32] insert step 8: a [-0.21, -0.86, -0.25, -0.34] (mu [0.565, 0.023, -0.044, -0.028]) -> ok  n-OFF -0.0850 dt -0.0123 dz -0.0046 dyaw +2.3 peak 21.8 N r +0.003
+[00:11:33] plan 25_ins09: T=1.5s check ok=True tip>0.055 vmax=3.8deg/s lin=0.018m/s
+[00:11:34] exec 25_ins09: {'segment': 'ins09', 'ok': True, 'reason': '', 'T_plan': 1.5, 'max_dev_deg': 0.078, 'max_dev_mm': 0.91, 'n': 60, 'max_force_n': 36.8, 't_exec': 1.55, 'rate_hz': 38.7, 'final_err_deg': 0.014}
+[00:11:34] insert step 9: a [0.86, -0.98, 0.56, -0.58] (mu [0.539, 0.035, -0.061, -0.029]) -> ok  n-OFF -0.0710 dt -0.0162 dz -0.0029 dyaw +1.1 peak 36.8 N r -0.216
+[00:11:34] plan 26_ins10: T=1.5s check ok=True tip>0.057 vmax=3.8deg/s lin=0.018m/s
+[00:11:36] exec 26_ins10: {'segment': 'ins10', 'ok': True, 'reason': '', 'T_plan': 1.54, 'max_dev_deg': 0.025, 'max_dev_mm': 0.13, 'n': 62, 'max_force_n': 10.0, 't_exec': 1.59, 'rate_hz': 39.0, 'final_err_deg': 0.016}
+[00:11:36] insert step 10: a [0.96, -0.15, 0.99, 0.9] (mu [0.535, 0.045, -0.065, -0.038]) -> ok  n-OFF -0.0563 dt -0.0168 dz +0.0000 dyaw +2.9 peak 10.0 N r +0.127
+[00:11:36] plan 27_ins11: T=0.5s check ok=True tip>0.060 vmax=1.8deg/s lin=0.016m/s
+[00:11:37] exec 27_ins11: {'segment': 'ins11', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.03, 'max_dev_mm': 0.28, 'n': 21, 'max_force_n': 5.5, 't_exec': 0.57, 'rate_hz': 36.8, 'final_err_deg': 0.014}
+[00:11:37] insert step 11: a [-0.85, -0.94, 0.46, -0.44] (mu [0.536, 0.055, -0.057, -0.032]) -> ok  n-OFF -0.0552 dt -0.0206 dz +0.0014 dyaw +2.0 peak 5.5 N r -0.009
+[00:11:37] plan 28_ins12: T=1.6s check ok=True tip>0.058 vmax=3.5deg/s lin=0.018m/s
+[00:11:39] exec 28_ins12: {'segment': 'ins12', 'ok': True, 'reason': '', 'T_plan': 1.56, 'max_dev_deg': 0.03, 'max_dev_mm': 0.14, 'n': 63, 'max_force_n': 11.5, 't_exec': 1.62, 'rate_hz': 38.9, 'final_err_deg': 0.018}
+[00:11:39] insert step 12: a [0.97, 0.53, -0.96, -1.0] (mu [0.523, 0.072, -0.062, -0.039]) -> ok  n-OFF -0.0404 dt -0.0185 dz -0.0015 dyaw +0.0 peak 11.5 N r +0.128
+[00:11:39] plan 29_ins13: T=0.5s check ok=True tip>0.056 vmax=1.7deg/s lin=0.011m/s
+[00:11:40] exec 29_ins13: {'segment': 'ins13', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.025, 'max_dev_mm': 0.26, 'n': 21, 'max_force_n': 3.9, 't_exec': 0.55, 'rate_hz': 38.2, 'final_err_deg': 0.013}
+[00:11:40] insert step 13: a [-0.95, 0.53, -0.69, 0.34] (mu [0.538, 0.059, -0.048, -0.026]) -> ok  n-OFF -0.0400 dt -0.0163 dz -0.0035 dyaw +0.7 peak 3.9 N r -0.016
+[00:11:40] plan 30_ins14: T=0.5s check ok=True tip>0.055 vmax=1.5deg/s lin=0.008m/s
+[00:11:40] exec 30_ins14: {'segment': 'ins14', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.034, 'max_dev_mm': 0.24, 'n': 20, 'max_force_n': 3.0, 't_exec': 0.56, 'rate_hz': 35.7, 'final_err_deg': 0.008}
+[00:11:40] insert step 14: a [0.16, -0.13, -0.69, 0.35] (mu [0.553, 0.046, -0.041, -0.024]) -> ok  n-OFF -0.0380 dt -0.0166 dz -0.0046 dyaw +1.1 peak 3.0 N r +0.000
+[00:11:40] == phase: release
+[00:11:40] gripper -> 0.75 (release the front wall (narrow: the inner finger stays clear of the cabinet rail))
+[00:11:41] gripper reading 74.7
+[00:11:42] plan 31_up_from_front: T=6.1s check ok=True tip>0.060 vmax=2.6deg/s lin=0.018m/s
+[00:11:48] exec 31_up_from_front: {'segment': 'up_from_front', 'ok': True, 'reason': '', 'T_plan': 6.13, 'max_dev_deg': 0.03, 'max_dev_mm': 0.23, 'n': 245, 'max_force_n': 21.0, 't_exec': 6.17, 'rate_hz': 39.7, 'final_err_deg': 0.008}
+[00:11:49] plan 32_back_from_front: T=1.5s check ok=True tip>0.120 vmax=10.2deg/s lin=0.049m/s
+[00:11:50] exec 32_back_from_front: {'segment': 'back_from_front', 'ok': True, 'reason': '', 'T_plan': 1.52, 'max_dev_deg': 0.059, 'max_dev_mm': 0.26, 'n': 61, 'max_force_n': 2.8, 't_exec': 1.57, 'rate_hz': 38.9, 'final_err_deg': 0.04}
+[00:11:51] plan 33_lift_clear: T=1.5s check ok=True tip>0.120 vmax=7.6deg/s lin=0.048m/s
+[00:11:52] exec 33_lift_clear: {'segment': 'lift_clear', 'ok': True, 'reason': '', 'T_plan': 1.47, 'max_dev_deg': 0.072, 'max_dev_mm': 0.32, 'n': 59, 'max_force_n': 3.4, 't_exec': 1.53, 'rate_hz': 38.6, 'final_err_deg': 0.039}
+[00:11:53] plan 34_ready: T=3.9s check ok=True tip>0.157 vmax=10.8deg/s lin=0.088m/s
+[00:11:57] exec 34_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 3.95, 'max_dev_deg': 0.079, 'max_dev_mm': 0.67, 'n': 159, 'max_force_n': 5.3, 't_exec': 4.02, 'rate_hz': 39.6, 'final_err_deg': 0.012}
+[00:11:57] == phase: push_learned
+[00:11:57] gripper -> 1.00 (close: the fingertips are the pusher)
+[00:11:57] gripper reading 99.1
+[00:11:59] plan 35_above_push: T=9.1s check ok=True tip>0.098 vmax=18.4deg/s lin=0.057m/s
+[00:12:08] exec 35_above_push: {'segment': 'above_push', 'ok': True, 'reason': '', 'T_plan': 9.07, 'max_dev_deg': 0.086, 'max_dev_mm': 0.29, 'n': 363, 'max_force_n': 5.1, 't_exec': 9.12, 'rate_hz': 39.8, 'final_err_deg': 0.021}
+[00:12:09] plan 36_to_push_pre: T=3.7s check ok=True tip>0.042 vmax=7.2deg/s lin=0.031m/s
+[00:12:13] exec 36_to_push_pre: {'segment': 'to_push_pre', 'ok': True, 'reason': '', 'T_plan': 3.65, 'max_dev_deg': 0.044, 'max_dev_mm': 0.12, 'n': 147, 'max_force_n': 4.9, 't_exec': 3.73, 'rate_hz': 39.4, 'final_err_deg': 0.029}
+[00:12:13] plan 37_push00: T=1.1s check ok=True tip>0.042 vmax=3.0deg/s lin=0.018m/s
+[00:12:14] exec 37_push00: {'segment': 'push00', 'ok': True, 'reason': '', 'T_plan': 1.12, 'max_dev_deg': 0.03, 'max_dev_mm': 0.15, 'n': 46, 'max_force_n': 2.7, 't_exec': 1.19, 'rate_hz': 38.7, 'final_err_deg': 0.018}
+[00:12:14] push step 0: a [0.46, 0.2, 0.17, 0.01] (mu [0.578, -0.003, -0.046, -0.034]) -> ok  tip n-OFF -0.0601 dt +0.0006 h 0.051 peak 2.7 N r -0.020
+[00:12:15] plan 38_push01: T=1.3s check ok=True tip>0.042 vmax=3.1deg/s lin=0.018m/s
+[00:12:16] exec 38_push01: {'segment': 'push01', 'ok': True, 'reason': '', 'T_plan': 1.27, 'max_dev_deg': 0.029, 'max_dev_mm': 0.2, 'n': 51, 'max_force_n': 2.5, 't_exec': 1.33, 'rate_hz': 38.3, 'final_err_deg': 0.016}
+[00:12:16] push step 1: a [0.66, 0.06, 0.29, -0.5] (mu [0.578, 0.002, -0.043, -0.033]) -> ok  tip n-OFF -0.0476 dt +0.0008 h 0.051 peak 2.5 N r -0.020
+[00:12:16] plan 39_push02: T=1.3s check ok=True tip>0.042 vmax=3.3deg/s lin=0.018m/s
+[00:12:18] exec 39_push02: {'segment': 'push02', 'ok': True, 'reason': '', 'T_plan': 1.25, 'max_dev_deg': 0.026, 'max_dev_mm': 0.13, 'n': 51, 'max_force_n': 1.9, 't_exec': 1.32, 'rate_hz': 38.6, 'final_err_deg': 0.013}
+[00:12:18] push step 2: a [0.6, -0.8, -0.38, 0.78] (mu [0.578, 0.008, -0.039, -0.032]) -> ok  tip n-OFF -0.0356 dt -0.0016 h 0.050 peak 1.9 N r -0.020
+[00:12:18] plan 40_push03: T=0.9s check ok=True tip>0.042 vmax=3.2deg/s lin=0.018m/s
+[00:12:19] exec 40_push03: {'segment': 'push03', 'ok': True, 'reason': '', 'T_plan': 0.92, 'max_dev_deg': 0.028, 'max_dev_mm': 0.21, 'n': 38, 'max_force_n': 1.9, 't_exec': 0.98, 'rate_hz': 38.8, 'final_err_deg': 0.016}
+[00:12:19] push step 3: a [0.19, -0.21, 0.03, -0.43] (mu [0.58, 0.008, -0.036, -0.03]) -> ok  tip n-OFF -0.0266 dt -0.0022 h 0.050 peak 1.9 N r -0.020
+[00:12:19] plan 41_push04: T=0.8s check ok=True tip>0.041 vmax=2.9deg/s lin=0.018m/s
+[00:12:20] exec 41_push04: {'segment': 'push04', 'ok': True, 'reason': '', 'T_plan': 0.8, 'max_dev_deg': 0.042, 'max_dev_mm': 0.21, 'n': 33, 'max_force_n': 2.0, 't_exec': 0.86, 'rate_hz': 38.4, 'final_err_deg': 0.016}
+[00:12:20] push step 4: a [0.03, 0.43, -0.37, -0.05] (mu [0.579, 0.012, -0.035, -0.029]) -> ok  tip n-OFF -0.0189 dt -0.0010 h 0.049 peak 2.0 N r -0.020
+[00:12:21] plan 42_push05: T=1.3s check ok=True tip>0.041 vmax=3.2deg/s lin=0.018m/s
+[00:12:22] exec 42_push05: {'segment': 'push05', 'ok': True, 'reason': '', 'T_plan': 1.34, 'max_dev_deg': 0.027, 'max_dev_mm': 0.19, 'n': 55, 'max_force_n': 45.0, 't_exec': 1.4, 'rate_hz': 39.3, 'final_err_deg': 0.018}
+[00:12:22] push step 5: a [0.75, -0.22, -0.04, 0.29] (mu [0.579, 0.017, -0.032, -0.026]) -> ok  tip n-OFF -0.0057 dt -0.0016 h 0.049 peak 45.0 N r -0.520
+[00:12:22] plan 43_push06: T=0.5s check ok=True tip>0.039 vmax=2.9deg/s lin=0.017m/s
+[00:12:23] exec 43_push06: {'segment': 'push06', 'ok': True, 'reason': '', 'T_plan': 0.51, 'max_dev_deg': 0.042, 'max_dev_mm': 0.34, 'n': 21, 'max_force_n': 8.2, 't_exec': 0.57, 'rate_hz': 36.8, 'final_err_deg': 0.019}
+[00:12:23] push step 6: a [-0.6, 0.75, -0.84, 1.0] (mu [0.527, 0.042, -0.097, -0.057]) -> ok  tip n-OFF -0.0028 dt +0.0006 h 0.047 peak 8.2 N r -0.020
+[00:12:23] plan 44_push07: T=0.8s check ok=True tip>0.039 vmax=3.5deg/s lin=0.018m/s
+[00:12:24] exec 44_push07: {'segment': 'push07', 'ok': True, 'reason': '', 'T_plan': 0.81, 'max_dev_deg': 0.043, 'max_dev_mm': 0.38, 'n': 34, 'max_force_n': 24.5, 't_exec': 0.89, 'rate_hz': 38.2, 'final_err_deg': 0.025}
+[00:12:24] push step 7: a [-0.03, -0.23, 0.98, -0.92] (mu [0.522, 0.056, -0.098, -0.063]) -> ok  tip n-OFF +0.0045 dt -0.0000 h 0.050 peak 24.5 N r -0.110
+[00:12:24] DECISION: push retreat: back to n-OFF -0.040, then up
+[00:12:25] plan 45_push_back: T=6.0s check ok=True tip>0.041 vmax=2.4deg/s lin=0.014m/s
+[00:12:27] exec 45_push_back: {'segment': 'push_back', 'ok': False, 'reason': 'contact force 50.5 N > 50 N at t=1.68s', 'T_plan': 6.02, 'max_dev_deg': 0.013, 'max_dev_mm': 0.15, 'n': 68, 'max_force_n': 50.5, 't_exec': 1.73, 'rate_hz': 39.3, 'final_err_deg': 6.759}
+[00:12:27] STOP RECORD: {'kind': 'failed check', 'why': '45_push_back: contact force 50.5 N > 50 N at t=1.68s', 'step': 'push_learned', 'segment': 'push_back', 'progress': 0.28, 't': 1.68, 'q_meas': [-2.82, 39.92, -130.23, 24.48, 30.98, 82.46], 'q_plan': [-2.81, 39.92, -130.24, 24.47, 30.98, 82.47], 'tool_meas': [0.4943, 0.0865, 0.0697, 140.1202, 0.0001, 111.7308], 'tool_plan_xyz': [0.4951, 0.0865, 0.0688], 'dev_deg': 0.01, 'dev_mm': 0.1, 'q_now': [357.21, 39.91, 229.7, 24.46, 31.03, 82.5], 'gripper': 99.1}
+[00:12:27] == phase: return_home
+[00:12:28] return plan ok=False: [('return_lift', True), ('return_home', False)]
+summary: /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute/attempts/attempt_14/summary.json outcome: fail exit 2
+== attempt_14 finished: exit 2, outcome fail, 205 s
+== code sync to the agent host: ok
+== ROBOT: Real RL episode after a reset: image-based pull detection (turn the held drawer only if the pull is not seen), re-place turned if needed, carry, learned insertion, release at 0.75, learned push at 7 cm height (above the knob), retreat, verify
+   $ RLPJ_RL_MODE=train RLPJ_EPISODE=-1 /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py
+   starting in 5 s (Enter=now, n=refuse, s=skip)    starting in 4 s (Enter=now, n=refuse, s=skip)    starting in 3 s (Enter=now, n=refuse, s=skip)    starting in 2 s (Enter=now, n=refuse, s=skip)    starting in 1 s (Enter=now, n=refuse, s=skip)    go                                            
+== ROBOT: reset to drawer (0.35, -0.18)
+   $ /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_40/targets.json
+   starting in 5 s (Enter=now, n=refuse, s=skip)    starting in 4 s (Enter=now, n=refuse, s=skip)    starting in 3 s (Enter=now, n=refuse, s=skip)    starting in 2 s (Enter=now, n=refuse, s=skip)    starting in 1 s (Enter=now, n=refuse, s=skip)    go                                            
+== attempt_40 [ROBOT] $ /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_40/targets.json
+COMMIT fdc902dbc0b86b06d47bc1fbfd2a058fe96d8d97
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[00:25:27] session reset: attempt /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_40 dry=False record=None
+[00:25:27] arm state ARMSTATE_SERVOING_READY, joints [0.01, 15.0, 230.01, 0.0, 55.6, 90.0], gripper 99.1
+[00:25:27] model FK vs measured tool_pose at start: 0.2 mm
+[00:25:28] == phase: perceive
+[00:25:29] perceive start: {'tag': 'start', 'table_z': -0.0154, 'front_top': 0.0753, 'blobs': 4, 'drawer_blobs': [], 'protr': 0.0123, 'front_pts': 964, 'face_pts': 886, 'inside_pts': 0, 'out': None}
+[00:25:29] DECISION: start state: slot_back
+[00:25:31] plan 01_ready: T=11.9s check ok=True tip>0.201 vmax=18.4deg/s lin=0.053m/s
+[00:25:43] exec 01_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.86, 'max_dev_deg': 0.057, 'max_dev_mm': 0.21, 'n': 475, 'max_force_n': 5.9, 't_exec': 11.92, 'rate_hz': 39.8, 'final_err_deg': 0.014}
+[00:25:43] == phase: pull_back
+[00:25:43] DECISION: backwards drawer: oblique pinch of the outer wall top (protr 0.012, top 0.075, dn +0.000)
+[00:25:43] plan 02_ready: T=0.5s check ok=True tip>0.222 vmax=0.0deg/s lin=0.000m/s
+[00:25:44] exec 02_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.004, 'max_dev_mm': 0.01, 'n': 21, 'max_force_n': 0.2, 't_exec': 0.56, 'rate_hz': 37.5, 'final_err_deg': 0.001}
+[00:25:44] gripper -> 0.45 (open for the wall edge)
+[00:25:45] gripper reading 45.0
+[00:25:47] plan 03_above_back_wall: T=9.7s check ok=True tip>0.132 vmax=15.1deg/s lin=0.059m/s
+[00:25:56] exec 03_above_back_wall: {'segment': 'above_back_wall', 'ok': True, 'reason': '', 'T_plan': 9.66, 'max_dev_deg': 0.074, 'max_dev_mm': 0.32, 'n': 387, 'max_force_n': 7.0, 't_exec': 9.71, 'rate_hz': 39.9, 'final_err_deg': 0.016}
+[00:25:57] plan 04_to_back_pre: T=2.8s check ok=True tip>0.082 vmax=12.8deg/s lin=0.034m/s
+[00:26:00] exec 04_to_back_pre: {'segment': 'to_back_pre', 'ok': True, 'reason': '', 'T_plan': 2.75, 'max_dev_deg': 0.144, 'max_dev_mm': 0.19, 'n': 112, 'max_force_n': 10.8, 't_exec': 2.83, 'rate_hz': 39.6, 'final_err_deg': 0.046}
+[00:26:04] plan 05_approach_back_wall: T=18.4s check ok=True tip>0.043 vmax=1.5deg/s lin=0.005m/s
+[00:26:22] exec 05_approach_back_wall: {'segment': 'approach_back_wall', 'ok': True, 'reason': '', 'T_plan': 18.35, 'max_dev_deg': 0.037, 'max_dev_mm': 0.11, 'n': 735, 'max_force_n': 5.7, 't_exec': 18.4, 'rate_hz': 39.9, 'final_err_deg': 0.002}
+[00:26:22] gripper -> 1.00 (clamp the wall edge)
+[00:26:23] gripper reading 82.1
+[00:26:23] gripper -> 0.83 (keep squeezing (model gripper close to the real one))
+[00:26:23] gripper reading 82.1
+[00:26:27] plan 06_pull_back_drawer: T=16.5s check ok=True tip>0.048 vmax=1.3deg/s lin=0.007m/s
+[00:26:44] exec 06_pull_back_drawer: {'segment': 'pull_back_drawer', 'ok': True, 'reason': '', 'T_plan': 16.46, 'max_dev_deg': 0.024, 'max_dev_mm': 0.09, 'n': 660, 'max_force_n': 38.7, 't_exec': 16.53, 'rate_hz': 39.9, 'final_err_deg': 0.002}
+[00:26:44] gripper -> 0.45 (release the wall)
+[00:26:44] gripper reading 45.0
+[00:26:50] plan 07_up_from_back: T=23.5s check ok=True tip>0.043 vmax=2.7deg/s lin=0.008m/s
+[00:27:13] exec 07_up_from_back: {'segment': 'up_from_back', 'ok': True, 'reason': '', 'T_plan': 23.51, 'max_dev_deg': 0.015, 'max_dev_mm': 0.08, 'n': 941, 'max_force_n': 6.9, 't_exec': 23.56, 'rate_hz': 39.9, 'final_err_deg': 0.001}
+[00:27:15] plan 08_ready: T=10.0s check ok=True tip>0.143 vmax=14.7deg/s lin=0.056m/s
+[00:27:25] exec 08_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 10.0, 'max_dev_deg': 0.078, 'max_dev_mm': 0.19, 'n': 401, 'max_force_n': 5.3, 't_exec': 10.07, 'rate_hz': 39.8, 'final_err_deg': 0.015}
+[00:27:26] plan 09_ready: T=0.5s check ok=True tip>0.213 vmax=0.1deg/s lin=0.000m/s
+[00:27:26] exec 09_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.004, 'max_dev_mm': 0.01, 'n': 20, 'max_force_n': 0.3, 't_exec': 0.55, 'rate_hz': 36.4, 'final_err_deg': 0.001}
+[00:27:29] plan 10_home_after_back: T=11.8s check ok=True tip>0.197 vmax=18.4deg/s lin=0.053m/s
+[00:27:41] exec 10_home_after_back: {'segment': 'home_after_back', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.125, 'max_dev_mm': 0.36, 'n': 473, 'max_force_n': 8.2, 't_exec': 11.86, 'rate_hz': 39.9, 'final_err_deg': 0.014}
+[00:27:41] perceive after_back: {'tag': 'after_back', 'table_z': -0.0154, 'front_top': 0.0697, 'blobs': 4, 'drawer_blobs': [], 'protr': 0.0867, 'front_pts': 1950, 'face_pts': 471, 'inside_pts': 0, 'out': {'t': -0.0851, 'h_top': 0.0745, 'h_bot': 0.0269, 'n': 618}}
+[00:27:41] == phase: extract
+[00:27:41] DECISION: front wall at n-OFF=-0.081 t=-0.085 top 0.074: top-down grasp, jaws along the normal
+[00:27:41] gripper -> 0.45 (open to straddle the front wall)
+[00:27:41] gripper reading 45.0
+[00:27:45] plan 11_above_front_wall: T=18.2s check ok=False tip>0.162 vmax=18.4deg/s lin=0.063m/s
+[00:27:45] STOP RECORD: {'kind': 'failed check', 'why': "model check failed for 11_above_front_wall: {'joint_limit_violations': 0, 'max_joint_speed': 18.39999587162424, 'joint_speed_ok': True, 'keep_in_violations': 149, 'min_tip_above_table': 0.16169065489466056, 'min_body_above_table': 0.230808392879568, 'min_link_z': 0.2835023514599675, 'max_lin_speed':", 'step': 'extract', 'segment': 'home_after_back', 'progress': 1.0, 't': 11.81, 'q_meas': [-0.0, 15.0, -130.0, -0.0, 55.01, 90.01], 'q_plan': [0.0, 15.0, -130.0, 0.0, 55.0, 90.0], 'tool_meas': [0.5791, 0.0048, 0.4273, 89.9577, 0.5627, 90.4587], 'tool_plan_xyz': [0.5792, 0.0048, 0.4272], 'dev_deg': 0.01, 'dev_mm': 0.0, 'q_now': [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], 'gripper': 45.0}
+[00:27:45] == phase: return_home
+[00:27:45] return plan ok=True: [('return_home', True)]
+[00:27:45] plan 12_return_home: T=0.5s check ok=True tip>0.432 vmax=2.2deg/s lin=0.011m/s
+[00:27:46] exec 12_return_home: {'segment': 'return_home', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.028, 'max_dev_mm': 0.17, 'n': 21, 'max_force_n': 0.9, 't_exec': 0.57, 'rate_hz': 36.8, 'final_err_deg': 0.015}
+summary: /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_40/summary.json outcome: fail exit 2
+== attempt_40 finished: exit 2, outcome fail, 151 s
+== reset failed (1 in a row): drawer: not found
+== ROBOT: reset to drawer (0.35, -0.18)
+   $ /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_41/targets.json
+   starting in 5 s (Enter=now, n=refuse, s=skip)    starting in 4 s (Enter=now, n=refuse, s=skip)    starting in 3 s (Enter=now, n=refuse, s=skip)    starting in 2 s (Enter=now, n=refuse, s=skip)    starting in 1 s (Enter=now, n=refuse, s=skip)    go                                            
+== attempt_41 [ROBOT] $ /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_41/targets.json
+COMMIT fdc902dbc0b86b06d47bc1fbfd2a058fe96d8d97
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[00:28:07] session reset: attempt /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_41 dry=False record=None
+[00:28:07] arm state ARMSTATE_SERVOING_READY, joints [0.01, 15.0, 230.01, 0.0, 55.61, 90.0], gripper 45.0
+[00:28:07] model FK vs measured tool_pose at start: 0.2 mm
+[00:28:08] == phase: perceive
+[00:28:08] perceive start: {'tag': 'start', 'table_z': -0.0156, 'front_top': 0.0698, 'blobs': 2, 'drawer_blobs': [], 'protr': 0.085, 'front_pts': 1622, 'face_pts': 458, 'inside_pts': 0, 'out': {'t': -0.0846, 'h_top': 0.0725, 'h_bot': 0.0271, 'n': 603}}
+[00:28:08] DECISION: start state: out
+[00:28:11] plan 01_ready: T=11.9s check ok=True tip>0.201 vmax=18.4deg/s lin=0.053m/s
+[00:28:23] exec 01_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.86, 'max_dev_deg': 0.121, 'max_dev_mm': 0.45, 'n': 475, 'max_force_n': 5.1, 't_exec': 11.92, 'rate_hz': 39.8, 'final_err_deg': 0.013}
+[00:28:23] == phase: extract
+[00:28:23] DECISION: front wall at n-OFF=-0.079 t=-0.085 top 0.072: top-down grasp, jaws along the normal
+[00:28:23] gripper -> 0.45 (open to straddle the front wall)
+[00:28:23] gripper reading 45.0
+[00:28:24] plan 02_above_front_wall: T=4.2s check ok=True tip>0.163 vmax=11.1deg/s lin=0.089m/s
+[00:28:28] exec 02_above_front_wall: {'segment': 'above_front_wall', 'ok': True, 'reason': '', 'T_plan': 4.24, 'max_dev_deg': 0.032, 'max_dev_mm': 0.29, 'n': 170, 'max_force_n': 4.6, 't_exec': 4.3, 'rate_hz': 39.5, 'final_err_deg': 0.01}
+[00:28:29] plan 03_down_to_front_pre: T=1.9s check ok=True tip>0.101 vmax=9.8deg/s lin=0.062m/s
+[00:28:31] exec 03_down_to_front_pre: {'segment': 'down_to_front_pre', 'ok': True, 'reason': '', 'T_plan': 1.9, 'max_dev_deg': 0.077, 'max_dev_mm': 0.32, 'n': 77, 'max_force_n': 3.0, 't_exec': 1.96, 'rate_hz': 39.3, 'final_err_deg': 0.049}
+[00:28:32] plan 04_down_to_front_wall: T=5.1s check ok=True tip>0.051 vmax=2.8deg/s lin=0.018m/s
+[00:28:37] exec 04_down_to_front_wall: {'segment': 'down_to_front_wall', 'ok': True, 'reason': '', 'T_plan': 5.08, 'max_dev_deg': 0.023, 'max_dev_mm': 0.18, 'n': 204, 'max_force_n': 2.6, 't_exec': 5.13, 'rate_hz': 39.8, 'final_err_deg': 0.007}
+[00:28:37] gripper -> 1.00 (grasp the front wall)
+[00:28:38] gripper reading 88.6
+[00:28:42] plan 05_slide_out: T=20.5s check ok=True tip>0.040 vmax=3.3deg/s lin=0.018m/s
+[00:29:02] exec 05_slide_out: {'segment': 'slide_out', 'ok': True, 'reason': '', 'T_plan': 20.52, 'max_dev_deg': 0.024, 'max_dev_mm': 0.37, 'n': 821, 'max_force_n': 27.7, 't_exec': 20.57, 'rate_hz': 39.9, 'final_err_deg': 0.007}
+[00:29:03] plan 06_lift_drawer: T=2.8s check ok=True tip>0.043 vmax=18.1deg/s lin=0.072m/s
+[00:29:06] exec 06_lift_drawer: {'segment': 'lift_drawer', 'ok': True, 'reason': '', 'T_plan': 2.84, 'max_dev_deg': 0.107, 'max_dev_mm': 0.35, 'n': 115, 'max_force_n': 5.0, 't_exec': 2.9, 'rate_hz': 39.7, 'final_err_deg': 0.066}
+[00:29:06] == phase: place
+[00:29:06] DECISION: place: pull known, turn -18 deg, pull wall toward -176 deg (robot side, normal 22 + -18), grasp point [0.31, -0.152], tool 0.103 above table
+[00:29:07] plan 07_above_target: T=4.0s check ok=True tip>0.152 vmax=13.7deg/s lin=0.084m/s
+[00:29:11] exec 07_above_target: {'segment': 'above_target', 'ok': True, 'reason': '', 'T_plan': 3.96, 'max_dev_deg': 0.035, 'max_dev_mm': 0.2, 'n': 160, 'max_force_n': 2.3, 't_exec': 4.03, 'rate_hz': 39.7, 'final_err_deg': 0.015}
+[00:29:11] plan 08_down_to_place_pre: T=1.7s check ok=True tip>0.104 vmax=10.6deg/s lin=0.054m/s
+[00:29:13] exec 08_down_to_place_pre: {'segment': 'down_to_place_pre', 'ok': True, 'reason': '', 'T_plan': 1.66, 'max_dev_deg': 0.084, 'max_dev_mm': 0.32, 'n': 66, 'max_force_n': 4.4, 't_exec': 1.71, 'rate_hz': 38.6, 'final_err_deg': 0.057}
+[00:29:14] plan 09_place_down: T=5.1s check ok=True tip>0.054 vmax=3.6deg/s lin=0.018m/s
+[00:29:19] exec 09_place_down: {'segment': 'place_down', 'ok': True, 'reason': '', 'T_plan': 5.09, 'max_dev_deg': 0.02, 'max_dev_mm': 0.18, 'n': 204, 'max_force_n': 2.3, 't_exec': 5.14, 'rate_hz': 39.7, 'final_err_deg': 0.009}
+[00:29:19] gripper -> 0.40 (release the drawer)
+[00:29:20] gripper reading 39.7
+[00:29:21] plan 10_up_from_drawer: T=5.1s check ok=True tip>0.066 vmax=3.6deg/s lin=0.018m/s
+[00:29:26] exec 10_up_from_drawer: {'segment': 'up_from_drawer', 'ok': True, 'reason': '', 'T_plan': 5.12, 'max_dev_deg': 0.028, 'max_dev_mm': 0.12, 'n': 205, 'max_force_n': 4.5, 't_exec': 5.18, 'rate_hz': 39.6, 'final_err_deg': 0.009}
+[00:29:27] plan 11_clear_up: T=1.7s check ok=True tip>0.116 vmax=10.5deg/s lin=0.054m/s
+[00:29:28] exec 11_clear_up: {'segment': 'clear_up', 'ok': True, 'reason': '', 'T_plan': 1.66, 'max_dev_deg': 0.076, 'max_dev_mm': 0.29, 'n': 67, 'max_force_n': 2.8, 't_exec': 1.72, 'rate_hz': 39.0, 'final_err_deg': 0.055}
+[00:29:28] == phase: check0
+[00:29:29] plan 12_ready: T=2.6s check ok=True tip>0.164 vmax=12.0deg/s lin=0.083m/s
+[00:29:31] exec 12_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 2.62, 'max_dev_deg': 0.067, 'max_dev_mm': 0.27, 'n': 105, 'max_force_n': 3.6, 't_exec': 2.67, 'rate_hz': 39.3, 'final_err_deg': 0.048}
+[00:29:34] plan 13_home_for_check: T=11.8s check ok=True tip>0.198 vmax=18.4deg/s lin=0.053m/s
+[00:29:45] exec 13_home_for_check: {'segment': 'home_for_check', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.09, 'max_dev_mm': 0.33, 'n': 473, 'max_force_n': 6.6, 't_exec': 11.86, 'rate_hz': 39.9, 'final_err_deg': 0.013}
+[00:29:46] perceive check0: {'tag': 'check0', 'table_z': -0.0155, 'front_top': 0.0988, 'blobs': 4, 'drawer_blobs': [{'xy': [0.3381, -0.1637], 'obb_c': [0.3639, -0.1539], 'L': 0.159, 'W': 0.135, 'yaw': 5.5, 'h': 0.0695, 'n': 5962}], 'protr': -0.0026, 'front_pts': 321, 'face_pts': 199, 'inside_pts': 48, 'out': None}
+[00:29:46] == phase: verify
+[00:29:48] plan 14_ready: T=11.8s check ok=True tip>0.198 vmax=18.4deg/s lin=0.053m/s
+[00:30:00] exec 14_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.096, 'max_dev_mm': 0.38, 'n': 472, 'max_force_n': 5.6, 't_exec': 11.85, 'rate_hz': 39.8, 'final_err_deg': 0.014}
+[00:30:02] plan 15_home_final: T=11.8s check ok=True tip>0.198 vmax=18.4deg/s lin=0.053m/s
+[00:30:14] exec 15_home_final: {'segment': 'home_final', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.112, 'max_dev_mm': 0.36, 'n': 473, 'max_force_n': 7.9, 't_exec': 11.87, 'rate_hz': 39.8, 'final_err_deg': 0.014}
+[00:30:15] perceive final: {'tag': 'final', 'table_z': -0.0167, 'front_top': 0.0987, 'blobs': 7, 'drawer_blobs': [{'xy': [0.3377, -0.1628], 'obb_c': [0.3642, -0.1553], 'L': 0.163, 'W': 0.147, 'yaw': 85.9, 'h': 0.07, 'n': 6164}], 'protr': -0.0013, 'front_pts': 332, 'face_pts': 217, 'inside_pts': 41, 'out': None}
+[00:30:15] pull detected toward [-0.07, -1.0] (293 grey of 5834 drawer pixels, r -0.47 +0.16)
+[00:30:15] CLAIM fail
+[00:30:15] == phase: return_home
+[00:30:15] return plan ok=True: [('return_home', True)]
+[00:30:15] plan 16_return_home: T=0.5s check ok=True tip>0.432 vmax=2.2deg/s lin=0.012m/s
+[00:30:15] exec 16_return_home: {'segment': 'return_home', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.028, 'max_dev_mm': 0.18, 'n': 21, 'max_force_n': 1.1, 't_exec': 0.56, 'rate_hz': 37.5, 'final_err_deg': 0.018}
+summary: /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_41/summary.json outcome: fail exit 2
+== attempt_41 finished: exit 2, outcome fail, 140 s
+== reset failed (2 in a row): orientation not confirmed by the vision check: The drawer is out of the cabinet and upright with its open side up on the table, but none of the visible outer walls shows the metal pull, so the pull is probably on a wall facing away from the robot base.
+== reset program failed 2 times in a row; asking the agent to repair it
+== operator note delivered to the reset agent

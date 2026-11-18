@@ -1,0 +1,154 @@
+{
+ "reset": 8,
+ "t": "2026-11-18T00:27:59",
+ "targets": {
+  "drawer": [
+   0.348,
+   -0.178
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.05,
+  "objects": {
+   "drawer": {
+    "target": [
+     0.348,
+     -0.178
+    ],
+    "found": null,
+    "dist": null,
+    "ok": false
+   }
+  },
+  "extra_blobs": 7,
+  "reason": "drawer: not found"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.2837,
+    0.1644
+   ],
+   "z_top": -0.0018,
+   "height": 0.0136,
+   "extent": [
+    0.0394,
+    0.0152
+   ],
+   "n": 75,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.5056,
+    -0.0759
+   ],
+   "z_top": -0.0039,
+   "height": 0.0115,
+   "extent": [
+    0.0248,
+    0.0159
+   ],
+   "n": 69,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.5674,
+    0.1206
+   ],
+   "z_top": 0.25,
+   "height": 0.2654,
+   "extent": [
+    0.1943,
+    0.1462
+   ],
+   "n": 14226,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0209,
+   "outer_r": 0.0613
+  },
+  {
+   "xy": [
+    0.7159,
+    0.111
+   ],
+   "z_top": -0.0022,
+   "height": 0.0132,
+   "extent": [
+    0.0239,
+    0.0177
+   ],
+   "n": 61,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.8014,
+    0.113
+   ],
+   "z_top": 0.0003,
+   "height": 0.0157,
+   "extent": [
+    0.0337,
+    0.0185
+   ],
+   "n": 86,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.8182,
+    0.1869
+   ],
+   "z_top": 0.0038,
+   "height": 0.0192,
+   "extent": [
+    0.0509,
+    0.0278
+   ],
+   "n": 163,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0125,
+   "outer_r": 0.0197
+  },
+  {
+   "xy": [
+    0.8946,
+    0.175
+   ],
+   "z_top": 0.001,
+   "height": 0.0165,
+   "extent": [
+    0.0615,
+    0.0375
+   ],
+   "n": 201,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0095,
+   "outer_r": 0.0223
+  }
+ ],
+ "claimed": null,
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_40",
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration": 151.3
+}

@@ -1,0 +1,11 @@
+{
+ "command": "python escape2.py",
+ "moves_robot": false,
+ "record_dir": null,
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration_s": 7.2,
+ "stopped_by": null,
+ "started": 1794979020.7811787,
+ "ended": 1794979027.9466653
+}

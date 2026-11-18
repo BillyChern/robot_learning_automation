@@ -71,3 +71,111 @@ def decide(scores_list, min_grey=0.08, ratio=2.0):
     if top[1] >= min_grey and top[1] >= ratio * max(second, 0.01):
         return top[0], best
     return None, best
+
+
+def wood_hull(img, uv0, rad=260):
+    """Filled convex hull of the wood (orange, saturated) component nearest to pixel uv0 (the drawer), or None."""
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    H, S, V = hsv[..., 0], hsv[..., 1], hsv[..., 2]
+    wood = ((H <= 25) | (H >= 170)) & (S > 90) & (V > 40)
+    m = np.zeros(img.shape[:2], np.uint8)
+    u0, v0 = int(uv0[0]), int(uv0[1])
+    y0, y1, x0, x1 = max(0, v0 - rad), min(img.shape[0], v0 + rad), max(0, u0 - rad), min(img.shape[1], u0 + rad)
+    m[y0:y1, x0:x1] = wood[y0:y1, x0:x1].astype(np.uint8)
+    m = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    n, lab, stats, cent = cv2.connectedComponentsWithStats(m)
+    if n <= 1:
+        return None
+    big = [i for i in range(1, n) if stats[i, cv2.CC_STAT_AREA] > 300]
+    if not big:
+        return None
+    # the drawer: the big component nearest the expected centre (not the cabinet beside it)
+    i0 = min(big, key=lambda i: np.hypot(*(cent[i] - [u0, v0])))
+    pts = np.argwhere(lab == i0)[:, ::-1]
+    if len(pts) < 50:
+        return None
+    hull = cv2.convexHull(pts.astype(np.int32))
+    out = np.zeros(img.shape[:2], np.uint8)
+    cv2.fillConvexPoly(out, hull, 1)
+    return out.astype(bool)
+
+
+def score_faces2(img, faces, z_bottom, uv_center, exclude=(), h_band=(0.012, 0.062), margin=0.8):
+    """Like score_faces, but only samples inside the drawer's wood hull count (background excluded); grey = low
+    saturation and not dark (metal frame / knob, not the black gripper). A face needs >= 25 % of its samples on the
+    drawer to be scored."""
+    K, dist, Tbs, Tsb = side_cam()
+    cam = Tbs[:3, 3]
+    hull = wood_hull(img, uv_center)
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    out = {}
+    for k, (fc, nrm, half) in faces.items():
+        if k in exclude:
+            continue
+        tang = np.array([-nrm[1], nrm[0]])
+        mid = np.r_[fc, z_bottom + np.mean(h_band)]
+        v = cam - mid
+        vis = float(np.r_[nrm, 0.0] @ v / np.linalg.norm(v))
+        P = np.array([np.r_[fc + 0.002 * nrm + a * tang, z_bottom + hh]
+                      for a in np.linspace(-margin * half, margin * half, 31) for hh in np.linspace(h_band[0], h_band[1], 12)])
+        uv = calib.project(calib.apply(Tsb, P), K, dist).astype(int)
+        ok = (uv[:, 0] >= 0) & (uv[:, 0] < img.shape[1]) & (uv[:, 1] >= 0) & (uv[:, 1] < img.shape[0])
+        if vis < 0.15 or ok.sum() < 20 or hull is None:
+            out[k] = dict(vis=round(vis, 2)); continue
+        uv = uv[ok]
+        on = hull[uv[:, 1], uv[:, 0]]
+        if on.mean() < 0.25:
+            out[k] = dict(vis=round(vis, 2), on=round(float(on.mean()), 2)); continue
+        px = hsv[uv[on, 1], uv[on, 0]].astype(float)
+        grey = (px[:, 1] < 70) & (px[:, 2] > 70)
+        out[k] = dict(vis=round(vis, 2), on=round(float(on.mean()), 2), grey=round(float(grey.mean()), 3),
+                      s_med=round(float(np.median(px[:, 1])), 1))
+    return out
+
+
+GREY_S = 100                 # wood S 150-210; the frame in shadow (attempt 14 rot90) reaches ~100
+
+
+def detect_pull(img, uv_center):
+    """The pull (grey metal frame + knob) on the drawer in the side image: the largest grey (S < 70, V > 70)
+    component inside the wood hull, in its lower 60 % (the gripper sits at the top). Side: left/right of the hull's
+    lowest point (the vertical edge nearest the camera). Returns dict(found, ...)."""
+    hull = wood_hull(img, uv_center)
+    if hull is None:
+        return dict(found=False, why="no wood")
+    ys, xs = np.nonzero(hull)
+    top, bot = ys.min(), ys.max()
+    corner_u = float(np.median(xs[ys >= bot - 3]))
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    grey = (hsv[..., 1] < GREY_S) & (hsv[..., 2] > 45) & hull
+    grey[: int(top + 0.4 * (bot - top))] = False
+    m = cv2.morphologyEx(grey.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    n, lab, stats, cent = cv2.connectedComponentsWithStats(m)
+    if n <= 1:
+        return dict(found=False, corner_u=corner_u, why="no grey")
+    i = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+    area = int(stats[i, cv2.CC_STAT_AREA]); u, v = cent[i]
+    hull_area = int(hull.sum())
+    found = area >= max(150, 0.006 * hull_area)
+    return dict(found=bool(found), u=round(float(u), 1), v=round(float(v), 1), area=area, hull_area=hull_area,
+                corner_u=round(corner_u, 1), side="left" if u < corner_u else "right")
+
+
+def visible_lr(faces, exclude=()):
+    """(left face, right face) of the two walls facing the side camera, by the image u of their centres."""
+    K, dist, Tbs, Tsb = side_cam()
+    cam = Tbs[:3, 3]
+    vis = []
+    for k, (fc, nrm, half) in faces.items():
+        v = cam[:2] - fc
+        c = float(nrm @ v / np.linalg.norm(v))
+        u = calib.project(calib.apply(Tsb, np.r_[fc, 0.0][None]), K, dist)[0, 0]
+        vis.append((c, u, k))
+    vis.sort(reverse=True)
+    two = sorted(vis[:2], key=lambda x: x[1])
+    return two[0][2], two[1][2]
+
+
+def uv_of(P_base):
+    K, dist, Tbs, Tsb = side_cam()
+    return calib.project(calib.apply(Tsb, np.atleast_2d(P_base)), K, dist).mean(0)

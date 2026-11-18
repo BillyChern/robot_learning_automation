@@ -1,0 +1,19 @@
+COMMIT 161e0aefc1b4c41c78cdc2402a4dcb679989c27e (DIRTY)
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[00:20:47] session escape2: attempt /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/real_5 dry=False record=None
+[00:20:47] arm state ARMSTATE_SERVOING_READY, joints [357.21, 39.91, 229.69, 24.46, 31.03, 82.5], gripper 99.1
+[00:20:47] model FK vs measured tool_pose at start: 1.2 mm
+[00:20:48] == phase: escape
+[00:20:48] DECISION: tool at [0.495, 0.086, 0.069], -31 mm behind the face: back 12 cm, up, Home
+[00:20:48] plan 01_m0_b3: T=3.0s check ok=True tip>0.056 vmax=3.2deg/s lin=0.018m/s
+[00:20:52] exec 01_m0_b3: {'segment': 'm0_b3', 'ok': True, 'reason': '', 'T_plan': 2.99, 'max_dev_deg': 0.025, 'max_dev_mm': 0.2, 'n': 121, 'max_force_n': 53.7, 't_exec': 3.06, 'rate_hz': 39.5, 'final_err_deg': 0.01}
+[00:21:08] plan 02_m1_z25: T=68.8s check ok=True tip>0.056 vmax=3.8deg/s lin=0.005m/s
+[00:22:16] exec 02_m1_z25: {'segment': 'm1_z25', 'ok': True, 'reason': '', 'T_plan': 68.81, 'max_dev_deg': 0.027, 'max_dev_mm': 0.12, 'n': 2753, 'max_force_n': 7.8, 't_exec': 68.87, 'rate_hz': 40.0, 'final_err_deg': 0.013}
+[00:22:19] plan 03_m2_b10: T=10.2s check ok=True tip>0.237 vmax=2.7deg/s lin=0.018m/s
+[00:22:29] exec 03_m2_b10: {'segment': 'm2_b10', 'ok': True, 'reason': '', 'T_plan': 10.21, 'max_dev_deg': 0.022, 'max_dev_mm': 0.12, 'n': 409, 'max_force_n': 4.3, 't_exec': 10.26, 'rate_hz': 39.9, 'final_err_deg': 0.003}
+[00:22:38] plan 04_m3_z40: T=42.0s check ok=True tip>0.237 vmax=2.5deg/s lin=0.007m/s
+[00:23:20] exec 04_m3_z40: {'segment': 'm3_z40', 'ok': True, 'reason': '', 'T_plan': 41.97, 'max_dev_deg': 0.022, 'max_dev_mm': 0.11, 'n': 1680, 'max_force_n': 9.8, 't_exec': 42.03, 'rate_hz': 40.0, 'final_err_deg': 0.015}
+[00:23:33] plan 05_to_home: T=64.4s check ok=True tip>0.383 vmax=4.4deg/s lin=0.012m/s
+[00:24:37] exec 05_to_home: {'segment': 'to_home', 'ok': True, 'reason': '', 'T_plan': 64.45, 'max_dev_deg': 0.038, 'max_dev_mm': 0.11, 'n': 2578, 'max_force_n': 11.9, 't_exec': 64.5, 'rate_hz': 40.0, 'final_err_deg': 0.009}
+[00:24:37] CLAIM success
+summary: /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/real_5/summary.json outcome: success exit 0

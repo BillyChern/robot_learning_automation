@@ -327,17 +327,21 @@ class Pipeline:
         img = Path(attempt_dir) / "orientation_side.jpg"
         try:
             cam = _mod("rlpj.robot.cams").SideCam()
-            try:
-                color = None
-                for _ in range(40):
-                    color = cam.latest()[0]
-                    if color is not None:
-                        break
-                    time.sleep(0.2)
+            try:                                       # frames for 2.5 s after the first: auto-exposure settles
+                color, t_first, t0 = None, None, time.time()
+                while time.time() - t0 < 10:
+                    c = cam.latest()[0]
+                    if c is not None:
+                        color, t_first = c, t_first or time.time()
+                        if time.time() - t_first > 2.5:
+                            break
+                    time.sleep(0.1)
             finally:
                 cam.close()
             if color is None:
                 return False, "orientation: no side image"
+            if float(color.mean()) < 40:
+                return False, f"orientation: side image too dark (mean {float(color.mean()):.0f})"
             import cv2
             cv2.imwrite(str(img), color)
             res = _mod("rlpj.success.vlm_judge").judge({"after": img}, dict(goal=self.task.get("reset", ""), success=text))

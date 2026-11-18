@@ -1,0 +1,147 @@
+{
+ "reset": 9,
+ "t": "2026-11-18T00:30:37",
+ "targets": {
+  "drawer": [
+   0.348,
+   -0.178
+  ]
+ },
+ "ok": false,
+ "report": "orientation not confirmed by the vision check: The drawer is out of the cabinet and upright with its open side up on the table, but none of the visible outer walls shows the metal pull, so the pull is probably on a wall facing away from the robot base.",
+ "measured": [
+  {
+   "xy": [
+    0.2864,
+    0.1702
+   ],
+   "z_top": -0.001,
+   "height": 0.0144,
+   "extent": [
+    0.0349,
+    0.0247
+   ],
+   "n": 98,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0072,
+   "outer_r": 0.0168
+  },
+  {
+   "xy": [
+    0.3549,
+    -0.1468
+   ],
+   "z_top": 0.0542,
+   "height": 0.0696,
+   "extent": [
+    0.1286,
+    0.1059
+   ],
+   "n": 5478,
+   "hollow": true,
+   "hole_xy": [
+    0.3731,
+    -0.1827
+   ],
+   "inner_r": 0.0343,
+   "outer_r": 0.0555
+  },
+  {
+   "xy": [
+    0.4972,
+    0.0055
+   ],
+   "z_top": -0.0033,
+   "height": 0.0121,
+   "extent": [
+    0.024,
+    0.0251
+   ],
+   "n": 104,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0049,
+   "outer_r": 0.0124
+  },
+  {
+   "xy": [
+    0.567,
+    0.1193
+   ],
+   "z_top": 0.2507,
+   "height": 0.2661,
+   "extent": [
+    0.1287,
+    0.1296
+   ],
+   "n": 11965,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0215,
+   "outer_r": 0.0617
+  },
+  {
+   "xy": [
+    0.7323,
+    0.1838
+   ],
+   "z_top": 0.0005,
+   "height": 0.0159,
+   "extent": [
+    0.0362,
+    0.035
+   ],
+   "n": 67,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.8514,
+    0.1872
+   ],
+   "z_top": 0.0005,
+   "height": 0.0159,
+   "extent": [
+    0.0275,
+    0.0152
+   ],
+   "n": 66,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.9302,
+    0.1119
+   ],
+   "z_top": -0.0007,
+   "height": 0.0147,
+   "extent": [
+    0.0538,
+    0.0457
+   ],
+   "n": 227,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0086,
+   "outer_r": 0.0188
+  }
+ ],
+ "claimed": {
+  "drawer": [
+   0.3377,
+   -0.1628
+  ]
+ },
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_41",
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration": 140.3
+}

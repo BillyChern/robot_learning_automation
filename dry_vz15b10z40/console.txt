@@ -1,0 +1,16 @@
+COMMIT 161e0aefc1b4c41c78cdc2402a4dcb679989c27e (DIRTY)
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[00:18:58] session escape2: attempt /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/dry_vz15b10z40 dry=True record=None
+[00:18:58] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_SERVOING_MANUALLY_CONTROLLED)
+[00:19:03] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_SERVOING_MANUALLY_CONTROLLED)
+[00:19:04] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_SERVOING_MANUALLY_CONTROLLED)
+[00:19:04] arm state ARMSTATE_SERVOING_READY, joints [357.21, 39.91, 229.69, 24.46, 31.03, 82.5], gripper 99.1
+[00:19:04] model FK vs measured tool_pose at start: 1.2 mm
+[00:19:04] == phase: escape
+[00:19:04] DECISION: tool at [0.495, 0.086, 0.069], -31 mm behind the face: back 12 cm, up, Home
+[00:19:08] plan 01_m0_z15: T=15.0s check ok=True tip>0.057 vmax=2.9deg/s lin=0.010m/s
+[00:19:10] plan 02_m1_b10: T=10.2s check ok=True tip>0.137 vmax=3.0deg/s lin=0.018m/s
+[00:19:28] plan 03_m2_z40: T=89.6s check ok=True tip>0.137 vmax=4.2deg/s lin=0.005m/s
+[00:19:42] plan 04_to_home: T=66.9s check ok=True tip>0.379 vmax=4.3deg/s lin=0.011m/s
+[00:19:42] CLAIM success
+summary: /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/dry_vz15b10z40/summary.json outcome: success exit 0

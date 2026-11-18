@@ -1,0 +1,10 @@
+COMMIT 161e0aefc1b4c41c78cdc2402a4dcb679989c27e (DIRTY)
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[00:17:01] session escape2: attempt /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/dry_6 dry=True record=None
+[00:17:01] arm state ARMSTATE_SERVOING_READY, joints [357.21, 39.91, 229.69, 24.46, 31.03, 82.5], gripper 99.1
+[00:17:01] model FK vs measured tool_pose at start: 1.2 mm
+[00:17:02] == phase: escape
+[00:17:02] DECISION: tool at [0.495, 0.086, 0.069], -31 mm behind the face: back 12 cm, up, Home
+[00:17:05] plan 01_back: T=12.2s check ok=False tip>0.056 vmax=3.1deg/s lin=0.018m/s
+[00:17:05] STOP RECORD: {'kind': 'failed check', 'why': "model check failed for 01_back: {'joint_limit_violations': 468, 'max_joint_speed': 3.0795760119758597, 'joint_speed_ok': True, 'keep_in_violations': 0, 'min_tip_above_table': 0.055538040577517184, 'min_body_above_table': 0.08501969879163643, 'min_link_z': 0.20494070055019672, 'max_lin_speed': 0.0183", 'step': 'escape', 'segment': None, 'q_now': [357.21, 39.91, 229.69, 24.46, 31.03, 82.5], 'gripper': 99.1}
+summary: /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/dry_6/summary.json outcome: fail exit 2

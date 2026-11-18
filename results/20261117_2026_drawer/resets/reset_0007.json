@@ -1,0 +1,145 @@
+{
+ "reset": 7,
+ "t": "2026-11-18T00:09:10",
+ "targets": {
+  "drawer": [
+   0.429,
+   -0.085
+  ]
+ },
+ "ok": true,
+ "report": {
+  "tolerance": 0.05,
+  "objects": {
+   "drawer": {
+    "target": [
+     0.429,
+     -0.085
+    ],
+    "found": [
+     0.4415,
+     -0.0782
+    ],
+    "dist": 0.0142,
+    "ok": true
+   }
+  },
+  "extra_blobs": 5,
+  "reason": "layout ok"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.2737,
+    0.1504
+   ],
+   "z_top": -0.004,
+   "height": 0.0116,
+   "extent": [
+    0.0258,
+    0.0355
+   ],
+   "n": 70,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.4415,
+    -0.0782
+   ],
+   "z_top": 0.052,
+   "height": 0.0676,
+   "extent": [
+    0.1503,
+    0.1454
+   ],
+   "n": 5128,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0114,
+   "outer_r": 0.0824
+  },
+  {
+   "xy": [
+    0.5673,
+    0.1205
+   ],
+   "z_top": 0.249,
+   "height": 0.2645,
+   "extent": [
+    0.1312,
+    0.1294
+   ],
+   "n": 12021,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0225,
+   "outer_r": 0.0573
+  },
+  {
+   "xy": [
+    0.6668,
+    0.0252
+   ],
+   "z_top": -0.0036,
+   "height": 0.012,
+   "extent": [
+    0.0281,
+    0.0232
+   ],
+   "n": 109,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0072,
+   "outer_r": 0.0148
+  },
+  {
+   "xy": [
+    0.7733,
+    0.1331
+   ],
+   "z_top": 0.0003,
+   "height": 0.0158,
+   "extent": [
+    0.0248,
+    0.023
+   ],
+   "n": 78,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.8028,
+    -0.0081
+   ],
+   "z_top": -0.0024,
+   "height": 0.0132,
+   "extent": [
+    0.0392,
+    0.0405
+   ],
+   "n": 125,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": {
+  "drawer": [
+   0.436,
+   -0.0833
+  ]
+ },
+ "claimed_outcome": "success",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_39",
+ "exit_code": 0,
+ "outcome": "success",
+ "duration": 142.4
+}

@@ -65,3 +65,19 @@ action inside the keep-out/kinematic envelope (tools/offline_test.py).
   steps; push: 5 steps to tip n-OFF -0.0125, then 50.5 N (drawer at its stop or jammed); the 6 cm retreat tripped at
   51.1 N because it released the preload inside one segment (the stop watches the change). -> unload(): 1.5 mm slow
   back-off lines after every force stop (insert and push) before anything else; recover.py handles a tilted pusher.
+- ORIENTATION (user 23:50): the pull wall (grey metal label frame + tab) must face out. Scripted step `orient()`
+  (programs/pullface.py): grey-pixel share (HSV S<70) on each wall's outer face in the side image on the table
+  (A = grasped robot-facing wall); if not conclusive (top >= 0.08 and >= 2x runner-up), the held drawer is turned
+  180/90/270 deg at 0.20 m and scored again; if the pull is B/C/D the drawer is put down turned so the pull faces the
+  robot and re-grasped. Thresholds are guesses until the first real views (crops orient_*.jpg). Terminal reward:
+  +5 for the check only with a known orientation (A or turned), +2 when unknown.
+- attempt 11: orient_probe.py found no drawer (no reset before non-episode programs; drawer still in the slot).
+- extract.py removed (operator: resets are the reset agent's job; every real run now starts with a reset that also orients the drawer). orient() stays as a check/fallback.
+- attempt 14 (real, 21b7505): grey-share face scoring failed (background on mis-projected faces: D 0.99 on the
+  table). Crops show the pull clearly (frame + knob, knob ~4 cm high, sticks out ~1.5 cm) on wall B. -> pullface.
+  detect_pull: grey (S<100, V>45) component inside the drawer's wood hull (lower 60 %), side left/right of the hull's
+  lowest point; visible_lr maps left/right to walls. Validated offline on attempt 14's four crops (tools: /tmp script,
+  reconstructed crop origins): table none, rot180 -> B, rot90 -> B, rot270 none. Views stop at the first detection.
+  Push: insertion ok (15 steps); push reached tip +0.0045 (45 N at step 5); the retreat stopped at 50.5 N: the
+  fingertips at h 0.05 hooked the knob. -> push height 0.072 (range 0.062-0.085, above the knob); retreat unloads
+  and retries once after a force stop.

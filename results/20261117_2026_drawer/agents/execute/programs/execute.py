@@ -20,6 +20,7 @@ from rlpj.robot.plan import SLOW, tool_down_T
 from rlpj.robot.session import Abort, RobotSession
 from rlpj.success import checks
 import rlcommon as rc
+import pullface as PF
 
 TASK = config.load("drawer_rl")["task"]
 CAB = TASK["fixtures"]["cabinet"]
@@ -44,10 +45,11 @@ F_SOFT = 20.0               # N: force penalty above this (sliding the drawer ta
 F_STOP = 40.0               # N: only a value for the observation after a stop (no force cap: user, 22:30)
 RELEASE = 0.75               # gripper after the insertion: ~21 mm, inner finger ~1.7 cm in front of the cabinet face
                              # (attempt 5: 0.40 put it under the rail above the slot, the lift caught it: 99.6 N, cabinet moved 6 cm)
+L_FACE = 0.13                # drawer outer size for the wall geometry of the pull detection (real ~0.13)
 MAX_FORCE = 3                # own force stops per insertion before the stage ends
 L_MIN = 0.155                # drawer depth floor: the side camera sees only part of the rim (dry run 1: 0.093;
                              # reset agent: obb 0.154 x 0.14-0.15), a short estimate would put its back into the cabinet
-PUSH_TILT, PUSH_H, PUSH_ZT = 40.0, 0.050, 0.047      # tilt from vertical, fingertip height, tip along tool z (closed)
+PUSH_TILT, PUSH_H, PUSH_ZT = 40.0, 0.072, 0.047      # tilt from vertical, fingertip height, tip along tool z (closed)
 PUSH_NMAX = OFF + 0.020      # model fingertip limit
 PUSH_HI = 0.14
 TIP_MARGIN_PUSH = 0.004
@@ -59,6 +61,11 @@ def unit(v):
 
 def ang(v):
     return float(np.degrees(np.arctan2(v[1], v[0])))
+
+
+def rot2(v, deg):
+    a = np.radians(deg); c, s_ = np.cos(a), np.sin(a)
+    return np.array([c * v[0] - s_ * v[1], s_ * v[0] + c * v[1]])
 
 
 def wrapd(a):
@@ -96,6 +103,7 @@ class Episode:
         self.trans = []          # dicts obs, act, rew (next_obs/done filled at the end)
         self.events = []
         self.ret = 0.0
+        self.orient_state = "unknown"
 
     # ------------------------------------------------------------ motion helpers (reset agent's)
     def log(self, m):
@@ -318,7 +326,7 @@ class Episode:
             o = self.obs(1, (n - PUSH_NMAX) / 0.1, t - t0, h - PUSH_H, 0.0, ma, mb, np.array([f @ N3, f @ T3, f @ Z3]), peak, k, K_PUSH, 0)
             a, info = self.policy(o)
             adv, ddt, ddz = 0.0075 * (1 + a[0]), 0.003 * a[1], 0.003 * a[2]
-            tgt = (min(n + adv, PUSH_NMAX), float(np.clip(t + ddt, t0 - 0.02, t0 + 0.02)), float(np.clip(h + ddz, 0.035, 0.07)))
+            tgt = (min(n + adv, PUSH_NMAX), float(np.clip(t + ddt, t0 - 0.02, t0 + 0.02)), float(np.clip(h + ddz, 0.062, 0.085)))
             status, res, scale = "refused", {}, 1.0
             for _ in range(3):
                 nn = n + scale * (tgt[0] - n); tt_ = t + scale * (tgt[1] - t); hh = h + scale * (tgt[2] - h)
@@ -388,7 +396,15 @@ class Episode:
         for name, chain in cands:
             if self.chain_ok(chain):
                 self.s.decide(f"push retreat: back to n-OFF {nb - OFF:+.3f}, then {name}")
-                self.line("push_back", chain[0], "slow", tip_margin=TIP_MARGIN_PUSH)
+                for attempt in range(2):
+                    try:
+                        self.line("push_back", chain[0], "slow", tip_margin=TIP_MARGIN_PUSH)
+                        break
+                    except Abort as e:
+                        # attempt 14: the retreat caught something (50.5 N): unload, retry once from where it stopped
+                        self.log(f"push retreat stopped: {str(e)[:120]}")
+                        self.s.require(attempt == 0 and "contact force" in str(e), f"push retreat failed: {str(e)[:120]}")
+                        self.unload(-N3, steps=3)
                 self.line("push_up", chain[1], "normal", tip_margin=TIP_MARGIN_PUSH)
                 return
         self.s.require(False, "no model-checked retreat from the push pose")
@@ -469,12 +485,13 @@ class Episode:
         ok, rep = checks.drawer_rl(before, after, TASK)
         slot = rep.get("slot", {})
         d_after = self.find_drawer(after, tz)
-        R = extra_terminal + (5.0 if ok is True else 0.0) + 2.0 * slot.get("flush", 0.0) - 2.0 * slot.get("front", 0.0) - (1.0 if d_after else 0.0)
+        orient = getattr(self, "orient_state", "unknown")
+        R = extra_terminal + (5.0 if ok is True and orient != "unknown" else 2.0 if ok is True else 0.0) + 2.0 * slot.get("flush", 0.0) - 2.0 * slot.get("front", 0.0) - (1.0 if d_after else 0.0)
         if self.trans:
             self.trans[-1]["rew"] += R
         self.ret += R if self.trans else 0.0
         self.save_transitions(ok, rep)
-        s.summary(verify=dict(check=ok, reason=rep.get("reason"), slot=slot, cabinet_moved_m=rep.get("cabinet_moved_m"),
+        s.summary(verify=dict(check=ok, orient=getattr(self, "orient_state", "unknown"), reason=rep.get("reason"), slot=slot, cabinet_moved_m=rep.get("cabinet_moved_m"),
                               drawer_on_table=bool(d_after), terminal_reward=round(R, 3)),
                   transitions=len(self.trans), **{"return": round(self.ret, 3)})
         if ok is not True:
@@ -497,6 +514,84 @@ class Episode:
                                                    attempt=self.s.A, t=time.time()))
         self.s.summary(transitions_file=os.path.relpath(p, rc.rl_dir()), transitions=len(self.trans), **{"return": round(self.ret, 3)})
 
+    def orient(self, d, img_table, held):
+        """Pull wall (grey metal label frame) must face out of the slot (user, 23:50). Score the walls in the side
+        image on the table (A = grasped, robot-facing wall) and, when that is not conclusive, with the held drawer
+        turned 180 (then 90, 270) deg at SAFE_H. If the pull is not A: put the drawer down turned so the pull faces
+        the robot, re-grasp the robot-facing wall. Returns the held dict for the carry."""
+        s = self.s
+        s.phase("orient")
+        e, yaw, d0 = held["e"], held["yaw"], held["d0"]
+        c_pick = e + d0 * (L_FACE / 2 - 0.006)
+        views, votes = [], {}
+
+        def look(img, ch, dn, zb, tag, exclude):
+            try:
+                uvc = PF.uv_of(np.r_[ch, zb + 0.04])
+                r = PF.detect_pull(img, uvc)
+                lr = PF.visible_lr(PF.faces_of(ch, dn, L_FACE, L_FACE))
+                face = (lr[0] if r.get("side") == "left" else lr[1]) if r.get("found") else None
+                if face in exclude:
+                    face = None
+                if face:
+                    votes[face] = votes.get(face, 0) + 1
+                views.append(dict(tag=tag, lr=lr, face=face, **{k: r.get(k) for k in ("found", "area", "side", "u", "corner_u")}))
+                cv2.imwrite(os.path.join(s.A, f"orient_{tag}.jpg"), PF.crop_around(img, np.r_[ch, zb + 0.04]))
+            except Exception as ex:
+                s.log(f"orient view {tag} failed: {ex}")
+
+        look(img_table, c_pick, d0, self.tz, "table", ())
+        turned = 0
+        for rot in (180, 90, 270):
+            if votes or s.dry:
+                break
+            self.joint_to(f"turn{rot}", tool_down_T(np.r_[e, self.tz + SAFE_H], yaw + rot))
+            turned = rot
+            time.sleep(0.6)
+            dn = rot2(d0, rot)
+            look(s.side.latest()[0], e + dn * (L_FACE / 2 - 0.006), dn, self.tz + SAFE_H - held["drop"], f"rot{rot}", ("A",))
+        pull = max(votes, key=votes.get) if votes else None
+        best = votes
+        info = dict(pull=pull, best=best, views=views, turned=turned)
+        s.summary(orient=info)
+        s.decide(f"orientation: pull wall {pull} (A = grasped; best grey {best})")
+        if pull in (None, "A"):
+            self.orient_state = "A" if pull == "A" else "unknown"
+            if turned:
+                self.joint_to("turn_back", tool_down_T(np.r_[e, self.tz + SAFE_H], yaw))
+            return held
+        # put the drawer down turned so that the pull faces the robot (-N), centre where it was
+        n_p = PF.faces_of(c_pick, d0, L_FACE, L_FACE)[pull][1]
+        phi = wrapd(ang(-N) - ang(n_p))
+        dnew = rot2(d0, phi)
+        xy = c_pick - dnew * (L_FACE / 2 - 0.006)
+        Tp = tool_down_T(np.r_[xy, held["Tg"][2, 3] + 0.008], yaw + phi)
+        Thi = Tp.copy(); Thi[2, 3] = self.tz + SAFE_H
+        Tpre = Tp.copy(); Tpre[2, 3] += 0.05
+        s.decide(f"turn the drawer by {phi:+.0f} deg so the pull ({pull}) faces the robot; re-grasp")
+        self.joint_to("above_turned_place", Thi)
+        self.line("down_turned_pre", Tpre, "normal")
+        self.line("place_turned", Tp, "slow", tip_margin=0.0)
+        s.gripper(0.4, "release the turned drawer")
+        self.line("up_turned", Tpre, "slow", tip_margin=0.0)
+        self.lift_to("clear_turned", SAFE_H)
+        self.go_home("home_regrasp")
+        P, tz, b2 = self.scene("turned")
+        d2 = self.find_drawer(b2, tz)
+        s.require(d2 is not None, "drawer not seen after turning it")
+        img2 = s.side.latest()[0]
+        held2 = self.grasp(d2)
+        s.require(held2 is not None, "pull wall not grasped after turning")
+        try:
+            c2 = held2["e"] + held2["d0"] * (L_FACE / 2 - 0.006)
+            sc2 = PF.score_faces(img2, PF.faces_of(c2, held2["d0"], L_FACE, L_FACE), self.tz)
+            cv2.imwrite(os.path.join(s.A, "orient_after_turn.jpg"), PF.crop_around(img2, np.r_[c2, self.tz + 0.04]))
+            s.summary(orient=dict(info, after_turn=sc2))
+        except Exception as ex:
+            s.log(f"orient after-turn scoring failed: {ex}")
+        self.orient_state = "turned"
+        return held2
+
     def run(self):
         s = self.s
         s.summary(rl_mode=self.mode, episode=self.ep, policy=self.actor.info, transitions=0, **{"return": 0.0})
@@ -516,6 +611,7 @@ class Episode:
                   slot_before=prof0)
         s.require(d is not None, "no drawer on the table")
         s.view.set_scene(objects=[dict(xy=list(map(float, d["c"])), z_top=self.tz + d["h_top"], r=d["half"], label="drawer")])
+        P_img = s.side.latest()[0]
         s.phase("grasp")
         held = self.grasp(d)
         if held is None:
@@ -524,6 +620,7 @@ class Episode:
             s.require(d is not None, "drawer not seen after a missed grasp")
             held = self.grasp(d)
         s.require(held is not None, "front wall not grasped after two tries")
+        held = self.orient(d, P_img, held)
         s.phase("carry")
         yaw2 = wrapd(held["yaw"] + wrapd(ang(N) - ang(held["d0"])))
         z0 = self.tz + held["drop"] + BOTTOM_H

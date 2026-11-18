@@ -1,0 +1,11 @@
+{
+ "command": "python escape2.py b3 z25 b10 z40",
+ "moves_robot": true,
+ "record_dir": null,
+ "exit_code": 0,
+ "outcome": "success",
+ "duration_s": 243.3,
+ "stopped_by": null,
+ "started": 1794979246.2533197,
+ "ended": 1794979489.5134926
+}
