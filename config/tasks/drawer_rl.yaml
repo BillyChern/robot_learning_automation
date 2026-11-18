@@ -20,6 +20,12 @@ reset: >-
   low next to the cabinet. Start by working out the state, free the arm, then recover. The drawer pull is about 4 cm above the table when the drawer is in the slot: a gripper held horizontal there
   is at table height, so plan the grasp (from above, or a wall of the drawer) with the tips above the table. Never move
   the cabinet; leave the two upper slots empty.
+reset_orientation: >-
+  The drawer lies upright on the table, open side up, and its metal pull (a small grey metal label frame with a short
+  tab below it, on the outside of one wall) is on the wall that faces the robot arm's base: in this side-camera image
+  the robot base is at the lower left and the cabinet at the upper right, so the pull must be on the drawer wall that
+  faces the lower left (away from the cabinet), within about 45 deg. If the pull is on any other wall, or not visible
+  at all (it is then on a wall facing away from the camera), the answer is false.
 objects: [drawer]
 
 fixtures:                          # measured 2026-11-17 after the side-camera recalibration (docs/RL_DESIGN.md section 5)

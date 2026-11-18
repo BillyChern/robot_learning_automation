@@ -318,6 +318,37 @@ class Pipeline:
         t = _mod("rlpj.perception.layout").sample(self.task, self.rng)
         return {k: [float(v[0]), float(v[1])] for k, v in t.items()}
 
+    def _reset_orientation(self, attempt_dir):
+        """(ok, why) of the task's reset_orientation criterion, judged by the VLM on a full-size side image after a reset
+        ("" = no criterion). Unsure counts as not confirmed."""
+        text = (self.task.get("reset_orientation") or "").strip()
+        if not text:
+            return True, ""
+        img = Path(attempt_dir) / "orientation_side.jpg"
+        try:
+            cam = _mod("rlpj.robot.cams").SideCam()
+            try:
+                color = None
+                for _ in range(40):
+                    color = cam.latest()[0]
+                    if color is not None:
+                        break
+                    time.sleep(0.2)
+            finally:
+                cam.close()
+            if color is None:
+                return False, "orientation: no side image"
+            import cv2
+            cv2.imwrite(str(img), color)
+            res = _mod("rlpj.success.vlm_judge").judge({"after": img}, dict(goal=self.task.get("reset", ""), success=text))
+        except Exception as e:
+            return False, f"orientation check failed: {e!r}"
+        self.st.event("reset_orientation", attempt=str(attempt_dir), success=res.get("success"),
+                      confidence=res.get("confidence"), reason=res.get("reason"), cost_usd=res.get("cost_usd"))
+        if res.get("success") is True and float(res.get("confidence") or 0) >= 0.6:
+            return True, res.get("reason", "")
+        return False, f"orientation not confirmed by the vision check: {res.get('reason', '')}"
+
     def _layout_ok(self, targets, blobs):
         """(ok, report) of rlpj.perception.layout.check on a measurement (None = no measurement)."""
         if blobs is None:
@@ -764,6 +795,9 @@ class Pipeline:
                     return None
                 blobs = self._safe_measure(save)
                 ok, rep = self._layout_ok(targets, blobs)
+                if ok:
+                    ok, why = self._reset_orientation(r.attempt_dir)
+                    rep = rep if ok else why
                 self._record_reset(targets, r, blobs, ok, rep)
                 if ok:
                     cf["reset"] = 0

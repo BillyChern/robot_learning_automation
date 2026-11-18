@@ -142,7 +142,7 @@ def _pat(p: Path) -> str:
     return f"//{str(p).lstrip('/')}" if is_file else f"//{str(p).lstrip('/')}/**"
 
 
-def settings(ws: Path, run_dir: Path, role: str, allowed: list) -> dict:
+def settings(ws: Path, run_dir: Path, role: str, allowed: list, research: bool = False) -> dict:
     """Claude Code project settings: no robot/remote access, repo read-only, other runs/agents hidden, inputs read-only."""
     root = config.ROOT
     read_only = [p for p in sorted(root.iterdir()) if p.name not in ("runs", ".venv")]
@@ -156,8 +156,8 @@ def settings(ws: Path, run_dir: Path, role: str, allowed: list) -> dict:
     deny = [f"Bash({b})" for b in BASH_DENY] + [f"Read({_pat(p)})" for p in hidden] + \
            [f"Edit({_pat(p)})" for p in hidden + read_only]
     allow = ["Bash", f"Read({_pat(root)})"] + [f"Read({_pat(Path(p))})" for p in allowed]
-    if role == "learn":
-        allow += ["WebSearch", "WebFetch"]          # research on fine-tuning practice (pi0.5, openpi, RTC, ...)
+    if role == "learn" or research:
+        allow += ["WebSearch", "WebFetch"]          # research: fine-tuning practice (pi0.5, openpi, RTC), RL papers
     excludes = [str(p / "CLAUDE.md") for p in ws.parents]
     return {"permissions": {"allow": list(dict.fromkeys(allow)), "deny": list(dict.fromkeys(deny))},
             "claudeMdExcludes": excludes}
@@ -204,7 +204,8 @@ class Workspace:
             reuse[name] = target
         allowed = list(reuse.values()) + ([str(demo)] if demo else [])
         (ws / "PROMPT.md").write_text(render(role, task_cfg, condition, robot=robot, workspace=ws, cfg=cfg, **extra))
-        (ws / ".claude/settings.json").write_text(json.dumps(settings(ws, run_dir, role, allowed), indent=1))
+        (ws / ".claude/settings.json").write_text(json.dumps(settings(ws, run_dir, role, allowed,
+                                                                    research=role == "execute" and task_cfg.get("mode") == "rl"), indent=1))
         (ws / ".gitignore").write_text(GITIGNORE)
         (ws / "usage.jsonl").touch()
         session = dict(role=role, condition=condition, task=task_cfg.get("name"), run_dir=str(run_dir), path=str(ws),
