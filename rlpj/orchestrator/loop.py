@@ -1402,6 +1402,8 @@ class Pipeline:
             if not check:
                 subprocess.run(["rsync", "-a", "--delete", "--mkpath", f"{host}:{ws.path}/rl/policy/", f"{ws.path}/rl/policy/"],
                                capture_output=True, text=True, timeout=300)
+                subprocess.run(["rsync", "-a", f"{host}:{ws.path}/rl/learner_log.jsonl", f"{ws.path}/rl/learner_log.jsonl"],
+                               capture_output=True, text=True, timeout=60)     # the learning record, for the report/export
         self.st.event("rl_learner", episode=idx, host=host or "local", device=device, check=check, exit_code=r.exit_code,
                       duration=r.duration, attempt=str(attempt_dir))
         return r
