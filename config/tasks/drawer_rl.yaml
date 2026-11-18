@@ -48,7 +48,7 @@ keep_out:                          # model check: no gripper point inside (rlpj.
   - {name: cabinet_front, center: [0.5129, 0.1788, 0.0390], half: [0.0100, 0.0200, 0.0400], yaw_deg: 21.85}
 
 layout:                            # reset target for the drawer centre on the table (base frame, m)
-  drawer: {x: [0.34, 0.44], y: [-0.20, -0.02]}    # in front of and beside the cabinet, clear of its front by > 10 cm
+  drawer: {x: [0.34, 0.44], y: [-0.20, -0.08]}    # beside the cabinet; y > -0.08 merged the drawer with the cabinet blob in the side-depth measurement (reset 15, 01:51)
   radius: [0.36, 0.52]
   tolerance: 0.05
 
