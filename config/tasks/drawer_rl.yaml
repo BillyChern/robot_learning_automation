@@ -61,7 +61,7 @@ rl:
   eval_episodes: 10                # deterministic-policy episodes per evaluation
   target_success_rate: 0.7         # over one evaluation
   max_episodes: 600                # training episodes, then stop and report
-  review_every: 40                 # the RL agent's tuning turn: curve + recent episodes, may change reward/hyperparameters
+  review_every: 10                 # the RL agent's tuning turn: curve + recent episodes, may change reward/hyperparameters (40 -> 10 at 02:35: early tuning)
   learner_timeout_s: 300           # programs/learner.py between episodes (CPU on the robot machine)
   episode_timeout_s: 300
   reset_repairs: 5                 # reset-agent repairs per failing reset before the run stops (default 2)
