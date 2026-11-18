@@ -120,3 +120,4 @@
 - attempt 78 (real, dark): wrist image mean ~4 (gripper shadow fakes the 'dark interior'): the relaxed refine
   threshold accepted a bogus -3.3 cm shift -> picks missed; judge flipped on the attempt-77 scene. -> refine skipped
   when the wrist image median < 40 (absolute 50 step threshold restored); 'hidden' verdicts get a second Q1 look.
+- 14:50 operator: lights were off 04:30-14:50 (side brightness 76); back to ~122. Drawer flush in the slot, correct way round. Dark fallbacks stay (inactive in light).
