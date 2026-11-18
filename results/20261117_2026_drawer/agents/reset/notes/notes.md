@@ -82,3 +82,15 @@
   place() generalised: held = grasp_off (centre->grasp) + pull dir; turn so the pull wall faces -N rotated by delta;
   detect_pull(): grey (S<75, V>70) side-camera pixels on the depth-segmented drawer -> side of the pull; check loop
   re-picks if the pull faces > 40 deg off the robot side; final claim includes it.
+- 00:20 operator: orientation now judged by a VLM on the side image. attempt 40: backwards pull worked (8.7 cm out),
+  extract's direct joint move from home failed keep-in -> extract goes via READY. attempt 41: next reset started
+  'out' with the drawer backwards; the backwards flag lived only in the previous run -> pull placed away. Side-image
+  grey-pixel detection was wrong (said -y).
+- New orientation sensing (attempt 42): tab_score() = share of metal-tab pixels (S 60..175, V<165) in a band outside
+  a wall in a wrist image (offline: attempt 28 pull wall 0.10, attempt 41 plain wall 0.00). Used at the front-wall
+  pre-grasp view (decides backwards per run) and in overview_pull() (28 cm above the table drawer, 4 bands, second
+  view at yaw+180) for table picks, the correction loop and the final claim.
+- attempt 43: wrist overview tab scores flip between looks (judged wrong). Operator: use rlpj.success.vlm_judge.judge
+  (the orchestrator's check). -> vlm_pull(): Q1 = task reset_orientation on a full-size settled side image; if not,
+  Q2 = "pull on the {image-quadrant} wall" for the other visible wall; else assume a far wall -> turn 180, re-check.
+- attempt 45 (real): judge-driven 180 deg turn worked (Q1 true x3, orchestrator layout+orientation ok) but err 0.046 -> re-picks missed (refine shift 0.033 rejected) -> abort. -> GOOD 0.035, refine max 0.04, no abort on pick count.

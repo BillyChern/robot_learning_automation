@@ -51,7 +51,7 @@ T_C = -0.087              # drawer centre line along the front
 L_DEFAULT = 0.13          # drawer depth until measured
 HOLD_MAX = 97.0           # gripper reading below this = holding something
 TOL = 0.05
-GOOD = 0.025              # correct when the error is above this
+GOOD = 0.035              # correct when the error is above this
 SAFE_H = 0.20             # tool height above the table for transfers
 PIN_HI = 0.14             # tool height of the tilted pose above the pin
 READY_XYZ = (0.40, -0.10, 0.25)   # tool-down waypoint (above table) between home and the work poses
@@ -86,6 +86,7 @@ class Reset:
         self.rng = np.random.default_rng(int(time.time()))
         self.k = 0
         self.backwards = False
+        self.final_facing = None
         self.rgbd = (None, None, None)
         self.pin_dy = self.pin_dz = 0.0
         self.retried = False
@@ -342,35 +343,117 @@ class Reset:
         self.to_ready()
         return held
 
-    def detect_pull(self, c):
-        """Unit vector (base xy) from the drawer centre toward the wall with the pull (grey metal label frame and tab
-        on the wood), from side-camera pixels of the drawer (depth-segmented, so not the table); None if unclear."""
+    def tab_score(self, img, T, e, d_out, h, s0=0.006, s1=0.03, half=0.03):
+        """Share of 'pull tab' pixels (metal: S 60..175, V < 165; table is S < 50, wood S > 175) in a band outside a
+        wall: from s0 to s1 beyond the point e along d_out, +-half along the wall, at height h (base frame).
+        Attempt 28 (pull wall) 0.10, attempt 41 (plain wall) 0.00."""
+        from rlpj.perception.wrist import project_base_to_wrist
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        w = np.array([-d_out[1], d_out[0]])
+        P = np.array([np.r_[e + sv * d_out + a * w, self.tz + h] for sv in np.linspace(s0, s1, 13) for a in np.linspace(-half, half, 25)])
+        uv = project_base_to_wrist(P, T)
+        ok = np.all(np.isfinite(uv), 1) & (uv[:, 0] >= 0) & (uv[:, 0] < img.shape[1] - 1) & (uv[:, 1] >= 0) & (uv[:, 1] < img.shape[0] - 1)
+        if ok.sum() < 50:
+            return None, uv[ok]
+        v = hsv[uv[ok, 1].astype(int), uv[ok, 0].astype(int)].astype(float)
+        return float(((v[:, 1] > 60) & (v[:, 1] < 175) & (v[:, 2] < 165)).mean()), uv[ok]
+
+    def overview_pull(self, c, tag):
+        """Wrist view from ~28 cm above the drawer on the table; score the band outside each of the 4 walls for the
+        pull tab; a second view at the opposite wrist yaw if unclear. Returns unit vector centre -> pull wall or None."""
         s = self.s
+        ctr = np.array(c["obb_c"]); u = np.array([np.cos(np.radians(c["yaw"])), np.sin(np.radians(c["yaw"]))]); v = np.array([-u[1], u[0]])
+        walls = [(u, c["L"] / 2), (-u, c["L"] / 2), (v, c["W"] / 2), (-v, c["W"] / 2)]
+        best = None
+        for k, yaw in enumerate((ang(u), ang(u) + 180.0)):
+            if s.dry:
+                break
+            T = tool_down_T(np.r_[ctr, self.tz + 0.28], wrapd(yaw))
+            self.to_ready()
+            self.joint_to(f"overview{k}", T)
+            time.sleep(0.5)
+            img = s.wrist.latest()[0]
+            if img is None:
+                continue
+            Tm = calib.pose_to_T(s.feedback()["pose"])
+            scores, vis = [], img.copy()
+            for d, hlf in walls:
+                sc, uvs = self.tab_score(img, Tm, ctr + d * (hlf - 0.012), d, 0.02, s0=0.0, s1=0.035)
+                scores.append(sc)
+                for q in uvs[::3]:
+                    cv2.circle(vis, (int(q[0]), int(q[1])), 2, (0, 255, 0), -1)
+            cv2.imwrite(os.path.join(s.A, f"overview_{tag}{k}.jpg"), cv2.resize(vis, (640, 360)))
+            sc = [(-1 if x is None else x) for x in scores]
+            order = np.argsort(sc)[::-1]
+            s.summary(**{f"overview_{tag}{k}": [round(x, 3) for x in sc]})
+            s.log(f"overview {tag}{k}: tab scores {[round(x, 3) for x in sc]}")
+            if sc[order[0]] > 0.04 and sc[order[0]] > 2.5 * max(sc[order[1]], 0.005):
+                best = walls[order[0]][0]
+                break
+        self.to_ready()
+        return best
+
+    # ------------------------------------------------------------ orientation by the orchestrator's vision judge
+    def side_full(self, tag):
+        """Full-size settled side image (the session has had the camera open for a while; wait a little anyway)."""
+        time.sleep(1.0)
+        img = self.s.side.latest()[0]
+        path = os.path.join(self.s.A, f"vlm_{tag}.jpg")
+        if img is not None:
+            cv2.imwrite(path, img)
+        return path if img is not None else None
+
+    def ask(self, path, success, tag):
         try:
-            color, P, uv = self.rgbd
-            if color is None:
-                return None
-            ctr = np.array(c["obb_c"]); u = np.array([np.cos(np.radians(c["yaw"])), np.sin(np.radians(c["yaw"]))]); v = np.array([-u[1], u[0]])
-            d = P[:, :2] - ctr; a1, a2 = d @ u, d @ v; h = P[:, 2] - self.tz_fit
-            m = (np.abs(a1) < c["L"] / 2 + 0.02) & (np.abs(a2) < c["W"] / 2 + 0.02) & (h > 0.010) & (h < 0.08)
-            uu = np.clip(uv[m].astype(int), 0, [color.shape[1] - 1, color.shape[0] - 1])
-            hsv = cv2.cvtColor(color, cv2.COLOR_BGR2HSV)[uu[:, 1], uu[:, 0]].astype(float)
-            grey = (hsv[:, 1] < 75) & (hsv[:, 2] > 70)
-            n_all, n_grey = int(m.sum()), int(grey.sum())
-            if n_grey < 20:
-                s.summary(pull_detect=dict(n=n_all, grey=n_grey, result=None)); return None
-            g1, g2 = a1[m][grey], a2[m][grey]
-            mu1, mu2 = float(np.median(g1)), float(np.median(g2))
-            r1, r2 = mu1 / (c["L"] / 2), mu2 / (c["W"] / 2)
-            if max(abs(r1), abs(r2)) < 0.45 or abs(abs(r1) - abs(r2)) < 0.2:
-                s.summary(pull_detect=dict(n=n_all, grey=n_grey, r=[round(r1, 2), round(r2, 2)], result=None)); return None
-            vec = u * np.sign(r1) if abs(r1) > abs(r2) else v * np.sign(r2)
-            s.summary(pull_detect=dict(n=n_all, grey=n_grey, r=[round(r1, 2), round(r2, 2)], result=np.round(vec, 2).tolist()))
-            s.log(f"pull detected toward {np.round(vec, 2).tolist()} ({n_grey} grey of {n_all} drawer pixels, r {r1:+.2f} {r2:+.2f})")
-            return vec
-        except Exception as ex:
-            s.log(f"detect_pull failed: {ex}")
-            return None
+            from rlpj import config
+            from rlpj.success import vlm_judge
+            t = config.load()["task"]
+            r = vlm_judge.judge({"after": path}, dict(goal=t.get("reset", ""), success=success), timeout=120)
+        except Exception as e:
+            r = dict(success=None, reason=f"judge error {e}")
+        self.s.log(f"vision judge {tag}: success={r.get('success')} conf={r.get('confidence')} reason={str(r.get('reason'))[:300]}")
+        self.s.summary(**{f"vlm_{tag}": dict(success=r.get("success"), conf=r.get("confidence"), reason=str(r.get("reason"))[:200])})
+        return r.get("success")
+
+    def walls_of(self, c):
+        ctr = np.array(c["obb_c"]); u = np.array([np.cos(np.radians(c["yaw"])), np.sin(np.radians(c["yaw"]))]); v = np.array([-u[1], u[0]])
+        return ctr, [(u, c["L"] / 2), (-u, c["L"] / 2), (v, c["W"] / 2), (-v, c["W"] / 2)]
+
+    def image_label(self, ctr, d):
+        """Image-quadrant words ('lower right', ...) for the wall of the drawer at ctr whose outward normal is d."""
+        K, dist = calib.side_intrinsics(); Tsb = np.linalg.inv(calib.T_base_side())
+        P = np.array([np.r_[ctr, self.tz + 0.035], np.r_[ctr + 0.07 * d, self.tz + 0.035]])
+        uv = calib.project(calib.apply(Tsb, P), K, dist)
+        du, dv = uv[1] - uv[0]
+        return ("lower" if dv > 0 else "upper") + " " + ("right" if du > 0 else "left")
+
+    def vlm_pull(self, c, tag):
+        """(ok, pull) from the vision judge: ok True when the pull already faces the robot; otherwise the pull wall
+        (unit vector) if seen on the other visible wall, else the wall opposite the robot-facing one (it is on a
+        far wall: a 180 deg turn brings it into view). (None, None) when the judge is unavailable."""
+        path = self.side_full(tag)
+        if path is None:
+            return None, None
+        from rlpj import config
+        t = config.load()["task"]
+        ok = self.ask(path, t.get("reset_orientation", "The drawer's metal pull faces the lower left (the robot base)."), f"{tag}_q1")
+        if ok is None or ok:
+            return ok, None
+        ctr, walls = self.walls_of(c)
+        robot = max(walls, key=lambda w: float(w[0] @ unit(-N)))[0]
+        cam = calib.T_base_side()[:3, 3][:2]
+        others = [w for w in walls if w[0] is not robot]
+        vis = max(others, key=lambda w: float(w[0] @ unit(cam - ctr)))[0]
+        lab = self.image_label(ctr, vis)
+        q2 = (f"The drawer's metal pull (a small grey metal label frame with a short tab below it) is on the outside of the "
+              f"drawer wall that faces the {lab} of this image.")
+        on_vis = self.ask(path, q2, f"{tag}_q2")
+        if on_vis:
+            msg, pull = f"pull on the visible {lab} wall", vis
+        else:
+            msg, pull = "pull on a far (hidden) wall: assume opposite the robot-facing wall, turn 180 deg and re-check", -robot
+        self.s.decide(f"vision judge: {msg}")
+        return False, pull
 
     # ------------------------------------------------------------ front-wall grasp and extraction
     def extract(self, p):
@@ -386,9 +469,18 @@ class Reset:
         T_pre = Tg.copy(); T_pre[2, 3] += 0.05
         s.decide(f"front wall at n-OFF={wall_n - OFF:.3f} t={o['t']:.3f} top {h_top:.3f}: top-down grasp, jaws along the normal")
         s.gripper(0.45, "open to straddle the front wall")
+        self.to_ready()                  # attempt 40: the direct joint move from home failed the keep-in check
         self.joint_to("above_front_wall", T_hi)
         self.line("down_to_front_pre", T_pre, "normal")
-        self.save("wrist_front_pre", s.wrist.latest()[0])
+        time.sleep(0.4)
+        img = s.wrist.latest()[0]
+        self.save("wrist_front_pre", img)
+        if img is not None and not s.dry:
+            sc, _ = self.tab_score(img, calib.pose_to_T(s.feedback()["pose"]), xy_of(wall_n, o["t"]), -N, 0.035)
+            s.summary(front_tab_score=None if sc is None else round(sc, 3))
+            if sc is not None:
+                self.backwards = sc < 0.03
+                s.decide(f"outer wall {'has NO pull tab: drawer is in backwards' if self.backwards else 'carries the pull tab'} (tab score {sc:.3f})")
         self.line("down_to_front_wall", Tg, "slow")
         g = s.gripper(1.0, "grasp the front wall")
         s.summary(front_grip=round(g, 1))
@@ -450,7 +542,7 @@ class Reset:
         self.lift_to("lift_drawer", SAFE_H, "normal")
         return dict(yaw_pick=yaw, grasp_off=e - ctr, pull=pull, drop=tip_h + TIP_OPEN)
 
-    def refine_wall(self, img, e, d_in, h_top, half=0.04, max_shift=0.03):
+    def refine_wall(self, img, e, d_in, h_top, half=0.05, max_shift=0.04):
         """Wrist-camera refinement of a drawer wall seen from above: intensity profile along d_in (toward the drawer
         centre) across the expected wall top line at height h_top; the outer edge (bright table -> darker wood,
         going inward) is the strongest negative step. Returns the shift (m, along d_in) of the wall centre, or None."""
@@ -556,6 +648,13 @@ class Reset:
                 if st != "slot":
                     break
                 s.decide(f"drawer still in the slot after pull {k} (protrusion {p['protr']:.3f})")
+            if st == "slot" and p["protr"] > 0.006 and not s.dry:
+                s.decide(f"no pull tab held and the wall sticks out {p['protr']:.3f}: treat as backwards, clamp the wall edge")
+                self.backwards = True
+                self.pull_back(p)
+                self.go_home("home_after_back")
+                p = self.perceive("after_back")
+                st = self.state_of(p)
             s.require(st in ("out", "table") or s.dry, f"drawer not pulled out after two pin grasps (protrusion {p['protr']:.3f})")
             if s.dry and st == "slot":
                 p = dict(p, out=dict(t=self.pin_t, h_top=0.088, h_bot=0.03, n=0), protr=PULL - 0.002); st = "out"
@@ -584,15 +683,22 @@ class Reset:
             c = p["cand"][0]
             self.bias = np.array(c["obb_c"]) - np.array(c["xy"])
             err = float(np.linalg.norm(np.array(c["xy"]) - tgt))
-            pull = self.detect_pull(c)
-            facing = None if pull is None else float(np.degrees(np.arccos(np.clip(pull @ unit(-N), -1, 1))))
+            ok_or, pull = self.vlm_pull(c, f"check{it}")
+            if ok_or is None:                      # judge unavailable: wrist overview
+                pull = self.overview_pull(c, f"check{it}")
+                facing = None if pull is None else float(np.degrees(np.arccos(np.clip(pull @ unit(-N), -1, 1))))
+            else:
+                facing = 0.0 if ok_or else 180.0
             s.summary(**{f"err_check{it}": round(err, 4), f"pull_vs_robot_deg{it}": None if facing is None else round(facing, 0)})
             bad_yaw = facing is not None and facing > 40
+            self.final_facing = facing
             if (err <= GOOD and not bad_yaw) or (held is not None and it >= 3):
                 break
             if bad_yaw:
                 s.decide(f"pull wall faces {facing:.0f} deg away from the robot side: pick and turn it")
-            s.require(tries < 3, f"drawer still {err:.3f} m from the target after {tries} picks")
+            if tries >= 3:
+                s.decide(f"drawer {err:.3f} m from the target after {tries} picks: stop correcting, verify")
+                break
             s.phase(f"pick{it}")
             try:
                 held = self.pick_table(c, pull)
@@ -623,8 +729,7 @@ class Reset:
             err = float(np.linalg.norm(np.array(c["xy"]) - tgt))
             yaw_axis = c["yaw"]
             dev = wrapd(yaw_axis - ang(N)); dev = dev - 180 if dev > 90 else dev + 180 if dev < -90 else dev
-            pull = self.detect_pull(c)
-            facing = None if pull is None else float(np.degrees(np.arccos(np.clip(pull @ unit(-N), -1, 1))))
+            facing = self.final_facing
             s.summary(pull_vs_robot_deg=None if facing is None else round(facing, 0))
             ok = err <= TOL and c["h"] <= 0.10 and (facing is None or facing <= 40)
             s.summary(measured={"drawer": c["xy"]}, errors={"drawer": round(err, 4)}, target={"drawer": tgt.tolist()},

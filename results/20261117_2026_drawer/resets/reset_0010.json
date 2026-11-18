@@ -1,0 +1,127 @@
+{
+ "reset": 10,
+ "t": "2026-11-18T00:49:53",
+ "targets": {
+  "drawer": [
+   0.356,
+   -0.143
+  ]
+ },
+ "ok": false,
+ "report": "orientation not confirmed by the vision check: The drawer is upright on the table, open side up, but neither visible outer wall, including the one facing the robot base at lower left, shows a metal pull, so the pull must be on a wall facing away.",
+ "measured": [
+  {
+   "xy": [
+    0.3624,
+    -0.1494
+   ],
+   "z_top": 0.0541,
+   "height": 0.0695,
+   "extent": [
+    0.1327,
+    0.1211
+   ],
+   "n": 5274,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0157,
+   "outer_r": 0.0745
+  },
+  {
+   "xy": [
+    0.4103,
+    0.0032
+   ],
+   "z_top": -0.0003,
+   "height": 0.0151,
+   "extent": [
+    0.0333,
+    0.0168
+   ],
+   "n": 121,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0058,
+   "outer_r": 0.0143
+  },
+  {
+   "xy": [
+    0.4158,
+    0.0735
+   ],
+   "z_top": -0.0023,
+   "height": 0.0132,
+   "extent": [
+    0.0504,
+    0.0567
+   ],
+   "n": 201,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0073,
+   "outer_r": 0.0199
+  },
+  {
+   "xy": [
+    0.5678,
+    0.1213
+   ],
+   "z_top": 0.2523,
+   "height": 0.2677,
+   "extent": [
+    0.1446,
+    0.1313
+   ],
+   "n": 12106,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0263,
+   "outer_r": 0.0605
+  },
+  {
+   "xy": [
+    0.6595,
+    0.0591
+   ],
+   "z_top": -0.0018,
+   "height": 0.0137,
+   "extent": [
+    0.04,
+    0.0251
+   ],
+   "n": 135,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0089,
+   "outer_r": 0.0174
+  },
+  {
+   "xy": [
+    0.7868,
+    0.1878
+   ],
+   "z_top": -0.0032,
+   "height": 0.0122,
+   "extent": [
+    0.0336,
+    0.0258
+   ],
+   "n": 93,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": {
+  "drawer": [
+   0.3627,
+   -0.146
+  ]
+ },
+ "claimed_outcome": "success",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_43",
+ "exit_code": 0,
+ "outcome": "success",
+ "duration": 425.4
+}
