@@ -20,8 +20,8 @@ import rlcommon as rc
 
 PRIOR_VERSION = rc.PRIOR_VERSION   # 2: obs-dependent prior (measured t/yaw correction), 2026-11-18
 
-HP = dict(gamma=0.95, tau=0.005, lr=3e-4, batch=256, hidden=128, target_entropy=-2.0, init_alpha=0.05,
-          utd_per_transition=40, max_updates=3000, time_budget_s=200.0, bc_weight=1.0, bc_decay_episodes=30.0,
+HP = dict(actor="awac", awac_lambda=0.3, awac_wmax=20.0, gamma=0.95, tau=0.005, lr=3e-4, batch=256, hidden=128, target_entropy=-2.0, init_alpha=0.05,
+          utd_per_transition=40, max_updates=3000, time_budget_s=200.0, bc_weight=1.0, bc_decay_episodes=10.0,
           min_transitions=8)
 
 
@@ -78,7 +78,7 @@ def verdict_for(d, meta):
     if ep is None or int(ep) < 0:
         return None
     vd = os.path.join(d, "verdicts")
-    for name in (f"{int(ep)}.json", f"{int(ep):04d}.json", f"ep_{int(ep):04d}.json", f"{meta.get('mode')}_{int(ep)}.json",
+    for name in (f"{int(ep):06d}.json", f"{int(ep)}.json", f"{int(ep):04d}.json", f"ep_{int(ep):04d}.json", f"{meta.get('mode')}_{int(ep)}.json",
                  f"{meta.get('mode')}_ep{int(ep):04d}.json"):
         p = os.path.join(vd, name)
         if os.path.exists(p):
@@ -138,6 +138,10 @@ def load_data(d):
     if not parts:
         return None, eps
     D = {k: np.concatenate([p[k] for p in parts]).astype(np.float32) for k in parts[0]}
+    for k in ("obs", "next_obs"):                  # unobserved inputs (insert stage only; push uses 5/6 for its own data)
+        ins = D[k][:, 0] < 0.5
+        for j in rc.ZERO_OBS:
+            D[k][ins, j] = 0.0
     D["prior"] = rc.prior(D["obs"]).astype(np.float32)
     return D, eps
 
@@ -187,8 +191,22 @@ class Learner:
         lc = F.mse_loss(q1, y) + F.mse_loss(q2, y)
         self.oc.zero_grad(); lc.backward(); self.oc.step()
         an, lp, mean_a = self.actor.sample(o)
-        q1n, q2n = self.critic(o, an)
-        la = (alpha * lp - torch.min(q1n, q2n)).mean() + bc_w * ((mean_a - pr) ** 2).sum(-1).mean()
+        if HP["actor"] == "awac":
+            # AWAC (Nair et al. 2020): regress the actor on the logged actions weighted by exp(advantage / lambda);
+            # stays on the data (no exploitation of critic errors with ~300 transitions), V(s) = Q(s, pi sample)
+            with torch.no_grad():
+                qd = torch.min(*self.critic(o, a))
+                qv = torch.min(*self.critic(o, an))
+                w = torch.clamp(torch.exp((qd - qv) / HP["awac_lambda"]), max=HP["awac_wmax"])
+            mu, ls = self.actor(o)
+            ac = torch.clamp(a, -0.999, 0.999)
+            u = 0.5 * torch.log((1 + ac) / (1 - ac))
+            logp = (-0.5 * ((u - mu) / ls.exp()) ** 2 - ls).sum(-1) - torch.log(1 - ac ** 2 + 1e-6).sum(-1)
+            la = -(w * logp).mean() + bc_w * ((torch.tanh(mu) - pr) ** 2).sum(-1).mean()
+            self.last_w = float(w.mean())
+        else:
+            q1n, q2n = self.critic(o, an)
+            la = (alpha * lp - torch.min(q1n, q2n)).mean() + bc_w * ((mean_a - pr) ** 2).sum(-1).mean()
         self.oa.zero_grad(); la.backward(); self.oa.step()
         lal = -(self.log_alpha * (lp.detach() + HP["target_entropy"])).mean()
         self.oal.zero_grad(); lal.backward(); self.oal.step()
@@ -245,8 +263,10 @@ def main():
     if D is not None and n >= HP["min_transitions"]:
         T = {k: torch.tensor(v, device=dev) for k, v in D.items()}
         n_up = int(min(HP["max_updates"], max(200, HP["utd_per_transition"] * max(n_new, 1))))
+        if prev.get("prior_version") != PRIOR_VERSION:      # prior/BC target changed: one full-budget pass
+            n_up = HP["max_updates"]
         bc_w = HP["bc_weight"] * math.exp(-len(eps) / HP["bc_decay_episodes"])
-        if prev.get("prior_version") != PRIOR_VERSION:
+        if prev.get("prior_version") is None:            # fresh learner only: never wipe what the actor learned
             stats_bc = L.bc_fit(T)
             print(f"actor fitted to prior version {PRIOR_VERSION}: loss {stats_bc:.4f}")
         acc = []

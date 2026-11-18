@@ -113,3 +113,20 @@ action inside the keep-out/kinematic envelope (tools/offline_test.py).
   keep their learned std); insertion advance floor 4 mm unless the last step peaked above F_SOFT (logged action =
   executed action); K_INS 16 -> 20. SAC stays off-policy, so the narrower behaviour noise needs no learner change.
   Offline: flow test incl. injected force stops, learner --check ok.
+- TUNING 03:08 (10 training episodes, 0 successes). Finding: insertion outcome is decided by the tool yaw the
+  policy applied: reached the end in 3/3 episodes with dyaw +5.6..+9.8 deg, jammed at n-OFF ~-0.06 (forces mostly
+  along -N, 30-40 N residual after unloading) in 7/7 with dyaw -5.5..-1.2. The held-drawer side-depth "yaw error"
+  set those signs through the prior (v2/v3 corrected half of it per step), but it is not trustworthy: the wrist
+  camera at the pre-grasp pose (new programs/wallfit.py, run offline on attempts 14-41) sees the wall within 2 deg
+  of the jaws in every episode while the side measurement swings +-12 deg; t err is a steady -2 cm (partial view).
+  Changes (learner + observation, one theme: stop learning from the bad measurement):
+  * prior v4: straight 12 mm advance, no t/yaw correction; actors trained since v3 stay usable (MIN_ACTOR_VERSION);
+    no BC re-fit on a prior change (it would wipe what was learned), one full 3000-update pass instead.
+  * measured t/yaw no longer observed (obs 5, 6 = 0 in the insert stage, also in old data): they confounded the
+    data (the action sign followed them), so the policy could not separate "positive yaw works" from "negative
+    measurement".
+  * actor update SAC -> AWAC (advantage-weighted regression on logged actions, Nair et al. 2020; critic unchanged,
+    lambda 0.3, weight cap 20): offline on the 17 real episodes SAC drove the yaw to -0.55 (against the evidence,
+    entropy collapsing), AWAC keeps to the data and continues positive yaw where it was taken.
+  * BC-to-prior decay 30 -> 10 episodes; verdict files are named 000006.json (6 digits): relabel now finds them.
+  Not changed: reward, exploration (yaw keeps its learned std ~0.3-0.4, so both signs are still tried).

@@ -255,7 +255,10 @@ class Episode:
         s.phase("insert_learned")
         n, t, z, dyaw = n0, T_C, z0, 0.0
         f0 = self.force(); peak = 0.0
-        ma = float(np.clip(meas["t_err"] / 0.01, -3, 3)); mb = float(np.clip(meas["yaw_err"] / 5.0, -3, 3))
+        # tuning 03:08: the held-drawer side-depth measurement is not trustworthy (t err a steady -2 cm, yaw swinging
+        # +-12 deg while the wrist sees the wall within 2 deg of the jaws) and it confounded the data (the action sign
+        # followed it): it stays in the summary but is no longer observed (obs 5, 6 = 0; learner zeroes old data too)
+        ma, mb = 0.0, 0.0
         end = "steps"; n_force = 0
         for k in range(K_INS):
             f = self.force() - f0

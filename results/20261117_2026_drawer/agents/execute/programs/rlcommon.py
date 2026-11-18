@@ -6,9 +6,11 @@ import time
 import numpy as np
 
 OBS_DIM = 13
+ZERO_OBS = (5, 6)                              # insert-stage measured t/yaw: not observed since tuning 03:08
 ACT_DIM = 4
 PRIOR = np.array([0.6, 0.0, 0.0, 0.0])        # 12 mm straight along the nominal line
-PRIOR_VERSION = 3                              # must match learner.PRIOR_VERSION
+MIN_ACTOR_VERSION = 3                          # actors trained since prior v3 stay usable
+PRIOR_VERSION = 4                              # must match learner.PRIOR_VERSION
 INIT_STD = 0.25                                # pre-tanh std of the initial policy
 LOG_STD_MIN, LOG_STD_MAX = -4.0, 0.5
 EXPLORE_SCALE = np.array([0.3, 1.0, 1.0, 1.0])
@@ -29,7 +31,11 @@ def prior(obs):
     e_y = (o[:, 6] + o[:, 4]) * 5.0             # deg
     # v3: no t correction in the prior: the side-depth t of the held drawer is biased by the partial view (attempt
     # 17: t err -0.024 -> moved 2.4 cm sideways -> jams); the policy may still learn to use obs[5]
-    a[ins, 3] = np.clip(-0.5 * e_y[ins] / 2.0, -0.8, 0.8)
+    # v4 (tuning 03:08): no yaw correction either. Over training episodes 0-9 the insertion reached its end exactly
+    # when the applied tool yaw was positive (+5.6..+9.8 deg, 3/3) and jammed at n-OFF ~-0.06 whenever it was
+    # negative (-5.5..-1.2, 7/7); the prior derived those signs from the held-drawer yaw measurement, which does not
+    # agree with the wrist-camera wall angle at the grasp (within 2 deg of the jaws in all episodes checked) -> the
+    # measurement is not trustworthy; the policy learns the yaw from the outcomes instead.
     return a[0] if single else a
 
 
@@ -54,7 +60,7 @@ class Actor:
             try:
                 z = np.load(path)
                 p = {k: z[k] for k in z.files}
-                if int(p.get("prior_version", np.array(1))) < PRIOR_VERSION:
+                if int(p.get("prior_version", np.array(1))) < MIN_ACTOR_VERSION:
                     self.info = dict(source="prior", note=f"{path} predates prior version {PRIOR_VERSION}")
                 else:
                     self.p = p
