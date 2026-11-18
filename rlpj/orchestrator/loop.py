@@ -432,7 +432,9 @@ class Pipeline:
             extra["RLPJ_RESET_TARGETS"] = str(tpath)
         if role == "execute" and self._rl():
             extra.update(self._rl_env("train", -1))
-            if moves and self.st.agent("reset").get("status") == "done":    # every real test starts from a fresh reset
+            # every real test starts from a fresh reset; "repairing"/"reviewing" here means a repair cut short by a restart
+            # (one agent runs at a time), so the last accepted reset program is used and a new failure starts a new repair
+            if moves and self.st.agent("reset").get("status") in ("done", "repairing", "reviewing"):
                 if self._reset_to(self._sample_targets()) is None:
                     return "the reset before your run failed and the run was not started; the orchestrator is on it, run again."
         before = self._safe_measure(attempt_dir / "scene_before.jpg") if moves else None

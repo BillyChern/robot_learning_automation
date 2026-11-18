@@ -42,6 +42,8 @@ INS_NMAX = OFF - 0.036       # vertical tool axis limit (keep-out: body cylinder
 K_INS, K_PUSH = 16, 8
 F_SOFT = 20.0               # N: force penalty above this (sliding the drawer takes 22-28 N, operator 22:30)
 F_STOP = 40.0               # N: only a value for the observation after a stop (no force cap: user, 22:30)
+RELEASE = 0.75               # gripper after the insertion: ~21 mm, inner finger ~1.7 cm in front of the cabinet face
+                             # (attempt 5: 0.40 put it under the rail above the slot, the lift caught it: 99.6 N, cabinet moved 6 cm)
 MAX_FORCE = 3                # own force stops per insertion before the stage ends
 L_MIN = 0.155                # drawer depth floor: the side camera sees only part of the rim (dry run 1: 0.093;
                              # reset agent: obb 0.154 x 0.14-0.15), a short estimate would put its back into the cabinet
@@ -272,6 +274,7 @@ class Episode:
                 r -= 1.0
                 peak = F_STOP
                 n_force += 1
+                self.unload(-N3, steps=3)
                 if not s.dry:
                     xyz = self.T_now()[:3, 3]; q2 = nt(xyz[:2]); n, t, z = float(q2[0]), float(q2[1]), float(xyz[2])
             else:
@@ -340,6 +343,10 @@ class Episode:
             if n >= PUSH_NMAX - 0.0005:
                 end = "reached"; break
         s.summary(push=dict(end=end, steps=len(self.trans) - k0, tip_n_minus_off=round(n - OFF, 4), dt=round(t - t0, 4), h=round(h, 4)))
+        if end in ("force", "abort") and not s.dry:
+            self.unload(-N3)
+            xyz = self.T_now()[:3, 3] + PUSH_ZT * self.T_now()[:3, 2]; q2 = nt(xyz[:2])
+            n, t, h = float(q2[0]), float(q2[1]), float(xyz[2] - self.tz)
         self.push_retreat(n, t, h)
         return end
 
@@ -357,6 +364,17 @@ class Episode:
                 return False
             q = seg.q[-1]
         return True
+
+    def unload(self, d3, steps=5, dist=0.0015):
+        """After a force stop the arm is still pressing: back off in tiny slow lines along d3 (unit, base frame) so
+        each segment releases only part of the preload (the force stop watches the change within a segment:
+        attempt 7's 6 cm retreat tripped at 51 N while unloading)."""
+        for i in range(steps):
+            T = self.T_now(); T[:3, 3] += dist * np.asarray(d3, float)
+            try:
+                self.line(f"unload{i}", T, "slow", tip_margin=TIP_MARGIN_PUSH)
+            except Abort as e:
+                self.log(f"unload {i}: {str(e)[:100]}")
 
     def push_retreat(self, n, t, h):
         """Leave the drawer front: back off horizontally to OFF-0.04 (if deeper), then up, then READY; the first
@@ -408,7 +426,7 @@ class Episode:
             return None
         self.line("lift_slow", T_pre, "slow")
         self.lift_to("lift", SAFE_H, "normal")
-        return dict(yaw=yaw, d0=d0, drop=tip_h + TIP_OPEN, L_back=max(2 * half - 0.006, L_MIN))
+        return dict(yaw=yaw, d0=d0, drop=tip_h + TIP_OPEN, L_back=max(2 * half - 0.006, L_MIN), e=e.copy(), Tg=Tg.copy())
 
     def refine_wall(self, img, e, d_in, h_top, half=0.04, max_shift=0.03):
         """Reset agent's wrist refinement: strongest bright->dark step along d_in at the wall-top height."""
@@ -525,7 +543,7 @@ class Episode:
         s.decide(f"held drawer: t err {meas['t_err']:+.3f} yaw err {meas['yaw_err']:+.1f} ({meas['n']} pts); insertion from n-OFF {n0 - OFF:+.3f}")
         ins = self.stage_insert(n0, z0, yaw2, meas)
         s.phase("release")
-        s.gripper(0.4, "release the front wall")
+        s.gripper(RELEASE, "release the front wall (narrow: the inner finger stays clear of the cabinet rail)")
         T_up = tool_down_T(np.r_[xy_of(ins["n"], ins["t"]), ins["z"] + 0.06], ins["yaw"])
         self.line("up_from_front", T_up, "slow")
         T_bk = T_up.copy(); T_bk[:2, 3] -= 0.04 * N        # open fingers above the wall: back off before the lift

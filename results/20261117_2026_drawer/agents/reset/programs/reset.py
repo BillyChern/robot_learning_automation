@@ -42,6 +42,12 @@ PIN_PHI = 20.0            # deg roll about the normal
 PIN_ZT = 0.041            # fingertip along the tool z when pre-closed
 PIN_MARGIN = 0.004        # model fingertip clearance at the pin (model points sit 8 mm outside the real fingers)
 PRECLOSE = 0.706          # ~25 mm opening
+BACK_PROTR = 0.009        # a slot drawer sticking out more than this is in BACKWARDS (plain back wall outside; a
+                          # correct flush drawer reads -0.002..+0.004; 23:50 note: backwards at ~0.014)
+BACK_TILT = 40.0          # oblique pinch of the protruding wall's top edge: jaws in the vertical plane through the
+BACK_ZC = 0.035           # slot centre, tilted BACK_TILT; pinch centre BACK_ZC along the tool z
+BACK_OPEN = 0.45
+T_C = -0.087              # drawer centre line along the front
 L_DEFAULT = 0.13          # drawer depth until measured
 HOLD_MAX = 97.0           # gripper reading below this = holding something
 TOL = 0.05
@@ -79,6 +85,8 @@ class Reset:
         self.tz = calib.table_z()
         self.rng = np.random.default_rng(int(time.time()))
         self.k = 0
+        self.backwards = False
+        self.rgbd = (None, None, None)
         self.pin_dy = self.pin_dz = 0.0
         self.retried = False
         self.bias = np.array([0.02, 0.03])   # box centre - blob centre, default from attempt 19
@@ -167,7 +175,12 @@ class Reset:
     # ------------------------------------------------------------ perception
     def perceive(self, tag):
         s = self.s
-        P = tt.cloud(s.side, n=5)
+        D = s.side.depth_median(5)
+        K, dist = calib.side_intrinsics(); Tbs = calib.T_base_side()
+        Pc, uv = calib.deproject(np.asarray(D, np.float32), K, dist)
+        kk, _ = tt.depth_correction(Pc, Tbs)
+        P = calib.apply(Tbs, Pc * (kk[0] + kk[1] * Pc[:, 2:3]))
+        self.rgbd = (s.side.latest()[0], P, uv)
         tz = tt.table_fit(P); self.tz_fit = tz
         blobs = tt.detect(P, table_z=tz)
         cand = []
@@ -193,7 +206,9 @@ class Reset:
             if protr > 0.02 and sel.sum() > 20:
                 out = dict(t=float(np.median(q[sel, 1])), h_top=float(np.percentile(h[front & (q[:, 0] < OFF - 0.01)], 98)),
                            h_bot=float(np.percentile(h[sel], 3)), n=int(sel.sum()))
-        info = dict(tag=tag, table_z=round(tz, 4), blobs=len(blobs), drawer_blobs=[{k: v for k, v in c.items() if k != "pts"} for c in cand],
+        lay = front & (q[:, 0] < OFF - protr + 0.012)
+        front_top = float(np.percentile(h[lay], 98)) if lay.sum() > 20 else None
+        info = dict(tag=tag, table_z=round(tz, 4), front_top=None if front_top is None else round(front_top, 4), blobs=len(blobs), drawer_blobs=[{k: v for k, v in c.items() if k != "pts"} for c in cand],
                     protr=round(protr, 4), front_pts=int(front.sum()), face_pts=int(face.sum()), inside_pts=int(inside.sum()),
                     out=None if out is None else {k: round(v, 4) for k, v in out.items()})
         self.log(f"perceive {tag}: {info}")
@@ -206,7 +221,7 @@ class Reset:
         if p["out"] is not None and p["protr"] >= PROTR_GRASP:
             return "out"
         if p["face_pts"] > 40 and p["face_pts"] > 2 * p["inside_pts"]:
-            return "slot"
+            return "slot_back" if p["protr"] > BACK_PROTR else "slot"
         return "missing"
 
     # ------------------------------------------------------------ pin pull
@@ -278,6 +293,85 @@ class Reset:
         self.to_ready()
         return held
 
+    # ------------------------------------------------------------ backwards drawer: pinch the protruding wall's top
+    def back_T(self, protr, top, dn=0.0):
+        th = np.radians(BACK_TILT)
+        z = np.r_[np.sin(th) * N, -np.cos(th)]; x = np.r_[np.cos(th) * N, np.sin(th)]
+        Pc = np.r_[xy_of(OFF - (protr - 0.005) + dn, T_C), self.tz + top - 0.010]
+        T = np.eye(4); T[:3, :3] = np.stack([x, np.cross(z, x), z], 1); T[:3, 3] = Pc - BACK_ZC * z
+        return T
+
+    def pull_back(self, p):
+        """The drawer sits backwards (plain wall outside, ~1.4 cm proud, no pull): clamp the protruding wall's top edge
+        diagonally (outer finger on its outer face, inner finger over the top into the drawer; jaws in the vertical
+        plane through the slot centre, which the slot-opening keep-out allows) and pull it PULL out."""
+        s = self.s
+        top = float(np.clip(p.get("front_top") or 0.072, 0.06, 0.085))
+        protr = float(p["protr"])
+        held = False
+        for i, dn in enumerate((0.0, 0.003)):
+            Tg = self.back_T(protr, top, dn)
+            z = Tg[:3, 2]
+            T_pre = Tg.copy(); T_pre[:3, 3] -= 0.05 * z
+            T_hi = T_pre.copy(); T_hi[2, 3] += 0.05
+            s.decide(f"backwards drawer: oblique pinch of the outer wall top (protr {protr:.3f}, top {top:.3f}, dn {dn:+.3f})")
+            self.to_ready()
+            s.gripper(BACK_OPEN, "open for the wall edge")
+            q = self.ik(T_hi, [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (20.0, 40.0, 60.0) for j6 in (-90.0, 90.0)])
+            s.move_joint("above_back_wall", q, "normal")
+            self.line("to_back_pre", T_pre, "normal")
+            self.line("approach_back_wall", Tg, "slow", tip_margin=PIN_MARGIN)
+            g = s.gripper(1.0, "clamp the wall edge")
+            img = s.wrist.latest()[0]
+            if img is not None:
+                cv2.imwrite(os.path.join(s.A, f"wrist_back_closed{i}.jpg"), img[360:720, 320:960])
+            s.summary(**{f"back_grip{i}": round(g, 1)})
+            held = g < HOLD_MAX or s.dry
+            if held:
+                s.gripper(min(g / 100 + 0.01, 0.95), "keep squeezing (model gripper close to the real one)")
+                T_out = Tg.copy(); T_out[:3, 3] -= np.r_[PULL * N, 0.0]
+                self.line("pull_back_drawer", T_out, "slow", tip_margin=PIN_MARGIN)
+                s.gripper(BACK_OPEN, "release the wall")
+                T_up = T_out.copy(); T_up[2, 3] += 0.10
+                self.line("up_from_back", T_up, "slow", tip_margin=PIN_MARGIN)
+                break
+            s.decide(f"wall edge not held (reading {g:.1f})")
+            s.gripper(BACK_OPEN, "open, missed")
+            self.line("back_from_wall", T_pre, "slow", tip_margin=PIN_MARGIN)
+            self.line("up_from_wall_edge", T_hi, "normal")
+        self.to_ready()
+        return held
+
+    def detect_pull(self, c):
+        """Unit vector (base xy) from the drawer centre toward the wall with the pull (grey metal label frame and tab
+        on the wood), from side-camera pixels of the drawer (depth-segmented, so not the table); None if unclear."""
+        s = self.s
+        try:
+            color, P, uv = self.rgbd
+            if color is None:
+                return None
+            ctr = np.array(c["obb_c"]); u = np.array([np.cos(np.radians(c["yaw"])), np.sin(np.radians(c["yaw"]))]); v = np.array([-u[1], u[0]])
+            d = P[:, :2] - ctr; a1, a2 = d @ u, d @ v; h = P[:, 2] - self.tz_fit
+            m = (np.abs(a1) < c["L"] / 2 + 0.02) & (np.abs(a2) < c["W"] / 2 + 0.02) & (h > 0.010) & (h < 0.08)
+            uu = np.clip(uv[m].astype(int), 0, [color.shape[1] - 1, color.shape[0] - 1])
+            hsv = cv2.cvtColor(color, cv2.COLOR_BGR2HSV)[uu[:, 1], uu[:, 0]].astype(float)
+            grey = (hsv[:, 1] < 75) & (hsv[:, 2] > 70)
+            n_all, n_grey = int(m.sum()), int(grey.sum())
+            if n_grey < 20:
+                s.summary(pull_detect=dict(n=n_all, grey=n_grey, result=None)); return None
+            g1, g2 = a1[m][grey], a2[m][grey]
+            mu1, mu2 = float(np.median(g1)), float(np.median(g2))
+            r1, r2 = mu1 / (c["L"] / 2), mu2 / (c["W"] / 2)
+            if max(abs(r1), abs(r2)) < 0.45 or abs(abs(r1) - abs(r2)) < 0.2:
+                s.summary(pull_detect=dict(n=n_all, grey=n_grey, r=[round(r1, 2), round(r2, 2)], result=None)); return None
+            vec = u * np.sign(r1) if abs(r1) > abs(r2) else v * np.sign(r2)
+            s.summary(pull_detect=dict(n=n_all, grey=n_grey, r=[round(r1, 2), round(r2, 2)], result=np.round(vec, 2).tolist()))
+            s.log(f"pull detected toward {np.round(vec, 2).tolist()} ({n_grey} grey of {n_all} drawer pixels, r {r1:+.2f} {r2:+.2f})")
+            return vec
+        except Exception as ex:
+            s.log(f"detect_pull failed: {ex}")
+            return None
+
     # ------------------------------------------------------------ front-wall grasp and extraction
     def extract(self, p):
         s = self.s
@@ -312,10 +406,11 @@ class Reset:
         # drawer bottom below the tool: the side-depth front bottom is clipped at 2.5 cm and the drawer can tilt when
         # hanging from its front wall (attempt 18 touched the table early): assume the bottom at 1.0 cm in the slot
         drop = (Tg[2, 3] - self.tz) - 0.010
-        return dict(yaw_pick=yaw, d0=N.copy(), L=L_DEFAULT, drop=drop, release=0.025)
+        pull = (N if self.backwards else -N).copy()     # the grasped wall is the pull wall unless the drawer was in backwards
+        return dict(yaw_pick=yaw, grasp_off=-N * (L_DEFAULT / 2 - 0.007), pull=pull, drop=drop, release=0.025)
 
     # ------------------------------------------------------------ table pick
-    def pick_table(self, c):
+    def pick_table(self, c, pull=None):
         s = self.s
         ctr = np.array(c["obb_c"]); u = np.array([np.cos(np.radians(c["yaw"])), np.sin(np.radians(c["yaw"]))])
         L = c["L"]
@@ -353,7 +448,7 @@ class Reset:
             return None
         self.line("lift_drawer_slow", T_pre, "slow")
         self.lift_to("lift_drawer", SAFE_H, "normal")
-        return dict(yaw_pick=yaw, d0=d0, L=max(L, 0.08), drop=tip_h + TIP_OPEN)
+        return dict(yaw_pick=yaw, grasp_off=e - ctr, pull=pull, drop=tip_h + TIP_OPEN)
 
     def refine_wall(self, img, e, d_in, h_top, half=0.04, max_shift=0.03):
         """Wrist-camera refinement of a drawer wall seen from above: intensity profile along d_in (toward the drawer
@@ -399,16 +494,20 @@ class Reset:
         s = self.s
         if delta is None:
             delta = float(self.rng.uniform(-25, 25))
-        a = rot2(N, delta)
-        yaw = wrapd(held["yaw_pick"] + wrapd(ang(a) - ang(held["d0"])))
+        a = rot2(N, delta)            # drawer axis from its front (pull) wall toward its back: pull faces the robot
+        if held.get("pull") is not None:
+            turn = wrapd(ang(-a) - ang(held["pull"]))
+        else:                         # pull side unknown: keep the grasped wall toward the robot
+            turn = wrapd(ang(a) - ang(-held["grasp_off"]))
+        yaw = wrapd(held["yaw_pick"] + turn)
         # aim so that the side camera's blob centre (what the orchestrator measures) lands on the target: the blob
         # centre sits self.bias away from the drawer's box centre (attempt 19: ~2-4 cm toward the camera)
-        g = np.asarray(target) + self.bias - a * (held["L"] / 2 - 0.007)
+        g = np.asarray(target) + self.bias + rot2(held["grasp_off"], turn)
         h_tool = held["drop"] + held.get("release", 0.008)
         Tp = tool_down_T(np.r_[g, self.tz + h_tool], yaw)
         T_hi = Tp.copy(); T_hi[2, 3] = self.tz + SAFE_H
         T_pre = Tp.copy(); T_pre[2, 3] += 0.05
-        s.decide(f"place: drawer axis {ang(a):.0f} deg (normal {ang(N):.0f} + {delta:.0f}), grasp point {np.round(g, 3).tolist()}, tool {h_tool:.3f} above table")
+        s.decide(f"place: pull {'known' if held.get('pull') is not None else 'UNKNOWN'}, turn {turn:.0f} deg, pull wall toward {ang(-a):.0f} deg (robot side, normal {ang(N):.0f} + {delta:.0f}), grasp point {np.round(g, 3).tolist()}, tool {h_tool:.3f} above table")
         self.joint_to("above_target", T_hi)
         self.line("down_to_place_pre", T_pre, "normal")
         self.line("place_down", Tp, "slow", tip_margin=0.0)
@@ -437,6 +536,16 @@ class Reset:
         s.require(st != "missing", "drawer not found (no drawer blob on the table and the bottom slot looks empty)")
         held = None
         self.to_ready()
+        if st == "slot_back":
+            s.phase("pull_back")
+            self.backwards = True
+            self.pull_back(p)
+            self.go_home("home_after_back")
+            p = self.perceive("after_back")
+            st = self.state_of(p)
+            s.require(st in ("out", "table") or s.dry, f"backwards drawer not pulled out (state {st}, protrusion {p['protr']:.3f})")
+            if s.dry and st != "out":
+                p = dict(p, out=dict(t=T_C, h_top=0.075, h_bot=0.03, n=0), protr=PULL + 0.012); st = "out"
         if st == "slot":
             s.phase("pull_out")
             for k in range(1):
@@ -475,13 +584,18 @@ class Reset:
             c = p["cand"][0]
             self.bias = np.array(c["obb_c"]) - np.array(c["xy"])
             err = float(np.linalg.norm(np.array(c["xy"]) - tgt))
-            s.summary(**{f"err_check{it}": round(err, 4)})
-            if err <= GOOD or (held is not None and it >= 3):
+            pull = self.detect_pull(c)
+            facing = None if pull is None else float(np.degrees(np.arccos(np.clip(pull @ unit(-N), -1, 1))))
+            s.summary(**{f"err_check{it}": round(err, 4), f"pull_vs_robot_deg{it}": None if facing is None else round(facing, 0)})
+            bad_yaw = facing is not None and facing > 40
+            if (err <= GOOD and not bad_yaw) or (held is not None and it >= 3):
                 break
+            if bad_yaw:
+                s.decide(f"pull wall faces {facing:.0f} deg away from the robot side: pick and turn it")
             s.require(tries < 3, f"drawer still {err:.3f} m from the target after {tries} picks")
             s.phase(f"pick{it}")
             try:
-                held = self.pick_table(c)
+                held = self.pick_table(c, pull)
             except Abort as e:
                 # attempt 31: a single bad joint sample (j5 read 0 instead of -47 deg) aborted a segment as a
                 # 47 deg "tracking deviation"; retry the pick once from a lifted pose, anything else is a failure
@@ -509,7 +623,10 @@ class Reset:
             err = float(np.linalg.norm(np.array(c["xy"]) - tgt))
             yaw_axis = c["yaw"]
             dev = wrapd(yaw_axis - ang(N)); dev = dev - 180 if dev > 90 else dev + 180 if dev < -90 else dev
-            ok = err <= TOL and c["h"] <= 0.10
+            pull = self.detect_pull(c)
+            facing = None if pull is None else float(np.degrees(np.arccos(np.clip(pull @ unit(-N), -1, 1))))
+            s.summary(pull_vs_robot_deg=None if facing is None else round(facing, 0))
+            ok = err <= TOL and c["h"] <= 0.10 and (facing is None or facing <= 40)
             s.summary(measured={"drawer": c["xy"]}, errors={"drawer": round(err, 4)}, target={"drawer": tgt.tolist()},
                       verify=dict(obb_center=c["obb_c"], L=c["L"], W=c["W"], height=c["h"], yaw_vs_normal_deg=round(dev, 1), tol=TOL))
             s.claim("success" if ok else "fail")

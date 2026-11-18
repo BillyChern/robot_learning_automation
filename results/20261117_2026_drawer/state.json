@@ -18,36 +18,36 @@
    "unsure": 0
   },
   "resets": {
-   "total": 4,
-   "ok": 2,
-   "fail": 2,
+   "total": 7,
+   "ok": 3,
+   "fail": 4,
    "manual": 0
   },
   "consecutive_failures": {
    "execute": 0,
-   "reset": 0
+   "reset": 2
   }
  },
  "agents": {
   "reset": {
-   "status": "done",
+   "status": "repairing",
    "session_id": "28a976d6-48ea-4fad-b363-10f157ffb977",
    "model": "claude-opus-5-5",
    "started": "2026-11-17T20:27:03",
    "ended": "2026-11-17T22:12:06",
-   "attempts": 30,
-   "robot_attempts": 23,
-   "turns": 251,
-   "cost_usd": 21.287410200000007,
-   "input_tokens": 442,
-   "output_tokens": 255186,
-   "cache_read": 60054491,
-   "cache_creation": 521378,
-   "duration_s": 2918.9609999999984,
+   "attempts": 31,
+   "robot_attempts": 24,
+   "turns": 264,
+   "cost_usd": 27.540370600000006,
+   "input_tokens": 466,
+   "output_tokens": 281617,
+   "cache_read": 65849833,
+   "cache_creation": 1092025,
+   "duration_s": 3223.0449999999983,
    "first_success_attempt": 16,
    "first_success_after_attempts": 21,
    "time_to_first_success_s": 5425.0,
-   "repairs": 1,
+   "repairs": 2,
    "rounds": 0,
    "program_command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py",
    "last_report": "reset.py is fixed. A real run started the way you start resets (targets in a file) placed the drawer 1.5 cm from its target, and your layout check passed (attempt 32, commit 8737b8d).\n\n**Why attempts 29 and 30 failed:** you pass `--targets` as a path to a JSON file, but reset.py tried to read the argument itself as JSON. It crashed before the robot session started, so no summary.json was written. It now accepts either a file path or inline JSON. It reads the targets inside the session, so a bad argument ends as a clean fail with a summary.json.\n\n**Second problem, found while testing (attempt 31):** a segment was stopped for \"tracking deviation 47 deg\". Joint 5 read 360.0 (0\u00b0) where the plan had 312.9\u00b0. A 47\u00b0 jump in 0.67 s is impossible at the 20\u00b0/s speed limit, so it was a single bad feedback sample, not a collision. The arm returned home safely. reset.py now retries the table pick once after a tracking-deviation stop: it lifts slowly from the measured pose and re-plans. Any other stop, or a second one, still fails the run.\n\n**Test run (attempt 32):** the drawer was upright on the table; the target came from `test_targets.json`. The wrist camera corrected the grasp point by 1.6 cm, the grasp held, and the drawer was placed. Program error 1.5 cm.\n\n**Earlier results still valid:**\n- Scattered drawer: 1.7 cm (attempt 21).\n- Drawer stuck ~8.5 cm out of the slot: 1.3 cm (attempt 28).\n- Flush drawer pulled 6.5 cm out by pinching its pull tab (attempt 17).\n\n**Not yet tested:** a whole reset starting with the drawer flush in the slot, run end to end. With the force stop now removed, the pulls and slide-outs that needed 22\u201328 N should no longer be cut off, but I haven't run them since the change. The program also doesn't check which wall the pull is on when it places the drawer.\n\nNotes are in `notes/notes.md`; latest commit 4403757."
@@ -58,15 +58,15 @@
    "model": "claude-opus-5-5",
    "started": "2026-11-17T22:12:06",
    "ended": null,
-   "attempts": 5,
-   "robot_attempts": 2,
-   "turns": 23,
-   "cost_usd": 5.731345800000001,
-   "input_tokens": 40,
-   "output_tokens": 13473,
-   "cache_read": 3622967,
-   "cache_creation": 44991,
-   "duration_s": 207.565,
+   "attempts": 10,
+   "robot_attempts": 5,
+   "turns": 48,
+   "cost_usd": 7.616268400000002,
+   "input_tokens": 86,
+   "output_tokens": 33265,
+   "cache_read": 8294043,
+   "cache_creation": 83843,
+   "duration_s": 453.752,
    "first_success_attempt": null,
    "first_success_after_attempts": null,
    "time_to_first_success_s": null,
@@ -99,12 +99,20 @@
     [
      "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_30",
      "layout check failed: drawer: 12.6 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_36",
+     "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_37",
+     "layout check failed: drawer: not found"
     ]
    ]
   }
  },
  "next_episode": 0,
- "next_reset": 4,
+ "next_reset": 7,
  "vlm": {
   "calls": 0,
   "cost_usd": 0.0

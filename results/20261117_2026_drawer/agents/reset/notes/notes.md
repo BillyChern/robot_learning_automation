@@ -74,3 +74,11 @@
   -> load_targets() accepts a path or inline JSON, parsed inside the session (summary written on failure).
 - 22:30 operator: contact-force stop removed (rl.force_limit_n null).
 - attempt 31: targets file OK; a single bad j5 sample (360.0 vs plan 312.9) aborted a segment as tracking deviation -> one retry of the table pick after lifting.
+- attempt 32 (real, commit 8737b8d): targets as a file, table pick (refine +1.6 cm, grasp 88.2), placed, err 1.5 cm, orchestrator layout ok.
+- 23:50 operator: drawer must lie with the PULL wall facing the robot (+-30 deg); the slot held it BACKWARDS (plain wall
+  out, protr ~0.014; attempts 36-37 pinched for a tab that was not there). Force stop now needs > 50 N total.
+- attempt 38 changes: state 'slot_back' (protr > 0.009); pull_back(): oblique clamp of the protruding wall's top edge
+  (jaws in the vertical plane through the slot centre, tilt 40, pinch centre 35 mm along z), pull 6.5 cm, lift 10 cm;
+  place() generalised: held = grasp_off (centre->grasp) + pull dir; turn so the pull wall faces -N rotated by delta;
+  detect_pull(): grey (S<75, V>70) side-camera pixels on the depth-segmented drawer -> side of the pull; check loop
+  re-picks if the pull faces > 40 deg off the robot side; final claim includes it.

@@ -57,3 +57,11 @@ action inside the keep-out/kinematic envelope (tools/offline_test.py).
 - attempt 5 setup: own 40 N stop removed on the user's instruction (operator note after attempt 4); the 'force' status
   path remains only for a stop the session might still report.
 - attempt 4: learner --check + one update on the real data (1 episode, 10 transitions, cuda on the robot machine, 5.7 s).
+- attempt 5 (real, commit 1507c05): insertion reached n-OFF -0.036 in 15 steps (one 58.9 N rub at step 9, t err
+  -0.013 measured); release opened to 0.40 (51 mm): the inner finger sat ~2 mm in front of the cabinet face inside
+  the drawer, the 6 cm lift caught the rail above the slot (99.6 N, tracking stop) and moved the cabinet 6 cm.
+  -> release opening 0.75 (~21 mm): inner finger ~1.7 cm in front of the face, also in the model.
+- attempt 7 (real, b09672d, 50 N task stop back): narrow release worked (23 N on the lift); insertion reached in 14
+  steps; push: 5 steps to tip n-OFF -0.0125, then 50.5 N (drawer at its stop or jammed); the 6 cm retreat tripped at
+  51.1 N because it released the preload inside one segment (the stop watches the change). -> unload(): 1.5 mm slow
+  back-off lines after every force stop (insert and push) before anything else; recover.py handles a tilted pusher.

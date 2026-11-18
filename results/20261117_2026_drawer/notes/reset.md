@@ -1,10 +1,13 @@
-Contact-force stop is back at 50 N (user, 23:10): task yaml `rl.force_limit_n: 50`. A segment stops when the estimated
-tool force changes by more than 50 N. Without a stop, RL attempt 5's lift caught the rail above the slot, reached 99.6 N
-and moved the cabinet 6 cm; drawer pulls and pushes so far needed 20-40 N, so 50 N leaves room for them. Do not add a
-lower stop of your own. The cabinet was put back by hand and re-measured before this restart (see the operator log).
 
-Scene after RL attempt 5 (restored 23:28): the arm was freed by straight-line moves (back from the cabinet, up, Home)
-and is at Home. The cabinet did not move: its front face (above the drawer) measures 10 mm behind the yaml plane,
-the same as the reset agent's triangulation before (11 mm), top 0.271 m. The orchestrator's "cabinet moved 6.0 cm"
-came from the cabinet blob's centre shifting with the gripper beside it and the drawer sticking out. The drawer now
-sticks out of the bottom slot by ~10 cm; the reset takes it from there.
+ANY STATE (user, 23:55): "the reset agent should be able to reset from any scenario, since the RL agent can make all
+kinds of mistakes". Make reset.py classify the start state and recover from each of these, and test the ones you can
+set up yourself on the robot:
+- arm not at home: stopped low beside the cabinet, possibly touching it, gripper open or closed on the drawer.
+  Escape in straight lines: open the gripper, back away from the cabinet along -normal first, then up, then home
+  (a joint move to home from near the cabinet can sweep into it; check that path against the cabinet box).
+- drawer in the slot, right way round (pull outside): flush or partly out; partly out may be cocked or jammed.
+- drawer in the slot backwards (plain wall outside): flush (nothing protrudes) or partly out (as now: 1.4 cm).
+- drawer on the table: anywhere reachable, any yaw, upright, on its side or upside down.
+- drawer still held in the gripper.
+Then place it upright with the pull facing the robot. You now get up to 5 repair turns per failing reset (was 2).
+A state only a person can fix (drawer off the table, cabinet knocked over): say so in need_operator.
