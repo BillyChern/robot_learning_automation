@@ -1433,7 +1433,17 @@ class Pipeline:
             shutil.rmtree(ep_dir, ignore_errors=True)
             return None
         env = self._rl_env("eval" if mode == "rl_eval" else "train", idx)
-        return self._episode(ep_dir, idx, targets, before, mode, extra_env=env)
+        ep = self._episode(ep_dir, idx, targets, before, mode, extra_env=env)
+        if ep is not None:                       # the independent verdict, for the agent's learner (terminal reward)
+            vdir = Path(env["RLPJ_RL_DIR"]) / "verdicts"
+            vdir.mkdir(parents=True, exist_ok=True)
+            try:
+                meta = json.loads((Path(ep["dir"]) / "meta.json").read_text())
+            except Exception:
+                meta = {}
+            (vdir / f"{idx:06d}.json").write_text(json.dumps(dict(
+                episode=idx, mode=mode, final=ep["final"], reason=ep["reason"], verdict=meta.get("verdict")), default=str))
+        return ep
 
     def _rl_curve(self, **row):
         with open(self.st.dir / "rl_curve.jsonl", "a") as f:
