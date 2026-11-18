@@ -3,7 +3,7 @@
  "task": "drawer_rl",
  "condition": "text",
  "created": "2026-11-17T20:26:49",
- "phase": "develop_execute",
+ "phase": "rl_train",
  "counters": {
   "episodes": {
    "total": 0,
@@ -18,14 +18,20 @@
    "unsure": 0
   },
   "resets": {
-   "total": 17,
-   "ok": 7,
+   "total": 19,
+   "ok": 9,
    "fail": 10,
    "manual": 0
   },
   "consecutive_failures": {
    "execute": 0,
-   "reset": 3
+   "reset": 0
+  },
+  "rl": {
+   "total": 2,
+   "success": 0,
+   "fail": 2,
+   "unsure": 0
   }
  },
  "agents": {
@@ -37,43 +43,44 @@
    "ended": "2026-11-17T22:12:06",
    "attempts": 40,
    "robot_attempts": 32,
-   "turns": 325,
-   "cost_usd": 35.881726600000015,
-   "input_tokens": 580,
-   "output_tokens": 333705,
-   "cache_read": 97356813,
-   "cache_creation": 1216743,
-   "duration_s": 3987.3189999999986,
+   "turns": 328,
+   "cost_usd": 36.212697800000015,
+   "input_tokens": 586,
+   "output_tokens": 335304,
+   "cache_read": 98786049,
+   "cache_creation": 1218383,
+   "duration_s": 4017.6869999999985,
    "first_success_attempt": 16,
    "first_success_after_attempts": 21,
    "time_to_first_success_s": 5425.0,
    "repairs": 6,
    "rounds": 0,
    "program_command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py",
-   "last_report": "reset.py now finds the drawer's pull wall and places the drawer with that wall facing the robot. The last three real runs from a table start (attempts 45, 46, 47) all passed your position and orientation checks.\n\n**Why resets were failing (attempts 36\u201343):**\n- **Backwards drawer in the slot:** the plain wall faced out, about 1.4 cm proud, with no tab to pinch. The program kept pinching for a tab that wasn't there.\n- **Lost orientation between runs:** when one reset pulled a backwards drawer partly out, the next run didn't know it was backwards and placed the pull away from the robot (attempt 41).\n- **Unreliable pull detection:** my camera heuristics for finding the pull flipped from look to look (attempts 41\u201343).\n- **Keep-in failure (attempt 40):** the extraction planned a joint move straight from home and failed the keep-in check.\n\n**What changed in programs/reset.py:**\n- **Backwards drawer in the slot:** recognised when it sticks out more than 9 mm, or when no tab can be held. The gripper, tilted 40\u00b0, clamps the top edge of the protruding wall and pulls the drawer 6.5 cm out. In attempt 40 the clamp held (gripper 82.1) and pulled at 38.7 N.\n- **Drawer partly out:** the wrist image taken just before the front-wall grasp checks for the tab outside that wall, so a backwards drawer is recognised in every run.\n- **Orientation:** decided by your vision judge (`vlm_judge.judge`) on a full-size, settled side image:\n  - Q1 is your orientation criterion. If yes, the pull is on the robot-facing wall and stays there.\n  - If no, Q2 asks whether the pull is on the other visible wall, named by its quadrant in the image.\n  - If no again, the pull must be on a hidden far wall, so the drawer is turned 180\u00b0 and checked again.\n  - Each question takes about 8\u201311 s.\n- **Placement:** the drawer is turned so the pull wall faces the robot, with a random \u00b125\u00b0 yaw.\n- **Corrections and claim:** it re-picks only when the position is off by more than 3.5 cm and no longer aborts when it runs out of picks. The claim requires position within 5 cm and the judge's orientation yes.\n- **Extraction:** goes via the ready pose.\n- **`--targets`:** accepts a file path (from the earlier repair).\n\n**Real runs:**\n\n| Attempt | Start | What happened | Error | Your check |\n|---|---|---|---|---|\n| 45 | Pull facing away | Turned 180\u00b0, judge yes 3 times | 4.6 cm (inside 5 cm) | Pass; my program failed on its own correction step, since fixed |\n| 46 | Pull facing the robot | Re-placed; needed one correction round | 4.2 cm | Pass |\n| 47 (commit 97f960e) | Pull facing the robot | One pick, turned only 4\u00b0, 183 s | 1.2 cm | Pass, judge confidence 0.85 |\n\n**Not tested on hardware since these changes:**\n- A full reset from a backwards drawer: the clamp and pull worked in attempt 40, but the rest of that chain wasn't re-run after the orientation changes.\n- A start with the drawer still in the gripper.\n- A drawer cocked in the slot.\n\nTwo smaller risks:\n- The tab check at the pre-grasp view has only the two offline examples behind it. If it gets the direction wrong, the judge catches it in the correction loop.\n- Each judge question needs about 10 s of network access to the judge host. If the judge is unavailable, the program falls back to the less reliable wrist overview.\n\nNotes are in `notes/notes.md`; latest commit bd41568."
+   "last_report": "reset.py now finds the drawer's pull wall and places the drawer with that wall facing the robot. The last three real runs from a table start (attempts 45, 46, 47) all passed your position and orientation checks.\n\n**Why resets were failing (attempts 36\u201343):**\n- **Backwards drawer in the slot:** the plain wall faced out, about 1.4 cm proud, with no tab to pinch. The program kept pinching for a tab that wasn't there.\n- **Lost orientation between runs:** when one reset pulled a backwards drawer partly out, the next run didn't know it was backwards and placed the pull away from the robot (attempt 41).\n- **Unreliable pull detection:** my camera heuristics for finding the pull flipped from look to look (attempts 41\u201343).\n- **Keep-in failure (attempt 40):** the extraction planned a joint move straight from home and failed the keep-in check.\n\n**What changed in programs/reset.py:**\n- **Backwards drawer in the slot:** recognised when it sticks out more than 9 mm, or when no tab can be held. The gripper, tilted 40\u00b0, clamps the top edge of the protruding wall and pulls the drawer 6.5 cm out. In attempt 40 the clamp held (gripper 82.1) and pulled at 38.7 N.\n- **Drawer partly out:** the wrist image taken just before the front-wall grasp checks for the tab outside that wall, so a backwards drawer is recognised in every run.\n- **Orientation:** decided by your vision judge (`vlm_judge.judge`) on a full-size, settled side image:\n  - Q1 is your orientation criterion. If yes, the pull is on the robot-facing wall and stays there.\n  - If no, Q2 asks whether the pull is on the other visible wall, named by its quadrant in the image.\n  - If no again, the pull must be on a hidden far wall, so the drawer is turned 180\u00b0 and checked again.\n  - Each question takes about 8\u201311 s.\n- **Placement:** the drawer is turned so the pull wall faces the robot, with a random \u00b125\u00b0 yaw.\n- **Corrections and claim:** it re-picks only when the position is off by more than 3.5 cm and no longer aborts when it runs out of picks. The claim requires position within 5 cm and the judge's orientation yes.\n- **Extraction:** goes via the ready pose.\n- **`--targets`:** accepts a file path (from the earlier repair).\n\n**Real runs:**\n\n| Attempt | Start | What happened | Error | Your check |\n|---|---|---|---|---|\n| 45 | Pull facing away | Turned 180\u00b0, judge yes 3 times | 4.6 cm (inside 5 cm) | Pass; my program failed on its own correction step, since fixed |\n| 46 | Pull facing the robot | Re-placed; needed one correction round | 4.2 cm | Pass |\n| 47 (commit 97f960e) | Pull facing the robot | One pick, turned only 4\u00b0, 183 s | 1.2 cm | Pass, judge confidence 0.85 |\n\n**Not tested on hardware since these changes:**\n- A full reset from a backwards drawer: the clamp and pull worked in attempt 40, but the rest of that chain wasn't re-run after the orientation changes.\n- A start with the drawer still in the gripper.\n- A drawer cocked in the slot.\n\nTwo smaller risks:\n- The tab check at the pre-grasp view has only the two offline examples behind it. If it gets the direction wrong, the judge catches it in the correction loop.\n- Each judge question needs about 10 s of network access to the judge host. If the judge is unavailable, the program falls back to the less reliable wrist overview.\n\nNotes are in `notes/notes.md`; latest commit bd41568.",
+   "reflections": 1
   },
   "execute": {
-   "status": "developing",
+   "status": "done",
    "session_id": "b7058a73-f4cd-48cd-8da8-e30a617818a8",
    "model": "claude-opus-5-5",
    "started": "2026-11-17T22:12:06",
-   "ended": null,
-   "attempts": 15,
-   "robot_attempts": 9,
-   "turns": 99,
-   "cost_usd": 13.992033899999996,
-   "input_tokens": 182,
-   "output_tokens": 76753,
-   "cache_read": 22483763,
-   "cache_creation": 162791,
-   "duration_s": 1045.1309999999999,
+   "ended": "2026-11-18T02:06:21",
+   "attempts": 17,
+   "robot_attempts": 10,
+   "turns": 111,
+   "cost_usd": 15.256071699999998,
+   "input_tokens": 206,
+   "output_tokens": 89286,
+   "cache_read": 26589012,
+   "cache_creation": 186820,
+   "duration_s": 1214.2779999999998,
    "first_success_attempt": null,
    "first_success_after_attempts": null,
    "time_to_first_success_s": null,
    "repairs": 0,
    "rounds": 0,
    "program_command": null,
-   "last_report": null
+   "last_report": "The RL loop is ready for training. A real episode runs end to end on the hardware and the learner passes its check on the real data. No episode has succeeded yet: the best one (attempt 20) left the drawer about 2 cm out of the slot.\n\n**Split between scripted and learned (notes/design.md)**\n- Scripted: find the drawer in side depth and grasp its pull wall from above (wrist-camera wall refinement). Carry it in front of the bottom slot and measure the held drawer's offset and yaw from side depth. After the insertion, release, back off and go up. At the end, retreat, go home and verify.\n- Learned, one policy with a stage flag, using small slow straight-line steps:\n  - insert: advance, sideways t, height z and yaw, while holding the drawer;\n  - push: tilted closed fingertips, 3 cm beside the pull at 5 cm height.\n- Observation: 13 values (progress, corrections applied so far, measured offsets, force change, step count).\n- Action: 4 values, squashed to [-1, 1].\n\n**Reward (fixed as you asked at 01:50)**\n- Per step: +10 \u00d7 insertion progress (m), \u22120.02 step cost, force penalty only above 35 N, \u22121/\u22122 for a refused motion or a stop.\n- Terminal: +5 / \u22125 / 0 bonus, plus 2 \u00d7 flush share \u2212 2 \u00d7 sticking-out share of the slot window.\n- The bonus is +5 only when the geometric check passes and the orchestrator's vision judge agrees. Otherwise it is \u22125, so a backwards drawer is never rewarded.\n- `learner.py` replaces the bonus with one from `rl/verdicts/<episode>.json`: success +5, backwards or wrongly paid \u22125, other fails 0. I tested this on made-up verdict files, not on a real one yet.\n\n**Algorithm**\n- SAC: networks 13-128-128 with LayerNorm critics, gamma 0.95, automatic entropy tuning, about 40 updates per new transition (at most 3000 or 200 s per call). It reuses every logged episode.\n- The actor starts from a scripted prior: a 12 mm advance plus half of the measured yaw error per step. The learner fits the actor to that prior once and keeps a decaying pull toward it.\n- No simulation. Why, and what I take from SGS-RL, is in notes/sgs_rl.md.\n\n**Hardware results**\n- Attempt 20 (commit 84d20e6): exit 2, 21 transitions logged. The orientation check found the pull facing the robot, the insertion reached its end in 13 steps, and the gripper let go on the first try (reading 62.4). The push reached its limit. The retreat then hit 136 N because the fingertip had gone over the wall top, and it dragged the drawer about 2 cm back out.\n- Attempt 21 (commit 5524457): the learner check passed and one update ran on the robot machine's GPU: 7 real episodes, 117 transitions, 3000 updates in 51 s, prior fit loss 0.0007.\n- Earlier real episodes, attempts 3, 5, 7, 14, 16 and 17, fixed in turn: the lift catching the rail, force stops while unloading, gripper release not checked, knob hooking during the push, and lift paths refused by the model check.\n\n**Not yet tested on the hardware**\n- The new push point (5 cm high, 3 cm beside the pull): it passes the model checks offline but has not run on the robot.\n- The vision-judge call inside `finish()`.\n- Relabeling from real verdict files.\n- Insertions often jam at about \u22120.06 m (tool position relative to the front plane), with three 50 N stops per episode. Learning to avoid that is now the policy's job.\n\n**Code** (commit 5524457)\n- `programs/execute.py`, `programs/learner.py`, `programs/rlcommon.py`\n- `programs/pullface.py`: the pull check before the grasp. If it sees the pull on another wall, the episode ends as a failure without inserting.\n- `programs/recover.py`: frees the arm if an episode leaves it at the cabinet.\n- `tools/offline_test.py`: runs the full episode flow against the model checks offline."
   }
  },
  "datasets": {},
@@ -135,17 +142,17 @@
    ]
   }
  },
- "next_episode": 0,
- "next_reset": 17,
+ "next_episode": 2,
+ "next_reset": 19,
  "vlm": {
-  "calls": 0,
-  "cost_usd": 0.0
+  "calls": 2,
+  "cost_usd": 0.11683840000000001
  },
  "operator_notes": [],
  "rl": {
-  "episodes": 0,
+  "episodes": 2,
   "evals": [],
-  "since_review": 0,
+  "since_review": 2,
   "learner_fails": 0
  }
 }

@@ -35,6 +35,7 @@ Interventions, stops and mid-run changes by the operator (the user, or Claude Co
 | 01:17 | orchestrator / Claude | First reset passing the orientation check (reset 11, 0.8). RL attempt 16 inserted the drawer about 2/3, the right way round; the release lifted while the gripper still pinched the wall (reading 86.9): force stop at 58.2 N; note to the RL agent | |
 | 01:50 | user / Claude | Reward fix note to the RL agent: orientation must count (backwards = clear penalty), terminal bonus from the orchestrator's verdict (now written to rl/verdicts/<episode>.json after every RL episode), no orient_state condition, force penalty above normal sliding; safe restart | its terminal reward used only the geometry check, which cannot see orientation |
 | 01:58 | Claude | Drawer reset targets: y [-0.20, -0.08] (was up to -0.02); note to the reset agent; safe restart | reset 15 placed the drawer correctly at (0.401, -0.03) but the side-depth measurement merged it with the cabinet into one blob (drawer not found) |
+| 02:35 | Claude | RL tuning turn every 10 episodes (was 40); note to the RL agent with the evidence; safe restart | training episode 1: exploration noise so large that the 16 insertion steps left the drawer 6.7 cm out and the push never ran; the first tuning turn was ~7 h away |
 
 Force stops so far (25 N limit) were all real contacts: finger dragging on the pulled-out drawer (30.8 N), drawer meeting the
 table while placing (27.3 N), lifting while still gripping (26.6 N), drawer edge meeting the slot (25.4 N). Free moves: at

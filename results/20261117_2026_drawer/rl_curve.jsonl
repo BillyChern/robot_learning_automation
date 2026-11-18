@@ -1,0 +1,2 @@
+{"t": "2026-11-18T02:18:29", "kind": "train", "episode": 0, "n": 1, "final": "fail", "reason": "no independent check says success (claim=none, perception=False, vlm=False)", "duration": 127.3, "reward": -2.351, "transitions": 12}
+{"t": "2026-11-18T02:29:51", "kind": "train", "episode": 1, "n": 2, "final": "fail", "reason": "no independent check says success (claim=none, perception=False, vlm=False)", "duration": 129.2, "reward": 0.495, "transitions": 16}

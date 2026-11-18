@@ -72,6 +72,55 @@ class Critic(nn.Module):
         return self.q1(x).squeeze(-1), self.q2(x).squeeze(-1)
 
 
+def verdict_for(d, meta):
+    """The orchestrator's verdict for this episode ($RLPJ_RL_DIR/verdicts/<episode>.json), or None."""
+    ep = meta.get("episode", -1)
+    if ep is None or int(ep) < 0:
+        return None
+    vd = os.path.join(d, "verdicts")
+    for name in (f"{int(ep)}.json", f"{int(ep):04d}.json", f"ep_{int(ep):04d}.json", f"{meta.get('mode')}_{int(ep)}.json",
+                 f"{meta.get('mode')}_ep{int(ep):04d}.json"):
+        p = os.path.join(vd, name)
+        if os.path.exists(p):
+            try:
+                v = json.load(open(p))
+            except Exception:
+                continue
+            if v.get("mode") and meta.get("mode") and str(v["mode"]).replace("rl_", "") not in (meta["mode"], "rl"):
+                if not str(v["mode"]).endswith(meta["mode"]):
+                    continue
+            return v
+    return None
+
+
+def relabel(d, f, part):
+    """Replace my terminal bonus by one from the orchestrator's verdict (user 01:50): success -> +5; a fail that my
+    geometry would have paid (likely backwards) or whose reason says backwards -> -5; other fails -> 0. Shaping terms
+    (progress, flushness, force, step cost) stay."""
+    try:
+        meta = json.load(open(f[:-4] + ".json"))
+    except Exception:
+        return None
+    v = verdict_for(d, meta)
+    if v is None or not len(part["rew"]):
+        return None
+    mine = float(((meta.get("terminal") or {}).get("bonus")) or 0.0)
+    if (meta.get("terminal") or {}).get("bonus") is None and meta.get("check") is True:
+        mine = 5.0
+    final = str(v.get("final", "")).lower()
+    reason = json.dumps(v).lower()
+    if final == "success":
+        new = 5.0
+    elif final in ("fail", "failure") and (mine > 0 or "backward" in reason or "wrong way" in reason):
+        new = -5.0
+    elif final in ("fail", "failure"):
+        new = 0.0
+    else:
+        return dict(final=final, kept=mine)
+    part["rew"][-1] += new - mine
+    return dict(final=final, mine=mine, new=new)
+
+
 def load_data(d):
     files = sorted(glob.glob(os.path.join(d, "transitions", "*.npz")))
     files = [f for f in files if not f.endswith(".tmp.npz") and not os.path.basename(f).startswith("dry_")]
@@ -80,8 +129,10 @@ def load_data(d):
         try:
             z = np.load(f)
             if len(z["rew"]):
-                parts.append({k: z[k] for k in ("obs", "act", "rew", "next_obs", "done")})
-                eps.append(dict(file=os.path.basename(f), n=int(len(z["rew"])), ret=float(z["rew"].sum())))
+                part = {k: z[k].copy() for k in ("obs", "act", "rew", "next_obs", "done")}
+                rel = relabel(d, f, part)
+                parts.append(part)
+                eps.append(dict(file=os.path.basename(f), n=int(len(part["rew"])), ret=float(part["rew"].sum()), relabel=rel))
         except Exception as e:
             print(f"skip {f}: {e}")
     if not parts:

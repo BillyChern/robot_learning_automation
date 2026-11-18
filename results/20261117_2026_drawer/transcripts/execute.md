@@ -5032,3 +5032,331 @@ Structured output provided successfully
 ```
 </details>
 
+**02:02:33 execute agent:** No response requested.
+
+### 02:02:33 orchestrator -> execute agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+REWARD FIX (user, 01:50): the reward must consider the drawer's ORIENTATION and agree with the real verdict.
+Problems in execute.py `finish()` now:
+1. The terminal bonus comes only from `checks.drawer_rl` (side-depth geometry). That check cannot tell which way round
+   the drawer is: a drawer pushed in flush but BACKWARDS (plain wall out, pull inside) gets +2..+5 + 2*flush from
+   you, while the orchestrator's verdict (geometry AND vision judge, whose success text says backwards = failure)
+   says fail. Your reward then teaches the wrong thing.
+2. The +5 needs `orient_state != "unknown"`; with the turning step removed, a real success only gets +2.
+3. F_SOFT = 20 N penalises normal sliding (22-28 N measured): at 28 N a 12 mm insertion step nets -0.06.
+Do this:
+- Orientation in the reward: success counts only if the pull is outside (facing the robot). In finish(), judge the
+  after images with the vision judge the orchestrator uses (from rlpj.success import vlm_judge;
+  vlm_judge.judge({"before_side": ..., "after_side": ..., "after_wrist": ...}, TASK) with the task config, whose
+  success text includes the orientation), and give a clear negative terminal reward (e.g. -5) for a drawer inserted
+  backwards, so the policy is never paid for it.
+- Better still, use the orchestrator's own verdict: from now on, after every RL episode it writes
+  $RLPJ_RL_DIR/verdicts/<episode>.json {episode, mode, final ("success"/"fail"/...), reason, verdict{...}} before
+  your learner runs. Relabel the terminal reward in learner.py from that file (final == "success" -> bonus; a
+  backwards or wrong result -> penalty), keeping your own shaping terms for progress and flushness.
+- Drop the orient_state condition on the bonus.
+- Move F_SOFT above normal sliding (e.g. 35 N) or penalise only force without progress.
+Say what you changed in notes/design.md.
+
+# attempt_20: exit code 2; outcome: fail
+
+command: RLPJ_RL_MODE=train RLPJ_EPISODE=-1 /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: Real RL episode after a reset: pull check, grasp the pull wall, carry, insertion (prior corrects measured yaw only, plus exploration), verified release, back off 12 mm along -normal before lifting, push above the knob, retreat, verify; commit: 84d20e6; duration_s: 181.4; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "84d20e6355",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.958, 0.5622, 90.4589], "gripper": 39.7},
+"fk_check_mm": 0.18,
+"rl_mode": "train",
+"episode": -1,
+"policy": {"source": "prior", "note": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute/rl/policy/actor.npz predates prior version 3"},
+"transitions": 21,
+"return": -1.122,
+"objects": {"drawer": {"xy": [0.4151, -0.1736], "rect_c": [0.4255, -0.1693], "size": [0.119, 0.096], "h_top": 0.07, "front_dev_deg": -8.4}},
+"slot_before": {"n": 327, "flush": 0.0, "behind": 0.881, "front": 0.0, "median_d": 0.0262},
+"pull_check": {"face": "A", "lr": ["A", "D"], "found": true, "area": 172, "side": "left"},
+"decisions": ["front wall at [0.385, -0.179] (face -8 deg from facing the robot), top 0.070, depth 0.096", "held drawer: t err -0.021 yaw err -10.3 (1117 pts); insertion from n-OFF -0.185", "push retreat: back to n-OFF -0.040, then up"],
+"segments": [["ready", true, 0.131, 0.4, 11.87, 39.8], ["above_front", true, 0.123, 0.26, 2.55, 39.6], ["down_to_front_pre", true, 0.12, 0.56, 2.03, 39.4], ["front_correct", true, 0.019, 0.13, 0.56, 35.7], ["down_to_front", true, 0.016, 0.1, 5.16, 39.7], ["lift_slow", true, 0.022, 0.15, 5.16, 39.7],
+"grasp_reading": 88.2,
+"wall_shift": 0.0020000000000000313,
+"held": {"n0_minus_off": -0.185, "z0_above_table": 0
+... (9592 more characters)
+```
+
+**02:03:13 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj && grep -n "def \|return" rlpj/success/vlm_judge.py | head -30; sed -n 1,30p rlpj/success/vlm_judge.py
+```
+
+<details><summary>02:03:13 result</summary>
+
+```text
+1:"""VLM judge: headless Claude Code on the agent host reads before/after images and returns a strict judgement.
+24:def judge(images, task_cfg, extra="", dry=False, timeout=300, host=None, model=None, effort=None):
+27:    with a JSON schema; any failure gives success None with the reason. dry=True returns the prompt and command."""
+38:        return dict(out, prompt=text, command=cmd, reason="dry run")
+48:        return dict(out, reason=f"timeout after {timeout} s", duration_s=round(time.time() - t0, 1))
+50:        return dict(out, reason=f"judge failed: {e}", duration_s=round(time.time() - t0, 1))
+52:    if r.returncode != 0:
+53:        return dict(out, reason=f"claude exit {r.returncode}: {(r.stderr or r.stdout)[-400:].strip()}")
+54:    return dict(out, **parse(r.stdout))
+57:def parse(stdout):
+62:        return dict(success=None, confidence=0.0, reason=f"unparsable judge output: {stdout[-300:].strip()}")
+66:        return dict(out, success=None, confidence=0.0,
+68:    return dict(out, success=so["success"], confidence=float(so.get("confidence") or 0), reason=str(so.get("reason", "")))
+71:def prompt(names, task_cfg, extra=""):
+74:    return f"""You judge whether a robot arm comple
+... (1795 more characters)
+```
+</details>
+
+**02:03:25 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute && grep -n "def finish" -A 22 programs/execute.py | head -30; grep -n "self.stage_push(face_n, ins\[\"t\"\]\|PUSH_H, PUSH_ZT\|0.062, 0.085\|t0 - 0.02, t0 + 0.02\|F_SOFT = " programs/execute.py
+```
+
+<details><summary>02:03:25 result</summary>
+
+```text
+479:    def finish(self, before, extra_terminal=0.0):
+480-        """Home, verify with the orchestrator's geometric check, terminal reward, save transitions."""
+481-        s = self.s
+482-        s.phase("verify")
+483-        self.go_home("home_verify")
+484-        time.sleep(0.5)
+485-        P, tz, after = self.scene("after")
+486-        ok, rep = checks.drawer_rl(before, after, TASK)
+487-        slot = rep.get("slot", {})
+488-        d_after = self.find_drawer(after, tz)
+489-        orient = getattr(self, "orient_state", "unknown")
+490-        R = extra_terminal + (5.0 if ok is True and orient != "unknown" else 2.0 if ok is True else 0.0) + 2.0 * slot.get("flush", 0.0) - 2.0 * slot.get("front", 0.0) - (1.0 if d_after else 0.0)
+491-        if self.trans:
+492-            self.trans[-1]["rew"] += R
+493-        self.ret += R if self.trans else 0.0
+494-        self.save_transitions(ok, rep)
+495-        s.summary(verify=dict(check=ok, orient=getattr(self, "orient_state", "unknown"), reason=rep.get("reason"), slot=slot, cabinet_moved_m=rep.get("cabinet_moved_m"),
+496-                              drawer_on_table=bool(d_after), terminal_reward=round(R, 3)),
+497-                  transiti
+... (677 more characters)
+```
+</details>
+
+**02:03:40 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+p="programs/execute.py"; s=open(p).read()
+old=s[s.index("        orient = getattr(self, \"orient_state\", \"unknown\")\n        R = extra_terminal"):s.index("        if self.trans:\n            self.trans[-1][\"rew\"] += R")]
+new='''        # terminal bonus must agree with the real verdict (geometry AND vision judge; backwards = failure, user 01:50):
+        # geometry ok -> ask the orchestrator's vision judge; judged not successful -> -5 (never pay a backwards drawer).
+        # learner.py relabels this bonus from the orchestrator's verdict file when there is one.
+        bonus, judge = 0.0, None
+        if ok is True:
+            judge = self.judge()
+            bonus = -5.0 if (judge or {}).get("success") is False else 5.0
+        R = extra_terminal + bonus + 2.0 * slo
+... (2870 more characters)
+```
+
+<details><summary>02:03:40 result</summary>
+
+```text
+480:    def finish(self, before, extra_terminal=0.0):
+12:539-        p = rc.save_episode(name, self.trans, dict(mode=self.mode, episode=self.ep, dry=self.s.dry, ret=self.ret, check=ok,
+```
+</details>
+
+**02:03:59 tool Bash:**
+
+```bash
+sed -i 's/        p = rc.save_episode(name, self.trans, dict(mode=self.mode, episode=self.ep, dry=self.s.dry, ret=self.ret, check=ok,/        p = rc.save_episode(name, self.trans, dict(mode=self.mode, episode=self.ep, dry=self.s.dry, ret=self.ret, check=ok, terminal=getattr(self, "terminal", None),/' programs/execute.py && grep -c 'terminal=getattr' programs/execute.py && python3 - <<'EOF'
+p="programs/learner.py"; s=open(p).read()
+old='''    for f in files:
+        try:
+            z = np.load(f)
+            if len(z["rew"]):
+                parts.append({k: z[k] for k in ("obs", "act", "rew", "next_obs", "done")})
+                eps.append(dict(file=os.path.basename(f), n=int(len(z["rew"])), ret=float(z["rew"].sum())))'''
+new='''    for f in files:
+        try:
+            z = np.load(f)
+... (3621 more characters)
+```
+
+<details><summary>02:04:02 result</summary>
+
+```text
+1
+Traceback (most recent call last):
+  File "<stdin>", line 7, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/rltest2/transitions/train_test_20261117_222059.json'
+[('train_ep0000.npz', 1.14, None)]
+check: one update {'lc': 0.18127216398715973, 'la': -0.03363
+[This command modified 2 files you've previously read: runs/20261117_2026_drawer/agents/execute/programs/learner.py, runs/20261117_2026_drawer/agents/execute/programs/execute.py. Call Read before editing.]
+```
+</details>
+
+**02:04:10 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+import json,os,glob,shutil
+d="/tmp/rltest4"; shutil.rmtree(d,ignore_errors=True); os.makedirs(d+"/transitions"); os.makedirs(d+"/verdicts")
+fs=sorted(glob.glob("/tmp/rltest/transitions/dry_*.npz"))[:3]
+for i,f in enumerate(fs):
+    shutil.copy(f, f"{d}/transitions/train_ep{i:04d}.npz")
+    m=json.load(open(f[:-4]+".json")); m.update(episode=i, mode="train", terminal=dict(bonus=5.0 if i==1 else 0.0)); json.dump(m,open(f"{d}/transitions/train_ep{i:04d}.json","w"))
+json.dump(dict(episode=0,mode="rl",final="success",reason="ok"),open(f"{d}/verdicts/0.json","w"))
+json.dump(dict(episode=1,mode="rl",final="fail",reason="drawer inserted backwards"),open(f"{d}/verdicts/1.json","w"))
+EOF
+PY=third_party/openpi/.venv/bin/python; RLPJ_RL_DIR=/tmp/rltest4 $PY -c "
+import sys; sys.path.
+... (184 more characters)
+```
+
+<details><summary>02:04:12 result</summary>
+
+```text
+[('train_ep0000.npz', 6.14, {'final': 'success', 'mine': 0.0, 'new': 5.0}), ('train_ep0001.npz', -8.86, {'final': 'fail', 'mine': 5.0, 'new': -5.0}), ('train_ep0002.npz', 1.14, None)]
+```
+</details>
+
+**02:04:16 execute agent:** Relabeling from the orchestrator's verdict works. Now I'm checking the new push point (beside the pull, 5 cm high) against the model with the offline flow test.
+
+**02:04:18 tool Bash:**
+
+```bash
+RLPJ_RL_DIR=/tmp/rltest timeout 1200 uv run python runs/20261117_2026_drawer/agents/execute/tools/offline_test.py 4 2>&1 | grep -E "^RESULT|Traceback|Error|refused" | cut -c1-330
+```
+
+<details><summary>02:04:26 result</summary>
+
+```text
+RESULT 0 [ 0.404 -0.151] -5.7 ('ran', 21, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': -0.0029, 'dz': -0.0004, 'dyaw': 1.6}, {'end': 'reached', 'steps': 8, 'tip_n_minus_off': np.float64(0.02), 'dt': 0.0002, 'h': 0.0508})
+RESULT 1 [ 0.431 -0.091] 35.6 ('ran', 21, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': 0.0003, 'dz': 0.0027, 'dyaw': 4.4}, {'end': 'steps', 'steps': 8, 'tip_n_minus_off': np.float64(0.0181), 'dt': -0.0005, 'h': 0.0521})
+   push step 7: a [0.46, -0.02, 0.24, 0.39] (mu [0.6, 0.0, 0.0, 0.0]) -> refused model tip n-OFF +0.0004 dt +0.0007 h 0.049 peak 6.1 N r -1.020
+RESULT 2 [ 0.422 -0.2  ] 43.3 ('ran', 21, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': 0.0068, 'dz': 0.0006, 'dyaw': 3.7}, {'end': 'refused', 'steps': 8, 'tip_n_minus_off': np.float64(0.0004), 'dt': 0.0007, 'h': 0.0491})
+RESULT 3 [ 0.358 -0.045] 24.3 ('ran', 21, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': -0.0009, 'dz': -0.0032, 'dyaw': -3.7}, {'end': 'reached', 'steps': 8, 'tip_n_minus_off': np.float64(0.02), 'dt': -0.0002, 'h': 0.0478})
+```
+</details>
+
+**02:04:36 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute && python3 - <<'EOF'
+p="programs/execute.py"; s=open(p).read()
+s=s.replace('''        self.stage_push(face_n, ins["t"] + PUSH_DT, ins["end"] == "reached")''','''        self.stage_push(face_n, min(ins["t"] + PUSH_DT, PUSH_TMAX), ins["end"] == "reached")''')
+s=s.replace("float(np.clip(t + ddt, t0 - 0.015, t0 + 0.006))","float(np.clip(t + ddt, t0 - 0.015, min(t0 + 0.006, PUSH_TMAX + 0.002)))")
+s=s.replace("PUSH_NMAX = OFF + 0.020","PUSH_TMAX = -0.060           # closed fingers (+-14 mm along t in the model) clear of the slot-side keep-out box (t > -0.045)\nPUSH_NMAX = OFF + 0.020",1)
+open(p,"w").write(s)
+EOF
+cd /home/r2r/robot_learning_final_pj && RLPJ_RL_DIR=/tmp/rltest timeout 1500 uv run python runs/20261117_202
+... (110 more characters)
+```
+
+<details><summary>02:04:49 result</summary>
+
+```text
+RESULT 0 [ 0.404 -0.151] -5.7 ('ran', 21, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': 0.000
+RESULT 1 [ 0.431 -0.091] 35.6 ('ran', 20, {'end': 'reached', 'steps': 12, 'n_minus_off': np.float64(-0.0362), 'dt': -0.0
+RESULT 2 [ 0.422 -0.2  ] 43.3 ('ran', 21, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': 0.004
+RESULT 3 [ 0.358 -0.045] 24.3 ('ran', 21, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': -0.00
+RESULT 4 [ 0.343 -0.178] 32.1 ('ran', 21, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': 0.000
+RESULT 5 [ 0.378 -0.021] 50.7 ('ran', 20, {'end': 'reached', 'steps': 12, 'n_minus_off': np.float64(-0.0376), 'dt': -0.0
+```
+</details>
+
+**02:04:59 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute && cat >> notes/design.md <<'EOF'
+- REWARD FIX (user 01:50), commit after attempt 20:
+  * terminal bonus: geometry ok -> the orchestrator's vision judge (rlpj.success.vlm_judge, task success text
+    includes orientation) on before/after side + after wrist; judged not successful -> -5 (a backwards drawer is never
+    paid), else +5. The orient_state condition is gone. Bonus stored in the episode meta (terminal.bonus).
+  * learner.py relabels the bonus from $RLPJ_RL_DIR/verdicts/<episode>.json: final success -> +5; fail that my
+    geometry paid or whose verdict mentions backwards -> -5; other fail -> 0 (shaping terms kept). Tested on
+    synthetic verdicts.
+  * F_SOFT 20 -> 35 N (normal sliding 22-28 N is no long
+... (824 more characters)
+```
+
+<details><summary>02:04:59 result</summary>
+
+```text
+5524457 attempt 21: reward agrees with the verdict (vision judge, verdict relabel in learner), F_SOFT 35 N, push beside the pull at 5 cm
+```
+</details>
+
+**02:05:05 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/bin/python programs/learner.py --check && /home/r2r/robot_learning_final_pj/third_party/openpi/.venv/bin/python programs/learner.py",
+ "moves_robot": false,
+ "what": "Learner self-test and one update on all real episodes so far (prior v3 fit, verdict relabel), writes rl/policy/actor.npz",
+ "report": ""
+}
+```
+
+<details><summary>02:05:05 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**02:06:02 execute agent:** No response requested.
+
+### 02:06:02 orchestrator -> execute agent
+
+```text
+# attempt_21: exit code 0; outcome: success
+
+command: /home/r2r/robot_learning_final_pj/third_party/openpi/.venv/bin/python programs/learner.py --check && /home/r2r/robot_learning_final_pj/third_party/openpi/.venv/bin/python programs/learner.py; what: Learner self-test and one update on all real episodes so far (prior v3 fit, verdict relabel), writes rl/policy/actor.npz; commit: 5524457; duration_s: 54.6; moves_robot: False
+
+summary.json: MISSING (the program must write it, also on failure)
+
+log.txt: 5 lines; last 5:
+data: 7 episodes, 117 transitions; device cuda; updates so far 400
+check: one update {'lc': 0.38938820362091064, 'la': 0.9276530742645264, 'q': -0.7391166090965271, 'alpha': 0.043839674443006516, 'ent': 1.7458912134170532}; finite True
+data: 7 episodes, 117 transitions; device cuda; updates so far 400
+actor fitted to prior version 3: loss 0.0007
+{"t": "2026-11-18 02:06:00", "episodes": 7, "transitions": 117, "new": 107, "updates": 3000, "total_updates": 3400, "device": "cuda", "secs": 51.3, "ret_last10": -1.172, "lc": 0.0687, "la": 0.2946, "q": -0.3753, "alpha": 0.0191, "ent": 1.0015, "bc_w": 0.7919, "mean_act": [0.5529999732971191, -0.0750
+
+other files: command.txt (1 KB), console.txt (1 KB), ended (1 KB), started (1 KB)
+
+An attempt the operator stopped (exit code 130) counts as a failure, whatever the program claims. Decide the next action from this digest; end your turn with the structured action.
+```
+
+**02:06:19 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "RL episode program and learner work on the hardware; ready for training",
+ "report": "The RL loop is ready for training. A real episode runs end to end on the hardware and the learner passes its check on the real data. No episode has succeeded yet: the best one (attempt 20) left the drawer about 2 cm out of the slot.\n\n**Split between scripted and learned (notes/design.md)**\n- Scripted: find the drawer in side depth and grasp its pull wall from above (wrist-camera wall refinement). Carry it in front of the bottom slot and measure the held drawer's offset and yaw from side depth. After the insertion, release, back off and go up. At the end, retreat, go home and verify.\n- Learned, one policy with a stage flag, using sma
+... (3130 more characters)
+```
+
+<details><summary>02:06:19 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

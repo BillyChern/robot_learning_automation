@@ -93,3 +93,17 @@ action inside the keep-out/kinematic envelope (tools/offline_test.py).
   t err -0.024) jammed at -0.06 (3 force stops) then a tracking stop; release worked on the 3rd try (0.46 -> 45.9);
   the lift was refused by the model (load-deflected measured pose, gripper body 6 mm from cabinet_front). ->
   back off 12 mm along -N after the verified release, then up from the measured pose; prior v3 drops the t correction.
+- REWARD FIX (user 01:50), commit after attempt 20:
+  * terminal bonus: geometry ok -> the orchestrator's vision judge (rlpj.success.vlm_judge, task success text
+    includes orientation) on before/after side + after wrist; judged not successful -> -5 (a backwards drawer is never
+    paid), else +5. The orient_state condition is gone. Bonus stored in the episode meta (terminal.bonus).
+  * learner.py relabels the bonus from $RLPJ_RL_DIR/verdicts/<episode>.json: final success -> +5; fail that my
+    geometry paid or whose verdict mentions backwards -> -5; other fail -> 0 (shaping terms kept). Tested on
+    synthetic verdicts.
+  * F_SOFT 20 -> 35 N (normal sliding 22-28 N is no longer penalised).
+  Reward now: per step +10*progress(m) -0.02 -0.1*max(0,F-35)/5; refused -1; force/tracking stop -1/-2;
+  terminal: bonus (+5/-5/0) + 2*flush - 2*front - 1 if a drawer is still on the table.
+- attempt 20 (84d20e6): full flow; insertion reached; release 0.62 -> 62.4 at once; push reached +0.02 but the retreat
+  hit 136 N: the tip at h 0.074 went over the front wall top and dragged the drawer ~2 cm out (sticks out, front
+  0.51). -> push at h 0.05 (0.040-0.062), 3 cm beside the pull toward +t (knob + label frame are centred), t capped at
+  -0.060 so the closed fingers stay clear of the slot-side keep-out box.

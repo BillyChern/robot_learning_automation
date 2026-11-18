@@ -41,7 +41,7 @@ BOTTOM_H = 0.021             # drawer bottom above the table while sliding in
 BACK_GAP = 0.03              # drawer back in front of the front plane at the start of the insertion
 INS_NMAX = OFF - 0.036       # vertical tool axis limit (keep-out: body cylinder 45 mm + 1 cm)
 K_INS, K_PUSH = 16, 8
-F_SOFT = 20.0               # N: force penalty above this (sliding the drawer takes 22-28 N, operator 22:30)
+F_SOFT = 35.0               # N: force penalty above this (sliding takes 22-28 N; user 01:50: was 20, penalised normal sliding)
 F_STOP = 40.0               # N: only a value for the observation after a stop (no force cap: user, 22:30)
 RELEASE = 0.75               # gripper after the insertion: ~21 mm, inner finger ~1.7 cm in front of the cabinet face
                              # (attempt 5: 0.40 put it under the rail above the slot, the lift caught it: 99.6 N, cabinet moved 6 cm)
@@ -49,7 +49,9 @@ L_FACE = 0.13                # drawer outer size for the wall geometry of the pu
 MAX_FORCE = 3                # own force stops per insertion before the stage ends
 L_MIN = 0.155                # drawer depth floor: the side camera sees only part of the rim (dry run 1: 0.093;
                              # reset agent: obb 0.154 x 0.14-0.15), a short estimate would put its back into the cabinet
-PUSH_TILT, PUSH_H, PUSH_ZT = 40.0, 0.072, 0.047      # tilt from vertical, fingertip height, tip along tool z (closed)
+PUSH_TILT, PUSH_H, PUSH_ZT = 40.0, 0.050, 0.047      # tilt from vertical, fingertip height, tip along tool z (closed)
+PUSH_DT = 0.030              # push point beside the pull (t offset from the drawer centre line)
+PUSH_TMAX = -0.060           # closed fingers (+-14 mm along t in the model) clear of the slot-side keep-out box (t > -0.045)
 PUSH_NMAX = OFF + 0.020      # model fingertip limit
 PUSH_HI = 0.14
 TIP_MARGIN_PUSH = 0.004
@@ -327,7 +329,7 @@ class Episode:
             o = self.obs(1, (n - PUSH_NMAX) / 0.1, t - t0, h - PUSH_H, 0.0, ma, mb, np.array([f @ N3, f @ T3, f @ Z3]), peak, k, K_PUSH, 0)
             a, info = self.policy(o)
             adv, ddt, ddz = 0.0075 * (1 + a[0]), 0.003 * a[1], 0.003 * a[2]
-            tgt = (min(n + adv, PUSH_NMAX), float(np.clip(t + ddt, t0 - 0.02, t0 + 0.02)), float(np.clip(h + ddz, 0.062, 0.085)))
+            tgt = (min(n + adv, PUSH_NMAX), float(np.clip(t + ddt, t0 - 0.015, min(t0 + 0.006, PUSH_TMAX + 0.002))), float(np.clip(h + ddz, 0.040, 0.062)))
             status, res, scale = "refused", {}, 1.0
             for _ in range(3):
                 nn = n + scale * (tgt[0] - n); tt_ = t + scale * (tgt[1] - t); hh = h + scale * (tgt[2] - h)
@@ -486,18 +488,43 @@ class Episode:
         ok, rep = checks.drawer_rl(before, after, TASK)
         slot = rep.get("slot", {})
         d_after = self.find_drawer(after, tz)
-        orient = getattr(self, "orient_state", "unknown")
-        R = extra_terminal + (5.0 if ok is True and orient != "unknown" else 2.0 if ok is True else 0.0) + 2.0 * slot.get("flush", 0.0) - 2.0 * slot.get("front", 0.0) - (1.0 if d_after else 0.0)
+        # terminal bonus must agree with the real verdict (geometry AND vision judge; backwards = failure, user 01:50):
+        # geometry ok -> ask the orchestrator's vision judge; judged not successful -> -5 (never pay a backwards drawer).
+        # learner.py relabels this bonus from the orchestrator's verdict file when there is one.
+        bonus, judge = 0.0, None
+        if ok is True:
+            judge = self.judge()
+            bonus = -5.0 if (judge or {}).get("success") is False else 5.0
+        R = extra_terminal + bonus + 2.0 * slot.get("flush", 0.0) - 2.0 * slot.get("front", 0.0) - (1.0 if d_after else 0.0)
+        self.terminal = dict(bonus=bonus, R=round(R, 3), judge=judge)
         if self.trans:
             self.trans[-1]["rew"] += R
         self.ret += R if self.trans else 0.0
         self.save_transitions(ok, rep)
-        s.summary(verify=dict(check=ok, orient=getattr(self, "orient_state", "unknown"), reason=rep.get("reason"), slot=slot, cabinet_moved_m=rep.get("cabinet_moved_m"),
+        s.summary(verify=dict(check=ok, judge=judge, bonus=bonus, reason=rep.get("reason"), slot=slot, cabinet_moved_m=rep.get("cabinet_moved_m"),
                               drawer_on_table=bool(d_after), terminal_reward=round(R, 3)),
                   transitions=len(self.trans), **{"return": round(self.ret, 3)})
         if ok is not True:
             s.summary(first_failed_check=f"geometric check {ok}: {rep.get('reason')}")
-        s.claim("success" if ok is True else "fail")
+        s.claim("success" if ok is True and bonus > 0 else "fail")
+
+    def judge(self):
+        """The orchestrator's vision judge on before/after side images and the after wrist image (task success text
+        includes the orientation). Returns its dict or None."""
+        s = self.s
+        try:
+            from rlpj.success import vlm_judge
+            imgs = {"before_side": os.path.join(s.A, "side_before.jpg"), "after_side": os.path.join(s.A, "side_after.jpg")}
+            w = s.wrist.latest()[0]
+            if w is not None:
+                self.save("wrist_after", w); imgs["after_wrist"] = os.path.join(s.A, "wrist_after.jpg")
+            r = vlm_judge.judge({k: v for k, v in imgs.items() if os.path.exists(v)}, TASK, timeout=150)
+            out = {k: r.get(k) for k in ("success", "confidence", "reason")}
+            s.log(f"vision judge: {out}")
+            return out
+        except Exception as ex:
+            s.log(f"vision judge failed: {ex}")
+            return None
 
     def save_transitions(self, ok=None, rep=None):
         if getattr(self, "_saved", False):
@@ -510,7 +537,7 @@ class Episode:
         name = f"{self.mode}_ep{self.ep:04d}" if self.ep >= 0 else f"{self.mode}_test_{time.strftime('%Y%m%d_%H%M%S')}"
         if self.s.dry:
             name = "dry_" + name
-        p = rc.save_episode(name, self.trans, dict(mode=self.mode, episode=self.ep, dry=self.s.dry, ret=self.ret, check=ok,
+        p = rc.save_episode(name, self.trans, dict(mode=self.mode, episode=self.ep, dry=self.s.dry, ret=self.ret, check=ok, terminal=getattr(self, "terminal", None),
                                                    reason=(rep or {}).get("reason"), events=self.events, policy=self.actor.info,
                                                    attempt=self.s.A, t=time.time()))
         self.s.summary(transitions_file=os.path.relpath(p, rc.rl_dir()), transitions=len(self.trans), **{"return": round(self.ret, 3)})
@@ -708,7 +735,9 @@ class Episode:
             s.decide(f"drawer front at n-OFF {face_n - OFF:+.3f}: too far out for the tilted push (j3 limit), no push")
             self.finish(before); return
         self.to_ready()
-        self.stage_push(face_n, ins["t"], ins["end"] == "reached")
+        # push beside the pull (knob ~4 cm high, label frame above it, both centred): 3 cm toward +t at 5 cm height
+        # (attempt 20 pushed at 7.4 cm: the tip went over the wall top and the retreat dragged the drawer 2 cm out)
+        self.stage_push(face_n, min(ins["t"] + PUSH_DT, PUSH_TMAX), ins["end"] == "reached")
         self.finish(before)
 
 
