@@ -81,3 +81,15 @@ action inside the keep-out/kinematic envelope (tools/offline_test.py).
   Push: insertion ok (15 steps); push reached tip +0.0045 (45 N at step 5); the retreat stopped at 50.5 N: the
   fingertips at h 0.05 hooked the knob. -> push height 0.072 (range 0.062-0.085, above the knob); retreat unloads
   and retries once after a force stop.
+- 00:20 changes (operator): orientation guaranteed by the reset -> turning step removed; pull_check() before the grasp
+  only stops the episode (no insertion, fail) when my detector positively sees the pull on another wall.
+  attempt 16 (3ee1451): measured held-drawer yaw err -15 deg, the prior did not correct it, 3 jams at ~-0.06 m;
+  release 0.75 read 86.9 (wall still held, wedged) and the lift hit 58 N. -> (1) obs-dependent prior v2
+  (rlcommon.prior): half the remaining measured t / yaw error per step, learner fits the actor to it once
+  (bc_fit) and regularises toward it; old actor files (prior v1) are ignored by execute.py. (2) release(): widest
+  opening keeping the inner finger 12 mm in front of the plane, verify the reading, 2 mm shifts between tries,
+  if still held: stay (session home := here), no lift. SGS-RL notes: notes/sgs_rl.md.
+- attempt 17 (893e3e4): pull check found the pull on A (correct); insertion with the prior's t correction (+2.4 cm from
+  t err -0.024) jammed at -0.06 (3 force stops) then a tracking stop; release worked on the 3rd try (0.46 -> 45.9);
+  the lift was refused by the model (load-deflected measured pose, gripper body 6 mm from cabinet_front). ->
+  back off 12 mm along -N after the verified release, then up from the measured pose; prior v3 drops the t correction.

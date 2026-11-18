@@ -18,6 +18,8 @@ import torch.nn.functional as F
 
 import rlcommon as rc
 
+PRIOR_VERSION = rc.PRIOR_VERSION   # 2: obs-dependent prior (measured t/yaw correction), 2026-11-18
+
 HP = dict(gamma=0.95, tau=0.005, lr=3e-4, batch=256, hidden=128, target_entropy=-2.0, init_alpha=0.05,
           utd_per_transition=40, max_updates=3000, time_budget_s=200.0, bc_weight=1.0, bc_decay_episodes=30.0,
           min_transitions=8)
@@ -54,7 +56,7 @@ class Actor(nn.Module):
     def to_npz(self, path, updates):
         sd = {k: v.detach().cpu().numpy().astype(np.float32) for k, v in self.state_dict().items()}
         arr = dict(W0=sd["l0.weight"], b0=sd["l0.bias"], W1=sd["l1.weight"], b1=sd["l1.bias"], Wmu=sd["mu.weight"],
-                   bmu=sd["mu.bias"], Wls=sd["ls.weight"], bls=sd["ls.bias"], updates=np.array(updates))
+                   bmu=sd["mu.bias"], Wls=sd["ls.weight"], bls=sd["ls.bias"], updates=np.array(updates), prior_version=np.array(PRIOR_VERSION))
         tmp = path + ".tmp.npz"
         np.savez(tmp, **arr)
         os.replace(tmp, path)
@@ -85,6 +87,7 @@ def load_data(d):
     if not parts:
         return None, eps
     D = {k: np.concatenate([p[k] for p in parts]).astype(np.float32) for k in parts[0]}
+    D["prior"] = rc.prior(D["obs"]).astype(np.float32)
     return D, eps
 
 
@@ -99,7 +102,16 @@ class Learner:
         self.oc = torch.optim.Adam(self.critic.parameters(), lr=HP["lr"])
         self.oal = torch.optim.Adam([self.log_alpha], lr=HP["lr"])
         self.updates = 0
-        self.prior_u = torch.tensor(rc.PRIOR, dtype=torch.float32, device=dev)
+
+    def bc_fit(self, T, steps=600):
+        """Fit the actor's mean to the scripted prior on the stored observations (fresh learner state)."""
+        n = len(T["obs"])
+        for _ in range(steps):
+            idx = torch.randint(0, n, (min(HP["batch"], n),), device=self.dev)
+            mu, ls = self.actor(T["obs"][idx])
+            loss = ((torch.tanh(mu) - T["prior"][idx]) ** 2).sum(-1).mean() + 0.1 * ((ls - math.log(rc.INIT_STD)) ** 2).mean()
+            self.oa.zero_grad(); loss.backward(); self.oa.step()
+        return float(loss)
 
     def state(self):
         return dict(actor=self.actor.state_dict(), critic=self.critic.state_dict(), target=self.target.state_dict(),
@@ -114,7 +126,7 @@ class Learner:
         self.updates = int(st["updates"])
 
     def update(self, B, bc_w):
-        o, a, r, o2, d = B
+        o, a, r, o2, d, pr = B
         alpha = self.log_alpha.exp().detach()
         with torch.no_grad():
             a2, lp2, _ = self.actor.sample(o2)
@@ -125,7 +137,7 @@ class Learner:
         self.oc.zero_grad(); lc.backward(); self.oc.step()
         an, lp, mean_a = self.actor.sample(o)
         q1n, q2n = self.critic(o, an)
-        la = (alpha * lp - torch.min(q1n, q2n)).mean() + bc_w * ((mean_a - self.prior_u) ** 2).sum(-1).mean()
+        la = (alpha * lp - torch.min(q1n, q2n)).mean() + bc_w * ((mean_a - pr) ** 2).sum(-1).mean()
         self.oa.zero_grad(); la.backward(); self.oa.step()
         lal = -(self.log_alpha * (lp.detach() + HP["target_entropy"])).mean()
         self.oal.zero_grad(); lal.backward(); self.oal.step()
@@ -167,10 +179,11 @@ def main():
         if D is None:
             D = dict(obs=np.zeros((4, rc.OBS_DIM), np.float32), act=np.zeros((4, rc.ACT_DIM), np.float32),
                      rew=np.zeros(4, np.float32), next_obs=np.zeros((4, rc.OBS_DIM), np.float32), done=np.ones(4, np.float32))
+            D["prior"] = rc.prior(D["obs"]).astype(np.float32)
             print("check: no real data yet, synthetic batch")
         T = {k: torch.tensor(v, device=dev) for k, v in D.items()}
         idx = torch.randint(0, len(T["rew"]), (min(HP["batch"], len(T["rew"])),), device=dev)
-        info = L.update([T[k][idx] for k in ("obs", "act", "rew", "next_obs", "done")], 0.5)
+        info = L.update([T[k][idx] for k in ("obs", "act", "rew", "next_obs", "done", "prior")], 0.5)
         ok = all(np.isfinite(list(info.values())))
         print(f"check: one update {info}; finite {ok}")
         sys.exit(0 if ok else 1)
@@ -182,10 +195,13 @@ def main():
         T = {k: torch.tensor(v, device=dev) for k, v in D.items()}
         n_up = int(min(HP["max_updates"], max(200, HP["utd_per_transition"] * max(n_new, 1))))
         bc_w = HP["bc_weight"] * math.exp(-len(eps) / HP["bc_decay_episodes"])
+        if prev.get("prior_version") != PRIOR_VERSION:
+            stats_bc = L.bc_fit(T)
+            print(f"actor fitted to prior version {PRIOR_VERSION}: loss {stats_bc:.4f}")
         acc = []
         for i in range(n_up):
             idx = torch.randint(0, n, (HP["batch"],), device=dev)
-            acc.append(L.update([T[k][idx] for k in ("obs", "act", "rew", "next_obs", "done")], bc_w))
+            acc.append(L.update([T[k][idx] for k in ("obs", "act", "rew", "next_obs", "done", "prior")], bc_w))
             if time.time() - t0 > HP["time_budget_s"]:
                 n_up = i + 1; break
         stats = {k: round(float(np.mean([a[k] for a in acc[-100:]])), 4) for k in acc[0]}
@@ -193,7 +209,8 @@ def main():
         with torch.no_grad():
             _, _, m = L.actor.sample(T["obs"][-min(n, 200):])
             stats["mean_act"] = np.round(m.mean(0).cpu().numpy(), 3).tolist()
-    st = L.state(); st["meta"] = dict(n_trans=n, episodes=len(eps), t=time.time())
+    st = L.state(); st["meta"] = dict(n_trans=n, episodes=len(eps), t=time.time(),
+                                      prior_version=PRIOR_VERSION if (D is not None and n >= HP["min_transitions"]) else prev.get("prior_version"))
     torch.save(st, st_path + ".tmp"); os.replace(st_path + ".tmp", st_path)
     L.actor.to_npz(os.path.join(pol, "actor.npz"), L.updates)
     rets = [e["ret"] for e in eps]

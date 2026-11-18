@@ -143,14 +143,15 @@ class Episode:
         self.s.move_joint(name, HOME_Q, "normal")
         self.set_home()
 
-    def set_home(self):
+    def set_home(self, q=None):
         s = self.s
-        if s.q_home is not None and np.abs(wrap180(np.asarray(s.q_home) - HOME_Q)).max() < 1:
+        q = HOME_Q.copy() if q is None else np.asarray(q, float)
+        if s.q_home is not None and np.abs(wrap180(np.asarray(s.q_home) - q)).max() < 1:
             return
-        s.q_home = HOME_Q.copy()
+        s.q_home = q.copy()
         if getattr(s, "wd", None) is not None:
             try:
-                s.wd.stdin.write(("HOME " + " ".join(f"{v:.4f}" for v in HOME_Q) + "\n").encode()); s.wd.stdin.flush()
+                s.wd.stdin.write(("HOME " + " ".join(f"{v:.4f}" for v in q) + "\n").encode()); s.wd.stdin.flush()
             except Exception as e:
                 s.log(f"watchdog home update failed: {e}")
 
@@ -514,6 +515,52 @@ class Episode:
                                                    attempt=self.s.A, t=time.time()))
         self.s.summary(transitions_file=os.path.relpath(p, rc.rl_dir()), transitions=len(self.trans), **{"return": round(self.ret, 3)})
 
+    def release(self, ins):
+        """Open the gripper on the front wall and make sure it let go before lifting (attempt 16: commanded 0.75,
+        reading stayed 86.9 with the drawer wedged; the lift hit 58 N). Widest opening that keeps the inner finger
+        >= 12 mm in front of the yaml front plane (attempt 5: 0.40 at the end put it under the rail); between tries
+        the tool shifts 2 mm to free a wedged wall; if it still holds, end without lifting."""
+        s = self.s
+        n_axis = float(nt(self.T_now()[:2, 3])[0]) if not s.dry else ins["n"]
+        room = OFF - 0.012 - n_axis - 0.008                     # inner fingertip half-opening allowed (m)
+        frac = float(np.clip(1 - 2 * room / 0.085, 0.40, RELEASE))
+        shifts = [np.zeros(3), np.r_[0.002 * N, 0.0], np.r_[0.002 * TT, 0.0], np.r_[-0.004 * TT, 0.0]]
+        for i, sh in enumerate(shifts):
+            if i:
+                T = self.T_now(); T[:3, 3] += sh
+                try:
+                    self.line(f"free{i}", T, "slow")
+                except Abort as e:
+                    s.log(f"free {i}: {str(e)[:100]}")
+            g = s.gripper(frac, f"release the front wall (opening {frac:.2f}, inner finger room {room * 1000:.0f} mm)")
+            if s.dry or g < 100 * frac + 4:
+                s.summary(release=dict(frac=round(frac, 2), reading=round(g, 1), tries=i + 1))
+                return
+        s.summary(release=dict(frac=round(frac, 2), reading=round(g, 1), tries=len(shifts), stuck=True))
+        self.set_home(self.q_now())          # the session must not lift on the way out either: stay here
+        s.require(False, f"gripper does not let go of the wall (reading {g:.1f} after opening to {frac:.2f}): not lifting")
+
+    def pull_check(self, d, img):
+        """The reset guarantees the pull faces the robot (orchestrator check, 00:20). Only if my side-image detector
+        positively sees the pull on another wall: no insertion, the episode ends as a failure (operator)."""
+        s = self.s
+        try:
+            c = d["c"] + d["p"] * d["half"] - d["p"] * L_FACE / 2
+            r = PF.detect_pull(img, PF.uv_of(np.r_[c, self.tz + 0.04]))
+            lr = PF.visible_lr(PF.faces_of(c, -d["p"], L_FACE, L_FACE))
+            face = (lr[0] if r.get("side") == "left" else lr[1]) if r.get("found") else None
+            cv2.imwrite(os.path.join(s.A, "orient_table.jpg"), PF.crop_around(img, np.r_[c, self.tz + 0.04]))
+        except Exception as ex:
+            s.log(f"pull check failed: {ex}"); return True
+        s.summary(pull_check=dict(face=face, lr=lr, **{k: r.get(k) for k in ("found", "area", "side")}))
+        if face is not None and face != "A":
+            s.decide(f"pull seen on wall {face}, not on the robot-facing wall: no insertion")
+            s.summary(first_failed_check=f"pull on wall {face}, not facing the robot", verify=dict(check=None, pull_face=face))
+            self.save_transitions()
+            s.claim("fail")
+            return False
+        return True
+
     def orient(self, d, img_table, held):
         """Pull wall (grey metal label frame) must face out of the slot (user, 23:50). Score the walls in the side
         image on the table (A = grasped, robot-facing wall) and, when that is not conclusive, with the held drawer
@@ -612,6 +659,8 @@ class Episode:
         s.require(d is not None, "no drawer on the table")
         s.view.set_scene(objects=[dict(xy=list(map(float, d["c"])), z_top=self.tz + d["h_top"], r=d["half"], label="drawer")])
         P_img = s.side.latest()[0]
+        if not self.pull_check(d, P_img):
+            return
         s.phase("grasp")
         held = self.grasp(d)
         if held is None:
@@ -620,7 +669,6 @@ class Episode:
             s.require(d is not None, "drawer not seen after a missed grasp")
             held = self.grasp(d)
         s.require(held is not None, "front wall not grasped after two tries")
-        held = self.orient(d, P_img, held)
         s.phase("carry")
         yaw2 = wrapd(held["yaw"] + wrapd(ang(N) - ang(held["d0"])))
         z0 = self.tz + held["drop"] + BOTTOM_H
@@ -640,11 +688,17 @@ class Episode:
         s.decide(f"held drawer: t err {meas['t_err']:+.3f} yaw err {meas['yaw_err']:+.1f} ({meas['n']} pts); insertion from n-OFF {n0 - OFF:+.3f}")
         ins = self.stage_insert(n0, z0, yaw2, meas)
         s.phase("release")
-        s.gripper(RELEASE, "release the front wall (narrow: the inner finger stays clear of the cabinet rail)")
-        T_up = tool_down_T(np.r_[xy_of(ins["n"], ins["t"]), ins["z"] + 0.06], ins["yaw"])
+        self.release(ins)
+        # back off along -N first (the outer finger moves away from the wall, the open inner finger has ~18 mm to the
+        # wall's inner face), then up from the measured pose (attempt 17: the lift from a load-deflected pose came
+        # within 6 mm of the cabinet_front box and was refused), then further back, lift
+        T_b = self.T_now() if not s.dry else tool_down_T(np.r_[xy_of(ins["n"], ins["t"]), ins["z"]], ins["yaw"])
+        T_b[:2, 3] -= 0.012 * N
+        self.line("back_off_wall", T_b, "slow")
+        T_up = T_b.copy(); T_up[2, 3] += 0.06
         self.line("up_from_front", T_up, "slow")
-        T_bk = T_up.copy(); T_bk[:2, 3] -= 0.04 * N        # open fingers above the wall: back off before the lift
-        self.line("back_from_front", T_bk, "normal")       # (dry run 1: straight lift entered the cabinet_front box)
+        T_bk = T_up.copy(); T_bk[:2, 3] -= 0.03 * N
+        self.line("back_from_front", T_bk, "normal")
         self.lift_to("lift_clear", SAFE_H, "normal")
         face_n = ins["n"] - 0.008          # outer face of the front wall in front of the tool axis
         if ins["end"] in ("dropped", "force", "abort"):

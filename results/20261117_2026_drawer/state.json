@@ -18,39 +18,39 @@
    "unsure": 0
   },
   "resets": {
-   "total": 11,
-   "ok": 4,
-   "fail": 7,
+   "total": 15,
+   "ok": 6,
+   "fail": 9,
    "manual": 0
   },
   "consecutive_failures": {
    "execute": 0,
-   "reset": 3
+   "reset": 1
   }
  },
  "agents": {
   "reset": {
-   "status": "repairing",
+   "status": "done",
    "session_id": "28a976d6-48ea-4fad-b363-10f157ffb977",
    "model": "claude-opus-5-5",
    "started": "2026-11-17T20:27:03",
    "ended": "2026-11-17T22:12:06",
-   "attempts": 34,
-   "robot_attempts": 26,
-   "turns": 294,
-   "cost_usd": 31.531605800000005,
-   "input_tokens": 518,
-   "output_tokens": 311467,
-   "cache_read": 80189849,
-   "cache_creation": 1157778,
-   "duration_s": 3631.1369999999984,
+   "attempts": 36,
+   "robot_attempts": 28,
+   "turns": 300,
+   "cost_usd": 32.235168400000006,
+   "input_tokens": 530,
+   "output_tokens": 314357,
+   "cache_read": 82840182,
+   "cache_creation": 1172234,
+   "duration_s": 3672.3869999999984,
    "first_success_attempt": 16,
    "first_success_after_attempts": 21,
    "time_to_first_success_s": 5425.0,
    "repairs": 4,
    "rounds": 0,
    "program_command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py",
-   "last_report": "reset.py is fixed. A real run started the way you start resets (targets in a file) placed the drawer 1.5 cm from its target, and your layout check passed (attempt 32, commit 8737b8d).\n\n**Why attempts 29 and 30 failed:** you pass `--targets` as a path to a JSON file, but reset.py tried to read the argument itself as JSON. It crashed before the robot session started, so no summary.json was written. It now accepts either a file path or inline JSON. It reads the targets inside the session, so a bad argument ends as a clean fail with a summary.json.\n\n**Second problem, found while testing (attempt 31):** a segment was stopped for \"tracking deviation 47 deg\". Joint 5 read 360.0 (0\u00b0) where the plan had 312.9\u00b0. A 47\u00b0 jump in 0.67 s is impossible at the 20\u00b0/s speed limit, so it was a single bad feedback sample, not a collision. The arm returned home safely. reset.py now retries the table pick once after a tracking-deviation stop: it lifts slowly from the measured pose and re-plans. Any other stop, or a second one, still fails the run.\n\n**Test run (attempt 32):** the drawer was upright on the table; the target came from `test_targets.json`. The wrist camera corrected the grasp point by 1.6 cm, the grasp held, and the drawer was placed. Program error 1.5 cm.\n\n**Earlier results still valid:**\n- Scattered drawer: 1.7 cm (attempt 21).\n- Drawer stuck ~8.5 cm out of the slot: 1.3 cm (attempt 28).\n- Flush drawer pulled 6.5 cm out by pinching its pull tab (attempt 17).\n\n**Not yet tested:** a whole reset starting with the drawer flush in the slot, run end to end. With the force stop now removed, the pulls and slide-outs that needed 22\u201328 N should no longer be cut off, but I haven't run them since the change. The program also doesn't check which wall the pull is on when it places the drawer.\n\nNotes are in `notes/notes.md`; latest commit 4403757."
+   "last_report": "reset.py now finds the drawer's pull wall and places the drawer with that wall facing the robot. The last three real runs from a table start (attempts 45, 46, 47) all passed your position and orientation checks.\n\n**Why resets were failing (attempts 36\u201343):**\n- **Backwards drawer in the slot:** the plain wall faced out, about 1.4 cm proud, with no tab to pinch. The program kept pinching for a tab that wasn't there.\n- **Lost orientation between runs:** when one reset pulled a backwards drawer partly out, the next run didn't know it was backwards and placed the pull away from the robot (attempt 41).\n- **Unreliable pull detection:** my camera heuristics for finding the pull flipped from look to look (attempts 41\u201343).\n- **Keep-in failure (attempt 40):** the extraction planned a joint move straight from home and failed the keep-in check.\n\n**What changed in programs/reset.py:**\n- **Backwards drawer in the slot:** recognised when it sticks out more than 9 mm, or when no tab can be held. The gripper, tilted 40\u00b0, clamps the top edge of the protruding wall and pulls the drawer 6.5 cm out. In attempt 40 the clamp held (gripper 82.1) and pulled at 38.7 N.\n- **Drawer partly out:** the wrist image taken just before the front-wall grasp checks for the tab outside that wall, so a backwards drawer is recognised in every run.\n- **Orientation:** decided by your vision judge (`vlm_judge.judge`) on a full-size, settled side image:\n  - Q1 is your orientation criterion. If yes, the pull is on the robot-facing wall and stays there.\n  - If no, Q2 asks whether the pull is on the other visible wall, named by its quadrant in the image.\n  - If no again, the pull must be on a hidden far wall, so the drawer is turned 180\u00b0 and checked again.\n  - Each question takes about 8\u201311 s.\n- **Placement:** the drawer is turned so the pull wall faces the robot, with a random \u00b125\u00b0 yaw.\n- **Corrections and claim:** it re-picks only when the position is off by more than 3.5 cm and no longer aborts when it runs out of picks. The claim requires position within 5 cm and the judge's orientation yes.\n- **Extraction:** goes via the ready pose.\n- **`--targets`:** accepts a file path (from the earlier repair).\n\n**Real runs:**\n\n| Attempt | Start | What happened | Error | Your check |\n|---|---|---|---|---|\n| 45 | Pull facing away | Turned 180\u00b0, judge yes 3 times | 4.6 cm (inside 5 cm) | Pass; my program failed on its own correction step, since fixed |\n| 46 | Pull facing the robot | Re-placed; needed one correction round | 4.2 cm | Pass |\n| 47 (commit 97f960e) | Pull facing the robot | One pick, turned only 4\u00b0, 183 s | 1.2 cm | Pass, judge confidence 0.85 |\n\n**Not tested on hardware since these changes:**\n- A full reset from a backwards drawer: the clamp and pull worked in attempt 40, but the rest of that chain wasn't re-run after the orientation changes.\n- A start with the drawer still in the gripper.\n- A drawer cocked in the slot.\n\nTwo smaller risks:\n- The tab check at the pre-grasp view has only the two offline examples behind it. If it gets the direction wrong, the judge catches it in the correction loop.\n- Each judge question needs about 10 s of network access to the judge host. If the judge is unavailable, the program falls back to the less reliable wrist overview.\n\nNotes are in `notes/notes.md`; latest commit bd41568."
   },
   "execute": {
    "status": "developing",
@@ -58,15 +58,15 @@
    "model": "claude-opus-5-5",
    "started": "2026-11-17T22:12:06",
    "ended": null,
-   "attempts": 13,
-   "robot_attempts": 7,
-   "turns": 71,
-   "cost_usd": 11.299246399999998,
-   "input_tokens": 128,
-   "output_tokens": 53673,
-   "cache_read": 13449277,
-   "cache_creation": 112444,
-   "duration_s": 710.44,
+   "attempts": 15,
+   "robot_attempts": 9,
+   "turns": 93,
+   "cost_usd": 13.645339699999996,
+   "input_tokens": 172,
+   "output_tokens": 75762,
+   "cache_read": 20906632,
+   "cache_creation": 161365,
+   "duration_s": 1028.564,
    "first_success_attempt": null,
    "first_success_after_attempts": null,
    "time_to_first_success_s": null,
@@ -119,12 +119,16 @@
     [
      "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_43",
      "layout check failed: orientation not confirmed by the vision check: The drawer is upright on the table, open side up, but neither visible outer wall, including the one facing the robot base at lower left, shows a metal pull, so the pull must be on a wall facing away."
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_50",
+     "layout check failed: drawer: not found"
     ]
    ]
   }
  },
  "next_episode": 0,
- "next_reset": 11,
+ "next_reset": 15,
  "vlm": {
   "calls": 0,
   "cost_usd": 0.0

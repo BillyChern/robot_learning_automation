@@ -37,3 +37,11 @@ def test_slot_opening_is_open_to_3cm():
 
 def test_beside_cabinet_is_allowed():
     assert in_boxes(at(0.05, -0.25, 0.05), B) == []
+
+
+def test_escape_from_inside_is_allowed_deeper_is_not():
+    from rlpj.robot.sim import box_depths
+    inside, deeper, out = at(0.015, -0.08, 0.15), at(0.025, -0.08, 0.15), at(-0.02, -0.08, 0.15)
+    d0, faces = box_depths(inside, B)
+    assert box_depths(out, B, faces)[0] == {}                                         # leaving: nothing inside
+    assert box_depths(deeper, B, faces)[0]["cabinet_front"] > d0["cabinet_front"] + 0.005   # 1 cm deeper: +1 cm

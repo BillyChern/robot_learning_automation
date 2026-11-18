@@ -38,6 +38,27 @@ def in_boxes(P, boxes):
     return hit
 
 
+def box_depths(P, boxes, faces=None):
+    """({name: penetration (m)}, faces) of the points P (N,3) into each box they enter. Penetration is measured from
+    the box face given in faces[name] = (axis, sign) when known (the face nearest at the start of a move), else from
+    the nearest face; faces returned are those nearest faces."""
+    depth, near = {}, {}
+    for name, c, half, yaw in boxes:
+        ca, sa = np.cos(yaw), np.sin(yaw)
+        L = (P - c) @ np.array([[ca, -sa, 0], [sa, ca, 0], [0, 0, 1]])
+        inside = np.all(np.abs(L) < half, axis=1)
+        if not inside.any():
+            continue
+        Li = L[inside]
+        gap = half - np.abs(Li)                                   # distance to the nearest face per axis
+        k = int(np.argmax(gap.min(axis=1)))
+        a = int(np.argmin(gap[k]))
+        near[name] = (a, 1.0 if Li[k, a] >= 0 else -1.0)
+        a, sgn = (faces or {}).get(name, near[name])
+        depth[name] = max(depth.get(name, 0.0), float((half[a] - sgn * Li[:, a]).max()))
+    return depth, near
+
+
 # gripper sample points in the TOOL frame (x = jaw closing axis, z = pointing direction)
 def gripper_points(opening=0.085, closed_frac=0.0):
     """Fingertip/body points; fingertips 27 mm below the tool frame when open, ~47 mm when closed."""
@@ -82,7 +103,11 @@ def check(seg_q, kin, speed, dt=0.01, gripper_frac=0.0, table_z=None, tip_margin
         for ax, (lo, hi) in keep.items():
             c = P[:, "xyz".index(ax)]
             out_of_cell += int(c.min() < lo or c.max() > hi)
-        in_box.update(in_boxes(P, boxes))
+        # a keep-out box may be left (start inside, e.g. after a stop at the cabinet) but never entered deeper
+        if k == 0:
+            dep0, faces0 = box_depths(P, boxes)
+        dep = box_depths(P, boxes, faces0)[0]
+        in_box.update(n for n, d in dep.items() if d > dep0.get(n, 0.0) + 0.001)
         for Tj in F[1:6]:
             min_link = min(min_link, Tj[2, 3])
         if prev is not None:

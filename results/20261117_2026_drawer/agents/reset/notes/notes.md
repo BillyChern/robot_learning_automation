@@ -94,3 +94,4 @@
   (the orchestrator's check). -> vlm_pull(): Q1 = task reset_orientation on a full-size settled side image; if not,
   Q2 = "pull on the {image-quadrant} wall" for the other visible wall; else assume a far wall -> turn 180, re-check.
 - attempt 45 (real): judge-driven 180 deg turn worked (Q1 true x3, orchestrator layout+orientation ok) but err 0.046 -> re-picks missed (refine shift 0.033 rejected) -> abort. -> GOOD 0.035, refine max 0.04, no abort on pick count.
+- attempt 46 (real): OK (orchestrator layout+orientation ok) but Q1-true gave pull=None -> first placement turned it away, fixed in the next round. -> Q1 true returns the robot-facing wall as the pull.

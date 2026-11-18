@@ -32,6 +32,7 @@ Interventions, stops and mid-run changes by the operator (the user, or Claude Co
 | 00:20-00:25 | Claude | Freed the arm from the drawer front (attempt 14's stop): back 3 cm, up to 25 cm, back 10 cm, up to 40 cm, Home with the grown cabinet box checked; peak 53.7 N on the first 3 cm (releasing the push preload, correctly not stopped); relaunched | |
 | 00:35 | Claude | Orientation check uses the side frame after 2.5 s of auto-exposure (first frame mean 53 vs settled 122); safe restart | reset 9's check image was nearly black; re-judged on a settled image it was still wrong (pull away from the robot), so that rejection stands |
 | 00:44 | Claude | Note to the reset agent: wait for side-camera exposure; it may call the orchestrator's vision orientation check from reset.py | its pull detection flipped between looks (attempt 42 turned 114, -130, 17 deg and claimed fail) |
+| 01:17 | orchestrator / Claude | First reset passing the orientation check (reset 11, 0.8). RL attempt 16 inserted the drawer about 2/3, the right way round; the release lifted while the gripper still pinched the wall (reading 86.9): force stop at 58.2 N; note to the RL agent | |
 
 Force stops so far (25 N limit) were all real contacts: finger dragging on the pulled-out drawer (30.8 N), drawer meeting the
 table while placing (27.3 N), lifting while still gripping (26.6 N), drawer edge meeting the slot (25.4 N). Free moves: at

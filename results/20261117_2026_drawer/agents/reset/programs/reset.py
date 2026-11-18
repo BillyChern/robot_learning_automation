@@ -437,10 +437,12 @@ class Reset:
         from rlpj import config
         t = config.load()["task"]
         ok = self.ask(path, t.get("reset_orientation", "The drawer's metal pull faces the lower left (the robot base)."), f"{tag}_q1")
-        if ok is None or ok:
-            return ok, None
+        if ok is None:
+            return None, None
         ctr, walls = self.walls_of(c)
         robot = max(walls, key=lambda w: float(w[0] @ unit(-N)))[0]
+        if ok:                                   # the pull is on the robot-facing wall: keep it there when re-placing
+            return True, robot
         cam = calib.T_base_side()[:3, 3][:2]
         others = [w for w in walls if w[0] is not robot]
         vis = max(others, key=lambda w: float(w[0] @ unit(cam - ctr)))[0]
