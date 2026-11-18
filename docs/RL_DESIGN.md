@@ -46,3 +46,22 @@ shaping; when to stop training. Its notes must say why.
 - Main difficulty: the pull is only 4 cm above the table, so a horizontal grasp of the pull puts the gripper body at
   table height; grasping from above (pull, or a drawer wall) and pushing is likely. Left to the agents.
 - Still to measure: the drawer itself (once out), and a contact-force limit for pushing.
+
+## 6. Implementation (2026-11-17)
+
+- Task `config/tasks/drawer_rl.yaml` (`mode: rl`): fixtures (cabinet front plane, bottom-slot window), `keep_out`
+  (cabinet body from 1 cm behind the front plane), drawer layout and priors, `rl` settings.
+- `rlpj.orchestrator.loop`: `run-all` for RL is check -> develop reset -> develop execute (the RL agent; prompt
+  `rlpj/agents/prompts/rl.md`, its episode program keeps the name `programs/execute.py`) -> `rl_train` -> report.
+  `rl_train`: reset -> episode (mode `rl`, no self-claim: both independent checks must say yes) -> `programs/learner.py`
+  -> every `eval_every` a fixed evaluation (mode `rl_eval`) -> every `review_every` a tuning turn. Curve:
+  `runs/<run>/rl_curve.jsonl`; state: `state.json` key `rl`.
+- Learner placement: the robot machine's GPU if `learner_gpu_gb` (default 4) is free, else the 5090's, else this CPU.
+  `rl/` in the RL agent's workspace is orchestrator-owned (pushed to the 5090, never pulled); `rl/policy/` is copied back
+  after a remote learner run.
+- Safety added for all tasks: `rlpj.robot.executor` stops a segment when the estimated tool force changes by more than
+  `rl.force_limit_n` (Kortex `tool_external_wrench_force_*`, ~0.1 N noise at rest); `rlpj.robot.sim.check` refuses any
+  gripper point inside a `keep_out` box.
+- Success check `rlpj.success.checks.drawer_rl`: share of bottom-slot points on the front plane (flush: 0.996 measured
+  with the drawer in), behind it (empty slot: 0.41), in front (sticking out); no drawer-sized blob on the table; cabinet
+  unmoved.

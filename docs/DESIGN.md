@@ -1,5 +1,7 @@
 # Design: agentic data collection -> pi0.5 on one Kinova Gen3
 
+Second experiment (agent-run real-world RL, task mode `rl`): see [RL_DESIGN.md](RL_DESIGN.md).
+
 Contract for every module. Short on purpose; details live in code docstrings.
 
 ## 1. What the system does

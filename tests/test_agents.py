@@ -245,7 +245,7 @@ def test_workspace_sync_args(ws, monkeypatch):
     assert inc == ["attempts/***", "turns/***", "session.json", "usage.jsonl", "rl/***", ".git/***"]
     pull = ws.pull_args()
     assert pull[-2:] == [f"agenthost:{p}/", f"{p}/"] and "--delete" in pull
-    assert [pull[i + 1] for i, a in enumerate(pull) if a == "--exclude"] == ["attempts/", "turns/", "session.json", "usage.jsonl"]
+    assert [pull[i + 1] for i, a in enumerate(pull) if a == "--exclude"] == ["attempts/", "turns/", "session.json", "usage.jsonl", "rl/"]
 
 
 def test_workspace_text_condition_and_errors(run_dir, task_cfg, robot):
