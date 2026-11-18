@@ -10091,3 +10091,5 @@ LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.11
 [17:03:41] STOP RECORD: {'kind': 'failed check', 'why': 'drawer not pulled out (protrusion -0.003, it sat 0.023 m past flush: the pull tab may be out of reach inside the keep-out)', 'step': 'pull_out', 'segment': 'home_after_pull0', 'progress': 1.0, 't': 11.8, 'q_meas': [-0.0, 15.0, -130.0, 0.0, 55.01, 90.01], 'q_plan': [0.0, 15.0, -130.0, 0.0, 55.0, 90.0], 'tool_meas': [0.5791, 0.0048, 0.4273, 89.9569, 0.5646, 90.4617], 'tool_plan_xyz': [0.5792, 0.0048, 0.4272], 'dev_deg': 0.01, 'dev_mm': 0.1, 'q_now': [360.0, 15.0, 230.0, 0.0, 55.01, 90.01], 'gripper': 70.3}
 summary: /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_88/summary.json outcome: fail exit 2
 == attempt_88 finished: exit 2, outcome fail, 138 s
+== reset failed (2 in a row): drawer: not found
+== reset program failed 1 times in a row; asking the agent to repair it

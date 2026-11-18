@@ -42,6 +42,8 @@ Interventions, stops and mid-run changes by the operator (the user, or Claude Co
 | 14:50 | user / Claude | E-stop released by the user; latched EMERGENCY_STOP fault cleared with Base.ClearFaults (no motion); notes to both agents; relaunched | user: "start the run" |
 | 16:45 | Claude | Note to the reset agent: new state "drawer recessed" (front ~2.5 cm behind the cabinet face, pushed in too far by a person), with the depth signature | reset 35 classified it as missing |
 | 16:50 | Claude | Keep-out: bottom-slot opening open to 5 cm behind the front plane (was 3 cm); notes to both agents | the reset could not reach the tab of a drawer recessed 2.3 cm; the RL push can recess it too |
+| 17:01 | reset agent | Gave up on the recessed drawer: 12 pinch positions passed the model check but closed on nothing (tab 7 mm above the slot floor under the label plate; the finger pad does not fit) | attempts 84-87 |
+| 17:05 | Claude | Paused the pipeline; reverted the 5 cm keep-out to 3 cm (82c5a55); notes: RL agent must not push past flush; asked the user to pull the drawer out to about flush | |
 
 Force stops so far (25 N limit) were all real contacts: finger dragging on the pulled-out drawer (30.8 N), drawer meeting the
 table while placing (27.3 N), lifting while still gripping (26.6 N), drawer edge meeting the slot (25.4 N). Free moves: at
