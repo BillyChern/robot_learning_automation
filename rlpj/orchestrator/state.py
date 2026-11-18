@@ -26,7 +26,7 @@ class RunState:
 
     FIELDS = ("run_id", "task", "condition", "created", "phase", "counters", "agents", "datasets", "training_runs",
               "evals", "deployable_checkpoint", "zero_shot", "collection", "next_episode", "next_reset", "vlm",
-              "operator_notes")
+              "operator_notes", "rl")
 
     def __init__(self, run_id, task=None, condition=None):
         self.run_id, self.task, self.condition = run_id, task, condition
@@ -39,6 +39,7 @@ class RunState:
         self.next_episode, self.next_reset = 0, 0
         self.vlm = dict(calls=0, cost_usd=0.0)
         self.operator_notes = []
+        self.rl = dict(episodes=0, evals=[], since_review=0, learner_fails=0)   # RL tasks (docs/RL_DESIGN.md)
         self.lock = threading.RLock()       # agent reflections run in threads and save too
 
     @property

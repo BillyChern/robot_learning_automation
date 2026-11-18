@@ -84,10 +84,14 @@ class Robot:
             g = fb.interconnect.gripper_feedback.motor[0].position
         except Exception:
             g = float("nan")
+        try:
+            force = np.array([b.tool_external_wrench_force_x, b.tool_external_wrench_force_y, b.tool_external_wrench_force_z])
+        except Exception:
+            force = None
         return dict(q=np.array([a.position for a in fb.actuators]), dq=np.array([a.velocity for a in fb.actuators]),
                     pose=np.array([b.tool_pose_x, b.tool_pose_y, b.tool_pose_z,
                                    b.tool_pose_theta_x, b.tool_pose_theta_y, b.tool_pose_theta_z]),
-                    gripper=float(g), t=time.time(),
+                    gripper=float(g), t=time.time(), force=force,
                     state=Base_pb2.ArmState.Name(b.active_state) if b.active_state else "")
 
     def arm_state(self):

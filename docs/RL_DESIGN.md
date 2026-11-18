@@ -8,12 +8,12 @@ babysitting training) can be done by agents, with the robot learning in the real
 
 A small wooden cabinet with three drawer slots is taped to the far end of the table, front facing the robot. Drawers are
 light, have no stops, and have a metal pull the gripper can hold. Only the bottom slot is used (user, 2026-11-17): one
-drawer, pulled out of the bottom slot by the reset and put back into the bottom slot by the RL policy. The other two
-drawers stay in their slots and are never touched.
+drawer, pulled out of the bottom slot by the reset and put back into the bottom slot by the RL policy. The upper two
+slots are empty.
 
 - Episode: the drawer lies on the table (pose from the reset's targets); the policy puts it back into the bottom slot.
 - Success: the drawer fully inside the bottom slot (front flush with the cabinet, within a tolerance), gripper clear,
-  the other two drawers unmoved.
+  the cabinet unmoved.
 - Headline metric: success rate in the orchestrator's fixed evaluation, never the agent's own reward.
 
 ## 2. Roles
@@ -38,7 +38,11 @@ Sim or no sim; observation (state from perception and proprioception vs. images)
 residual on a scripted approach, ...); algorithm (SAC/RLPD-style off-policy expected, given the sample budget); reward
 shaping; when to stop training. Its notes must say why.
 
-## 5. Not decided yet (needs the measured setup)
+## 5. Measured setup (2026-11-17, side camera recalibrated: 17 poses, ~2 mm)
 
-Cabinet pose and bottom-slot geometry (side camera, after recalibration), drawer size, reachability, force
-limit value, table layout for drawer targets.
+- Cabinet: 27 cm tall, front face about 12 cm wide; front face line x = 0.563 - 0.401*y (base frame, m), i.e. about
+  0.52 m from the base at y 0.11, turned 22 deg (insertion direction (0.93, 0.37) in xy). Taped to the table.
+- Bottom slot: front about 12 x 8 cm, pull about 4 cm above the table (z ~0.03 base frame). Upper two slots empty.
+- Main difficulty: the pull is only 4 cm above the table, so a horizontal grasp of the pull puts the gripper body at
+  table height; grasping from above (pull, or a drawer wall) and pushing is likely. Left to the agents.
+- Still to measure: the drawer itself (once out), and a contact-force limit for pushing.

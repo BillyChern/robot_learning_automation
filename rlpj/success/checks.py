@@ -130,7 +130,65 @@ def bee_in_bowl(before, after, task_cfg):
     return None, _why(rep, "nothing seen inside the bowl and no bee elsewhere (hidden?)")
 
 
-CHECKS = {"bee_in_tape_roll": bee_in_tape_roll, "cup_down_stacking": cup_down_stacking, "bee_in_bowl": bee_in_bowl}
+SLOT_MIN_POINTS = 60    # side-depth points in the bottom-slot window needed to judge it (measured: 1300 with the drawer in)
+FLUSH_SHARE = 0.6       # share of slot points on the front plane for "flush" (measured: 0.72-0.89 with the drawer in)
+BEHIND_SHARE = 0.3      # share more than 2 cm behind the plane: the slot is empty (measured: 0.41 for an empty slot)
+FRONT_SHARE = 0.3       # share more than flush_tol in front of the plane: the drawer sticks out
+CABINET_MOVE_MAX = 0.02 # m
+
+
+def slot_profile(points, table_z, fx, tol):
+    """Shares of the bottom-slot window's points on, behind and in front of the cabinet's front plane."""
+    n = np.asarray(fx["front_normal"], float)
+    d = points[:, :2] @ n - fx["front_offset"]
+    t = points[:, :2] @ np.array([-n[1], n[0]])
+    h = points[:, 2] - table_z
+    m = (h > fx["slot_h"][0]) & (h < fx["slot_h"][1]) & (t > fx["slot_t"][0]) & (t < fx["slot_t"][1]) & (d > -0.15) & (d < 0.25)
+    dd = d[m]
+    if len(dd) < SLOT_MIN_POINTS:
+        return dict(n=int(len(dd)))
+    return dict(n=int(len(dd)), flush=round(float(np.mean(np.abs(dd) < tol)), 3), behind=round(float(np.mean(dd > 0.02)), 3),
+                front=round(float(np.mean(dd < -tol)), 3), median_d=round(float(np.median(dd)), 4))
+
+
+def drawer_rl(before, after, task_cfg):
+    """Success: the bottom slot's window is mostly on the cabinet's front plane (the drawer front, flush), not behind it
+    (empty slot) or in front of it (sticking out); no drawer-sized blob lies on the table in front of the cabinet; the
+    cabinet blob has not moved."""
+    fixtures = task_cfg["fixtures"]
+    fx, tol = fixtures["cabinet"], fixtures.get("flush_tol", 0.012)
+    pri = task_cfg.get("perception", {}) or {}
+    if not after:
+        return None, dict(reason="no blobs after")
+    pts = np.vstack([np.asarray(b["points"], float) for b in after if len(b.get("points", []))])
+    table_z = float(np.median([b["z_top"] - b["height"] for b in after]))
+    prof = slot_profile(pts, table_z, fx, tol)
+    rep = dict(slot=prof)
+    n = np.asarray(fx["front_normal"], float)
+    cab_a = [b for b in after if layout.matches(pri.get("cabinet") or {}, b)]
+    cab_b = [b for b in (before or []) if layout.matches(pri.get("cabinet") or {}, b)]
+    if cab_a and cab_b:
+        moved = _dist(max(cab_a, key=lambda b: b["n"])["xy"], max(cab_b, key=lambda b: b["n"])["xy"])
+        rep["cabinet_moved_m"] = round(moved, 4)
+        if moved > CABINET_MOVE_MAX:
+            return False, _why(rep, f"the cabinet moved {moved * 100:.1f} cm")
+    loose = [b for b in after if layout.matches(pri.get("drawer") or {}, b) and np.asarray(b["xy"][:2]) @ n - fx["front_offset"] < -0.08]
+    rep["drawer_on_table"] = [_brief(b) for b in loose]
+    if loose:
+        return False, _why(rep, "a drawer-sized blob is still on the table")
+    if "flush" not in prof:
+        return None, _why(rep, f"only {prof['n']} points in the slot window (arm or object in the way?)")
+    if prof["front"] > FRONT_SHARE:
+        return False, _why(rep, "the drawer sticks out of the slot")
+    if prof["flush"] >= FLUSH_SHARE:
+        return True, _why(rep, "drawer flush in the bottom slot")
+    if prof["behind"] > BEHIND_SHARE:
+        return False, _why(rep, "the bottom slot is empty")
+    return None, _why(rep, "slot window ambiguous")
+
+
+CHECKS = {"bee_in_tape_roll": bee_in_tape_roll, "cup_down_stacking": cup_down_stacking, "bee_in_bowl": bee_in_bowl,
+          "drawer_rl": drawer_rl}
 
 
 def _rel(b, c, r):

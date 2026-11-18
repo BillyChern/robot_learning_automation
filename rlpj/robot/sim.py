@@ -16,6 +16,28 @@ def cell_keep_in():
     except Exception:
         return {}
 
+@functools.lru_cache(None)
+def cell_keep_out():
+    """Boxes no gripper point may enter (task keep_out: [{name, center, half, yaw_deg}], base frame), or ()."""
+    try:
+        from rlpj import config
+        return tuple((b.get("name", "box"), np.asarray(b["center"], float), np.asarray(b["half"], float),
+                      np.radians(float(b.get("yaw_deg", 0.0)))) for b in config.load().get("task", {}).get("keep_out") or [])
+    except Exception:
+        return ()
+
+
+def in_boxes(P, boxes):
+    """Names of the boxes that contain any of the points P (N,3)."""
+    hit = []
+    for name, c, half, yaw in boxes:
+        ca, sa = np.cos(yaw), np.sin(yaw)
+        L = (P - c) @ np.array([[ca, -sa, 0], [sa, ca, 0], [0, 0, 1]])
+        if np.any(np.all(np.abs(L) < half, axis=1)):
+            hit.append(name)
+    return hit
+
+
 # gripper sample points in the TOOL frame (x = jaw closing axis, z = pointing direction)
 def gripper_points(opening=0.085, closed_frac=0.0):
     """Fingertip/body points; fingertips 27 mm below the tool frame when open, ~47 mm when closed."""
@@ -37,7 +59,8 @@ def check(seg_q, kin, speed, dt=0.01, gripper_frac=0.0, table_z=None, tip_margin
     """Return (ok, report dict) for a sampled joint trajectory. keep_in ({x|y|z: [lo, hi]}, default config robot.keep_in):
     every gripper point must stay inside (the curtain beside the table)."""
     keep = cell_keep_in() if keep_in is None else keep_in
-    out_of_cell = 0
+    boxes = cell_keep_out()
+    out_of_cell, in_box = 0, set()
     table_z = calib.table_z() if table_z is None else table_z
     rep = {}
     q = np.asarray(seg_q)
@@ -59,6 +82,7 @@ def check(seg_q, kin, speed, dt=0.01, gripper_frac=0.0, table_z=None, tip_margin
         for ax, (lo, hi) in keep.items():
             c = P[:, "xyz".index(ax)]
             out_of_cell += int(c.min() < lo or c.max() > hi)
+        in_box.update(in_boxes(P, boxes))
         for Tj in F[1:6]:
             min_link = min(min_link, Tj[2, 3])
         if prev is not None:
@@ -69,11 +93,13 @@ def check(seg_q, kin, speed, dt=0.01, gripper_frac=0.0, table_z=None, tip_margin
         if np.hypot(*T[:2, 3]) < 0.18 and T[2, 3] < 0.25:
             rep["near_base"] = True
     rep["keep_in_violations"] = out_of_cell
+    if in_box:
+        rep["keep_out_violations"] = sorted(in_box)
     rep.update(min_tip_above_table=float(min_tip - table_z), min_body_above_table=float(min_body - table_z),
                min_link_z=float(min_link), max_lin_speed=float(max_lin), max_radius=float(max_r))
     ok = (rep["joint_limit_violations"] == 0 and rep["joint_speed_ok"] and max_lin <= speed["lin"] * cart_tol
           and min_tip - table_z > tip_margin and min_body - table_z > 0.03 and min_link - table_z > 0.05
-          and not rep.get("near_base") and max_r < max_radius and out_of_cell == 0)
+          and not rep.get("near_base") and max_r < max_radius and out_of_cell == 0 and not in_box)
     rep["ok"] = bool(ok)
     return ok, rep
 

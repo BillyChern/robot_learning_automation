@@ -430,6 +430,11 @@ class Pipeline:
         if role == "reset" and moves:
             command, targets, tpath = self._reset_command(command, attempt_dir)
             extra["RLPJ_RESET_TARGETS"] = str(tpath)
+        if role == "execute" and self._rl():
+            extra.update(self._rl_env("train", -1))
+            if moves and self.st.agent("reset").get("status") == "done":    # every real test starts from a fresh reset
+                if self._reset_to(self._sample_targets()) is None:
+                    return "the reset before your run failed and the run was not started; the orchestrator is on it, run again."
         before = self._safe_measure(attempt_dir / "scene_before.jpg") if moves else None
         r = self._attempt(ws.path, command, attempt_dir, moves, extra_env=extra, what=what, commit=self._safe_head(ws))
         after = self._safe_measure(attempt_dir / "scene_after.jpg") if moves else None
@@ -531,6 +536,8 @@ class Pipeline:
 
     def _accept(self, role):
         """Success criterion behind a 'done': (accepted, why not)."""
+        if role == "execute" and self._rl():
+            return self._accept_rl()
         last = self._last.get(role)
         if not last:
             return False, "there was no robot run in this session yet (run the program with moves_robot true first)"
@@ -825,7 +832,7 @@ class Pipeline:
         after = self._safe_measure(ep_dir / "scene_after.jpg")
         aborted = r.outcome == "aborted"
         claim = "aborted" if aborted else (r.summary.get("claimed_outcome") or r.outcome)
-        if mode == "eval" and not aborted:
+        if mode in ("eval", "rl", "rl_eval") and not aborted:
             claim = None                                # a policy rollout never verifies itself: the independent checks decide
         v = self._verdict(claim, before, after, _images(ep_dir) or _images(attempt_dir), aborted=aborted)
         if mode == "collect" and v["final"] == "unsure" and self.cfg["collection"].get("discard_unsure"):
@@ -839,7 +846,7 @@ class Pipeline:
         c["total"] += 1
         c[v["final"] if v["final"] in ("success", "unsure") else "fail"] += 1
         self.st.next_episode = idx + 1
-        if mode != "dagger" and (v["final"] == "unsure" or self._safe("rlpj.success.verdict", "needs_operator", v)):
+        if mode not in ("dagger", "rl", "rl_eval") and (v["final"] == "unsure" or self._safe("rlpj.success.verdict", "needs_operator", v)):
             self.op.queue_review(ep_dir, v)
         self.st.event("episode", episode=idx, mode=mode, final=v["final"], reason=v["reason"], claim=claim,
                       exit_code=r.exit_code, duration=r.duration, attempt=str(attempt_dir))
@@ -1304,8 +1311,177 @@ class Pipeline:
         self.op.notify("robot check failed: " + "; ".join(f"{c['name']} ({c.get('detail', '')})" for c in bad))
         return self.op.ask("continue anyway?", ["stop", "continue"]) == "continue"
 
+    # ------------------------------------------------------------------ RL tasks (docs/RL_DESIGN.md)
+    def _rl(self):
+        return self.task.get("mode") == "rl"
+
+    def _rl_env(self, mode, idx):
+        ws = self.workspace("execute")
+        (Path(ws.path) / "rl").mkdir(exist_ok=True)
+        return {"RLPJ_RL_DIR": str(Path(ws.path) / "rl"), "RLPJ_RL_MODE": mode, "RLPJ_EPISODE": str(idx)}
+
+    def _free_gpu_gb(self, host=None):
+        """Free GPU memory (GB) on this machine or on host, 0 when unknown."""
+        q = "nvidia-smi --query-gpu=memory.total,memory.used --format=csv,noheader,nounits"
+        cmd = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", host, q] if host else q.split()
+        try:
+            out = subprocess.run(cmd, capture_output=True, text=True, timeout=30).stdout.strip().splitlines()[0]
+            total, used = (float(x) for x in out.split(",")[:2])
+            return (total - used) / 1024
+        except Exception:
+            return 0.0
+
+    def _learner_host(self):
+        """(host or None for this machine, device): the GPU that is free (this 4090 first, then the 5090), else CPU here."""
+        need = float(self.task["rl"].get("learner_gpu_gb", 4))
+        if self._free_gpu_gb() >= need:
+            return None, "cuda"
+        host = self.cfg["hosts"]["agent"]
+        if self._free_gpu_gb(host) >= need:
+            return host, "cuda"
+        return None, "cpu"
+
+    def _rl_learner(self, idx, check=False, host=None, device=None):
+        """programs/learner.py on the free GPU (rl/ goes there first, rl/policy/ comes back); returns the attempt result."""
+        ws, rl = self.workspace("execute"), self.task["rl"]
+        if host is None and device is None:
+            host, device = self._learner_host()
+        attempt_dir = Path(ws.next_attempt_dir())
+        env = " ".join(f"{k}={shlex.quote(v)}" for k, v in {**self._rl_env("train", idx), "RLPJ_DEVICE": device}.items())
+        py = shlex.quote(str(config.ROOT / "third_party/openpi/.venv/bin/python"))
+        cmd = f"env {env} {py} programs/learner.py" + (" --check" if check else "")
+        what = f"learner {'check' if check else f'after episode {idx}'} ({host or 'robot machine'}, {device})"
+        timeout = 180 if check else rl.get("learner_timeout_s", 300)
+        if host is None:
+            r = self._attempt(ws.path, cmd, attempt_dir, False, timeout_s=timeout, what=what, commit=self._safe_head(ws))
+        else:
+            self._push(ws)
+            remote = f"cd {shlex.quote(str(ws.path))} && {cmd}"
+            r = self._attempt(ws.path, f"ssh -o BatchMode=yes -o ServerAliveInterval=30 {shlex.quote(host)} {shlex.quote(remote)}",
+                              attempt_dir, False, timeout_s=timeout, what=what, commit=self._safe_head(ws))
+            if not check:
+                subprocess.run(["rsync", "-a", "--delete", "--mkpath", f"{host}:{ws.path}/rl/policy/", f"{ws.path}/rl/policy/"],
+                               capture_output=True, text=True, timeout=300)
+        self.st.event("rl_learner", episode=idx, host=host or "local", device=device, check=check, exit_code=r.exit_code,
+                      duration=r.duration, attempt=str(attempt_dir))
+        return r
+
+    def _accept_rl(self):
+        """RL agent 'done': its last robot test (if any this session) was a complete episode with transitions, and
+        programs/learner.py --check passes on the data recorded so far."""
+        last = self._last.get("execute")
+        if last is None and not self.st.rl["episodes"]:
+            return False, "no robot episode yet: run programs/execute.py on the robot (moves_robot true) first"
+        if last is not None:
+            r = last["result"]
+            if r.exit_code not in (0, 2):
+                return False, f"the last robot run did not finish an episode (exit code {r.exit_code})"
+            if not int(r.summary.get("transitions") or 0):
+                return False, "the last robot run wrote no transitions (summary key 'transitions')"
+        r = self._rl_learner(-1, check=True, host=None, device="cpu")
+        if r.exit_code != 0:
+            return False, f"programs/learner.py --check failed (exit code {r.exit_code}); see {r.attempt_dir.name}"
+        return True, ""
+
+    def _rl_episode(self, mode):
+        """Reset, then one recorded RL episode (mode rl: training, rl_eval: evaluation); the episode dict or None (stop)."""
+        idx, ep_dir = self._new_episode_dir()
+        targets = self._sample_targets()
+        self._reset_runs = []
+        before = self._reset_to(targets, save=ep_dir / "scene_before.jpg")
+        if before is None:
+            shutil.rmtree(ep_dir, ignore_errors=True)
+            return None
+        env = self._rl_env("eval" if mode == "rl_eval" else "train", idx)
+        return self._episode(ep_dir, idx, targets, before, mode, extra_env=env)
+
+    def _rl_curve(self, **row):
+        with open(self.st.dir / "rl_curve.jsonl", "a") as f:
+            f.write(json.dumps(dict(t=now_iso(), **row)) + "\n")
+
+    def _rl_eval(self):
+        """Fixed evaluation: rl.eval_episodes episodes with RLPJ_RL_MODE=eval; returns the success rate or None (stop)."""
+        rl, r = self.task["rl"], self.st.rl
+        n, ok = int(rl["eval_episodes"]), 0
+        self.op.notify(f"RL evaluation after {r['episodes']} training episodes: {n} episodes")
+        for _ in range(n):
+            self.restart_point()
+            ep = self._rl_episode("rl_eval")
+            if ep is None:
+                return None
+            ok += ep["final"] == "success"
+        rate = ok / n
+        r["evals"].append(dict(after=r["episodes"], success=ok, n=n, rate=round(rate, 3), t=now_iso()))
+        self._rl_curve(kind="eval", after=r["episodes"], success=ok, n=n, rate=round(rate, 3))
+        self.st.event("rl_eval", after=r["episodes"], success=ok, n=n)
+        self.st.save()
+        self.op.notify(f"RL evaluation after {r['episodes']} episodes: {ok}/{n}")
+        return rate
+
+    def _rl_review(self, recent):
+        """Tuning turn: the RL agent gets the learning curve and recent failed episodes, may change its reward,
+        learner, hyperparameters or episode program, and replies done (learner check again)."""
+        r = self.st.rl
+        evals = ", ".join(f"{e['success']}/{e['n']} after {e['after']}" for e in r["evals"][-6:]) or "none yet"
+        train = self.st.counters.get("rl", {})
+        head = (f"RL tuning turn after {r['episodes']} training episodes ({train.get('success', 0)} independent successes so "
+                f"far); evaluations: {evals}. Look at rl_curve.jsonl, your learner log and these episodes; change the reward, "
+                f"hyperparameters, learner or episode program if the curve calls for it (say why in notes/), check offline, "
+                f"commit and reply done. The failed or unsure episodes:")
+        r["since_review"] = 0
+        self.st.save()
+        return self._improve("execute", head, recent[-4:], "review")
+
+    def rl_train(self):
+        """RL loop: reset -> episode -> independent verdict -> learner, a fixed evaluation every rl.eval_every episodes,
+        a tuning turn every rl.review_every; until the target success rate or rl.max_episodes. Returns the status."""
+        rl, r = self.task["rl"], self.st.rl
+        self.st.phase = "rl_train"
+        self.st.save()
+        self.deliver_notes()
+        recent, crashes = [], 0
+        while r["episodes"] < rl["max_episodes"]:
+            self.restart_point()
+            if r["episodes"] and r["episodes"] % rl["eval_every"] == 0 and not any(e["after"] == r["episodes"] for e in r["evals"]):
+                rate = self._rl_eval()
+                if rate is None:
+                    return "stopped"
+                if rate >= rl["target_success_rate"]:
+                    return "target_met"
+            if r["since_review"] >= rl["review_every"]:
+                self._rl_review(recent)
+                recent = []
+            ep = self._rl_episode("rl")
+            if ep is None:
+                return "stopped"
+            r["episodes"] += 1
+            r["since_review"] += 1
+            res = ep["result"]
+            self._rl_curve(kind="train", episode=ep["index"], n=r["episodes"], final=ep["final"], reason=ep["reason"],
+                           duration=res.duration, reward=res.summary.get("return"), transitions=res.summary.get("transitions"))
+            if ep["final"] != "success":
+                recent.append((ep["attempt_dir"], f"episode {ep['index']}: {ep['final']} - {ep['reason']}"))
+            crashes = crashes + 1 if res.exit_code not in (0, 2) else 0
+            if crashes:
+                self._fails["execute"].append((ep["attempt_dir"], f"episode {ep['index']} crashed (exit {res.exit_code})"))
+            if crashes >= 2:
+                self._repair("execute")
+                crashes = 0
+            lr = self._rl_learner(ep["index"])
+            r["learner_fails"] = 0 if lr.exit_code == 0 else r["learner_fails"] + 1
+            if r["learner_fails"] >= 2:
+                self._fails["execute"] = [(lr.attempt_dir, "programs/learner.py failed twice in a row")]
+                self._repair("execute")
+                r["learner_fails"] = 0
+            self.st.save()
+        rate = self._rl_eval()
+        return "max_episodes" if rate is not None else "stopped"
+
     def run_all(self):
-        """check -> develop execute -> develop reset -> collect -> learn (-> collect more) -> report; resumes from state.phase."""
+        """check -> develop execute -> develop reset -> collect -> learn (-> collect more) -> report; resumes from state.phase.
+        RL tasks (mode rl): check -> develop reset -> develop execute (the RL agent) -> rl_train -> report."""
+        if self._rl():
+            return self._run_all_rl()
         col = self.cfg["collection"]
         phases = ("check", "develop_execute", "develop_reset", "collect", "learn", "report")
         phase = self.st.phase if self.st.phase in phases else "check"
@@ -1339,6 +1515,42 @@ class Pipeline:
             elif phase == "learn":
                 status = self.learn()
                 phase = "collect" if status == "collect_more" and self.st.counters["episodes"]["total"] < col["max_episodes"] else "report"
+            else:
+                self.report()
+                self.st.phase = "done"
+                self.st.save()
+                return "done"
+
+    def _run_all_rl(self):
+        phases = ("check", "develop_reset", "develop_execute", "rl_train", "report")
+        phase = self.st.phase if self.st.phase in phases else "check"
+        f = self.st.dir / "PHASE"
+        if f.exists():
+            want = f.read_text().strip()
+            f.unlink()
+            if want in phases:
+                self.st.event("phase_override", phase=want, was=phase)
+                phase = want
+        while True:
+            self.st.phase = phase
+            self.st.save()
+            self.st.event("phase", phase=phase)
+            if phase == "check":
+                if not self.check():
+                    return "check_failed"
+                phase = "develop_reset"
+            elif phase.startswith("develop_"):
+                role = phase.split("_", 1)[1]
+                if self.st.agent(role).get("status") != "done" and self.develop_program(role) != "done":
+                    self.op.notify(f"{role} program is not ready; fix the situation and rerun run-all")
+                    return phase
+                phase = "develop_execute" if role == "reset" else "rl_train"
+            elif phase == "rl_train":
+                status = self.rl_train()
+                self.st.event("rl_status", status=status)
+                if status == "stopped":
+                    return "rl_train"
+                phase = "report"
             else:
                 self.report()
                 self.st.phase = "done"

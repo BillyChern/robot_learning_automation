@@ -80,6 +80,9 @@ def main(argv=None):
     except FileNotFoundError as e:
         print(e)
         return 2
+    if st.task and os.environ.get("RLPJ_TASK") != st.task:   # robot programs read the run's task (keep-out, force limit)
+        os.environ["RLPJ_TASK"] = st.task
+        cfg = config.load()
     if args.cmd == "status":
         print("\n".join(S.status_lines(st, cfg)))
         return 0

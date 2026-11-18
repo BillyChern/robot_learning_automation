@@ -242,7 +242,7 @@ def test_workspace_sync_args(ws, monkeypatch):
     part = ws.push_args(full=False)
     assert part[-2:] == full[-2:] and part[part.index("--exclude") + 1] == "*"
     inc = [part[i + 1] for i, a in enumerate(part) if a == "--include"]
-    assert inc == ["attempts/***", "turns/***", "session.json", "usage.jsonl", ".git/***"]
+    assert inc == ["attempts/***", "turns/***", "session.json", "usage.jsonl", "rl/***", ".git/***"]
     pull = ws.pull_args()
     assert pull[-2:] == [f"agenthost:{p}/", f"{p}/"] and "--delete" in pull
     assert [pull[i + 1] for i, a in enumerate(pull) if a == "--exclude"] == ["attempts/", "turns/", "session.json", "usage.jsonl"]

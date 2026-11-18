@@ -1,0 +1,51 @@
+name: drawer_rl
+mode: rl                           # RL loop instead of collection + imitation (docs/RL_DESIGN.md)
+instruction: put the drawer back into the bottom slot of the cabinet
+goal: >-
+  A small wooden cabinet with three slots is taped to the far end of the table, front facing the robot. Its bottom
+  slot is empty and its drawer lies on the table. Put the drawer back into the bottom slot, pushed fully in so its
+  front is flush with the cabinet front.
+success: >-
+  The drawer is fully inside the bottom slot (its front flush with the cabinet front, within about 1 cm), the cabinet
+  has not moved, and the gripper is clear of both.
+reset: >-
+  Pull the drawer out of the bottom slot if it is inside (it has no stop and is light), then put it on the table at the
+  target you are given, upright (open side up). Its yaw is your choice but vary it within +/-30 deg of facing the
+  cabinet. The drawer pull is about 4 cm above the table when the drawer is in the slot: a gripper held horizontal there
+  is at table height, so plan the grasp (from above, or a wall of the drawer) with the tips above the table. Never move
+  the cabinet; leave the two upper slots empty.
+objects: [drawer]
+
+fixtures:                          # measured 2026-11-17 after the side-camera recalibration (docs/RL_DESIGN.md section 5)
+  cabinet:
+    front_normal: [0.9282, 0.3722] # unit xy normal of the front face, pointing into the cabinet (insertion direction)
+    front_offset: 0.5226           # front plane: normal . xy = offset (m)
+    slot_h: [0.030, 0.090]         # bottom-slot window above the table (m): the drawer front fills it when inserted
+    slot_t: [-0.120, -0.045]       # window along the front (t = -n_y x + n_x y, m); the front spans -0.135..-0.026
+    height: 0.27
+  flush_tol: 0.012                 # |distance to the front plane| for a flush point (m)
+
+keep_out:                          # model check: no gripper point inside (rlpj.robot.sim); base frame, m, yaw about z
+  # the cabinet body from 1 cm behind its front plane (the gripper may touch the front to push the drawer flush)
+  - {name: cabinet, center: [0.6634, 0.1798, 0.134], half: [0.15, 0.075, 0.155], yaw_deg: 21.85}
+
+layout:                            # reset target for the drawer centre on the table (base frame, m)
+  drawer: {x: [0.34, 0.44], y: [-0.20, -0.02]}    # in front of and beside the cabinet, clear of its front by > 10 cm
+  radius: [0.36, 0.52]
+  tolerance: 0.05
+
+perception:                        # size priors (m); the drawer is a guess until the reset agent measures it
+  drawer: {height: [0.04, 0.10], extent: [0.08, 0.30]}
+  cabinet: {height: [0.22, 0.32], extent: [0.10, 0.45]}
+
+rl:
+  eval_every: 20                   # training episodes between fixed evaluations
+  eval_episodes: 10                # deterministic-policy episodes per evaluation
+  target_success_rate: 0.7         # over one evaluation
+  max_episodes: 600                # training episodes, then stop and report
+  review_every: 40                 # the RL agent's tuning turn: curve + recent episodes, may change reward/hyperparameters
+  learner_timeout_s: 300           # programs/learner.py between episodes (CPU on the robot machine)
+  episode_timeout_s: 300
+  force_limit_n: 25                # contact-force stop on the arm's estimated tool force (N)
+
+reuse: []

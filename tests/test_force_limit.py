@@ -1,0 +1,48 @@
+"""Executor stops a segment when the estimated tool force changes by more than force_limit (offline fake robot)."""
+import numpy as np
+
+from rlpj.robot.executor import Executor
+
+
+class Seg:
+    name, T, speed = "push", 2.0, {"jv": 10.0}
+    q = np.zeros((2, 6))
+
+    def ref(self, t):
+        return np.zeros(6), np.zeros(6)
+
+
+class Kin:
+    def fk(self, q):
+        return np.eye(4)
+
+
+class Robot:
+    def __init__(self, force_at):
+        self.t0, self.force_at = None, force_at
+
+    def feedback(self):
+        import time
+        now = time.time()
+        self.t0 = self.t0 or now
+        f = [0, 0, 40.0] if now - self.t0 > self.force_at else [0, 0, 3.0]
+        return dict(q=np.zeros(6), t=now, state="ARMSTATE_SERVOING_READY", force=np.array(f))
+
+    def send_joint_speeds(self, v):
+        pass
+
+    def stop(self):
+        pass
+
+
+def test_force_stop():
+    ex = Executor(Robot(force_at=0.5), Kin(), log=lambda *a: None)
+    ex.force_limit = 25
+    r = ex.run(Seg())
+    assert not r["ok"] and "contact force" in r["reason"], r
+
+
+def test_no_limit_no_stop():
+    ex = Executor(Robot(force_at=0.5), Kin(), log=lambda *a: None)
+    r = ex.run(Seg())
+    assert "contact force" not in r["reason"], r

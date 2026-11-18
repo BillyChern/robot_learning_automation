@@ -15,10 +15,10 @@ CONDITIONS = ("text", "one_demo")
 PROMPTS = Path(__file__).parent / "prompts"
 PROGRAM = {"execute": "programs/execute.py", "reset": "programs/reset.py", "learn": ""}
 # Written on the robot machine by the runner/orchestrator; everything else is the agent's (edited on the agent machine).
-ORCH_OWNED = ("attempts/", "turns/", "session.json", "usage.jsonl")
+ORCH_OWNED = ("attempts/", "turns/", "session.json", "usage.jsonl", "rl/")   # rl/: episode data and policies (RL tasks), written on the robot machine or copied back from the learner
 RUN_SIBLINGS = ("state.json", "episodes", "datasets", "checkpoints", "evals", "calib")   # DESIGN.md section 4
 BASH_DENY = ("*RLPJ_MOTION*", "ssh *", "scp *", "rsync *", "*192.168.2.*", "sudo *")
-GITIGNORE = "attempts/\nturns/\nsession.json\nusage.jsonl\ninputs/demo\ninputs/reuse/\n__pycache__/\n*.pyc\n"
+GITIGNORE = "attempts/\nrl/\nturns/\nsession.json\nusage.jsonl\ninputs/demo\ninputs/reuse/\n__pycache__/\n*.pyc\n"
 GIT_ID = ["-c", "user.name=rlpj", "-c", "user.email=rlpj@local"]
 # Claude Code applies a folder's .claude/settings.json allow rules only once the folder is trusted:
 # projects[<path>].hasTrustDialogAccepted in ~/.claude.json of the agent machine (deny rules apply either way).
@@ -116,6 +116,9 @@ def render(role: str, task_cfg: dict, condition: str | None = None, robot: dict 
         EVAL_EPISODES=cfg.get("evaluation", {}).get("episodes", "?"), MAX_RUNS=cfg.get("training", {}).get("max_runs", "?"),
         DAGGER="on" if cfg.get("evaluation", {}).get("dagger") else "off",
         MIN_TRAIN_STEPS=cfg.get("training", {}).get("min_train_steps") or 0,
+        TORCH_PYTHON=config.ROOT / "third_party/openpi/.venv/bin/python",
+        FIXTURES=json.dumps(task_cfg.get("fixtures") or {}),
+        **{f"RL_{k.upper()}": v for k, v in (task_cfg.get("rl") or {}).items()},
     )
     if role == "learn":
         v.update(LEARN_DEFAULTS)
@@ -124,7 +127,8 @@ def render(role: str, task_cfg: dict, condition: str | None = None, robot: dict 
         v["CONDITION_BLOCK"] = fill((PROMPTS / f"condition_{condition}.md").read_text().strip(), **v)
     lines = [f"- `inputs/reuse/{n}` -> `{p}`" for p, n in reuse.items()]
     v["REUSE_BLOCK"] = fill((PROMPTS / "reuse.md").read_text(), REUSE_LIST="\n".join(lines), **v).strip() if lines else ""
-    text = fill((PROMPTS / "common.md").read_text().strip() + "\n\n" + (PROMPTS / f"{role}.md").read_text().strip(), **v)
+    role_prompt = "rl.md" if role == "execute" and task_cfg.get("mode") == "rl" else f"{role}.md"
+    text = fill((PROMPTS / "common.md").read_text().strip() + "\n\n" + (PROMPTS / role_prompt).read_text().strip(), **v)
     text = re.sub(r"\n{3,}", "\n\n", text) + "\n"
     left = sorted(set(re.findall(r"\{[A-Z][A-Z_]+\}", text)))
     if left:
