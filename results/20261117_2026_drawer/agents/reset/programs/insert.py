@@ -78,7 +78,15 @@ def main():
         r = R.Reset(s, {})
         s.phase("perceive")
         if np.abs(R.wrap180(r.q_now() - R.HOME_Q)).max() > 3:
+            g0 = float(s.feedback()["gripper"])
+            if 3.0 < g0 < 97.0:
+                s.gripper(min(0.4, g0 / 100.0), "let go before backing off")
             r.escape(); r.go_home("home_start")
+        p0 = r.perceive("start")
+        if r.state_of(p0) == "out":
+            s.decide(f"insert: drawer already partly in the slot (sticks out {p0['protr']:.3f}): push it flush")
+            push_flush(s, r, p0)
+            return
         c, p, half, h_top = pull_side(s, r)
         D = 2 * half - 0.01                      # drawer depth estimate (rim box, minus bloat)
         e = c + p * (half - 0.006)               # front wall centre
@@ -121,8 +129,40 @@ def main():
         r.go_home("home_mid")
         p2 = r.perceive("after_slide")
         s.require(p2["out"] is not None and p2["protr"] > 0.03, f"insert: drawer not seen in the slot after the slide ({p2['protr']:.3f})")
+        push_flush(s, r, p2)
+
+
+def push_front_wall(s, r, p, to_out=0.06):
+    """Top-down grasp of the drawer front wall (as reset.extract) and push it in until it sticks out to_out."""
+    o = p["out"]
+    wall_n = OFF - p["protr"] + 0.006
+    h_top = float(np.clip(o["h_top"], 0.05, 0.11)); tip_h = max(h_top - 0.012, 0.03)
+    Tg = tool_down_T(np.r_[xy_of(wall_n, o["t"]), r.tz + tip_h + R.TIP_OPEN], R.ang(N))
+    T_hi = Tg.copy(); T_hi[2, 3] = r.tz + R.SAFE_H
+    T_pre = Tg.copy(); T_pre[2, 3] += 0.05
+    s.gripper(0.45, "open to straddle the front wall")
+    r.to_ready()
+    r.joint_to("above_front_wall", T_hi)
+    r.line("down_to_front_pre", T_pre, "normal")
+    r.line("down_to_front_wall", Tg, "slow")
+    g = s.gripper(1.0, "grasp the front wall")
+    s.require(g < R.HOLD_MAX or s.dry, f"insert: front wall not held ({g:.1f})")
+    T_in = Tg.copy(); T_in[:2, 3] = xy_of(OFF - to_out + 0.006, o["t"]); T_in[2, 3] += 0.003
+    r.line("push_in", T_in, "slow")
+    s.gripper(0.45, "release")
+    T_up = T_in.copy(); T_up[2, 3] += 0.06
+    r.line("up_from_front", T_up, "slow")
+    r.go_home("home_mid2")
+
+
+def push_flush(s, r, p2):
         s.phase("push_flush")
-        shift = float(p2["protr"])
+        if p2["protr"] > 0.068:
+            s.decide(f"insert: sticks out {p2['protr']:.3f} > 0.068 (tab pinch out of reach): push in by the front wall first")
+            push_front_wall(s, r, p2)
+            p2 = r.perceive("after_push_in")
+            s.require(p2["out"] is not None and 0.02 < p2["protr"] <= 0.072, f"insert: protrusion {p2['protr']:.3f} after the front-wall push")
+        shift = float(p2["protr"]) + 0.002
         R.PIN_OUT, R.PIN_H = R.PIN_BASE
         r.pin_t = R.PIN_T
         r.pin_dy, r.pin_dz = 0.002, 0.0015       # the offset that held the tab in attempt 17
@@ -134,9 +174,12 @@ def main():
         s.decide(f"insert: drawer sticks out {shift:.3f} m; pinch the tab there and push it flush")
         r.to_ready()
         s.gripper(R.PRECLOSE, "pre-close")
-        q = r.ik(Thi_out, [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (20.0, 40.0, 60.0) for j6 in (-90.0, 90.0)])
-        s.move_joint("above_tab_out", q, "normal")
-        r.line("to_tab_pre", Tpre_out, "normal", tip_margin=R.PIN_MARGIN)
+        Tpre_d = Tg_done.copy(); Tpre_d[:3, 3] -= 0.05 * z
+        Thi_d = Tpre_d.copy(); Thi_d[2, 3] = r.tz + R.PIN_HI; Thi_d[:2, 3] -= 0.04 * N
+        q = r.ik(Thi_d, [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (20.0, 40.0, 60.0) for j6 in (-90.0, 90.0)])
+        s.move_joint("above_tab", q, "normal")
+        r.line("to_tab_pre_done", Tpre_d, "normal", tip_margin=R.PIN_MARGIN)
+        r.line("to_tab_pre", Tpre_out, "slow", tip_margin=R.PIN_MARGIN)
         r.line("approach_tab", Tg_out, "slow", tip_margin=R.PIN_MARGIN)
         g = s.gripper(R.PINCH, "pinch the tab")
         s.summary(insert_tab_grip=round(g, 1))

@@ -56,3 +56,8 @@
   the operator's new boxes (slot opening 3 cm, front 1 cm, body from 3 cm).
 - insert.py: scene setup for the done-state test (pull side from depth, front-wall grasp, slide in to 6.5 cm out,
   pinch tab (attempt-17 offset) shifted by the measured protrusion, push flush).
+- attempt 25 (insert.py real): pull face found via hint, wall refine ok (step 132), front wall held (88.2), carried,
+  slide-in stopped at 83 % by the 25 N contact-force limit (friction ~20-25 N, as during pulls); drawer left
+  partly in the slot, gripper on its front wall. -> insert.py resumes: open, escape up, push flush via tab pinch.
+- attempt 26: insert resume: drawer sticks out 0.089; tab pinch shifted that far is out of reach (j3). Offline: shift
+  <= 0.07 reachable when routed done-hi -> done-pre -> line out. -> front-wall top-down push to 6 cm first.
