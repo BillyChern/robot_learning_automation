@@ -1,0 +1,130 @@
+{
+ "reset": 32,
+ "t": "2026-11-18T04:25:33",
+ "targets": {
+  "drawer": [
+   0.408,
+   -0.171
+  ]
+ },
+ "ok": false,
+ "report": "orientation not confirmed by the vision check: The drawer is out of the cabinet and upright on the table, but its metal pull is on the wall facing the camera (toward the bottom of the image), not the wall facing the robot base at lower left.",
+ "measured": [
+  {
+   "xy": [
+    0.3396,
+    0.1791
+   ],
+   "z_top": 0.0001,
+   "height": 0.0156,
+   "extent": [
+    0.0206,
+    0.0343
+   ],
+   "n": 102,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0077,
+   "outer_r": 0.0158
+  },
+  {
+   "xy": [
+    0.4412,
+    -0.1344
+   ],
+   "z_top": 0.0498,
+   "height": 0.0653,
+   "extent": [
+    0.1354,
+    0.1273
+   ],
+   "n": 5269,
+   "hollow": true,
+   "hole_xy": [
+    0.4395,
+    -0.1272
+   ],
+   "inner_r": 0.0455,
+   "outer_r": 0.0581
+  },
+  {
+   "xy": [
+    0.4746,
+    0.1661
+   ],
+   "z_top": -0.0018,
+   "height": 0.0138,
+   "extent": [
+    0.0268,
+    0.0367
+   ],
+   "n": 122,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0061,
+   "outer_r": 0.0158
+  },
+  {
+   "xy": [
+    0.5796,
+    0.1178
+   ],
+   "z_top": 0.2539,
+   "height": 0.2694,
+   "extent": [
+    0.118,
+    0.1268
+   ],
+   "n": 11964,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0188,
+   "outer_r": 0.0548
+  },
+  {
+   "xy": [
+    0.7091,
+    0.1125
+   ],
+   "z_top": 0.0174,
+   "height": 0.0329,
+   "extent": [
+    0.049,
+    0.0318
+   ],
+   "n": 186,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0109,
+   "outer_r": 0.0167
+  },
+  {
+   "xy": [
+    0.9269,
+    0.0772
+   ],
+   "z_top": 0.0007,
+   "height": 0.0162,
+   "extent": [
+    0.0398,
+    0.0214
+   ],
+   "n": 126,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0077,
+   "outer_r": 0.0152
+  }
+ ],
+ "claimed": {
+  "drawer": [
+   0.4398,
+   -0.1293
+  ]
+ },
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_73",
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration": 378.3
+}

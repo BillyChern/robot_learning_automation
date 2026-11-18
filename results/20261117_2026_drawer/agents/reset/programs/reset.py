@@ -204,7 +204,9 @@ class Reset:
         for b in blobs:
             q = nt(b["xy"]); ext = max(b["extent"])
             if q[0] < OFF - 0.03 and 0.03 <= b["height"] <= 0.12 and 0.06 <= ext <= 0.32 and b["n"] > 150:
-                c, (L, W), yaw = obb(b["points"][:, :2])
+                pts = b["points"]; hh = pts[:, 2] - tz
+                rim = pts[hh > b["height"] - 0.012, :2]            # wall tops: the blob outline is inflated by merges
+                c, (L, W), yaw = obb(rim if len(rim) > 60 else pts[:, :2])
                 cand.append(dict(xy=[round(float(v), 4) for v in b["xy"]], obb_c=np.round(c, 4).tolist(), L=round(L, 3),
                                  W=round(W, 3), yaw=round(yaw, 1), h=b["height"], n=b["n"], pts=b["points"]))
         cand.sort(key=lambda d: -d["n"])
@@ -560,7 +562,7 @@ class Reset:
         self.lift_to("lift_drawer", SAFE_H, "normal")
         return dict(yaw_pick=yaw, grasp_off=e - ctr, pull=pull, drop=tip_h + TIP_OPEN)
 
-    def refine_wall(self, img, e, d_in, h_top, half=0.05, max_shift=0.04):
+    def refine_wall(self, img, e, d_in, h_top, half=0.07, max_shift=0.06):
         """Wrist-camera refinement of a drawer wall seen from above: intensity profile along d_in (toward the drawer
         centre) across the expected wall top line at height h_top; the outer edge (bright table -> darker wood,
         going inward) is the strongest negative step. Returns the shift (m, along d_in) of the wall centre, or None."""
@@ -610,6 +612,14 @@ class Reset:
             return None
 
     # ------------------------------------------------------------ place
+    def holding(self, when):
+        g = float(self.s.feedback()["gripper"])
+        if self.s.dry or g < HOLD_MAX:
+            return True
+        self.s.decide(f"drawer no longer in the gripper {when} (reading {g:.1f}): skip the placement, pick it from the table")
+        self.s.gripper(0.4, "open")
+        return False
+
     def cab_clear(self, centre, axis):
         """Smallest distance (m) from the drawer footprint (0.14 x 0.14 box at centre, axis = its front-back axis) to the
         cabinet's footprint (front plane - 1 cm .. +30 cm, t -0.155..-0.005)."""
@@ -627,7 +637,11 @@ class Reset:
             # attempt 54: a drawer placed next to the cabinet corner merged with it in the orchestrator's measurement
             # ("not found"): pick a yaw that keeps the footprint >= 5 cm from the cabinet; else nudge the aim away
             box = target + self.bias
-            cands = [float(d) for d in self.rng.permutation(np.arange(-25, 26, 5))]
+            # attempt 73: the judges disagree when the pull points 10 deg off -N but ~40 deg off the robot base
+            # ('lower left' in the side image): aim the pull at the robot base, clipped to +-25 deg of -N, +-5 jitter
+            want = float(np.clip(wrapd(ang(-np.asarray(target)) - ang(-N)), -25, 25)) + float(self.rng.uniform(-5, 5))
+            want = float(np.clip(want, -25, 25))
+            cands = sorted([float(d) for d in np.arange(-25, 26, 5)] + [want], key=lambda d: abs(d - want))
             ok = [d for d in cands if self.cab_clear(box, rot2(N, d)) >= 0.05]
             delta = ok[0] if ok else max(cands, key=lambda d: self.cab_clear(box, rot2(N, d)))
             clr = self.cab_clear(box, rot2(N, delta))
@@ -650,7 +664,11 @@ class Reset:
         T_hi = Tp.copy(); T_hi[2, 3] = self.tz + SAFE_H
         T_pre = Tp.copy(); T_pre[2, 3] += 0.05
         s.decide(f"place: pull {'known' if held.get('pull') is not None else 'UNKNOWN'}, turn {turn:.0f} deg, pull wall toward {ang(-a):.0f} deg (robot side, normal {ang(N):.0f} + {delta:.0f}), grasp point {np.round(g, 3).tolist()}, tool {h_tool:.3f} above table")
+        if not self.holding("before the carry"):
+            return delta
         self.joint_to("above_target", T_hi)
+        if not self.holding("after the carry"):
+            return delta
         self.line("down_to_place_pre", T_pre, "normal")
         self.line("place_down", Tp, "slow", tip_margin=0.0)
         s.gripper(0.4, "release the drawer")
@@ -711,6 +729,8 @@ class Reset:
         delta = None
         if st == "out":
             # which way round is it? ask the vision judge (arm at home, drawer sticking out toward the lower left)
+            if np.abs(wrap180(self.q_now() - HOME_Q)).max() > 3:
+                self.go_home("home_for_judge")            # attempt 72: the arm at READY hid the drawer from the camera
             path = self.side_full("out")
             if path is not None:
                 ans = self.ask(path, "A wooden drawer sticks out of the cabinet's bottom slot toward the robot. The outer wall of "

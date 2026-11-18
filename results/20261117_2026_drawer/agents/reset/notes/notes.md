@@ -104,3 +104,10 @@
   escape tries straight back along -N first (operator: moves out of a keep-out box are allowed now).
 - attempt 54 (episode reset): placed at (0.413,-0.024) for target (0.401,-0.03), turned 34 deg; corner almost at the cabinet -> orchestrator 'not found' (blob likely merged with the cabinet). -> place() picks the yaw keeping the footprint >= 5 cm from the cabinet, else nudges the aim <= 2.5 cm away.
 - attempt 55: same spot as 54 already within 1.7 cm -> no motion; orchestrator found it this time (54 was a borderline merge). Clearance logic untested -> attempt 56 target (0.43,-0.05).
+- 02:00 operator: attempt 54 was right; orchestrator's blob merged drawer+cabinet at (0.401,-0.03). Layout y now [-0.20,-0.08]. Offline: worst best-yaw cabinet clearance over the new range computed; clearance-aware yaw kept (no nudge needed there).
+- attempts 64/69/72/73 (episode resets): (72) after a flipped extraction the drawer was found 22 cm from the
+  placement (slipped from the one-wall grip during the 175 deg carry turn) and table picks at (0.32,+0.04) missed
+  on an inflated blob outline; the 'out' judge photo was taken with the arm at READY (null). (73) judges disagreed:
+  pull 10 deg off -N but ~40 deg off the robot base. -> drop checks before/after the carry, table OBB from rim points,
+  wall refine window +-7 cm / shift <= 6 cm, pull aimed at the robot base (clipped +-25 deg of -N, +-5 jitter),
+  'out' judge photo from home.

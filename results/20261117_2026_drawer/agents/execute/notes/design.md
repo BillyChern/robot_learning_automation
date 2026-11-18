@@ -130,3 +130,8 @@ action inside the keep-out/kinematic envelope (tools/offline_test.py).
     entropy collapsing), AWAC keeps to the data and continues positive yaw where it was taken.
   * BC-to-prior decay 30 -> 10 episodes; verdict files are named 000006.json (6 digits): relabel now finds them.
   Not changed: reward, exploration (yaw keeps its learned std ~0.3-0.4, so both signs are still tried).
+- attempt 43 (22bde39, test after the tuning): the insertion reached its end with dyaw +10 (AWAC policy), release ok;
+  the push jammed after ~1 cm (51 N), like every push after a reached insertion (eps 4, 5, 8). Insertions only pass
+  with the tool turned +5.6..+10 deg, so the slot axis seems turned from the yaml normal, and the push went straight
+  along the yaml normal. -> the push stage now pushes along N turned by the insertion's final tool yaw
+  (PUSH_FRAME; pusher orientation, advance, lateral and unload directions all turned), clipped to +-10 deg.

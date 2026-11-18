@@ -84,14 +84,26 @@ def xy_of(n, t):
     return n * N + t * TT
 
 
+PUSH_FRAME = dict(yaw=0.0, n0=OFF, t0=0.0)   # push direction: N turned by yaw about (n0, t0) (set per episode)
+
+
+def push_dirs():
+    a = np.radians(PUSH_FRAME["yaw"]); c, s_ = np.cos(a), np.sin(a)
+    u = np.array([c * N[0] - s_ * N[1], s_ * N[0] + c * N[1]])
+    return u, np.array([-u[1], u[0]])
+
+
 def push_T(n, t, h, tz):
-    """Tilted closed gripper: tool z PUSH_TILT from vertical toward +N, jaw axis along the front; fingertip
-    (PUSH_ZT along z) at (n, t) and height h above the table."""
+    """Tilted closed gripper: tool z PUSH_TILT from vertical toward the push direction u (N turned by
+    PUSH_FRAME yaw: the slot axis the insertion found), jaw axis across it; fingertip (PUSH_ZT along z) at
+    (n, t) in the turned frame about (n0, t0), height h above the table."""
+    u, v = push_dirs()
     th = np.radians(PUSH_TILT)
-    z = np.r_[np.sin(th) * N, -np.cos(th)]
-    x = T3.copy()
+    z = np.r_[np.sin(th) * u, -np.cos(th)]
+    x = np.r_[v, 0.0]
     T = np.eye(4); T[:3, :3] = np.stack([x, np.cross(z, x), z], 1)
-    T[:3, 3] = np.r_[xy_of(n, t), tz + h] - PUSH_ZT * z
+    xy = xy_of(PUSH_FRAME["n0"], PUSH_FRAME["t0"]) + (n - PUSH_FRAME["n0"]) * u + (t - PUSH_FRAME["t0"]) * v
+    T[:3, 3] = np.r_[xy, tz + h] - PUSH_ZT * z
     return T
 
 
@@ -362,7 +374,7 @@ class Episode:
                 end = "reached"; break
         s.summary(push=dict(end=end, steps=len(self.trans) - k0, tip_n_minus_off=round(n - OFF, 4), dt=round(t - t0, 4), h=round(h, 4)))
         if end in ("force", "abort") and not s.dry:
-            self.unload(-N3)
+            self.unload(-np.r_[push_dirs()[0], 0.0])
             xyz = self.T_now()[:3, 3] + PUSH_ZT * self.T_now()[:3, 2]; q2 = nt(xyz[:2])
             n, t, h = float(q2[0]), float(q2[1]), float(xyz[2] - self.tz)
         self.push_retreat(n, t, h)
@@ -414,7 +426,7 @@ class Episode:
                         # attempt 14: the retreat caught something (50.5 N): unload, retry once from where it stopped
                         self.log(f"push retreat stopped: {str(e)[:120]}")
                         self.s.require(attempt == 0 and "contact force" in str(e), f"push retreat failed: {str(e)[:120]}")
-                        self.unload(-N3, steps=3)
+                        self.unload(-np.r_[push_dirs()[0], 0.0], steps=3)
                 self.line("push_up", chain[1], "normal", tip_margin=TIP_MARGIN_PUSH)
                 return
         self.s.require(False, "no model-checked retreat from the push pose")
@@ -744,6 +756,10 @@ class Episode:
         self.to_ready()
         # push beside the pull (knob ~4 cm high, label frame above it, both centred): 3 cm toward +t at 5 cm height
         # (attempt 20 pushed at 7.4 cm: the tip went over the wall top and the retreat dragged the drawer 2 cm out)
+        # push along the slot axis the insertion found (tuning 03:08: insertions only got through with the tool
+        # turned +5.6..+10 deg; pushes straight along the yaml normal then jammed after 1-2 cm, 4/4)
+        PUSH_FRAME.update(yaw=float(np.clip(ins["yaw"] - yaw2, -10, 10)), n0=face_n, t0=float(ins["t"]))
+        s.summary(push_frame=dict(PUSH_FRAME))
         self.stage_push(face_n, min(ins["t"] + PUSH_DT, PUSH_TMAX), ins["end"] == "reached")
         self.finish(before)
 
