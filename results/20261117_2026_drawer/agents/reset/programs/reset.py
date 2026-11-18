@@ -34,10 +34,12 @@ PULL = 0.065              # first pull with the pin grasp
 PIN_T = -0.088            # pin t (wrist triangulation, attempts 9-10)
 PIN_H = 0.052             # pin height above the table
 PIN_OUT = 0.010           # pad centre in front of the front plane
-PIN_VARIANTS = [(0.002, 0.029), (0.000, 0.034)]   # (out, h): pin triangulated from 3 wrist views (attempts 9-10): axis h ~0.028, out -0.011..+0.001
-PIN_TILT = 30.0           # deg, gripper pointing down and into the cabinet
-PIN_PHI = 25.0            # deg roll about the normal
-PAD_Z = 0.043             # pad centre along the tool z (closed on the pin)
+PIN_VARIANTS = [(0.0026, 0.022, 0.004, -0.0025), (0.0026, 0.022, 0.006, -0.004)]  # + tool-frame (dy, dz): attempt 14 showed the tab passing over the fingertips (+y side)   # pre-closed tip (out, h); pads lie above/behind the tip (attempt 12: pin above the tips)
+PIN_TILT = 50.0           # deg, gripper pointing down and into the cabinet
+PIN_PHI = 20.0            # deg roll about the normal
+PIN_ZT = 0.041            # fingertip along the tool z when pre-closed
+PIN_MARGIN = 0.004        # model fingertip clearance at the pin (model points sit 8 mm outside the real fingers)
+PRECLOSE = 0.706          # ~25 mm opening
 L_DEFAULT = 0.13          # drawer depth until measured
 HOLD_MAX = 97.0           # gripper reading below this = holding something
 TOL = 0.05
@@ -75,6 +77,7 @@ class Reset:
         self.tz = calib.table_z()
         self.rng = np.random.default_rng(int(time.time()))
         self.k = 0
+        self.pin_dy = self.pin_dz = 0.0
 
     # ------------------------------------------------------------ helpers
     def log(self, m):
@@ -182,54 +185,55 @@ class Reset:
 
     # ------------------------------------------------------------ pin pull
     def pin_T(self, out_m):
-        """Tilted grasp pose: pad centre at the pin, jaws along the front (t), pointing down and PIN_TILT into the
-        cabinet, then rolled PIN_PHI about the normal (keeps j5 away from the wrist singularity)."""
+        """Steep pinch pose: tool pointing PIN_TILT from vertical into the cabinet (nearly along the pin, so the pin
+        lies in the pad plane), rolled PIN_PHI about the normal; the fingertip at PIN_ZT along z (pre-closed to
+        PRECLOSE) is placed out_m in front of the yaml front plane at height PIN_H."""
         th = np.radians(PIN_TILT)
         z = np.r_[np.sin(th) * N, -np.cos(th)]
         x = np.r_[TT, 0.0]
         Rm = rot_axis(np.r_[N, 0.0], PIN_PHI) @ np.stack([x, np.cross(z, x), z], 1)
-        pad = np.r_[xy_of(OFF - out_m, self.pin_t), self.tz + PIN_H]
-        T = np.eye(4); T[:3, :3] = Rm; T[:3, 3] = pad - PAD_Z * Rm[:, 2]
+        tip = np.r_[xy_of(OFF - out_m, self.pin_t), self.tz + PIN_H]
+        T = np.eye(4); T[:3, :3] = Rm; T[:3, 3] = tip - PIN_ZT * Rm[:, 2] + Rm @ np.r_[0.0, self.pin_dy, self.pin_dz]
         return T
 
     def pull_pin(self, k=0):
-        """Grasp the pin (variant k of the pin position guess), pull PULL along -N, release, retreat."""
+        """Pinch the pin (variant k of its position), pull PULL along -N, release, lift, back to READY."""
         global PIN_OUT, PIN_H
         s = self.s
-        PIN_OUT, PIN_H = PIN_VARIANTS[k % len(PIN_VARIANTS)]
+        PIN_OUT, PIN_H, self.pin_dy, self.pin_dz = PIN_VARIANTS[k % len(PIN_VARIANTS)]
         self.pin_t = PIN_T
         Tg = self.pin_T(PIN_OUT)
         z = Tg[:3, 2]
-        T_pre = Tg.copy(); T_pre[:3, 3] -= 0.06 * z
+        T_pre = Tg.copy(); T_pre[:3, 3] -= 0.05 * z
         T_hi = T_pre.copy(); T_hi[2, 3] = self.tz + PIN_HI; T_hi[:2, 3] -= 0.04 * N
-        s.decide(f"pin try {k}: pad {PIN_OUT:.3f} m in front of the face, {PIN_H:.3f} m above the table, t {self.pin_t:.3f}")
-        s.gripper(0.0, "open for the pin")
+        s.decide(f"pin try {k}: fingertips {PIN_OUT:.3f} m in front of the yaml front, {PIN_H:.3f} m above the table, t {self.pin_t:.3f}, tilt {PIN_TILT}, roll {PIN_PHI}")
         if np.abs(wrap180(self.q_now() - self.ik(tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0), [SEED_DOWN]))).max() > 3:
             self.to_ready()
-        # tilted pose: seed with j4 = 0 and j5 > 0 (no wrist flip)
-        q = self.ik(T_hi, [np.array([0, 40, -120, 0, 20, j6], float) for j6 in (-90.0, 90.0)])
+        s.gripper(PRECLOSE, "pre-close to ~25 mm for the pin")
+        q = self.ik(T_hi, [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (20.0, 40.0, 60.0) for j6 in (-90.0, 90.0)])
         s.require(wrap180(q[4]) > 15, f"pin pose IK gave a wrist near the singularity or flipped {np.round(q, 0).tolist()}")
         s.move_joint("above_pin", q, "normal")
         self.line("down_to_pin_pre", T_pre, "normal")
         self.save(f"wrist_pin_pre{k}", s.wrist.latest()[0])
-        self.line("approach_pin", Tg, "slow")
+        self.line("approach_pin", Tg, "slow", tip_margin=PIN_MARGIN)
         self.save(f"wrist_pin_at{k}", s.wrist.latest()[0])
-        g = s.gripper(1.0, "grasp the pin")
+        g = s.gripper(1.0, "pinch the pin")
         s.summary(**{f"pin_grip{k}": round(g, 1)})
+        img = s.wrist.latest()[0]
+        if img is not None:
+            cv2.imwrite(os.path.join(s.A, f"wrist_pin_closed{k}.jpg"), img[360:720, 320:960])
         held = g < HOLD_MAX or s.dry
         if not held:
             s.decide(f"pin grasp reading {g:.1f}: nothing held")
-            s.gripper(0.0, "open, missed pin")
-            d = np.zeros(3)
+            s.gripper(PRECLOSE, "open, missed pin")
+            self.line("back_from_pin", T_pre, "slow", tip_margin=PIN_MARGIN)
+            self.line("up_from_pin", T_hi, "normal")
         else:
-            d = -np.r_[PULL * N, 0.0]
-            T_out = Tg.copy(); T_out[:3, 3] += d
-            self.line("pull_drawer", T_out, "slow")
-            s.gripper(0.0, "release the pin")
-        T_b = T_pre.copy(); T_b[:3, 3] += d
-        self.line("back_from_pin", T_b, "slow")
-        T_h = T_hi.copy(); T_h[:3, 3] += d
-        self.line("up_from_pin", T_h, "normal")
+            T_out = Tg.copy(); T_out[:3, 3] -= np.r_[PULL * N, 0.0]
+            self.line("pull_drawer", T_out, "slow", tip_margin=PIN_MARGIN)
+            s.gripper(0.55, "release the pin (partly, keeps the lower finger off the table)")
+            T_up = T_out.copy(); T_up[2, 3] += 0.06
+            self.line("up_from_pin", T_up, "slow", tip_margin=PIN_MARGIN)
         self.to_ready()
         return held
 
