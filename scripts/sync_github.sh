@@ -18,7 +18,7 @@ sync_once() {
     for r in $RUNS; do bash scripts/export_results.sh "$r" || return 1; done
     git add -A
     if ! git diff --cached --quiet; then
-        if git diff --cached | grep -E '^\+' | grep -qE "$SECRETS"; then      # added lines only
+        if git diff --cached --text | grep -aE '^\+' | grep -aqE "$SECRETS"; then      # added lines only, binary diffs as text
             echo "$(date '+%F %T') secret-looking text staged; nothing committed. Files:"
             git diff --cached --name-only | while read -r f; do git show ":$f" 2>/dev/null | grep -qE "$SECRETS" && echo "  $f"; done
             git reset -q; return 1
