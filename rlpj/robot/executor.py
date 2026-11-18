@@ -34,7 +34,7 @@ class Executor:
     def run(self, seg, settle_tol=0.15, settle_time=2.0):
         r = dict(segment=seg.name, ok=False, reason="", T_plan=round(seg.T, 2), max_dev_deg=0.0, max_dev_mm=0.0, n=0)
         vmax = seg.speed["jv"] * 1.1 + 1.0
-        t0 = time.time(); ts = None; q = None; f0 = None
+        t0 = time.time(); ts = None; q = None; f0 = None; over = 0
         self.running = True
         try:
             while True:
@@ -68,7 +68,16 @@ class Executor:
                         if self.force_limit and df > self.force_limit:
                             r["reason"] = f"contact force {df:.1f} N > {self.force_limit:.0f} N at t={t:.2f}s"; break
                 if dev > DEV_DEG or dmm > DEV_MM:
-                    r["reason"] = f"tracking deviation {dev:.2f} deg / {dmm:.1f} mm at t={t:.2f}s"; break
+                    over += 1
+                    if over >= 2:
+                        r["reason"] = f"tracking deviation {dev:.2f} deg / {dmm:.1f} mm at t={t:.2f}s"; break
+                    # one bad sample (seen: joint 5 read 360.0 vs 312.9, wrist camera unmoved): follow the reference
+                    # without feedback this tick; a real deviation persists and stops on the next sample
+                    r["feedback_glitches"] = r.get("feedback_glitches", 0) + 1
+                    _, vff = seg.ref(t + LOOKAHEAD)
+                    self.robot.send_joint_speeds(np.clip(vff, -vmax, vmax)); r["n"] += 1
+                    continue
+                over = 0
                 if t >= seg.T:
                     if ts is None:
                         ts = t
