@@ -1,0 +1,145 @@
+{
+ "reset": 25,
+ "t": "2026-11-18T03:25:00",
+ "targets": {
+  "drawer": [
+   0.405,
+   -0.123
+  ]
+ },
+ "ok": true,
+ "report": {
+  "tolerance": 0.05,
+  "objects": {
+   "drawer": {
+    "target": [
+     0.405,
+     -0.123
+    ],
+    "found": [
+     0.4224,
+     -0.1243
+    ],
+    "dist": 0.0174,
+    "ok": true
+   }
+  },
+  "extra_blobs": 5,
+  "reason": "layout ok"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.273,
+    0.0543
+   ],
+   "z_top": 0.0017,
+   "height": 0.0171,
+   "extent": [
+    0.0479,
+    0.0326
+   ],
+   "n": 218,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0089,
+   "outer_r": 0.0213
+  },
+  {
+   "xy": [
+    0.4224,
+    -0.1243
+   ],
+   "z_top": 0.0539,
+   "height": 0.0694,
+   "extent": [
+    0.1349,
+    0.1504
+   ],
+   "n": 5421,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0122,
+   "outer_r": 0.0767
+  },
+  {
+   "xy": [
+    0.4684,
+    0.1929
+   ],
+   "z_top": 0.0063,
+   "height": 0.0218,
+   "extent": [
+    0.0537,
+    0.0141
+   ],
+   "n": 167,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.5815,
+    0.1163
+   ],
+   "z_top": 0.2549,
+   "height": 0.2703,
+   "extent": [
+    0.1195,
+    0.1249
+   ],
+   "n": 11919,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0166,
+   "outer_r": 0.0526
+  },
+  {
+   "xy": [
+    0.6873,
+    0.0644
+   ],
+   "z_top": -0.0031,
+   "height": 0.0123,
+   "extent": [
+    0.0371,
+    0.0541
+   ],
+   "n": 152,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.7818,
+    0.1051
+   ],
+   "z_top": -0.0034,
+   "height": 0.012,
+   "extent": [
+    0.035,
+    0.0254
+   ],
+   "n": 119,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0063,
+   "outer_r": 0.0142
+  }
+ ],
+ "claimed": {
+  "drawer": [
+   0.4188,
+   -0.1264
+  ]
+ },
+ "claimed_outcome": "success",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_66",
+ "exit_code": 0,
+ "outcome": "success",
+ "duration": 326.3
+}
