@@ -715,6 +715,10 @@ class Episode:
         s.require(d is not None, "no drawer on the table")
         s.view.set_scene(objects=[dict(xy=list(map(float, d["c"])), z_top=self.tz + d["h_top"], r=d["half"], label="drawer")])
         P_img = s.side.latest()[0]
+        try:                                        # lighting (04:30 the room lights went off: brightness 122 -> 76)
+            s.summary(side_brightness=round(float(cv2.cvtColor(P_img, cv2.COLOR_BGR2HSV)[..., 2].mean()), 1))
+        except Exception:
+            pass
         if not self.pull_check(d, P_img):
             return
         s.phase("grasp")

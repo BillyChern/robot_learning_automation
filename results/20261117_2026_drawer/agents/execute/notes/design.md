@@ -142,3 +142,4 @@ action inside the keep-out/kinematic envelope (tools/offline_test.py).
   gripper body on the face). Added: side + wrist snapshots at the insertion and push ends (insert_end_*, push_end_*),
   and the back-off after release is now smaller than the inner finger's gap to the wall (12 mm could drag the
   drawer ~1 mm out).
+- 14:50 resume (lights were off 04:30-05:17): side-image brightness now logged in summary.json (side_brightness, ~122 normal) to spot lighting failures; attempt 45 (diagnostic snapshots) never ran.

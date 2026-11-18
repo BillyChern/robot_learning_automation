@@ -38,6 +38,8 @@ PIN_BASE = (0.0026, 0.022)   # pre-closed fingertip (out, h) before the tool-fra
 PIN_SWEEP = [(0.0, 0.0025), (0.002, 0.0015), (0.0, 0.0015), (0.004, -0.001)]   # (dy, dz) tool frame; all pass the keep-out model with the gripper at 0.706 and 0.91
 PINCH = 0.90
 PIN_TILT = 50.0           # deg, gripper pointing down and into the cabinet
+PIN_PHI0 = 20.0
+PIN_SWEEP_DEEP = [(0.002, 0.0015), (0.0, 0.0015), (0.002, 0.0), (0.004, -0.001)]   # attempt 86: dz 3-5 mm pressed the face (29-36 N)   # recessed drawer (roll 0, +7 mm)
 PIN_PHI = 20.0            # deg roll about the normal
 PIN_ZT = 0.041            # fingertip along the tool z when pre-closed
 PIN_MARGIN = 0.004        # model fingertip clearance at the pin (model points sit 8 mm outside the real fingers)
@@ -47,6 +49,7 @@ BACK_PROTR = 0.009        # a slot drawer sticking out more than this is in BACK
 BACK_TILT = 40.0          # oblique pinch of the protruding wall's top edge: jaws in the vertical plane through the
 BACK_ZC = 0.035           # slot centre, tilted BACK_TILT; pinch centre BACK_ZC along the tool z
 BACK_OPEN = 0.45
+DEEP_MAX = 0.040            # recessed drawer: deepest face the tab pinch can reach within the keep-out
 T_C = -0.087              # drawer centre line along the front
 TABLE_OPEN = 0.15          # table pick opening (~72 mm): +-3 cm around a 1 cm wall (attempt 52 missed at 51 mm)
 L_DEFAULT = 0.13          # drawer depth until measured
@@ -92,6 +95,7 @@ class Reset:
         self.rgbd = (None, None, None)
         self.pin_dy = self.pin_dz = 0.0
         self.retried = False
+        self.depth = 0.0          # how far the drawer front sits behind flush (pushed in past flush: no stop)
         self.bias = np.array([0.02, 0.03])   # box centre - blob centre, default from attempt 19
 
     # ------------------------------------------------------------ helpers
@@ -225,9 +229,13 @@ class Reset:
             if protr > 0.02 and sel.sum() > 20:
                 out = dict(t=float(np.median(q[sel, 1])), h_top=float(np.percentile(h[front & (q[:, 0] < OFF - 0.01)], 98)),
                            h_bot=float(np.percentile(h[sel], 3)), n=int(sel.sum()))
+        # drawer pushed in past flush (attempt 80: face points 53, points 2.5-10 cm inside 180): the recessed face
+        deep = win & (h > 0.035) & (h < 0.085) & (q[:, 0] > OFF - 0.02) & (q[:, 0] < OFF + 0.10)
+        face_depth = float(np.median(q[deep, 0]) - (OFF + 0.002)) if deep.sum() > 40 else None   # 16:45: median 25 mm
         lay = front & (q[:, 0] < OFF - protr + 0.012)
         front_top = float(np.percentile(h[lay], 98)) if lay.sum() > 20 else None
-        info = dict(tag=tag, table_z=round(tz, 4), front_top=None if front_top is None else round(front_top, 4), blobs=len(blobs), drawer_blobs=[{k: v for k, v in c.items() if k != "pts"} for c in cand],
+        info = dict(tag=tag, table_z=round(tz, 4), front_top=None if front_top is None else round(front_top, 4),
+                    face_depth=None if face_depth is None else round(face_depth, 4), blobs=len(blobs), drawer_blobs=[{k: v for k, v in c.items() if k != "pts"} for c in cand],
                     protr=round(protr, 4), front_pts=int(front.sum()), face_pts=int(face.sum()), inside_pts=int(inside.sum()),
                     out=None if out is None else {k: round(v, 4) for k, v in out.items()})
         self.log(f"perceive {tag}: {info}")
@@ -241,6 +249,8 @@ class Reset:
             return "out"
         if p["face_pts"] > 40 and p["face_pts"] > 2 * p["inside_pts"]:
             return "slot_back" if p["protr"] > BACK_PROTR else "slot"
+        if p.get("face_depth") is not None and 0.008 < p["face_depth"] < 0.08:
+            return "slot_deep"
         return "missing"
 
     # ------------------------------------------------------------ pin pull
@@ -252,21 +262,32 @@ class Reset:
         z = np.r_[np.sin(th) * N, -np.cos(th)]
         x = np.r_[TT, 0.0]
         Rm = rot_axis(np.r_[N, 0.0], PIN_PHI) @ np.stack([x, np.cross(z, x), z], 1)
-        tip = np.r_[xy_of(OFF - out_m, self.pin_t), self.tz + PIN_H]
+        dshift = max(self.depth - 0.002, 0.0)     # 2 mm margin on the side-camera depth (finger edge clears the face by ~1 mm)
+        tip = np.r_[xy_of(OFF - out_m + dshift, self.pin_t), self.tz + PIN_H]
         T = np.eye(4); T[:3, :3] = Rm; T[:3, 3] = tip - PIN_ZT * Rm[:, 2] + Rm @ np.r_[0.0, self.pin_dy, self.pin_dz]
         return T
 
     def pull_pin(self, k=0):
         """Pinch the pull tab, sweeping PIN_SWEEP tool-frame offsets (dy, dz) until the gripper holds it; pull PULL
         along -N, release, lift, back to READY. The pinch closes to PINCH so a held tab shows as a lower reading."""
-        global PIN_OUT, PIN_H
+        global PIN_OUT, PIN_H, PIN_PHI
         s = self.s
         PIN_OUT, PIN_H = PIN_BASE
+        sweep = PIN_SWEEP
+        if self.depth > 0.012:
+            # recessed drawer: the tab sits near the slot opening's 1.5 cm floor; the rolled lower finger would dip below
+            # it (1 cm front limit there): level fingers, tips 7 mm higher, deeper along z (the opening allows 5 cm)
+            PIN_PHI, PIN_H = 0.0, PIN_BASE[1] + 0.0035   # attempt 85: +7 mm put the pads on the label plate
+            sweep = PIN_SWEEP_DEEP
+        else:
+            PIN_PHI = PIN_PHI0
         self.pin_t = PIN_T
         self.pin_dy = self.pin_dz = 0.0
         T0 = self.pin_T(PIN_OUT)
         z = T0[:3, 2]
-        T_hi = T0.copy(); T_hi[:3, 3] -= 0.05 * z; T_hi[2, 3] = self.tz + PIN_HI; T_hi[:2, 3] -= 0.04 * N
+        phi_now = PIN_PHI; PIN_PHI = PIN_PHI0          # the high pose keeps the 20 deg roll (roll 0 there hits joint limits)
+        T0h = self.pin_T(PIN_OUT); PIN_PHI = phi_now
+        T_hi = T0h.copy(); T_hi[:3, 3] -= 0.05 * T0h[:3, 2]; T_hi[2, 3] = self.tz + PIN_HI; T_hi[:2, 3] -= 0.04 * N
         if np.abs(wrap180(self.q_now() - self.ik(tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0), [SEED_DOWN]))).max() > 3:
             self.to_ready()
         s.gripper(PRECLOSE, "pre-close to ~25 mm for the pull tab")
@@ -274,13 +295,20 @@ class Reset:
         s.require(wrap180(q[4]) > 15, f"pin pose IK gave a wrist near the singularity or flipped {np.round(q, 0).tolist()}")
         s.move_joint("above_pin", q, "normal")
         held, tries = False, []
-        for i, (dy, dz) in enumerate(PIN_SWEEP):
+        for i, (dy, dz) in enumerate(sweep):
             self.pin_dy, self.pin_dz = dy, dz
             Tg = self.pin_T(PIN_OUT)
             T_pre = Tg.copy(); T_pre[:3, 3] -= 0.05 * z
             s.decide(f"pin try {k}.{i}: offset dy {dy:+.3f} dz {dz:+.3f} (tool frame)")
-            self.line(f"to_pin_pre{i}", T_pre, "normal" if i == 0 else "slow", tip_margin=PIN_MARGIN)
-            self.line(f"approach_pin{i}", Tg, "slow", tip_margin=PIN_MARGIN)
+            try:
+                self.line(f"to_pin_pre{i}", T_pre, "normal" if i == 0 else "slow", tip_margin=PIN_MARGIN)
+                self.line(f"approach_pin{i}", Tg, "slow", tip_margin=PIN_MARGIN)
+            except Abort as e:
+                if "check failed" not in str(e):
+                    raise
+                s.decide(f"pin offset {i} refused by the model ({str(e)[:90]}); next offset")
+                tries.append([dy, dz, "refused"])
+                continue
             g = s.gripper(PINCH, "pinch the tab")
             img = s.wrist.latest()[0]
             if img is not None:
@@ -291,7 +319,9 @@ class Reset:
             if held:
                 s.decide(f"tab held at offset {i} (reading {g:.1f})")
                 s.gripper(min(g / 100 + 0.008, 0.90), "keep squeezing (sets the model gripper close to the real one)")
-                T_out = Tg.copy(); T_out[:3, 3] -= np.r_[PULL * N, 0.0]
+                # recessed: pull only to ~2 cm proud (a full 6.5 cm + depth folds j3); the wall-edge clamp takes over
+                pull_d = (self.depth + 0.02) if self.depth > 0.012 else PULL
+                T_out = Tg.copy(); T_out[:3, 3] -= np.r_[pull_d * N, 0.0]
                 try:
                     self.line("pull_drawer", T_out, "slow", tip_margin=PIN_MARGIN)
                     break
@@ -301,13 +331,15 @@ class Reset:
             s.gripper(PRECLOSE, "open, missed")
             self.line(f"back_pin{i}", T_pre, "slow", tip_margin=PIN_MARGIN)
         if held:
-            s.gripper(0.55, "release the tab (partly, keeps the lower finger off the table)")
+            s.gripper(0.65, "release the tab (partly, keeps the lower finger off the table)")
             # the drawer now sticks out (the model does not know it): lift 12 cm straight up so the joint move to
             # READY passes above it (attempt 17 hit the drawer after a 6 cm lift)
             T_up = T_out.copy(); T_up[2, 3] += 0.12
             self.line("up_from_pin", T_up, "slow", tip_margin=PIN_MARGIN)
         else:
             T_hi2 = T_pre.copy(); T_hi2[2, 3] = self.tz + PIN_HI; T_hi2[:2, 3] -= 0.04 * N
+            if self.depth > 0.012:            # attempt 85: back to the rolled high pose hit joint limits: lift straight up
+                T_hi2 = T_pre.copy(); T_hi2[2, 3] += 0.10
             self.line("up_from_pin", T_hi2, "normal")
         self.to_ready()
         return held
@@ -724,6 +756,15 @@ class Reset:
             s.require(st in ("out", "table") or s.dry, f"backwards drawer not pulled out (state {st}, protrusion {p['protr']:.3f})")
             if s.dry and st != "out":
                 p = dict(p, out=dict(t=T_C, h_top=0.075, h_bot=0.03, n=0), protr=PULL + 0.012); st = "out"
+        if st == "slot_deep":
+            self.depth = float(p["face_depth"])
+            # the tab pinch fits the keep-out (3 cm into the slot opening) only up to ~1.5 cm past flush: the model's
+            # forward finger points sit ~7 mm ahead of the fingertip (offline sweep: 2.5 cm needs the tab 5 mm beyond the tips)
+            s.require(self.depth <= DEEP_MAX,
+                      f"drawer pushed {self.depth:.3f} m past flush (more than {DEEP_MAX:.3f}): its pull tab is out of reach inside "
+                      f"the cabinet keep-out (3 cm into the slot opening); pull it out to about flush by hand")
+            s.decide(f"drawer pushed {self.depth:.3f} m past flush: pinch the tab that much deeper")
+            st = "slot"
         if st == "slot":
             s.phase("pull_out")
             for k in range(1):
@@ -734,14 +775,16 @@ class Reset:
                 if st != "slot":
                     break
                 s.decide(f"drawer still in the slot after pull {k} (protrusion {p['protr']:.3f})")
-            if st == "slot" and p["protr"] > 0.006 and not s.dry:
-                s.decide(f"no pull tab held and the wall sticks out {p['protr']:.3f}: treat as backwards, clamp the wall edge")
-                self.backwards = True
+            if st in ("slot", "slot_back") and p["protr"] > 0.006 and not s.dry:
+                s.decide(f"drawer still in the slot, sticking out {p['protr']:.3f}: clamp the protruding wall edge and pull")
+                self.backwards = self.depth <= 0.012     # recessed drawers were pulled by their tab: the right way round
                 self.pull_back(p)
                 self.go_home("home_after_back")
                 p = self.perceive("after_back")
                 st = self.state_of(p)
-            s.require(st in ("out", "table") or s.dry, f"drawer not pulled out after two pin grasps (protrusion {p['protr']:.3f})")
+            s.require(st in ("out", "table") or s.dry,
+                      f"drawer not pulled out (protrusion {p['protr']:.3f}" + (f", it sat {self.depth:.3f} m past flush: the pull tab "
+                      "may be out of reach inside the keep-out" if self.depth > 0 else "") + ")")
             if s.dry and st == "slot":
                 p = dict(p, out=dict(t=self.pin_t, h_top=0.088, h_bot=0.03, n=0), protr=PULL - 0.002); st = "out"
         delta = None
