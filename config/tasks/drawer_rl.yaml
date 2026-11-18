@@ -14,7 +14,10 @@ reset: >-
   Pull the drawer out of the bottom slot if it is inside (it has no stop and is light), then put it on the table at the
   target you are given, upright (open side up), its front (the wall with the metal pull) facing the robot, away from
   the cabinet, as it comes out of the slot; vary the yaw within +/-30 deg of that. If the drawer is in the slot
-  backwards (no pull outside), get it out by its protruding walls instead. The drawer pull is about 4 cm above the table when the drawer is in the slot: a gripper held horizontal there
+  backwards (no pull outside), get it out by its protruding walls instead. The reset must work from ANY state an RL
+  episode can leave: drawer flush or partly out, the right way round or backwards, cocked or jammed in the slot; on the
+  table anywhere reachable, any yaw, upright, on its side or upside down; still held by the gripper; the arm stopped
+  low next to the cabinet. Start by working out the state, free the arm, then recover. The drawer pull is about 4 cm above the table when the drawer is in the slot: a gripper held horizontal there
   is at table height, so plan the grasp (from above, or a wall of the drawer) with the tips above the table. Never move
   the cabinet; leave the two upper slots empty.
 objects: [drawer]
@@ -55,6 +58,7 @@ rl:
   review_every: 40                 # the RL agent's tuning turn: curve + recent episodes, may change reward/hyperparameters
   learner_timeout_s: 300           # programs/learner.py between episodes (CPU on the robot machine)
   episode_timeout_s: 300
+  reset_repairs: 5                 # reset-agent repairs per failing reset before the run stops (default 2)
   force_limit_n: 50                # contact-force stop (N; user 23:10). 25 N stopped drawer pulls (22-28 N); with none,
                                    # a snag reached 99.6 N and moved the cabinet 6 cm (RL attempt 5)
 

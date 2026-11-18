@@ -734,7 +734,7 @@ class Pipeline:
                 if self._stuck_stop():
                     return None
                 if fails >= col["manual_reset_after_failures"] and self._autonomous():
-                    if extra >= AUTONOMOUS_RESET_REPAIRS:
+                    if extra >= (self.cfg["task"].get("rl") or {}).get("reset_repairs", AUTONOMOUS_RESET_REPAIRS):
                         self.op.notify("resets keep failing after the reset agent's repairs; stopping (autonomous: no manual reset)")
                         self.st.event("autonomous_stop", reason="reset failures", targets=targets)
                         return None
