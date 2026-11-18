@@ -12,6 +12,11 @@ watching the learning curve. The robot must really learn: the part of the task t
 drawer with the slot and pushing it in) has to be a learned policy that improves with real-world experience, not a
 hand-tuned script. Scripted parts (finding and grasping the drawer, carrying it near the slot) are fine.
 
+Any RL algorithm, any simulator and any sim-to-real method are your choice. You may do deep research (WebSearch,
+WebFetch) to find papers and implement them to improve performance. One method the user recommends looking at, not
+mandatory: SGS-RL (CoRL 2026), which adds resets to PPO so that a really simple reward is enough to learn the task in
+simulation for sim-to-real. Check what it actually proposes before using it, and say in your notes what you chose and why.
+
 ## Programs (contracts)
 - `programs/execute.py`: ONE episode from the current scene (the drawer on the table after a reset): perceive, act
   with the current policy, log the episode, return the arm home, write `summary.json` with at least `transitions` (how
