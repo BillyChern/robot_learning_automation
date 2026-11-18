@@ -107,3 +107,9 @@ action inside the keep-out/kinematic envelope (tools/offline_test.py).
   hit 136 N: the tip at h 0.074 went over the front wall top and dragged the drawer ~2 cm out (sticks out, front
   0.51). -> push at h 0.05 (0.040-0.062), 3 cm beside the pull toward +t (knob + label frame are centred), t capped at
   -0.060 so the closed fingers stay clear of the slot-side keep-out box.
+- Tuning 02:35 (training episodes 0-1 failed; ep 1: advance samples -0.98..+0.85 around mean 0.5 -> 0-3 mm steps,
+  front still at n-OFF -0.067 after 16 steps, no push). Changes (one theme: exploration on the insertion budget):
+  exploration std on the advance x0.3, every dimension capped at 0.4 pre-tanh (rlcommon.EXPLORE_*; corrections t/z/yaw
+  keep their learned std); insertion advance floor 4 mm unless the last step peaked above F_SOFT (logged action =
+  executed action); K_INS 16 -> 20. SAC stays off-policy, so the narrower behaviour noise needs no learner change.
+  Offline: flow test incl. injected force stops, learner --check ok.

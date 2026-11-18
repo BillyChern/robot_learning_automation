@@ -5360,3 +5360,197 @@ Structured output provided successfully
 ```
 </details>
 
+**02:38:19 execute agent:** No response requested.
+
+### 02:38:19 orchestrator -> execute agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+FIRST TRAINING EPISODES (02:35), for your tuning turn (now every 10 episodes instead of 40):
+- Episode 0 (attempt 23) and 1 (attempt 25) failed; both independent checks said no.
+- Episode 1: the sampled actions were far from the mean. The mean action was ~[0.5, -0.1, 0.03, -0.4] but samples
+  ran from -0.98 to +0.85 on the advance, so most insertion steps advanced 0-3 mm. After the 16 steps the drawer front
+  was still at n-OFF -0.067, "too far out for the tilted push", so the push never ran: the episode could not succeed.
+  The exploration noise is too large for a 16-step budget. Consider a smaller or state-dependent std, a minimum
+  advance, more insertion steps, or noise only on the correction dimensions (t, z, yaw) while the advance follows
+  the prior. The learner_log shows alpha 0.017, entropy 0.90 after 8 episodes.
+- The policy mean is still close to the prior, so the learned part has not taken over yet: fine this early.
+
+Before collection continues: no robot run now; update your program for the note above and test it offline.
+This is a reflection turn while the robot runs the other agent's program: you cannot use the robot or the cameras now (no run actions, not even dry runs). If this run shows a problem or a clear, safe improvement (robustness first, then speed), edit programs/execute.py, check it offline on this machine, commit, and reply done; reply done at once if nothing should change. Your next run uses what you committed, and its result comes back to you the same way.
+```
+
+**02:38:37 tool Bash:**
+
+```bash
+grep -n "def policy" -A 4 programs/execute.py; grep -n "adv, ddt, ddz, ddy = \|adv, ddt, ddz = \|K_INS, K_PUSH" programs/execute.py; grep -n "def act" -A 4 programs/rlcommon.py
+```
+
+<details><summary>02:38:37 result</summary>
+
+```text
+224:    def policy(self, obs):
+225-        a, info = self.actor.act(obs, explore=(self.mode == "train"), rng=self.rng)
+226-        return np.clip(a, -1, 1), info
+227-
+228-    def try_step(self, name, T, tip_margin):
+43:K_INS, K_PUSH = 16, 8
+263:            adv, ddt, ddz, ddy = 0.0075 * (1 + a[0]), 0.004 * a[1], 0.003 * a[2], 2.0 * a[3]
+331:            adv, ddt, ddz = 0.0075 * (1 + a[0]), 0.003 * a[1], 0.003 * a[2]
+73:    def act(self, obs, explore, rng):
+74-        mu, ls = self.dist(obs)
+75-        u = mu + (np.exp(ls) * rng.standard_normal(ACT_DIM) if explore else 0.0)
+76-        return np.tanh(u), dict(mu=np.round(np.tanh(mu), 3).tolist(), std=np.round(np.exp(ls), 3).tolist())
+77-
+```
+</details>
+
+**02:38:48 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+p="programs/rlcommon.py"; s=open(p).read()
+old='''        u = mu + (np.exp(ls) * rng.standard_normal(ACT_DIM) if explore else 0.0)'''
+new='''        # exploration (operator 02:35: full-std noise on the advance left the drawer 6.7 cm out after 16 steps):
+        # the advance gets 0.3x the std, every dimension at most 0.4 (pre-tanh)
+        std = np.minimum(np.exp(ls) * EXPLORE_SCALE, EXPLORE_MAX)
+        u = mu + (std * rng.standard_normal(ACT_DIM) if explore else 0.0)'''
+assert old in s; s=s.replace(old,new)
+s=s.replace("LOG_STD_MIN, LOG_STD_MAX = -4.0, 0.5","LOG_STD_MIN, LOG_STD_MAX = -4.0, 0.5\nEXPLORE_SCALE = np.array([0.3, 1.0, 1.0, 1.0])\nEXPLORE_MAX = 0.4",1)
+open(p,"w").write(s)
+p="programs/execute.py"; s=open(p).read()
+s=s.replace("K_INS, K_PUSH = 16, 8","K_INS, 
+... (954 more characters)
+```
+
+<details><summary>02:38:56 result</summary>
+
+```text
+RESULT 0 [ 0.404 -0.151] -5.7 ('ran', 7, {'end': 'force', 'steps': 7, 'n_minus_off': np.float64(-0.1368), 'dt': 0.0031, 'dz': -0.0012, 'dyaw': 2.3}, None)
+RESULT 1 [ 0.431 -0.091] 35.6 ('ran', 10, {'end': 'force', 'steps': 10, 'n_minus_off': np.float64(-0.1013), 'dt': -0.0007, 'dz': -0.0007, 'dyaw': 3.5}, None)
+RESULT 2 [ 0.422 -0.2  ] 43.3 ('ran', 21, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.0367), 'dt': 0.0013, 'dz': 0.001, 'dyaw': 4.0}, {'end': 'reached', 'steps': 8, 'tip_n_minus_off':
+check: one update {'lc': 0.018440959975123405, 'la': -0.4548
+```
+</details>
+
+**02:39:04 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute && cat >> notes/design.md <<'EOF'
+- Tuning 02:35 (training episodes 0-1 failed; ep 1: advance samples -0.98..+0.85 around mean 0.5 -> 0-3 mm steps,
+  front still at n-OFF -0.067 after 16 steps, no push). Changes (one theme: exploration on the insertion budget):
+  exploration std on the advance x0.3, every dimension capped at 0.4 pre-tanh (rlcommon.EXPLORE_*; corrections t/z/yaw
+  keep their learned std); insertion advance floor 4 mm unless the last step peaked above F_SOFT (logged action =
+  executed action); K_INS 16 -> 20. SAC stays off-policy, so the narrower behaviour noise needs no learner change.
+  Offline: flow test incl. injected force stops, learner --check ok.
+EOF
+git add -A && git commit -qm "tuning: s
+... (105 more characters)
+```
+
+<details><summary>02:39:04 result</summary>
+
+```text
+7bcd2e2 tuning: smaller exploration on the advance, 4 mm advance floor, 20 insertion steps
+```
+</details>
+
+**02:39:11 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Exploration fix committed (7bcd2e2) and tested offline only; the next training episode uses it",
+ "report": "I changed the exploration so the insertion can finish within its step budget (commit 7bcd2e2). The change is tested offline only, not on the robot yet.\n\n- **Noise on the advance:** 0.3 times the learned spread, so the advance stays close to the policy mean. Every dimension's noise is also capped at 0.4 (pre-tanh). The corrections (t, z, yaw) keep their learned noise.\n- **Minimum advance:** each insertion step now advances at least 4 mm, unless the previous step hit more than 35 N, so the policy can still stop pushing against a jam. Transitions log the action that was actually executed.\n- **Step budget:** 20 in
+... (301 more characters)
+```
+
+<details><summary>02:39:11 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**02:56:23 execute agent:** No response requested.
+
+### 02:56:23 orchestrator -> execute agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+YOUR EXPLORATION FIX WAS LOST AND IS RESTORED (02:55): the commit 7bcd2e2 from your 02:39 reflection never reached the
+robot machine (no pull after reflections in this mode) and the next workspace push replaced your .git, so episode 3
+still ran the old exploration (advance samples -0.94..+1.0, 16 steps, force stops at 51 N). Your working files on the
+agent machine were intact; the operator copied notes/design.md, programs/execute.py and programs/rlcommon.py back and
+committed them as 3136d12 (same content). The orchestrator now pulls after every reflection. Check that 3136d12 is
+what you meant.
+
+Before collection continues: no robot run now; update your program for the note above and test it offline.
+This is a reflection turn while the robot runs the other agent's program: you cannot use the robot or the cameras now (no run actions, not even dry runs). If this run shows a problem or a clear, safe improvement (robustness first, then speed), edit programs/execute.py, check it offline on this machine, commit, and reply done; reply done at once if nothing should change. Your next run uses what you committed, and its result comes back to you the same way.
+```
+
+**02:56:28 tool Bash:**
+
+```bash
+git log --oneline | head -3; git status --short; grep -n "EXPLORE_\|MIN_ADV\|K_INS, K_PUSH\|F_SOFT = \|PUSH_TMAX = \|PRIOR_VERSION = " programs/*.py | head -20
+```
+
+<details><summary>02:56:28 result</summary>
+
+```text
+3136d12 exploration fix (agent's reflection 02:39, its commit 7bcd2e2 was lost by a workspace push; restored by the operator): advance noise 0.3x learned std, per-dim cap 0.4, min advance 4 mm unless the last step was hard, 20 insertion steps
+5524457 attempt 21: reward agrees with the verdict (vision judge, verdict relabel in learner), F_SOFT 35 N, push beside the pull at 5 cm
+84d20e6 attempt 18: back off 12 mm before lifting after release; prior v3 without t correction
+programs/learner.py:21:PRIOR_VERSION = rc.PRIOR_VERSION   # 2: obs-dependent prior (measured t/yaw correction), 2026-11-18
+programs/rlcommon.py:11:PRIOR_VERSION = 3                              # must match learner.PRIOR_VERSION
+programs/rlcommon.py:14:EXPLORE_SCALE = np.array([0.3, 1.0, 1.0, 1.0])
+programs/rlcommon.py:15:EXPLORE_MAX = 0.4
+programs/rlcommon.py:79:        std = np.minimum(np.exp(ls) * EXPLORE_SCALE, EXPLORE_MAX)
+programs/execute.py:43:K_INS, K_PUSH = 20, 8
+programs/execute.py:44:MIN_ADV = 0.004              # m: insertion advance floor unless the last step was hard (peak > F_SOFT)
+programs/execute.py:45:F_SOFT = 35.0               # N: force penalty above this (sliding takes 22-28 N; user 01:50: was 
+... (305 more characters)
+```
+</details>
+
+**02:56:33 tool Bash:**
+
+```bash
+python3 -m py_compile programs/execute.py programs/rlcommon.py programs/learner.py && echo ok; sed -n 262,268p programs/execute.py
+```
+
+<details><summary>02:56:33 result</summary>
+
+```text
+ok
+            o = self.obs(0, (n - INS_NMAX) / 0.1, t - T_C, z - z0, dyaw, ma, mb, np.array([f @ N3, f @ T3, f @ Z3]), peak, k, K_INS, 1)
+            a, info = self.policy(o)
+            adv, ddt, ddz, ddy = 0.0075 * (1 + a[0]), 0.004 * a[1], 0.003 * a[2], 2.0 * a[3]
+            if adv < MIN_ADV and peak <= F_SOFT:
+                adv = MIN_ADV
+                a = a.copy(); a[0] = adv / 0.0075 - 1.0          # log the action that was executed
+            tgt = (min(n + adv, INS_NMAX), float(np.clip(t + ddt, T_C - 0.025, T_C + 0.025)),
+```
+</details>
+
+**02:56:41 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Checked the restored commit 3136d12: it is the exploration fix I made; nothing else to change",
+ "report": "Commit 3136d12 is the exploration fix I meant, and nothing else needs to change. The next training episodes will be the first to use it.\n\nWhat I checked in 3136d12:\n- **`programs/rlcommon.py`:** the advance gets 0.3 times the learned noise and every dimension is capped at 0.4; the prior is still version 3.\n- **`programs/execute.py`:**\n  - 20 insertion steps (was 16).\n  - A 4 mm minimum advance, skipped when the last step peaked above 35 N. That includes the steps right after a force stop, so the policy can still hold back from a jam.\n  - The logged action is the one actually executed.\n  - The force penalty 
+... (279 more characters)
+```
+
+<details><summary>02:56:41 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

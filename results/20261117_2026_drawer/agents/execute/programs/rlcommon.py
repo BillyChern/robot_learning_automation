@@ -11,6 +11,8 @@ PRIOR = np.array([0.6, 0.0, 0.0, 0.0])        # 12 mm straight along the nominal
 PRIOR_VERSION = 3                              # must match learner.PRIOR_VERSION
 INIT_STD = 0.25                                # pre-tanh std of the initial policy
 LOG_STD_MIN, LOG_STD_MAX = -4.0, 0.5
+EXPLORE_SCALE = np.array([0.3, 1.0, 1.0, 1.0])
+EXPLORE_MAX = 0.4
 
 
 def prior(obs):
@@ -72,7 +74,10 @@ class Actor:
 
     def act(self, obs, explore, rng):
         mu, ls = self.dist(obs)
-        u = mu + (np.exp(ls) * rng.standard_normal(ACT_DIM) if explore else 0.0)
+        # exploration (operator 02:35: full-std noise on the advance left the drawer 6.7 cm out after 16 steps):
+        # the advance gets 0.3x the std, every dimension at most 0.4 (pre-tanh)
+        std = np.minimum(np.exp(ls) * EXPLORE_SCALE, EXPLORE_MAX)
+        u = mu + (std * rng.standard_normal(ACT_DIM) if explore else 0.0)
         return np.tanh(u), dict(mu=np.round(np.tanh(mu), 3).tolist(), std=np.round(np.exp(ls), 3).tolist())
 
 

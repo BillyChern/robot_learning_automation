@@ -1,2 +1,5 @@
 {"t": "2026-11-18T02:18:29", "kind": "train", "episode": 0, "n": 1, "final": "fail", "reason": "no independent check says success (claim=none, perception=False, vlm=False)", "duration": 127.3, "reward": -2.351, "transitions": 12}
 {"t": "2026-11-18T02:29:51", "kind": "train", "episode": 1, "n": 2, "final": "fail", "reason": "no independent check says success (claim=none, perception=False, vlm=False)", "duration": 129.2, "reward": 0.495, "transitions": 16}
+{"t": "2026-11-18T02:38:10", "kind": "train", "episode": 2, "n": 3, "final": "fail", "reason": "no independent check says success (claim=none, perception=False, vlm=False)", "duration": 133.2, "reward": -2.755, "transitions": 13}
+{"t": "2026-11-18T02:47:25", "kind": "train", "episode": 3, "n": 4, "final": "fail", "reason": "no independent check says success (claim=none, perception=False, vlm=False)", "duration": 130.4, "reward": -2.525, "transitions": 15}
+{"t": "2026-11-18T02:56:13", "kind": "train", "episode": 4, "n": 5, "final": "fail", "reason": "no independent check says success (claim=none, perception=False, vlm=False)", "duration": 167.3, "reward": -2.022, "transitions": 16}

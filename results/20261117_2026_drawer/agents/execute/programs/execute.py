@@ -40,7 +40,8 @@ T_C = -0.087                 # slot centre line along the front (reset: pull tri
 BOTTOM_H = 0.021             # drawer bottom above the table while sliding in
 BACK_GAP = 0.03              # drawer back in front of the front plane at the start of the insertion
 INS_NMAX = OFF - 0.036       # vertical tool axis limit (keep-out: body cylinder 45 mm + 1 cm)
-K_INS, K_PUSH = 16, 8
+K_INS, K_PUSH = 20, 8
+MIN_ADV = 0.004              # m: insertion advance floor unless the last step was hard (peak > F_SOFT)
 F_SOFT = 35.0               # N: force penalty above this (sliding takes 22-28 N; user 01:50: was 20, penalised normal sliding)
 F_STOP = 40.0               # N: only a value for the observation after a stop (no force cap: user, 22:30)
 RELEASE = 0.75               # gripper after the insertion: ~21 mm, inner finger ~1.7 cm in front of the cabinet face
@@ -261,6 +262,9 @@ class Episode:
             o = self.obs(0, (n - INS_NMAX) / 0.1, t - T_C, z - z0, dyaw, ma, mb, np.array([f @ N3, f @ T3, f @ Z3]), peak, k, K_INS, 1)
             a, info = self.policy(o)
             adv, ddt, ddz, ddy = 0.0075 * (1 + a[0]), 0.004 * a[1], 0.003 * a[2], 2.0 * a[3]
+            if adv < MIN_ADV and peak <= F_SOFT:
+                adv = MIN_ADV
+                a = a.copy(); a[0] = adv / 0.0075 - 1.0          # log the action that was executed
             tgt = (min(n + adv, INS_NMAX), float(np.clip(t + ddt, T_C - 0.025, T_C + 0.025)),
                    float(np.clip(z + ddz, z0 - 0.006, z0 + 0.012)), float(np.clip(dyaw + ddy, -10, 10)))
             status, res, scale = "refused", {}, 1.0
