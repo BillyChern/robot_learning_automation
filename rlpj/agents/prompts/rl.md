@@ -46,7 +46,7 @@ simulation for sim-to-real. Check what it actually proposes before using it, and
   observations and reward. Do not add a lower stop of your own. Keep learned actions slow near the cabinet.
   Keep-out boxes (task yaml `keep_out`) refuse any motion that puts a gripper point (fingertips, and a 45 mm-radius
   cylinder around the tool axis from flange to knuckles) more than 1 cm behind the cabinet's front plane, except in
-  the bottom-slot opening (1.5-9.5 cm above the table), which is open to 5 cm (closed fingertips are modelled ~1 cm
+  the bottom-slot opening (1.5-9.5 cm above the table), which is open to 3 cm (closed fingertips are modelled ~1 cm
   deeper than they are). A vertical gripper must keep its axis ~5.5 cm in front of the plane at cabinet height. Check
   segments offline with `rlpj.robot.sim.check`; learned actions that would enter the box are refused the same way.
 - The loop: reset (the reset agent's program) -> your episode (recorded) -> independent verdict -> your learner, a
