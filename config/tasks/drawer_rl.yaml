@@ -3,15 +3,18 @@ mode: rl                           # RL loop instead of collection + imitation (
 instruction: put the drawer back into the bottom slot of the cabinet
 goal: >-
   A small wooden cabinet with three slots is taped to the far end of the table, front facing the robot. Its bottom
-  slot is empty and its drawer lies on the table. Put the drawer back into the bottom slot, pushed fully in so its
-  front is flush with the cabinet front.
+  slot is empty and its drawer lies on the table. The drawer's front is the wall carrying the metal pull (a small
+  label frame with a short tab below it). Put the drawer back into the bottom slot back wall first, the pull facing
+  out (toward the robot), pushed fully in so its front is flush with the cabinet front.
 success: >-
-  The drawer is fully inside the bottom slot (its front flush with the cabinet front, within about 1 cm), the cabinet
-  has not moved, and the gripper is clear of both.
+  The drawer is fully inside the bottom slot the right way round: its front with the metal pull faces out and is
+  flush with the cabinet front (within about 1 cm). A drawer inserted backwards (plain wooden wall facing out, no pull
+  visible) is a failure. The cabinet has not moved, and the gripper is clear of both.
 reset: >-
   Pull the drawer out of the bottom slot if it is inside (it has no stop and is light), then put it on the table at the
-  target you are given, upright (open side up). Its yaw is your choice but vary it within +/-30 deg of facing the
-  cabinet. The drawer pull is about 4 cm above the table when the drawer is in the slot: a gripper held horizontal there
+  target you are given, upright (open side up), its front (the wall with the metal pull) facing the robot, away from
+  the cabinet, as it comes out of the slot; vary the yaw within +/-30 deg of that. If the drawer is in the slot
+  backwards (no pull outside), get it out by its protruding walls instead. The drawer pull is about 4 cm above the table when the drawer is in the slot: a gripper held horizontal there
   is at table height, so plan the grasp (from above, or a wall of the drawer) with the tips above the table. Never move
   the cabinet; leave the two upper slots empty.
 objects: [drawer]
