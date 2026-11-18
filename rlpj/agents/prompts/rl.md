@@ -34,10 +34,11 @@ hand-tuned script. Scripted parts (finding and grasping the drawer, carrying it 
 - Success is decided by the orchestrator, not by your reward: a side-camera geometry check of the bottom slot (drawer
   front flush with the cabinet front) plus a vision judge on the before/after images. Your `claimed_outcome` and your
   reward are logged but do not count. Make your reward agree with that check, then shape it for learning.
-- Safety: every motion goes through `RobotSession` (model checks, keep-in box, speed limits, tracking deviation).
-  There is no contact-force stop (the drawer needs ~20-26 N to slide); each segment's peak force change is logged as
-  `max_force_n`, and `s.feedback()["force"]` gives the estimate (N, base frame) for your observations and reward.
-  Keep learned actions slow near the cabinet.
+- Safety: every motion goes through `RobotSession` (model checks, keep-in box, speed limits, tracking deviation) and
+  stops when the arm's estimated tool force changes by more than {RL_FORCE_LIMIT_N} N within a motion segment (a force
+  stop ends the episode as a failure; the drawer needs ~20-40 N to slide, a snag on the cabinet at ~100 N moved it).
+  Each segment's peak is logged as `max_force_n`; `s.feedback()["force"]` gives the estimate (N, base frame) for your
+  observations and reward. Do not add a lower stop of your own. Keep learned actions slow near the cabinet.
   Keep-out boxes (task yaml `keep_out`) refuse any motion that puts a gripper point (fingertips, and a 45 mm-radius
   cylinder around the tool axis from flange to knuckles) more than 1 cm behind the cabinet's front plane, except in
   the bottom-slot opening (1.5-9.5 cm above the table), which is open to 3 cm (closed fingertips are modelled ~1 cm

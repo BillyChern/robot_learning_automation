@@ -52,6 +52,7 @@ rl:
   review_every: 40                 # the RL agent's tuning turn: curve + recent episodes, may change reward/hyperparameters
   learner_timeout_s: 300           # programs/learner.py between episodes (CPU on the robot machine)
   episode_timeout_s: 300
-  force_limit_n: null              # no contact-force stop (user, 2026-11-17 22:30; was 25 N); peak force still logged
+  force_limit_n: 50                # contact-force stop (N; user 23:10). 25 N stopped drawer pulls (22-28 N); with none,
+                                   # a snag reached 99.6 N and moved the cabinet 6 cm (RL attempt 5)
 
 reuse: []

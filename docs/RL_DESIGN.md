@@ -62,8 +62,9 @@ shaping; when to stop training. Its notes must say why.
   `rl/` in the RL agent's workspace is orchestrator-owned (pushed to the 5090, never pulled); `rl/policy/` is copied back
   after a remote learner run.
 - Safety added for all tasks: `rlpj.robot.executor` stops a segment when the estimated tool force changes by more than
-  `rl.force_limit_n` (Kortex `tool_external_wrench_force_*`, ~0.1 N noise at rest); set to null (no stop) on
-  2026-11-17 by the user after drawer pulls and pushes peaked at 22-28 N; the peak is still logged per segment; `rlpj.robot.sim.check` refuses any
+  `rl.force_limit_n` (Kortex `tool_external_wrench_force_*`, ~0.1 N noise at rest); 25 N stopped drawer pulls
+  (22-28 N), so the user removed it (22:30); without it a snag reached 99.6 N and moved the cabinet 6 cm, so it is 50 N
+  since 23:10 (user); the peak is logged per segment; `rlpj.robot.sim.check` refuses any
   gripper point inside a `keep_out` box.
 - Success check `rlpj.success.checks.drawer_rl`: share of bottom-slot points on the front plane (flush: 0.996 measured
   with the drawer in), behind it (empty slot: 0.41), in front (sticking out); no drawer-sized blob on the table; cabinet
