@@ -1,0 +1,11 @@
+{
+ "command": "python escape_home.py drag",
+ "moves_robot": true,
+ "record_dir": null,
+ "exit_code": 3,
+ "outcome": "error",
+ "duration_s": 21.1,
+ "stopped_by": null,
+ "started": 1794974807.4424555,
+ "ended": 1794974828.5601046
+}

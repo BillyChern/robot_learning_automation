@@ -1,0 +1,20 @@
+COMMIT 9020b78ed3c43321186ff29aecd539a4ee98da75 (DIRTY)
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[23:03:45] session escape_home: attempt /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/real_1 dry=False record=None
+[23:03:45] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_SERVOING_MANUALLY_CONTROLLED)
+[23:03:46] arm state ARMSTATE_SERVOING_READY, joints [349.38, 37.84, 266.82, 359.05, 311.52, 16.79], gripper 39.7
+[23:03:46] model FK vs measured tool_pose at start: 1.2 mm
+[23:03:46] == phase: escape
+[23:03:46] DECISION: tool at [0.49, 0.095, 0.116]: back 2 cm, up 10 cm, then Home
+[23:03:47] plan 01_back_from_cabinet: T=1.9s check ok=True tip>0.103 vmax=4.1deg/s lin=0.018m/s
+[23:03:49] exec 01_back_from_cabinet: {'segment': 'back_from_cabinet', 'ok': True, 'reason': '', 'T_plan': 1.93, 'max_dev_deg': 0.027, 'max_dev_mm': 0.18, 'n': 78, 'max_force_n': 12.1, 't_exec': 1.99, 'rate_hz': 39.2, 'final_err_deg': 0.012}
+[23:03:51] plan 02_up: T=10.2s check ok=True tip>0.103 vmax=2.8deg/s lin=0.018m/s
+[23:03:56] exec 02_up: {'segment': 'up', 'ok': False, 'reason': 'contact force 51.5 N > 50 N at t=4.20s', 'T_plan': 10.23, 'max_dev_deg': 0.018, 'max_dev_mm': 0.14, 'n': 168, 'max_force_n': 51.5, 't_exec': 4.24, 'rate_hz': 39.6, 'final_err_deg': 10.431}
+[23:03:56] STOP RECORD: {'kind': 'failed check', 'why': '02_up: contact force 51.5 N > 50 N at t=4.20s', 'step': 'escape', 'segment': 'up', 'progress': 0.411, 't': 4.2, 'q_meas': [-10.16, 32.82, -95.41, -1.01, -51.08, 17.31], 'q_plan': [-10.16, 32.81, -95.4, -1.01, -51.08, 17.31], 'tool_meas': [0.4711, 0.0871, 0.1494, 179.8018, -0.7815, 27.3257], 'tool_plan_xyz': [0.472, 0.0875, 0.149], 'dev_deg': 0.01, 'dev_mm': 0.1, 'q_now': [349.84, 32.75, 264.64, 358.99, 308.81, 17.31], 'gripper': 39.7}
+[23:03:56] == phase: return_home
+[23:03:56] return plan ok=True: [('return_lift', True), ('return_home', True)]
+[23:03:57] plan 03_return_lift: T=3.5s check ok=True tip>0.138 vmax=2.9deg/s lin=0.018m/s
+[23:04:00] exec 03_return_lift: {'segment': 'return_lift', 'ok': True, 'reason': '', 'T_plan': 3.49, 'max_dev_deg': 0.033, 'max_dev_mm': 0.48, 'n': 140, 'max_force_n': 47.6, 't_exec': 3.54, 'rate_hz': 39.5, 'final_err_deg': 0.011}
+[23:04:01] plan 04_return_home: T=2.0s check ok=True tip>0.104 vmax=7.4deg/s lin=0.066m/s
+[23:04:03] exec 04_return_home: {'segment': 'return_home', 'ok': True, 'reason': '', 'T_plan': 2.02, 'max_dev_deg': 0.058, 'max_dev_mm': 0.38, 'n': 81, 'max_force_n': 48.8, 't_exec': 2.08, 'rate_hz': 38.9, 'final_err_deg': 0.036}
+summary: /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/real_1/summary.json outcome: fail exit 2

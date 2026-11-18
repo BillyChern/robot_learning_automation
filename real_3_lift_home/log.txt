@@ -1,0 +1,13 @@
+COMMIT 9020b78ed3c43321186ff29aecd539a4ee98da75 (DIRTY)
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[23:07:25] session escape_home: attempt /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/real_3_lift_home dry=False record=None
+[23:07:25] arm state ARMSTATE_SERVOING_READY, joints [351.11, 30.96, 252.62, 358.86, 319.04, 18.76], gripper 39.7
+[23:07:25] model FK vs measured tool_pose at start: 1.2 mm
+[23:07:26] == phase: escape
+[23:07:26] DECISION: tool at [0.426, 0.069, 0.115]: drag the drawer 7 cm back, up 12 cm, then Home
+[23:07:29] plan 01_up: T=12.2s check ok=True tip>0.103 vmax=3.1deg/s lin=0.018m/s
+[23:07:41] exec 01_up: {'segment': 'up', 'ok': True, 'reason': '', 'T_plan': 12.19, 'max_dev_deg': 0.013, 'max_dev_mm': 0.1, 'n': 488, 'max_force_n': 4.3, 't_exec': 12.25, 'rate_hz': 39.8, 'final_err_deg': 0.008}
+[23:07:52] plan 02_to_home: T=47.4s check ok=True tip>0.203 vmax=4.6deg/s lin=0.012m/s
+[23:08:14] exec 02_to_home: {'segment': 'to_home', 'ok': False, 'reason': 'contact force 51.4 N > 50 N at t=21.70s', 'T_plan': 47.44, 'max_dev_deg': 0.031, 'max_dev_mm': 0.26, 'n': 868, 'max_force_n': 51.4, 't_exec': 21.75, 'rate_hz': 39.9, 'final_err_deg': 67.417}
+[23:08:14] STOP RECORD: {'kind': 'failed check', 'why': '02_to_home: contact force 51.4 N > 50 N at t=21.70s', 'step': 'escape', 'segment': 'to_home', 'progress': 0.458, 't': 21.7, 'q_meas': [-5.09, 18.24, 248.67, -0.61, -11.82, 48.7], 'q_plan': [-5.1, 18.23, 248.67, -0.61, -11.81, 48.7], 'tool_meas': [0.5538, 0.0509, 0.2531, 148.8615, -24.1016, 60.7393], 'tool_plan_xyz': [0.5546, 0.051, 0.253], 'dev_deg': 0.01, 'dev_mm': 0.2, 'q_now': [354.92, 18.23, 248.61, 359.39, 348.36, 48.81], 'gripper': 39.7}
+summary: /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/real_3_lift_home/summary.json outcome: fail exit 2

@@ -1,0 +1,11 @@
+{
+ "command": "python escape_home.py",
+ "moves_robot": false,
+ "record_dir": null,
+ "exit_code": 0,
+ "outcome": "success",
+ "duration_s": 18.2,
+ "stopped_by": null,
+ "started": 1794974778.2458513,
+ "ended": 1794974796.4132447
+}

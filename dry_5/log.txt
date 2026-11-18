@@ -1,0 +1,12 @@
+COMMIT 9020b78ed3c43321186ff29aecd539a4ee98da75 (DIRTY)
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[23:25:14] session escape2: attempt /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/dry_5 dry=True record=None
+[23:25:14] arm state ARMSTATE_SERVOING_READY, joints [354.92, 18.22, 248.63, 359.39, 348.37, 48.8], gripper 39.7
+[23:25:14] model FK vs measured tool_pose at start: 0.7 mm
+[23:25:15] == phase: escape
+[23:25:15] DECISION: tool at [0.555, 0.051, 0.253], +11 mm behind the face: back 12 cm, up, Home
+[23:25:20] plan 01_back: T=22.0s check ok=True tip>0.222 vmax=3.9deg/s lin=0.010m/s
+[23:25:31] plan 02_up: T=49.8s check ok=True tip>0.222 vmax=1.5deg/s lin=0.006m/s
+[23:25:39] plan 03_to_home: T=38.1s check ok=True tip>0.365 vmax=4.6deg/s lin=0.009m/s
+[23:25:39] CLAIM success
+summary: /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/dry_5/summary.json outcome: success exit 0

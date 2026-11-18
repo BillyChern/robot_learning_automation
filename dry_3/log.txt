@@ -1,0 +1,19 @@
+COMMIT 9020b78ed3c43321186ff29aecd539a4ee98da75 (DIRTY)
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[23:06:05] session escape_home: attempt /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/dry_3 dry=True record=None
+[23:06:05] arm state ARMSTATE_SERVOING_READY, joints [349.37, 37.85, 266.82, 359.04, 311.56, 16.79], gripper 39.7
+[23:06:05] model FK vs measured tool_pose at start: 1.2 mm
+[23:06:06] == phase: escape
+[23:06:06] DECISION: tool at [0.49, 0.095, 0.116]: drag the drawer 7 cm back, up 12 cm, then Home
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/escape_home.py", line 18, in <module>
+    s.move_line("drag_back", T1, speed="slow", tip_margin=0.0)
+  File "/home/r2r/robot_learning_final_pj/rlpj/robot/session.py", line 394, in move_line
+    self._execute(self.planner.cart_line(name, q0, np.asarray(T_goal, float), speed_of(speed)), tip_margin=tip_margin)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/r2r/robot_learning_final_pj/rlpj/robot/plan.py", line 159, in cart_line
+    n = int(max(np.ceil(L / step), 2))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: cannot convert float NaN to integer
+[23:06:06] STOP RECORD: {'kind': 'exception', 'why': "ValueError('cannot convert float NaN to integer')", 'step': 'escape', 'segment': None, 'q_now': [349.37, 37.85, 266.82, 359.04, 311.56, 16.79], 'gripper': 39.7}
+summary: /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/dry_3/summary.json outcome: fail exit 3
