@@ -647,6 +647,13 @@ class Pipeline:
             self.st.save()
         except Exception as e:
             self.op.notify(f"{role} reflection failed: {e!r}")
+        finally:
+            # bring the agent's commits here now: the next push copies .git back with --delete and would drop them
+            # (RL 02:39: the exploration-fix commit was lost that way)
+            try:
+                self.workspace(role).pull()
+            except Exception as e:
+                self.op.notify(f"{role} workspace pull after the reflection failed: {e!r}")
 
     def _join(self, role):
         t = self._reflections.pop(role, None)
