@@ -65,7 +65,9 @@ class Executor:
                     else:
                         df = float(np.linalg.norm(np.asarray(f, float) - f0))
                         r["max_force_n"] = round(max(r.get("max_force_n", 0.0), df), 1)
-                        if self.force_limit and df > self.force_limit:
+                        # change from the segment start AND total size: releasing a preload (retreat after a push)
+                        # changes the estimate by the preload but ends near zero, so it does not stop the retreat
+                        if self.force_limit and df > self.force_limit and float(np.linalg.norm(f)) > self.force_limit:
                             r["reason"] = f"contact force {df:.1f} N > {self.force_limit:.0f} N at t={t:.2f}s"; break
                 if dev > DEV_DEG or dmm > DEV_MM:
                     over += 1

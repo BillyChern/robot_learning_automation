@@ -46,3 +46,20 @@ def test_no_limit_no_stop():
     ex = Executor(Robot(force_at=0.5), Kin(), log=lambda *a: None)
     r = ex.run(Seg())
     assert "contact force" not in r["reason"], r
+
+
+class Release(Robot):
+    """Starts pressed at 45 N, then lets go (a retreat after a push)."""
+
+    def feedback(self):
+        fb = super().feedback()
+        import time
+        fb["force"] = __import__("numpy").array([0, 0, 2.0 if time.time() - self.t0 > self.force_at else 45.0])
+        return fb
+
+
+def test_release_does_not_stop():
+    ex = Executor(Release(force_at=0.5), Kin(), log=lambda *a: None)
+    ex.force_limit = 25
+    r = ex.run(Seg())
+    assert "contact force" not in r["reason"], r
