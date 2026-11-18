@@ -111,3 +111,9 @@
   pull 10 deg off -N but ~40 deg off the robot base. -> drop checks before/after the carry, table OBB from rim points,
   wall refine window +-7 cm / shift <= 6 cm, pull aimed at the robot base (clipped +-25 deg of -N, +-5 jitter),
   'out' judge photo from home.
+- attempt 74 (real, commit 91cb5d9): table start, Q1 no / Q2 'pull on the lower right wall' (conf 0.88) -> turn -103 deg, rim OBB 0.124x0.098 + refine (inner edge, step 77), grasp 89.1, placed 1.1 cm, pull toward 177 deg, judge yes, orchestrator layout+orientation ok, 194 s.
+- attempts 75-76: room dim (side image mean 77 vs 116, wrist table V ~16). Every judge look: 'no pull visible'.
+  Brightened images show the tall front panel facing image-left (toward the robot base): edge-on to the camera,
+  pull invisible. -> pull aimed at -N + 20 deg (+-5) like attempts 46/47 (seen, judged lower left); judge images
+  gamma-brightened to mean ~120 when dim; wall-refine step threshold relative (0.3 x table).
+- attempt 77 (real): brightened judge image -> tab seen on the left (robot-facing) wall, success without motion; orchestrator ok. -> table OBB length clamped to 0.155 when the outline is < 0.145 (partial view).

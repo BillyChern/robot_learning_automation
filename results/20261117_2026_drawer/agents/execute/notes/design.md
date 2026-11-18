@@ -135,3 +135,10 @@ action inside the keep-out/kinematic envelope (tools/offline_test.py).
   with the tool turned +5.6..+10 deg, so the slot axis seems turned from the yaml normal, and the push went straight
   along the yaml normal. -> the push stage now pushes along N turned by the insertion's final tool yaw
   (PUSH_FRAME; pusher orientation, advance, lateral and unload directions all turned), clipped to +-10 deg.
+- attempt 44 (b24aec7): insertion reached with dyaw +9.2 at only 2-3 N per step (24 N on the last), push along the
+  turned axis still jammed at the first contact (43 / 51 N). The after image shows the drawer ~half out, far more than
+  the tool position implies: the drawer meets a stop ~5-7 cm before flush whether held (jams at tool -0.06 with small
+  yaw) or pushed. Cause not identified yet (candidates: an obstruction deep in the slot / drawer pitched in the slot /
+  gripper body on the face). Added: side + wrist snapshots at the insertion and push ends (insert_end_*, push_end_*),
+  and the back-off after release is now smaller than the inner finger's gap to the wall (12 mm could drag the
+  drawer ~1 mm out).

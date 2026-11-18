@@ -1,0 +1,144 @@
+{
+ "reset": 34,
+ "t": "2026-11-18T04:55:28",
+ "targets": {
+  "drawer": [
+   0.417,
+   -0.088
+  ]
+ },
+ "ok": false,
+ "report": "orientation not confirmed by the vision check: The drawer is upright and open side up on the table, but no metal pull shows on the walls facing the camera or the lower left, so the pull must face away and the drawer is wrongly oriented.",
+ "measured": [
+  {
+   "xy": [
+    0.2978,
+    0.0315
+   ],
+   "z_top": 0.0002,
+   "height": 0.0155,
+   "extent": [
+    0.024,
+    0.0185
+   ],
+   "n": 86,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0062,
+   "outer_r": 0.011
+  },
+  {
+   "xy": [
+    0.4011,
+    0.0525
+   ],
+   "z_top": 0.0029,
+   "height": 0.0182,
+   "extent": [
+    0.02,
+    0.0273
+   ],
+   "n": 95,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0069,
+   "outer_r": 0.0105
+  },
+  {
+   "xy": [
+    0.405,
+    -0.1061
+   ],
+   "z_top": 0.0493,
+   "height": 0.0647,
+   "extent": [
+    0.1211,
+    0.1498
+   ],
+   "n": 4770,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0129,
+   "outer_r": 0.0791
+  },
+  {
+   "xy": [
+    0.5694,
+    -0.0829
+   ],
+   "z_top": -0.0037,
+   "height": 0.0116,
+   "extent": [
+    0.0189,
+    0.0139
+   ],
+   "n": 66,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.5799,
+    0.1204
+   ],
+   "z_top": 0.2536,
+   "height": 0.269,
+   "extent": [
+    0.1208,
+    0.1273
+   ],
+   "n": 11688,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0193,
+   "outer_r": 0.055
+  },
+  {
+   "xy": [
+    0.7131,
+    0.0487
+   ],
+   "z_top": 0.002,
+   "height": 0.0173,
+   "extent": [
+    0.0483,
+    0.017
+   ],
+   "n": 125,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.8326,
+    0.1853
+   ],
+   "z_top": -0.0007,
+   "height": 0.0146,
+   "extent": [
+    0.0403,
+    0.0248
+   ],
+   "n": 68,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": {
+  "drawer": [
+   0.4057,
+   -0.1013
+  ]
+ },
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_76",
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration": 455.5
+}

@@ -9462,3 +9462,332 @@ Structured output provided successfully
 ```
 </details>
 
+**04:55:44 reset agent:** No response requested.
+
+### 04:55:44 orchestrator -> reset agent
+
+```text
+repair your program; it failed 2 times in a row during the resets between episodes:
+--- attempt_75: layout check failed: orientation not confirmed by the vision check: The drawer is out of the slot and upright on the table with its open side up, but neither visible wall shows a metal pull, so the pull must be on a wall facing away from the camera rather than toward the robot base.
+# attempt_75: exit code 2; outcome: fail
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_75/targets.json; what: reset for the next episode; commit: 91cb5d9; duration_s: 593.3; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "91cb5d9a9d",
+"command": "programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_75/targets.json",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9574, 0.5612, 90.4586], "gripper": 99.1},
+"fk_check_mm": 0.18,
+"targets": {"drawer": [0.417, -0.088]},
+"measured": {"drawer": [0.4435, -0.0918]},
+"start_state": "out",
+"start_perception": {"tag": "start", "table_z": -0.0157, "front_top": 0.0672, "blobs": 2, "drawer_blobs": [], "protr": 0.0604, "front_pts": 1002, "face_pts": 114, "inside_pts": 327, "out": {"t": -0.0769, "h_top": 0.0683, "h_bot": 0.0265, "n": 618}},
+"decisions": ["start state: out", "vision judge: the drawer is in BACKWARDS", "front wall at n-OFF=-0.054 t=-0.077 top 0.068: top-down grasp, jaws along the normal", "place: pull known, turn 175 deg, pull wall toward -163 deg (robot side, normal 22 + -5), grasp point [0.493, -0.041], tool 0.098 abov
+"segments": [["ready", true, 0.126, 0.46, 11.86, 39.8], ["ready", true, 0.002, 0.01, 0.56, 37.5], ["home_for_judge", true, 0.064, 0.22, 11.87, 39.8], ["ready", true, 0.107, 0.31, 11.87, 39.8], ["above_front_wall", true, 0.022, 0.17, 4.86, 39.7], ["down_to_front_pre", true, 0.067, 0.27, 2.01, 39.3], 
+"vlm_out_q": {"success": false, "conf": 0.5, "reason": "A drawer sticks out of the cabinet's bottom slot toward the robot, but I can't see a metal label frame or tab on its outer wall (the one facing the robot), so it may be in backwards."},
+"front_tab_score": 0.043,
+"front_grip": 83.8,
+"cabinet_clearance": 0.063,
+"vlm_check0_q1": {"success": false, "conf": 0.75, "reason": "The drawer is out of the cabinet and sits upright with its open side up, but the metal pull can't be seen on either visible wall, including the one facing the robot base, so the pull is probably on a "},
+"vlm_check0_q2": {"success": false, "conf": 0.6, "reason": "The drawer was pulled out and sits upright on the table, but no metal pull is visible on its lower-right-facing wall, so the pull seems to face another way."},
+"err_check0": 0.1428,
+"pull_vs_robot_deg0": 180.0,
+"wall_refine": {"profile": [14.0, 16.0, 18.0, 17.0, 17.0, 18.0, 18.0, 17.0, 19.0, 19.0, 18.0, 18.0, 17.0, 14.0, 11.0, 10.0, 7.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "table": 16.0, "inner": -0.009, "step": 9.0, "shift": -0.014},
+"table_grip": 89.1,
+"vlm_check1_q1": {"success": false, "conf": 0.7, "reason": "The drawer is out of the cabinet and upright on the table, but the wall facing the lower left (toward the robot base) shows no metal pull, so the pull must be on a wall that faces away from the camera"},
+"vlm_check1_q2": {"success": false, "conf": 0.6, "reason": "The drawer is upright on the table away from the cabinet, but no metal pull is visible on the outside of its lower-right facing wall, or on any wall the camera can see."},
+"err_check1": 0.0136,
+"pull_vs_robot_deg1": 180.0,
+"vlm_check2_q1": {"success": false, "conf": 0.7, "reason": "The drawer is out of the slot, upright and open side up o
+... (24209 more characters)
+```
+
+**04:56:00 reset agent:** The judge said "no pull visible" in every look, before and after each 180° turn. Geometrically that can't happen: a 180° turn brings any hidden wall into view. The side images are also noticeably larger files than before (85 vs 60 KB, judge images 320 vs 240 KB), which suggests the camera image changed. Looking at a judge image.
+
+**04:56:04 tool Bash:**
+
+```bash
+uv run --project /home/r2r/robot_learning_final_pj python -c "
+import cv2
+for a,f in ((76,'vlm_check2'),(76,'vlm_check3'),(74,'vlm_check1')):
+    im=cv2.imread(f'attempts/attempt_{a}/{f}.jpg'); print(a,f,im.shape, im.mean().round(1))
+im=cv2.imread('attempts/attempt_76/vlm_check2.jpg'); h,w=im.shape[:2]
+cv2.imwrite('notes/img/a76_c2.jpg', cv2.resize(im[int(h*0.35):int(h*0.85), int(w*0.45):int(w*0.85)],(560,350)))
+im=cv2.imread('attempts/attempt_76/vlm_check3.jpg')
+cv2.imwrite('notes/img/a76_c3.jpg', cv2.resize(im[int(h*0.35):int(h*0.85), int(w*0.45):int(w*0.85)],(560,350)))"
+```
+
+<details><summary>04:56:04 result</summary>
+
+```text
+76 vlm_check2 (720, 1280, 3) 77.1
+76 vlm_check3 (720, 1280, 3) 77.1
+74 vlm_check1 (720, 1280, 3) 116.4
+```
+</details>
+
+**04:56:05 tool Read:** `/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/notes/img/a76_c2.jpg`
+
+<details><summary>04:56:05 result</summary>
+
+```text
+[image]
+```
+</details>
+
+**04:56:05 tool Read:** `/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/notes/img/a76_c3.jpg`
+
+<details><summary>04:56:05 result</summary>
+
+```text
+[image]
+```
+</details>
+
+**04:56:40 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj && timeout 200 uv run python -c "
+import cv2, numpy as np, os
+os.environ['RLPJ_TASK']='drawer_rl'
+from rlpj import config; from rlpj.success import vlm_judge
+t=config.load()['task']
+for f in ('vlm_check2','vlm_check3'):
+    im=cv2.imread(f'runs/20261117_2026_drawer/agents/reset/attempts/attempt_76/{f}.jpg')
+    m=im.mean()/255; g=np.log(0.47)/np.log(m); lut=((np.arange(256)/255)**g*255).astype(np.uint8)
+    p=f'/tmp/{f}_b.jpg'; cv2.imwrite(p, cv2.LUT(im,lut)); print(f,'gamma',round(g,2))
+    r=vlm_judge.judge({'after':p}, dict(goal=t['reset'], success=t['reset_orientation']), timeout=90)
+    print(f, r.get('success'), r.get('confidence'), str(r.get('reason'))[:250])
+" 2>&1 | tail -6
+```
+
+<details><summary>04:56:41 result</summary>
+
+```text
+rsync: connection unexpectedly closed (0 bytes received so far) [sender]
+rsync error: unexplained error (code 255) at io.c(232) [send
+vlm_check3 gamma 0.63
+vlm_check3 None 0.0 judge failed: rsync exit 255: ssh: Could not resolve hostname workstation_5090: Temporary failure in name resolution
+rsync: connection unexpectedly closed (0 bytes received so far) [sender]
+rsync error: unexplained error (code 255) at io.c(232) [send
+```
+</details>
+
+**04:56:48 reset agent:** The judge is only reachable from the robot machine. I'll look at the brightened images myself instead.
+
+**04:56:49 tool Bash:**
+
+```bash
+uv run python -c "
+import cv2
+for f in ('vlm_check2','vlm_check3'):
+    im=cv2.imread(f'/tmp/{f}_b.jpg'); h,w=im.shape[:2]
+    cv2.imwrite(f'runs/20261117_2026_drawer/agents/reset/notes/img/{f}_b.jpg', cv2.resize(im[int(h*0.55):int(h*0.9), int(w*0.52):int(w*0.78)],(500,340)))"
+```
+
+<details><summary>04:56:50 result</summary>
+
+```text
+(Bash completed with no output)
+```
+</details>
+
+**04:56:50 tool Read:** `/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/notes/img/vlm_check2_b.jpg`
+
+<details><summary>04:56:50 result</summary>
+
+```text
+[image]
+```
+</details>
+
+**04:56:51 tool Read:** `/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/notes/img/vlm_check3_b.jpg`
+
+<details><summary>04:56:51 result</summary>
+
+```text
+[image]
+```
+</details>
+
+**04:57:23 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && python3 - <<'EOF'
+p='programs/reset.py'; s=open(p).read()
+def rep(old,new):
+    global s
+    assert s.count(old)==1, old[:70]
+    s=s.replace(old,new)
+rep('''            want = float(np.clip(wrapd(ang(-np.asarray(target)) - ang(-N)), -25, 25)) + float(self.rng.uniform(-5, 5))
+            want = float(np.clip(want, -25, 25))''','''            # attempts 75-76: a pull aimed straight at the robot base faces image-left, edge-on to the side camera,
+            # and no judge can see it (worse in the dim evening light); attempts 46/47 at ~-138 deg were seen and
+            # judged 'lower left': aim the pull at -N + 20 deg (toward the camera), +-5 jitter
+            want = 20.0 + float(self.rng.uniform(-5, 5))''')
+rep
+... (1763 more characters)
+```
+
+<details><summary>04:57:32 result</summary>
+
+```text
+5
+worst clearance at delta 15..25 over the range 0.04691156180555706
+```
+</details>
+
+**04:57:37 reset agent:** Committing and running on the robot with attempt 76's target. The drawer is on the table with its pull facing image-left.
+
+**04:57:40 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && cat >> notes/notes.md <<'EOF'
+- attempts 75-76: room dim (side image mean 77 vs 116, wrist table V ~16). Every judge look: 'no pull visible'.
+  Brightened images show the tall front panel facing image-left (toward the robot base): edge-on to the camera,
+  pull invisible. -> pull aimed at -N + 20 deg (+-5) like attempts 46/47 (seen, judged lower left); judge images
+  gamma-brightened to mean ~120 when dim; wall-refine step threshold relative (0.3 x table).
+EOF
+git add -A && git commit -qm "attempt 77: pull aimed -N+20 deg (visible to the camera), gamma-brightened judge images, relative refine threshold" && echo ok
+```
+
+<details><summary>04:57:40 result</summary>
+
+```text
+ok
+```
+</details>
+
+**04:57:45 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_76/targets.json",
+ "moves_robot": true,
+ "what": "REAL reset (dim room): drawer on the table with the pull facing image-left; judge on a brightened image, pick, turn so the pull faces -N+20 deg (robot side, visible to the camera), place at (0.417,-0.088), judge check, verify.",
+ "report": ""
+}
+```
+
+<details><summary>04:57:45 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**04:59:19 reset agent:** No response requested.
+
+### 04:59:19 orchestrator -> reset agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+ORIENTATION LOOP (04:56), resets 33-34 (attempts 75, 76): both start with the drawer at ~(0.41-0.42, -0.09..-0.10),
+your table OBB there is too SMALL (L 0.123-0.124 x W 0.095-0.102, the drawer is ~0.16 x 0.16: partial view), the wall
+refinement is rejected (shift -0.014 / -0.021), you "turn ~180 deg" and the vision judge still sees no pull on the two
+walls facing the camera. So either the turn did not happen as planned (grasp point from a partial outline) or 180 is
+the wrong turn (pull on a hidden SIDE wall needs 90). Ask the judge which wall has the pull (it names it: lower left /
+lower right / hidden), pick 90/180/270 from that, check the turn with a wrist image after placing, and size the OBB
+from the known drawer dimensions when the blob is smaller than the drawer.
+
+# attempt_77: exit code 0; outcome: success
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_76/targets.json; what: REAL reset (dim room): drawer on the table with the pull facing image-left; judge on a brightened image, pick, turn so the pull faces -N+20 deg (robot side, visible to the camera), place at (0.417,-0.088), judge check, verify.; commit: b481b50; duration_s: 81.4; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "b481b50e50",
+"command": "programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_76/targets.json",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9596, 0.56, 90.4585], "gripper": 39.7},
+"fk_check_mm": 0.18,
+"targets": {"drawer": [0.417, -0.088]},
+"measured": {"drawer": [0.404, -0.1023]},
+"start_state": "table",
+"start_perception": {"tag": "start", "table_z": -0.0153, "front_top": null, "blobs": 4, "drawer_blobs": [{"xy": [0.3892, -0.109], "obb_c": [0.4164, -0.096], "L": 0.122, "W": 0.098, "yaw": 84.6, "h": 0.069, "n": 5537}], "protr": 0.0, "front_pts": 2, "face_pts": 0, "inside_pts": 265, "out": null},
+"decisions": ["start state: table"],
+"segments": [["ready", true, 0.082, 0.22, 11.87, 39.8], ["ready", true, 0.002, 0.01, 0.56, 35.7], ["home_for_check", true, 0.078, 0.23, 11.86, 39.9], ["ready", true, 0.064, 0.22, 11.86, 39.9], ["home_final", true, 0.107, 0.34, 11.86, 39.9]],
+"vlm_check0_q1": {"success": true, "conf": 0.6, "reason": "The drawer is out of the cabinet and sitting upright, open side up, on the table, and a small pull tab sticks out of its left wall, which faces toward the robot base at the lower left; the metal label"},
+"err_check0": 0.0248,
+"pull_vs_robot_deg0": 0.0,
+"pull_vs_robot_deg": 0.0,
+"errors": {"drawer": 0.0193},
+"target": {"drawer": [0.417, -0.088]},
+"verify": {"obb_center": [0.4132, -0.096], "L": 0.12, "W": 0.098, "height": 0.0667, "yaw_vs_normal_deg": 62.1, "tol": 0.05},
+"return_home": "already at default pose",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.0, "reading": null},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 23 lines; last 23:
+[04:57:55] session reset: attempt /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_77 dry=False record=None
+[04:57:55] arm state ARMSTATE_SERVOING_READY, joints [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], gripper 39.7
+[04:57:55] model FK vs measured tool_pose at start: 0.2 mm
+[04:57:56] == phase: perceive
+[04:57:56] perceive start: {'tag': 'start', 'table_z': -0.0153, 'front_top': None, 'blobs': 4, 'drawer_blobs': [{'xy': [0.3892, -0.109], 'obb_c': [0.4164, -0.096], 'L': 0.122, 'W': 0.098, 'yaw': 84.6, 'h': 0.069, 'n': 5537}], 'protr': 0.0, 'front_pts': 2, 'face_pts': 0, 'inside_pts': 265, 'out': Non
+[04:57:56] DECISION: start state: table
+[04:57:59] 
+... (3827 more characters)
+```
+
+**04:59:38 reset agent:** With the brightened image the judge saw the tab on the left wall, the robot-facing one, and confirmed the orientation; your check passed too. So the "orientation loop" was the dim image plus the pull facing edge-on, not wrong turns. My Q1/Q2/turn-180 logic already converges in at most two rounds whenever the judge can see the pull: if the pull is on a hidden side wall, the 180° turn brings it to the visible lower-right wall, where Q2 names it.
+
+Following your OBB suggestion, I'll size the box from the known drawer size when the rim outline comes out smaller (under 0.145 m → 0.155 m about its centre), so the first grasp guess starts at the real wall. Then one robot run with a target that forces a pick and turn.
+
+**04:59:43 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+p='programs/reset.py'; s=open(p).read()
+old='''        L = c["L"]
+        ends = [ctr + u * (L / 2 - 0.007), ctr - u * (L / 2 - 0.007)]'''
+new='''        L = c["L"]
+        if L < 0.145:      # partial outline (attempts 75-77: 0.12 for a ~0.155 drawer): size from the known drawer
+            L = 0.155
+        ends = [ctr + u * (L / 2 - 0.007), ctr - u * (L / 2 - 0.007)]'''
+assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+EOF
+cd /home/r2r/robot_learning_final_pj && uv run python runs/20261117_2026_drawer/agents/reset/tools/offline.py 2>&1 | grep -c "#### OK" && cd runs/20261117_2026_drawer/agents/reset && echo '{"drawer": [0.36, -0.17]}' > test_targets.json && echo "- attempt 77 (real): brightened judge image -> tab seen on the left (robot-facing) wall, s
+... (265 more characters)
+```
+
+<details><summary>04:59:51 result</summary>
+
+```text
+5
+ok
+```
+</details>
+
+**04:59:56 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets test_targets.json",
+ "moves_robot": true,
+ "what": "REAL reset to (0.36,-0.17) (dim room): pick the drawer using the size-clamped outline + wrist refine, keep/turn the pull to face -N+20 deg, place, brightened-image judge check, verify.",
+ "report": ""
+}
+```
+
+<details><summary>04:59:56 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

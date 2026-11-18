@@ -187,6 +187,13 @@ class Episode:
                 self.log(f"escape back {d} refused: {str(e)[:100]}")
         self.s.require(False, "no escape path from the start pose")
 
+    def snap(self, tag):
+        """Diagnostic side + wrist images (<= 640 px) at a stage end (tuning 03:08: where does the drawer stop?)."""
+        try:
+            self.save(f"{tag}_side", self.s.side.latest()[0]); self.save(f"{tag}_wrist", self.s.wrist.latest()[0])
+        except Exception as ex:
+            self.s.log(f"snap {tag}: {ex}")
+
     def save(self, name, img, w=640):
         if img is not None:
             cv2.imwrite(os.path.join(self.s.A, f"{name}.jpg"), cv2.resize(img, (w, int(img.shape[0] * w / img.shape[1]))))
@@ -326,6 +333,7 @@ class Episode:
                 end = status; break
             if n >= INS_NMAX - 0.003:      # the last mm are often refused (model shrinks the step)
                 end = "reached"; break
+        self.snap("insert_end")
         s.summary(insert=dict(end=end, steps=len(self.trans), n_minus_off=round(n - OFF, 4), dt=round(t - T_C, 4),
                               dz=round(z - z0, 4), dyaw=round(dyaw, 1)))
         return dict(end=end, n=n, t=t, z=z, yaw=yaw2 + dyaw)
@@ -372,6 +380,7 @@ class Episode:
                 end = status; break
             if n >= PUSH_NMAX - 0.0005:
                 end = "reached"; break
+        self.snap("push_end")
         s.summary(push=dict(end=end, steps=len(self.trans) - k0, tip_n_minus_off=round(n - OFF, 4), dt=round(t - t0, 4), h=round(h, 4)))
         if end in ("force", "abort") and not s.dry:
             self.unload(-np.r_[push_dirs()[0], 0.0])
@@ -570,6 +579,7 @@ class Episode:
         n_axis = float(nt(self.T_now()[:2, 3])[0]) if not s.dry else ins["n"]
         room = OFF - 0.012 - n_axis - 0.008                     # inner fingertip half-opening allowed (m)
         frac = float(np.clip(1 - 2 * room / 0.085, 0.40, RELEASE))
+        self.release_frac = frac
         shifts = [np.zeros(3), np.r_[0.002 * N, 0.0], np.r_[0.002 * TT, 0.0], np.r_[-0.004 * TT, 0.0]]
         for i, sh in enumerate(shifts):
             if i:
@@ -739,7 +749,8 @@ class Episode:
         # wall's inner face), then up from the measured pose (attempt 17: the lift from a load-deflected pose came
         # within 6 mm of the cabinet_front box and was refused), then further back, lift
         T_b = self.T_now() if not s.dry else tool_down_T(np.r_[xy_of(ins["n"], ins["t"]), ins["z"]], ins["yaw"])
-        T_b[:2, 3] -= 0.012 * N
+        gap = 0.085 * (1 - getattr(self, "release_frac", 0.62)) / 2 - 0.005     # inner finger to the wall's inner face
+        T_b[:2, 3] -= float(np.clip(gap - 0.003, 0.006, 0.012)) * N
         self.line("back_off_wall", T_b, "slow")
         T_up = T_b.copy(); T_up[2, 3] += 0.06
         self.line("up_from_front", T_up, "slow")
