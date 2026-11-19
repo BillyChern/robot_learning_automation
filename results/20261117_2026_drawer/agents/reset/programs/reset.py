@@ -674,29 +674,45 @@ class Reset:
         if L < 0.145:      # partial outline (attempts 75-77: 0.12 for a ~0.155 drawer): size from the known drawer
             L = 0.155
         ends = [ctr + u * (L / 2 - 0.007), ctr - u * (L / 2 - 0.007)]
-        e = min(ends, key=lambda v: np.hypot(*v))
-        d0 = unit(ctr - e)
+
+        def cab_d(v):      # distance of a grasp point from the cabinet footprint (attempts 100-101: the end near the
+            n_, t_ = nt(v)   # cabinet's side post made the gripper body enter the cabinet_front keep-out)
+            return float(np.hypot(max(OFF - n_, 0.0), max(t_ - 0.0, -0.16 - t_, 0.0)))
+        if min(cab_d(v) for v in ends) >= 0.08:
+            ends.sort(key=lambda v: np.hypot(*v))
+        else:
+            ends.sort(key=lambda v: -cab_d(v))
         h_top = float(np.clip(c["h"], 0.03, 0.11))
         tip_h = max(h_top - 0.014, 0.018)
-        yaw = ang(d0)
-        yaw = yaw - 180 if yaw > 90 else yaw + 180 if yaw < -90 else yaw
-        Tg = tool_down_T(np.r_[e, self.tz + tip_h + TIP_OPEN], yaw)
-        T_hi = Tg.copy(); T_hi[2, 3] = self.tz + SAFE_H
-        T_pre = Tg.copy(); T_pre[2, 3] += 0.05
-        s.decide(f"table drawer obb {np.round(ctr, 3).tolist()} L {L:.3f} W {c['W']:.3f} yaw {c['yaw']:.0f}; grasp end wall at {np.round(e, 3).tolist()} top {h_top:.3f}")
         s.gripper(TABLE_OPEN, "open wide (~72 mm) to straddle the end wall")
-        self.to_ready()
-        self.joint_to("above_drawer_wall", T_hi)
-        self.line("down_to_wall_pre", T_pre, "normal")
-        time.sleep(0.4)
-        img = s.wrist.latest()[0]
-        self.save("wrist_wall_pre", img)
-        sh = self.refine_wall(img, e, d0, h_top)
-        if sh is not None:
-            e = e + sh * d0
-            Tg[:2, 3] = e; T_pre[:2, 3] = e
-            self.line("wall_correct", T_pre, "slow")
-        self.line("down_to_wall", Tg, "slow")
+        for k, e in enumerate(ends):
+            d0 = unit(ctr - e)
+            yaw = ang(d0)
+            yaw = yaw - 180 if yaw > 90 else yaw + 180 if yaw < -90 else yaw
+            Tg = tool_down_T(np.r_[e, self.tz + tip_h + TIP_OPEN], yaw)
+            T_hi = Tg.copy(); T_hi[2, 3] = self.tz + SAFE_H
+            T_pre = Tg.copy(); T_pre[2, 3] += 0.05
+            s.decide(f"table drawer obb {np.round(ctr, 3).tolist()} L {L:.3f} W {c['W']:.3f} yaw {c['yaw']:.0f}; grasp end wall at {np.round(e, 3).tolist()} (cabinet dist {cab_d(e):.3f}) top {h_top:.3f}")
+            try:
+                self.to_ready()
+                self.joint_to("above_drawer_wall", T_hi)
+                self.line("down_to_wall_pre", T_pre, "normal")
+                time.sleep(0.4)
+                img = s.wrist.latest()[0]
+                self.save(f"wrist_wall_pre{k}", img)
+                sh = self.refine_wall(img, e, d0, h_top)
+                if sh is not None:
+                    e = e + sh * d0
+                    Tg[:2, 3] = e; T_pre[:2, 3] = e
+                    self.line("wall_correct", T_pre, "slow")
+                self.line("down_to_wall", Tg, "slow")
+                break
+            except Abort as ex:
+                if "check failed" not in str(ex) or k == len(ends) - 1:
+                    raise
+                s.decide(f"end {k} refused by the model ({str(ex)[:90]}): try the other end wall")
+                if self.T_now()[2, 3] < self.tz + SAFE_H - 0.01:
+                    self.lift_to("lift_other_end", SAFE_H, "slow")
         g = s.gripper(1.0, "grasp the end wall")
         s.summary(table_grip=round(g, 1))
         if g >= HOLD_MAX and not s.dry:

@@ -18,9 +18,9 @@
    "unsure": 0
   },
   "resets": {
-   "total": 43,
-   "ok": 18,
-   "fail": 25,
+   "total": 47,
+   "ok": 21,
+   "fail": 26,
    "manual": 0
   },
   "consecutive_failures": {
@@ -28,9 +28,9 @@
    "reset": 0
   },
   "rl": {
-   "total": 12,
+   "total": 16,
    "success": 0,
-   "fail": 12,
+   "fail": 16,
    "unsure": 0
   }
  },
@@ -41,22 +41,22 @@
    "model": "claude-opus-5-5",
    "started": "2026-11-17T20:27:03",
    "ended": "2026-11-17T22:12:06",
-   "attempts": 55,
-   "robot_attempts": 44,
-   "turns": 485,
-   "cost_usd": 77.7554134,
-   "input_tokens": 882,
-   "output_tokens": 447547,
-   "cache_read": 187426588,
-   "cache_creation": 3871949,
-   "duration_s": 5900.669,
+   "attempts": 56,
+   "robot_attempts": 45,
+   "turns": 498,
+   "cost_usd": 78.2527284,
+   "input_tokens": 906,
+   "output_tokens": 454099,
+   "cache_read": 188191043,
+   "cache_creation": 3898610,
+   "duration_s": 5976.812999999999,
    "first_success_attempt": 16,
    "first_success_after_attempts": 21,
    "time_to_first_success_s": 5425.0,
-   "repairs": 14,
+   "repairs": 15,
    "rounds": 0,
    "program_command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py",
-   "last_report": "Attempt 99 (commit ecd7fd7) worked on the robot. The drawer was placed 2.7 cm from the target (tolerance 5 cm). The vision judge confirmed the pull wall faces the robot (confidence 0.85), and the orchestrator's layout check passed.\n\nWhat went wrong in attempt 98: the drawer was not in the slot at all. It was standing on the table, pressed against the cabinet front. Table detection lumped it in with the cabinet, so the program thought it was a drawer sticking out of the slot and clamped the wall edge, which pulled nothing.\n\nThe fix: points 4-12 mm above the table in front of the cabinet now count as a drawer on the table, because a drawer in the slot hangs at least 1.5 cm up. The program outlines it from its wall tops and picks it up from the table as usual. Each run now also saves the side-camera point clouds (cloud_<tag>.npy) so failures can be replayed offline.\n\nNot yet tested on the robot: the new handling for a drawer about 1 cm out (tab pinch, or edge clamp at 2-4 cm), because the drawer was never in that state in these runs.",
+   "last_report": "Attempt 102 (commit cc60dfb) worked on the robot. The drawer was placed 2.8 cm from the target (tolerance 5 cm). The vision judge confirmed the pull faces the robot (confidence 0.75), and the orchestrator's layout check passed.\n\nWhy attempts 100 and 101 failed: the drawer stood on the table lengthwise along the cabinet front. The table pick grabbed the end wall next to the cabinet's side post. There the gripper body would have entered the cabinet's no-go zone, so the safety check refused the move, before any motion in 100 and after a small correction in 101.\n\nThe fix: when the drawer is within 8 cm of the cabinet, the pick now grabs the end wall farther from it. If the safety check still refuses, it tries the other end. In attempt 102 the arm first got clear of its low stop position from attempt 101, then grabbed the far end on the first try (gripper reading 89.5, meaning it was holding the drawer).",
    "reflections": 4
   },
   "execute": {
@@ -196,21 +196,29 @@
     [
      "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_96",
      "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_100",
+     "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_101",
+     "layout check failed: drawer: not found"
     ]
    ]
   }
  },
- "next_episode": 12,
- "next_reset": 43,
+ "next_episode": 16,
+ "next_reset": 47,
  "vlm": {
-  "calls": 12,
-  "cost_usd": 0.7202000000000001
+  "calls": 16,
+  "cost_usd": 0.9575224000000001
  },
  "operator_notes": [],
  "rl": {
-  "episodes": 12,
+  "episodes": 16,
   "evals": [],
-  "since_review": 2,
+  "since_review": 6,
   "learner_fails": 0
  }
 }
