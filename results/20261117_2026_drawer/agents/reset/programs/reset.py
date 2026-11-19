@@ -238,15 +238,49 @@ class Reset:
             protr = float(OFF - np.percentile(fq[:, 0], 3))
             sel = front & (q[:, 0] < OFF - protr + 0.02)
             if protr > 0.02 and sel.sum() > 20:
-                out = dict(t=float(np.median(q[sel, 1])), h_top=float(np.percentile(h[front & (q[:, 0] < OFF - 0.01)], 98)),
+                # attempts 95-96: the drawer can sit skewed (~30-45 deg) across the opening: fit its front wall from the
+                # wall-top points of the protruding part (wide t window), farthest rectangle edge from the cabinet
+                ht = float(np.percentile(h[front & (q[:, 0] < OFF - 0.01)], 98))
+                band = (q[:, 0] < OFF - 0.005) & (q[:, 0] > OFF - 0.16) & (q[:, 1] > -0.20) & (q[:, 1] < 0.03) & (h > ht - 0.012) & (h < ht + 0.01)
+                self.front_fit = None
+                if band.sum() > 40:
+                    (cx, cy), (w0, h0), a0 = cv2.minAreaRect(np.ascontiguousarray(P[band, :2].astype(np.float32)))
+                    c0 = np.array([cx, cy]); ua = np.array([np.cos(np.radians(a0)), np.sin(np.radians(a0))]); va = np.array([-ua[1], ua[0]])
+                    edges = [(c0 + ua * w0 / 2, va), (c0 - ua * w0 / 2, va), (c0 + va * h0 / 2, ua), (c0 - va * h0 / 2, ua)]
+                    mid, along = min(edges, key=lambda e: float(nt(e[0])[0]))
+                    inward = unit(c0 - mid)
+                    self.front_fit = dict(mid=mid, inward=inward, yaw=round(ang(inward), 1), size=[round(w0, 3), round(h0, 3)])
+                out = dict(t=float(np.median(q[sel, 1])), h_top=ht,
                            h_bot=float(np.percentile(h[sel], 3)), n=int(sel.sum()))
         # drawer pushed in past flush (attempt 80: face points 53, points 2.5-10 cm inside 180): the recessed face
         deep = win & (h > 0.035) & (h < 0.085) & (q[:, 0] > OFF - 0.02) & (q[:, 0] < OFF + 0.10)
         face_depth = float(np.median(q[deep, 0]) - (OFF + 0.002)) if deep.sum() > 40 else None   # 16:45: median 25 mm
+        # 22:14: median face position over a wide window (a few outlying points made a ~1 cm-out drawer read 'out')
+        wide = win & (h > 0.035) & (h < 0.085) & (q[:, 0] > OFF - 0.10) & (q[:, 0] < OFF + 0.06)
+        slot_med = float(np.median(q[wide, 0]) - (OFF + 0.002)) if wide.sum() > 40 else None
+        # attempt 98: drawer standing ON THE TABLE pressed against the cabinet front (merged with the cabinet blob, so
+        # no candidate): walls reach the table (h < 1.2 cm) in front of the plane; a drawer in the slot hangs >= 1.5 cm
+        low = (q[:, 1] > -0.26) & (q[:, 1] < 0.08) & (q[:, 0] < OFF - 0.012) & (q[:, 0] > OFF - 0.25) & (h > 0.004) & (h < 0.012)
+        near_tab = None
+        if not cand and low.sum() > 40:
+            body = (q[:, 1] > -0.26) & (q[:, 1] < 0.08) & (q[:, 0] < OFF - 0.012) & (q[:, 0] > OFF - 0.25) & (h > 0.004) & (h < 0.11)
+            hb = float(np.percentile(h[body], 98))
+            if 0.03 <= hb <= 0.11 and body.sum() > 150:
+                pts = P[body]
+                rim = pts[(pts[:, 2] - tz) > hb - 0.012, :2]
+                c, (L, W), yaw = obb(rim if len(rim) > 60 else pts[:, :2])
+                near_tab = dict(xy=np.round(pts[:, :2].mean(0), 4).tolist(), obb_c=np.round(c, 4).tolist(), L=round(L, 3),
+                                W=round(W, 3), yaw=round(yaw, 1), h=hb, n=int(body.sum()), pts=pts, near_cabinet=True)
+                cand = [near_tab]
+        try:
+            np.save(os.path.join(s.A, f"cloud_{tag}.npy"), P[(h > -0.01) & (h < 0.2)].astype(np.float32))
+        except Exception:
+            pass
         lay = front & (q[:, 0] < OFF - protr + 0.012)
         front_top = float(np.percentile(h[lay], 98)) if lay.sum() > 20 else None
         info = dict(tag=tag, table_z=round(tz, 4), front_top=None if front_top is None else round(front_top, 4),
-                    face_depth=None if face_depth is None else round(face_depth, 4), blobs=len(blobs), drawer_blobs=[{k: v for k, v in c.items() if k != "pts"} for c in cand],
+                    face_depth=None if face_depth is None else round(face_depth, 4),
+                    slot_med=None if slot_med is None else round(slot_med, 4), blobs=len(blobs), low_pts=int(low.sum()), near_cabinet=near_tab is not None, drawer_blobs=[{k: v for k, v in c.items() if k != "pts"} for c in cand],
                     protr=round(protr, 4), front_pts=int(front.sum()), face_pts=int(face.sum()), inside_pts=int(inside.sum()),
                     out=None if out is None else {k: round(v, 4) for k, v in out.items()})
         self.log(f"perceive {tag}: {info}")
@@ -257,6 +291,9 @@ class Reset:
         if p["cand"]:
             return "table"
         if p["out"] is not None and p["protr"] >= PROTR_GRASP:
+            sm = p.get("slot_med")
+            if sm is not None and sm > -0.04:
+                return "slot_near"     # median face < 4 cm out: the front wall top is still under the rail (22:14)
             return "out"
         if p["out"] is not None and p["protr"] > BACK_PROTR:
             return "slot_back"           # sticks out 1-4.5 cm (attempt 93 after the recessed pull: 'missing' before)
@@ -276,7 +313,7 @@ class Reset:
         x = np.r_[TT, 0.0]
         Rm = rot_axis(np.r_[N, 0.0], PIN_PHI) @ np.stack([x, np.cross(z, x), z], 1)
         margin = self.deep_cfg["margin"] if self.deep_cfg is not None else 0.002
-        dshift = max(self.depth - margin, 0.0)     # margin on the side-camera depth (finger edge clears the face by ~1 mm)
+        dshift = max(self.depth - margin, 0.0) if self.depth >= 0 else self.depth   # protruding: shift outward fully
         tip = np.r_[xy_of(OFF - out_m + dshift, self.pin_t + self.pin_dt), self.tz + PIN_H]
         T = np.eye(4); T[:3, :3] = Rm; T[:3, 3] = tip - PIN_ZT * Rm[:, 2] + Rm @ np.r_[0.0, self.pin_dy, self.pin_dz]
         return T
@@ -305,7 +342,8 @@ class Reset:
         T0 = self.pin_T(PIN_OUT)
         z = T0[:3, 2]
         phi_now = PIN_PHI; PIN_PHI = PIN_PHI0          # the high pose keeps the 20 deg roll (roll 0 there hits joint limits)
-        T0h = self.pin_T(PIN_OUT); PIN_PHI = phi_now
+        d_now = self.depth; self.depth = max(self.depth, 0.0)    # and stays at the flush position (protruding: j3 folds)
+        T0h = self.pin_T(PIN_OUT); PIN_PHI = phi_now; self.depth = d_now
         T_hi = T0h.copy(); T_hi[:3, 3] -= 0.05 * T0h[:3, 2]; T_hi[2, 3] = self.tz + PIN_HI; T_hi[:2, 3] -= 0.04 * N
         if np.abs(wrap180(self.q_now() - self.ik(tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0), [SEED_DOWN]))).max() > 3:
             self.to_ready()
@@ -434,10 +472,11 @@ class Reset:
             held = g < HOLD_MAX or s.dry
             if held:
                 s.gripper(min(g / 100 + 0.01, 0.95), "keep squeezing (model gripper close to the real one)")
-                T_out = Tg.copy(); T_out[:3, 3] -= np.r_[PULL * N, 0.0]
+                pull_d = float(np.clip(0.085 - protr, 0.03, PULL))   # leave it ~8.5 cm out (a longer pull folds j3)
+                T_out = Tg.copy(); T_out[:3, 3] -= np.r_[pull_d * N, 0.0]
                 self.line("pull_back_drawer", T_out, "slow", tip_margin=PIN_MARGIN)
                 s.gripper(BACK_OPEN, "release the wall")
-                T_up = T_out.copy(); T_up[2, 3] += 0.10
+                T_up = T_out.copy(); T_up[2, 3] += 0.10 if protr < 0.025 else 0.05   # 10 cm: wrist singularity from 3-4 cm out
                 self.line("up_from_back", T_up, "slow", tip_margin=PIN_MARGIN)
                 break
             s.decide(f"wall edge not held (reading {g:.1f})")
@@ -580,6 +619,12 @@ class Reset:
         tip_h = max(h_top - 0.012, 0.03)
         xy = xy_of(wall_n, o["t"])
         yaw = ang(N)
+        inward = N.copy()
+        ff = getattr(self, "front_fit", None)
+        if ff is not None and abs(wrapd(ff["yaw"] - ang(N))) > 12:
+            # skewed drawer: grasp the fitted front wall, jaws across it
+            inward = ff["inward"]; xy = ff["mid"] + 0.006 * inward; yaw = ang(inward)
+            s.decide(f"drawer skewed: front wall fitted at {np.round(ff['mid'], 3).tolist()}, yaw {ff['yaw']:.0f} deg (normal {ang(N):.0f})")
         Tg = tool_down_T(np.r_[xy, self.tz + tip_h + TIP_OPEN], yaw)
         T_hi = Tg.copy(); T_hi[2, 3] = self.tz + SAFE_H
         T_pre = Tg.copy(); T_pre[2, 3] += 0.05
@@ -597,6 +642,10 @@ class Reset:
             if sc is not None and self.out_judged is None:
                 self.backwards = sc < 0.03
                 s.decide(f"outer wall {'has NO pull tab: drawer is in backwards' if self.backwards else 'carries the pull tab'} (tab score {sc:.3f})")
+        sh = self.refine_wall(img, xy, inward, h_top) if img is not None else None
+        if sh is not None:
+            xy = xy + sh * inward; Tg[:2, 3] = xy; T_pre[:2, 3] = xy
+            self.line("front_wall_correct", T_pre, "slow")
         self.line("down_to_front_wall", Tg, "slow")
         g = s.gripper(1.0, "grasp the front wall")
         s.summary(front_grip=round(g, 1))
@@ -614,8 +663,8 @@ class Reset:
         # drawer bottom below the tool: the side-depth front bottom is clipped at 2.5 cm and the drawer can tilt when
         # hanging from its front wall (attempt 18 touched the table early): assume the bottom at 1.0 cm in the slot
         drop = (Tg[2, 3] - self.tz) - 0.010
-        pull = (N if self.backwards else -N).copy()     # the grasped wall is the pull wall unless the drawer was in backwards
-        return dict(yaw_pick=yaw, grasp_off=-N * (L_DEFAULT / 2 - 0.007), pull=pull, drop=drop, release=0.025)
+        pull = (inward if self.backwards else -inward).copy()   # the grasped wall is the pull wall unless in backwards
+        return dict(yaw_pick=yaw, grasp_off=-inward * (L_DEFAULT / 2 - 0.007), pull=pull, drop=drop, release=0.025)
 
     # ------------------------------------------------------------ table pick
     def pick_table(self, c, pull=None):
@@ -800,6 +849,16 @@ class Reset:
         s.require(st != "missing", "drawer not found (no drawer blob on the table and the bottom slot looks empty)")
         held = None
         self.to_ready()
+        if st == "slot_near":
+            sm = float(p["slot_med"])
+            if sm >= -0.02:
+                self.depth = sm
+                s.decide(f"drawer face median {-sm:.3f} m out: tab pinch-and-pull first (the wall top is under the rail)")
+                st = "slot"
+            else:                      # 2-4 cm out: the wall-edge clamp (attempt 94 at 2.3 cm); the tab lift folds j3 there
+                s.decide(f"drawer face median {-sm:.3f} m out: clamp the protruding wall edge")
+                p = dict(p, protr=-sm)
+                st = "slot_back"
         if st == "slot_deep":
             self.depth = float(p["face_depth"])
             # the tab pinch fits the keep-out (3 cm into the slot opening) only up to ~1.5 cm past flush: the model's
