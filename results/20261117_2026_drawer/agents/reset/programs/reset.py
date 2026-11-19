@@ -49,7 +49,8 @@ BACK_PROTR = 0.009        # a slot drawer sticking out more than this is in BACK
 BACK_TILT = 40.0          # oblique pinch of the protruding wall's top edge: jaws in the vertical plane through the
 BACK_ZC = 0.035           # slot centre, tilted BACK_TILT; pinch centre BACK_ZC along the tool z
 BACK_OPEN = 0.45
-DEEP_MAX = 0.040            # recessed drawer: deepest face the tab pinch can reach within the keep-out
+DEEP_MAX = 0.015            # recessed deeper: fail fast (attempts 85-87: 2 cm ungrippable). 17:05 operator: handle <= 1.5 cm
+DEEP_LEVEL = 0.016          # above this the level-finger variant (missed on the robot at 2 cm) would be used: off
 T_C = -0.087              # drawer centre line along the front
 TABLE_OPEN = 0.15          # table pick opening (~72 mm): +-3 cm around a 1 cm wall (attempt 52 missed at 51 mm)
 L_DEFAULT = 0.13          # drawer depth until measured
@@ -274,7 +275,7 @@ class Reset:
         s = self.s
         PIN_OUT, PIN_H = PIN_BASE
         sweep = PIN_SWEEP
-        if self.depth > 0.012:
+        if self.depth > DEEP_LEVEL:
             # recessed drawer: the tab sits near the slot opening's 1.5 cm floor; the rolled lower finger would dip below
             # it (1 cm front limit there): level fingers, tips 7 mm higher, deeper along z (the opening allows 5 cm)
             PIN_PHI, PIN_H = 0.0, PIN_BASE[1] + 0.0035   # attempt 85: +7 mm put the pads on the label plate
@@ -320,7 +321,7 @@ class Reset:
                 s.decide(f"tab held at offset {i} (reading {g:.1f})")
                 s.gripper(min(g / 100 + 0.008, 0.90), "keep squeezing (sets the model gripper close to the real one)")
                 # recessed: pull only to ~2 cm proud (a full 6.5 cm + depth folds j3); the wall-edge clamp takes over
-                pull_d = (self.depth + 0.02) if self.depth > 0.012 else PULL
+                pull_d = (self.depth + 0.02) if self.depth > DEEP_LEVEL else PULL
                 T_out = Tg.copy(); T_out[:3, 3] -= np.r_[pull_d * N, 0.0]
                 try:
                     self.line("pull_drawer", T_out, "slow", tip_margin=PIN_MARGIN)
@@ -338,7 +339,7 @@ class Reset:
             self.line("up_from_pin", T_up, "slow", tip_margin=PIN_MARGIN)
         else:
             T_hi2 = T_pre.copy(); T_hi2[2, 3] = self.tz + PIN_HI; T_hi2[:2, 3] -= 0.04 * N
-            if self.depth > 0.012:            # attempt 85: back to the rolled high pose hit joint limits: lift straight up
+            if self.depth > DEEP_LEVEL:            # attempt 85: back to the rolled high pose hit joint limits: lift straight up
                 T_hi2 = T_pre.copy(); T_hi2[2, 3] += 0.10
             self.line("up_from_pin", T_hi2, "normal")
         self.to_ready()

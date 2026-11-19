@@ -44,6 +44,9 @@ Interventions, stops and mid-run changes by the operator (the user, or Claude Co
 | 16:50 | Claude | Keep-out: bottom-slot opening open to 5 cm behind the front plane (was 3 cm); notes to both agents | the reset could not reach the tab of a drawer recessed 2.3 cm; the RL push can recess it too |
 | 17:01 | reset agent | Gave up on the recessed drawer: 12 pinch positions passed the model check but closed on nothing (tab 7 mm above the slot floor under the label plate; the finger pad does not fit) | attempts 84-87 |
 | 17:05 | Claude | Paused the pipeline; reverted the 5 cm keep-out to 3 cm (82c5a55); notes: RL agent must not push past flush; asked the user to pull the drawer out to about flush | |
+| 17:20 | user / Claude | Prevention: slot-opening keep-out 2 cm (was 3), so a push cannot recess the drawer more than ~1 cm (the reset undoes up to ~1.5 cm); notes to both agents; reset agent asked to try hooking the label plate for the current 2.4 cm recess before a person does it; relaunched | user: "just continue, prevent the issues from happening again" |
+| 21:20 | Claude | Keep-out per program role: reset may reach 4 cm into the slot opening (to recover a recessed drawer), the RL program stays at 2 cm (no recessing); note to the reset agent to try the hook | reset agent gave up twice: a 2.4 cm recess was out of reach at the shared limit |
+| 21:22 | reset agent / Claude | Reset agent gave up on the hook too (label window 2-3 mm deep, card channel ~1 mm, no gap above the tab; the 2F-85's rounded tips cannot catch them); pipeline paused for a person to pull the drawer to about flush | 2.2 cm recess not recoverable with this gripper |
 
 Force stops so far (25 N limit) were all real contacts: finger dragging on the pulled-out drawer (30.8 N), drawer meeting the
 table while placing (27.3 N), lifting while still gripping (26.6 N), drawer edge meeting the slot (25.4 N). Free moves: at

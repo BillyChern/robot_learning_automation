@@ -40,7 +40,7 @@ T_C = -0.087                 # slot centre line along the front (reset: pull tri
 BOTTOM_H = 0.021             # drawer bottom above the table while sliding in
 BACK_GAP = 0.03              # drawer back in front of the front plane at the start of the insertion
 INS_NMAX = OFF - 0.036       # vertical tool axis limit (keep-out: body cylinder 45 mm + 1 cm)
-K_INS, K_PUSH = 20, 8
+K_INS, K_PUSH = 20, 10
 MIN_ADV = 0.004              # m: insertion advance floor unless the last step was hard (peak > F_SOFT)
 F_SOFT = 35.0               # N: force penalty above this (sliding takes 22-28 N; user 01:50: was 20, penalised normal sliding)
 F_STOP = 40.0               # N: only a value for the observation after a stop (no force cap: user, 22:30)
@@ -53,7 +53,7 @@ L_MIN = 0.155                # drawer depth floor: the side camera sees only par
 PUSH_TILT, PUSH_H, PUSH_ZT = 40.0, 0.050, 0.047      # tilt from vertical, fingertip height, tip along tool z (closed)
 PUSH_DT = 0.030              # push point beside the pull (t offset from the drawer centre line)
 PUSH_TMAX = -0.060           # closed fingers (+-14 mm along t in the model) clear of the slot-side keep-out box (t > -0.045)
-PUSH_NMAX = OFF + 0.020      # model fingertip limit
+PUSH_NMAX = OFF + 0.017      # model fingertip limit
 PUSH_HI = 0.14
 TIP_MARGIN_PUSH = 0.004
 
@@ -523,7 +523,7 @@ class Episode:
         if ok is True:
             judge = self.judge()
             bonus = -5.0 if (judge or {}).get("success") is False else 5.0
-        R = extra_terminal + bonus + 2.0 * slot.get("flush", 0.0) - 2.0 * slot.get("front", 0.0) - (1.0 if d_after else 0.0)
+        R = extra_terminal + bonus + 2.0 * slot.get("flush", 0.0) - 2.0 * slot.get("front", 0.0) - 2.0 * slot.get("behind", 0.0) - (1.0 if d_after else 0.0)
         self.terminal = dict(bonus=bonus, R=round(R, 3), judge=judge)
         if self.trans:
             self.trans[-1]["rew"] += R

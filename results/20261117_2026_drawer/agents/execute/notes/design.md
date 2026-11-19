@@ -143,3 +143,7 @@ action inside the keep-out/kinematic envelope (tools/offline_test.py).
   and the back-off after release is now smaller than the inner finger's gap to the wall (12 mm could drag the
   drawer ~1 mm out).
 - 14:50 resume (lights were off 04:30-05:17): side-image brightness now logged in summary.json (side_brightness, ~122 normal) to spot lighting failures; attempt 45 (diagnostic snapshots) never ran.
+- 17:20 keep-out (slot opening only 2 cm deep, do not recess the drawer): PUSH_NMAX OFF+0.020 -> OFF+0.017 (model
+  check accepts the tilted pusher up to +0.019, checked offline at push yaw 0/5/10 deg), so the last push step is no
+  longer refused; terminal reward now also -2 x the slot window's "behind" share (recessed counts like sticking out);
+  K_PUSH 8 -> 10 (the full push from 2.5 cm before the face to the limit is ~8.6 cm at <= 15 mm per step).
