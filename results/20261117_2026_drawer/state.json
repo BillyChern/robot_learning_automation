@@ -18,8 +18,8 @@
    "unsure": 0
   },
   "resets": {
-   "total": 47,
-   "ok": 21,
+   "total": 51,
+   "ok": 25,
    "fail": 26,
    "manual": 0
   },
@@ -28,9 +28,9 @@
    "reset": 0
   },
   "rl": {
-   "total": 16,
+   "total": 19,
    "success": 0,
-   "fail": 16,
+   "fail": 19,
    "unsure": 0
   }
  },
@@ -208,17 +208,17 @@
    ]
   }
  },
- "next_episode": 16,
- "next_reset": 47,
+ "next_episode": 19,
+ "next_reset": 51,
  "vlm": {
-  "calls": 16,
-  "cost_usd": 0.9575224000000001
+  "calls": 19,
+  "cost_usd": 1.1442172000000002
  },
  "operator_notes": [],
  "rl": {
-  "episodes": 16,
+  "episodes": 19,
   "evals": [],
-  "since_review": 6,
+  "since_review": 9,
   "learner_fails": 0
  }
 }
