@@ -139,3 +139,14 @@
 - 22:14 operator: drawer ~1 cm out (median) was taken as 'out' (3rd-percentile protr 0.07), front-wall grasp hit the cabinet rail. -> slot_med (median face over a wide window): < 4 cm out = slot_near: <= 2 cm tab pinch-and-pull (shift outward; high pose stays at flush), 2-4 cm wall-edge clamp (pull to ~8.5 cm out, lift 10 cm below 2.5 cm out else 5 cm). Offline: tab -1.1/-2 cm, clamp 1.2-3.9 cm pass; drawer-zone clearance >= 11.9 cm.
 - attempt 98: the drawer was already ON THE TABLE pressed against the cabinet front (side_start), merged with the cabinet blob -> no candidate -> slot_near -> clamp pulled nothing. Fix: low points (h 4-12 mm) in front of the plane = on the table; candidate from those points (rim OBB) -> pick_table. Also save the side cloud per perceive (cloud_<tag>.npy) for offline replay. Offline pick near the cabinet: 5/5 OK.
 - attempts 100-101: drawer on the table along the cabinet front (n 0.445-0.515, t -0.19..-0.04); the end-wall grasp chose the end next to the cabinet side post -> cabinet_front keep-out (plan refused; 101 after a -3.8 cm wrist refine). Fix: pick_table prefers the end farther from the cabinet footprint when either end is < 8 cm from it, and on a refused model check tries the other end.
+- attempts 117-118 (00:43 operator: drawer tipped over): 117 start = drawer still partly in the slot, but the near-cabinet
+  table detector took its protruding part (W 0.032) for a table drawer; the end-wall pick lifted it while still in the
+  slot, the transfer hit 55 N; 118 started holding it (86.9) at 0.2 m and the move home dropped it on its side
+  (blob 0.106 tall). The turn itself was not the cause. Fixes: near-cabinet candidate needs W >= 0.05; at start a
+  held drawer is lowered to tool z 0.10 and released before any move; a drawer taller than 0.088 (on its side) is
+  tipped upright: judge says which side is open, closed fingers push the top edge (h-1.2 cm) from the open side toward
+  the bottom panel (pivots on its bottom edge, lands bottom-down); slide 6 cm first if the landing zone hits the cabinet.
+- attempt 120: closed-finger push at the top edge only slid the tipped drawer 1.5 cm per push (max force 5 N: the
+  tip barely caught the top edge). Replaced by pinch-and-roll: fingers fully open straddle its 7 cm depth near the
+  top, close, lift 1.2 cm, roll 40-45 deg about the bottom edge on the bottom-panel side (pivot path, cartesian or
+  short joint moves, whole sequence model-checked first for both yaws), let go -> falls bottom-down.

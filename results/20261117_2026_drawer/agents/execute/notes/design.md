@@ -173,3 +173,11 @@ action inside the keep-out/kinematic envelope (tools/offline_test.py).
   pause). -> scripted lateral alignment before the learned steps: the insertion line t_line = T_C + (0.003 - edge),
   clipped to +-2 cm (summary held.t_line, held.meas.edge); the learned dt stays relative to that line.
 - attempt 72 (89c6aea): with the lateral alignment (t_line -0.067, +2 cm) the insertion reached its end (2-24 N); the push moved the drawer ~1.5 cm then jammed 3x: it pushed at the tool t + 1.5 cm, i.e. ~2.4 cm off the drawer centre. -> push frame and push point now use the drawer centre (T_C + EDGE_TARGET + learned dt) + 1.5 cm.
+- USER'S RULE 00:30 (straight first, then push): prior v6 has no yaw and the residual may not add yaw (RESIDUAL yaw 0),
+  so the tool keeps the slot normal during the insertion and the push goes straight along the normal. Straightness is
+  set before: (a) grasp yaw turned to the wall angle seen by the wrist camera at the pre-grasp pose (wallfit, 0.5-15
+  deg; offline the jaws were within 2 deg of the wall in all but one episode), (b) lateral alignment iterated from
+  the side image until the drawer's centre (camera-side edge + 6.5 cm) is within 3 mm of the slot window centre
+  (T_C + 0.0045 = -0.0825; up to 3 moves; summary align, t_line). A jam: unload, back out 1.5 cm, re-measure and
+  re-align (lateral steps <= 4 mm while the back is in the slot), try again (up to 3). PUSH_NMAX OFF+0.012 (at h 0.062
+  the model refuses beyond ~+0.0125). Offline: flow test 4/4 complete, no refusals; learner --check ok.

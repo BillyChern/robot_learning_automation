@@ -18,14 +18,14 @@
    "unsure": 0
   },
   "resets": {
-   "total": 59,
+   "total": 61,
    "ok": 32,
-   "fail": 27,
+   "fail": 29,
    "manual": 0
   },
   "consecutive_failures": {
    "execute": 0,
-   "reset": 0
+   "reset": 3
   },
   "rl": {
    "total": 20,
@@ -42,24 +42,24 @@
  },
  "agents": {
   "reset": {
-   "status": "done",
+   "status": "repairing",
    "session_id": "28a976d6-48ea-4fad-b363-10f157ffb977",
    "model": "claude-opus-5-5",
    "started": "2026-11-17T20:27:03",
    "ended": "2026-11-17T22:12:06",
-   "attempts": 56,
-   "robot_attempts": 45,
-   "turns": 498,
-   "cost_usd": 78.2527284,
-   "input_tokens": 906,
-   "output_tokens": 454099,
-   "cache_read": 188191043,
-   "cache_creation": 3898610,
-   "duration_s": 5976.812999999999,
+   "attempts": 57,
+   "robot_attempts": 46,
+   "turns": 534,
+   "cost_usd": 81.31209220000002,
+   "input_tokens": 974,
+   "output_tokens": 495947,
+   "cache_read": 192809822,
+   "cache_creation": 4060907,
+   "duration_s": 6533.851999999999,
    "first_success_attempt": 16,
    "first_success_after_attempts": 21,
    "time_to_first_success_s": 5425.0,
-   "repairs": 15,
+   "repairs": 17,
    "rounds": 0,
    "program_command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py",
    "last_report": "Attempt 102 (commit cc60dfb) worked on the robot. The drawer was placed 2.8 cm from the target (tolerance 5 cm). The vision judge confirmed the pull faces the robot (confidence 0.75), and the orchestrator's layout check passed.\n\nWhy attempts 100 and 101 failed: the drawer stood on the table lengthwise along the cabinet front. The table pick grabbed the end wall next to the cabinet's side post. There the gripper body would have entered the cabinet's no-go zone, so the safety check refused the move, before any motion in 100 and after a small correction in 101.\n\nThe fix: when the drawer is within 8 cm of the cabinet, the pick now grabs the end wall farther from it. If the safety check still refuses, it tries the other end. In attempt 102 the arm first got clear of its low stop position from attempt 101, then grabbed the far end on the first try (gripper reading 89.5, meaning it was holding the drawer).",
@@ -73,13 +73,13 @@
    "ended": "2026-11-18T02:06:21",
    "attempts": 22,
    "robot_attempts": 15,
-   "turns": 191,
-   "cost_usd": 37.04793069999999,
-   "input_tokens": 356,
-   "output_tokens": 168102,
-   "cache_read": 58847267,
-   "cache_creation": 1907231,
-   "duration_s": 2350.957,
+   "turns": 200,
+   "cost_usd": 38.271401299999994,
+   "input_tokens": 374,
+   "output_tokens": 176386,
+   "cache_read": 63690180,
+   "cache_creation": 1918373,
+   "duration_s": 2452.343,
    "first_success_attempt": null,
    "first_success_after_attempts": null,
    "time_to_first_success_s": null,
@@ -87,7 +87,7 @@
    "rounds": 0,
    "program_command": null,
    "last_report": "The RL loop is ready for training. A real episode runs end to end on the hardware and the learner passes its check on the real data. No episode has succeeded yet: the best one (attempt 20) left the drawer about 2 cm out of the slot.\n\n**Split between scripted and learned (notes/design.md)**\n- Scripted: find the drawer in side depth and grasp its pull wall from above (wrist-camera wall refinement). Carry it in front of the bottom slot and measure the held drawer's offset and yaw from side depth. After the insertion, release, back off and go up. At the end, retreat, go home and verify.\n- Learned, one policy with a stage flag, using small slow straight-line steps:\n  - insert: advance, sideways t, height z and yaw, while holding the drawer;\n  - push: tilted closed fingertips, 3 cm beside the pull at 5 cm height.\n- Observation: 13 values (progress, corrections applied so far, measured offsets, force change, step count).\n- Action: 4 values, squashed to [-1, 1].\n\n**Reward (fixed as you asked at 01:50)**\n- Per step: +10 \u00d7 insertion progress (m), \u22120.02 step cost, force penalty only above 35 N, \u22121/\u22122 for a refused motion or a stop.\n- Terminal: +5 / \u22125 / 0 bonus, plus 2 \u00d7 flush share \u2212 2 \u00d7 sticking-out share of the slot window.\n- The bonus is +5 only when the geometric check passes and the orchestrator's vision judge agrees. Otherwise it is \u22125, so a backwards drawer is never rewarded.\n- `learner.py` replaces the bonus with one from `rl/verdicts/<episode>.json`: success +5, backwards or wrongly paid \u22125, other fails 0. I tested this on made-up verdict files, not on a real one yet.\n\n**Algorithm**\n- SAC: networks 13-128-128 with LayerNorm critics, gamma 0.95, automatic entropy tuning, about 40 updates per new transition (at most 3000 or 200 s per call). It reuses every logged episode.\n- The actor starts from a scripted prior: a 12 mm advance plus half of the measured yaw error per step. The learner fits the actor to that prior once and keeps a decaying pull toward it.\n- No simulation. Why, and what I take from SGS-RL, is in notes/sgs_rl.md.\n\n**Hardware results**\n- Attempt 20 (commit 84d20e6): exit 2, 21 transitions logged. The orientation check found the pull facing the robot, the insertion reached its end in 13 steps, and the gripper let go on the first try (reading 62.4). The push reached its limit. The retreat then hit 136 N because the fingertip had gone over the wall top, and it dragged the drawer about 2 cm back out.\n- Attempt 21 (commit 5524457): the learner check passed and one update ran on the robot machine's GPU: 7 real episodes, 117 transitions, 3000 updates in 51 s, prior fit loss 0.0007.\n- Earlier real episodes, attempts 3, 5, 7, 14, 16 and 17, fixed in turn: the lift catching the rail, force stops while unloading, gripper release not checked, knob hooking during the push, and lift paths refused by the model check.\n\n**Not yet tested on the hardware**\n- The new push point (5 cm high, 3 cm beside the pull): it passes the model checks offline but has not run on the robot.\n- The vision-judge call inside `finish()`.\n- Relabeling from real verdict files.\n- Insertions often jam at about \u22120.06 m (tool position relative to the front plane), with three 50 N stops per episode. Learning to avoid that is now the policy's job.\n\n**Code** (commit 5524457)\n- `programs/execute.py`, `programs/learner.py`, `programs/rlcommon.py`\n- `programs/pullface.py`: the pull check before the grasp. If it sees the pull on another wall, the episode ends as a failure without inserting.\n- `programs/recover.py`: frees the arm if an episode leaves it at the cabinet.\n- `tools/offline_test.py`: runs the full episode flow against the model checks offline.",
-   "reflections": 5,
+   "reflections": 6,
    "reviews": 2
   }
  },
@@ -210,12 +210,24 @@
     [
      "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_101",
      "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_117",
+     "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_118",
+     "layout check failed: drawer: 42.9 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_120",
+     "layout check failed: drawer: not found"
     ]
    ]
   }
  },
  "next_episode": 24,
- "next_reset": 59,
+ "next_reset": 61,
  "vlm": {
   "calls": 24,
   "cost_usd": 1.4460620000000002

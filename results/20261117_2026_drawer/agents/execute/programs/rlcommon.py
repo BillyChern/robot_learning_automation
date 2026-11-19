@@ -10,7 +10,7 @@ ZERO_OBS = (5, 6)                              # insert-stage measured t/yaw: no
 ACT_DIM = 4
 PRIOR = np.array([0.6, 0.0, 0.0, 0.0])        # 12 mm straight along the nominal line
 MIN_ACTOR_VERSION = 3                          # actors trained since prior v3 stay usable
-PRIOR_VERSION = 5                              # must match learner.PRIOR_VERSION
+PRIOR_VERSION = 6                              # must match learner.PRIOR_VERSION
 INIT_STD = 0.25                                # pre-tanh std of the initial policy
 LOG_STD_MIN, LOG_STD_MAX = -4.0, 0.5
 EXPLORE_SCALE = np.array([0.3, 1.0, 1.0, 1.0])
@@ -38,13 +38,14 @@ def prior(obs):
     # measurement is not trustworthy; the policy learns the yaw from the outcomes instead.
     # v5 (00:05, urgent): insertions reached their end mostly with the tool turned +5..+10 deg (5/12 vs 1/14):
     # the prior ramps the yaw to +9 deg (2 deg per unit of a3); dz and dt stay 0.
-    cum = o[:, 4] * 5.0
-    a[ins, 3] = np.clip((YAW_TARGET - cum[ins]) / 2.0, -0.9, 0.9)
+    # v6 (user's rule 00:30): the drawer goes in STRAIGHT along the slot normal: no yaw in the prior, and the residual
+    # may not add yaw either (RESIDUAL[3] = 0); straightness is set before the insertion (grasp yaw from the wrist
+    # camera, lateral alignment from the side image)
     return a[0] if single else a
 
 
 YAW_TARGET = 9.0
-RESIDUAL = np.array([0.25, 0.3, 0.15, 0.3])     # max |policy - prior| per dimension (executed action)
+RESIDUAL = np.array([0.25, 0.3, 0.15, 0.0])     # max |policy - prior| per dimension (executed action)
 
 
 def anchor(a_pol, obs):

@@ -64,6 +64,8 @@ L_DEFAULT = 0.13          # drawer depth until measured
 HOLD_MAX = 97.0           # gripper reading below this = holding something
 TOL = 0.05
 GOOD = 0.035              # correct when the error is above this
+TIPPED_H = 0.088          # blob taller than this = drawer lying on a side wall (upright 0.065-0.072, on its side ~0.10)
+TIP_CLOSED = 0.047        # closed fingertips below the tool frame
 SAFE_H = 0.20             # tool height above the table for transfers
 PIN_HI = 0.14             # tool height of the tilted pose above the pin
 READY_XYZ = (0.40, -0.10, 0.25)   # tool-down waypoint (above table) between home and the work poses
@@ -269,6 +271,10 @@ class Reset:
                 pts = P[body]
                 rim = pts[(pts[:, 2] - tz) > hb - 0.012, :2]
                 c, (L, W), yaw = obb(rim if len(rim) > 60 else pts[:, :2])
+                if W < 0.05:      # attempt 117: W 0.032 = the protruding part of a drawer still in the slot
+                    self.log(f"near-cabinet blob too thin (W {W:.3f}): not a drawer on the table")
+                    L = None
+            if 0.03 <= hb <= 0.11 and body.sum() > 150 and L is not None:
                 near_tab = dict(xy=np.round(pts[:, :2].mean(0), 4).tolist(), obb_c=np.round(c, 4).tolist(), L=round(L, 3),
                                 W=round(W, 3), yaw=round(yaw, 1), h=hb, n=int(body.sum()), pts=pts, near_cabinet=True)
                 cand = [near_tab]
@@ -610,6 +616,138 @@ class Reset:
         self.s.decide(f"vision judge: {msg}")
         return False, pull
 
+    # ------------------------------------------------------------ tipped drawer
+    def right_side(self, c, tag):
+        """Drawer lying on a long side wall (00:43): footprint L x depth (~0.155 x 0.07), 0.10 tall, open side facing
+        +o or -o (o = footprint short axis). The vision judge says which; then the closed fingers push the top edge
+        from the open side toward the bottom panel (-o): it pivots on its -o bottom edge and lands bottom-down."""
+        s = self.s
+        ctr, walls = self.walls_of(c)
+        v = walls[2][0]
+        cam = calib.T_base_side()[:3, 3][:2] if not s.dry else np.array([0.0, -0.6])
+        vis = v if float(v @ unit(cam - ctr)) >= 0 else -v
+        o = None
+        path = self.side_full(f"{tag}_open")
+        if path is not None:
+            for d in (vis, -vis):
+                lab = self.image_label(ctr, d)
+                q = (f"The wooden drawer lies on its side on the table (a solid side wall is on top). Its open side - the face "
+                     f"through which you can see into the drawer - faces the {lab} of this image.")
+                if self.ask(path, q, f"{tag}_open_{lab.replace(' ', '_')}"):
+                    o = d
+                    break
+        if o is None:
+            o = -vis
+            s.decide("open side not identified by the judge: assume it faces away from the camera")
+        W = max(float(c["W"]), 0.06)
+        h_top = float(c["h"])
+        # landing zone (toward -o, ~0.10 + margin) must be clear of the cabinet; else slide the drawer toward +o first
+        land = ctr - o * (W / 2 + 0.11)
+        q_l = nt(land)
+        blocked = q_l[0] > OFF - 0.02 and -0.17 < q_l[1] < 0.01
+        yaw = ang(o)
+        yaw = yaw - 180 if yaw > 90 else yaw + 180 if yaw < -90 else yaw
+        if blocked:
+            s.gripper(1.0, "close the fingers to push")
+            s.decide(f"tipped drawer: landing zone {np.round(land, 3).tolist()} hits the cabinet: slide it 6 cm toward +o first")
+            p0 = ctr - o * (W / 2 + 0.035)
+            T0 = tool_down_T(np.r_[p0, self.tz + 0.025 + TIP_CLOSED], yaw)
+            T0h = T0.copy(); T0h[2, 3] = self.tz + SAFE_H
+            self.to_ready()
+            self.joint_to("above_slide", T0h)
+            self.line("down_slide", T0, "normal")
+            T1 = T0.copy(); T1[:2, 3] += o * 0.095
+            self.line("slide_drawer", T1, "slow")
+            self.lift_to("up_from_slide", SAFE_H, "normal")
+            ctr = ctr + o * 0.06
+        # attempt 120: the closed-finger push only slid it 1.5 cm per try (force ~5 N; tip grazed the top edge).
+        # Now: pinch across its depth near the top (bottom panel / top-wall rim), lift 1.2 cm, roll 45 deg about the
+        # bottom edge on the -o side (top toward -o), let go: past its balance angle it falls bottom-down.
+        h_g = h_top - 0.025
+        P = np.r_[ctr - o * (W / 2), self.tz + 0.012]
+        ax = np.cross(np.r_[o, 0.0], [0.0, 0.0, 1.0])
+        best = None
+        for yw in (yaw, wrapd(yaw + 180.0)):
+            for roll, jm in ((45.0, False), (40.0, False), (45.0, True), (40.0, True), (35.0, True)):
+                seq = self.roll_seq(ctr, h_g, yw, P, ax, roll, jm)
+                ok, why = self.seq_ok(seq)
+                s.log(f"roll plan yaw {yw:.0f} roll {roll:.0f}: {'ok' if ok else why[:160]}")
+                if ok:
+                    best = (yw, roll, seq)
+                    break
+            if best:
+                break
+        s.require(best is not None, "no model-feasible roll for the tipped drawer")
+        yw, roll, seq = best
+        s.decide(f"tipped drawer at {np.round(ctr, 3).tolist()} (height {h_top:.3f}): open side toward {ang(o):.0f} deg; "
+                 f"pinch across it at {h_g:.3f} m (yaw {yw:.0f}) and roll it {roll:.0f} deg toward {ang(-o):.0f} deg")
+        s.gripper(0.0, "open fully to straddle the drawer depth")
+        self.to_ready()
+        for kind, name, T, speed, grip in seq:
+            if kind == "grip":
+                g = s.gripper(grip, name)
+                if name == "pinch across the drawer":
+                    s.summary(**{f"roll_grip_{tag}": round(g, 1)})
+                    if g >= HOLD_MAX and not s.dry:
+                        s.decide(f"roll pinch reading {g:.1f}: nothing held")
+                        s.gripper(TABLE_OPEN, "open, missed")
+                        self.lift_to("lift_empty_roll", SAFE_H, "slow")
+                        return
+                time.sleep(0.3)
+            elif kind == "joint":
+                self.joint_to(name, T, speed)
+            else:
+                self.line(name, T, speed)
+
+    def roll_seq(self, ctr, h_g, yw, P, ax, roll, jm=False):
+        """Motion list for the pinch-and-roll of a tipped drawer (see right_side)."""
+        Tg = tool_down_T(np.r_[ctr, self.tz + h_g + TIP_OPEN], yw)
+        Th = Tg.copy(); Th[2, 3] = self.tz + SAFE_H
+        Tpre = Tg.copy(); Tpre[2, 3] += 0.05
+        T0 = Tg.copy(); T0[2, 3] += 0.012
+        seq = [("joint", "above_roll", Th, "normal", 0.0), ("line", "down_to_roll_pre", Tpre, "normal", 0.0),
+               ("line", "down_to_roll", Tg, "slow", 0.0), ("grip", "pinch across the drawer", None, None, 1.0),
+               ("line", "lift_for_roll", T0, "slow", 1.0)]
+        T = T0
+        n = 5 if jm else 3          # jm: short joint moves (cartesian lines can hit a wrist joint jump)
+        for th in np.linspace(roll / n, roll, n):
+            Rr = rot_axis(ax, th)
+            T = np.eye(4); T[:3, :3] = Rr @ T0[:3, :3]; T[:3, 3] = P + Rr @ (T0[:3, 3] - P)
+            seq.append(("joint" if jm else "line", f"roll_{int(round(th))}", T, "slow", 1.0))
+        seq.append(("grip", "let go: it falls bottom-down", None, None, TABLE_OPEN))
+        Tb = T.copy(); Tb[:3, 3] -= 0.05 * T[:3, 2]
+        seq.append(("line", "back_from_roll", Tb, "slow", TABLE_OPEN))
+        Tu = Tb.copy(); Tu[2, 3] = self.tz + SAFE_H
+        seq.append(("line", "up_from_roll", Tu, "normal", TABLE_OPEN))
+        return seq
+
+    def seq_ok(self, seq):
+        """Model-check a motion list from READY without moving (planner + sim.check, as the session does)."""
+        from rlpj.robot import sim
+        from rlpj.robot.plan import NORMAL, SLOW
+        pl, kin = self.s.planner, self.s.kin
+        q = self.ik(tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0), [SEED_DOWN])
+        gf = 0.0
+        try:
+            for kind, name, T, speed, grip in seq:
+                if kind == "grip":
+                    gf = grip
+                    continue
+                sp = NORMAL if speed == "normal" else SLOW
+                if kind == "joint":
+                    qg, _, _ = pl.ik_exact(T, q)
+                    seg = pl.joint_move(name, q, qg, sp)
+                else:
+                    seg = pl.cart_line(name, q, T, sp)
+                ok, rep = sim.check(seg.q, kin, sp, gripper_frac=gf, table_z=calib.table_z())
+                if not ok:
+                    bad = {k: v for k, v in rep.items() if (k.endswith("violations") and v) or k in ("joint_speed_ok",) and not v}
+                    return False, f"{name}: {bad}"
+                q = seg.q[-1].copy()
+        except Exception as e:
+            return False, f"{name}: {str(e)[:120]}"
+        return True, ""
+
     # ------------------------------------------------------------ front-wall grasp and extraction
     def extract(self, p):
         s = self.s
@@ -852,6 +990,19 @@ class Reset:
         s.phase("perceive")
         if np.abs(wrap180(self.q_now() - HOME_Q)).max() > 3:
             g0 = float(s.feedback()["gripper"])
+            if 75.0 < g0 < HOLD_MAX and self.T_now()[2, 3] > self.tz + 0.11:
+                # attempt 118: the arm started holding the drawer (stopped mid-transfer in 117); moving home with it
+                # dropped it onto its side: lower it toward the table first, then let go
+                s.decide(f"start: gripper reads {g0:.1f} (holding the drawer?): lower it toward the table and let go first")
+                T = self.T_now(); T[2, 3] = self.tz + 0.10
+                try:
+                    self.line("put_down_start", T, "slow")
+                except Abort as e:
+                    if "check failed" not in str(e) and "contact force" not in str(e):
+                        raise
+                    s.decide(f"put-down stopped ({str(e)[:80]}): open where it is")
+                s.gripper(PRECLOSE, "let go of the drawer")
+                g0 = float(s.feedback()["gripper"])
             if 3.0 < g0 < 97.0 and self.T_now()[2, 3] < self.tz + 0.15:
                 s.decide(f"start: gripper reads {g0:.1f} low near the cabinet (maybe still on the pull tab): open first")
                 if g0 > 100 * PRECLOSE + 2:
@@ -981,6 +1132,18 @@ class Reset:
                 s.require(s.dry and held is not None, f"drawer not seen on the table (state {st})")
                 break
             c = p["cand"][0]
+            # 00:43 operator: a drawer tipped onto its side (blob 0.106 tall, upright ~0.07): tip it back upright first
+            k_r = 0
+            while c["h"] > TIPPED_H and k_r < 3 and not s.dry:
+                s.phase(f"right{it}_{k_r}")
+                self.right_side(c, f"r{it}_{k_r}")
+                k_r += 1
+                self.go_home("home_after_right")
+                p = self.perceive(f"after_right{it}_{k_r}")
+                st = self.state_of(p)
+                s.require(st == "table", f"drawer not seen on the table after tipping it upright (state {st})")
+                c = p["cand"][0]
+            s.require(c["h"] <= TIPPED_H or s.dry, f"drawer still on its side after {k_r} tip pushes (height {c['h']:.3f})")
             self.bias = np.array(c["obb_c"]) - np.array(c["xy"])
             err = float(np.linalg.norm(np.array(c["xy"]) - tgt))
             ok_or, pull = self.vlm_pull(c, f"check{it}")

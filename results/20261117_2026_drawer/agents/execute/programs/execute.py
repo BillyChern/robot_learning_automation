@@ -36,7 +36,7 @@ READY_XYZ = (0.40, -0.10, 0.25)
 TIP_OPEN = 0.027
 HOLD_MAX = 97.0
 SAFE_H = 0.20
-EDGE_TARGET = 0.003           # m: held-drawer edge-based centre offset of the reached insertions
+EDGE_TARGET = 0.0045           # m: held-drawer edge-based centre offset of the reached insertions
 T_C = -0.087                 # slot centre line along the front (reset: pull triangulated at -0.088)
 BOTTOM_H = 0.018             # drawer bottom above the table while sliding in
 BACK_GAP = 0.03              # drawer back in front of the front plane at the start of the insertion
@@ -54,7 +54,7 @@ L_MIN = 0.155                # drawer depth floor: the side camera sees only par
 PUSH_TILT, PUSH_H, PUSH_ZT = 40.0, 0.062, 0.047      # tilt from vertical, fingertip height, tip along tool z (closed)
 PUSH_DT = 0.015              # push point beside the pull (t offset from the drawer centre line)
 PUSH_TMAX = -0.060           # closed fingers (+-14 mm along t in the model) clear of the slot-side keep-out box (t > -0.045)
-PUSH_NMAX = OFF + 0.017      # model fingertip limit
+PUSH_NMAX = OFF + 0.012       # model tip; at h 0.062 the model refuses beyond ~+0.0125 (upper cabinet_front box)
 PUSH_HI = 0.14
 TIP_MARGIN_PUSH = 0.004
 
@@ -325,7 +325,16 @@ class Episode:
                 n_force += 1
                 self.unload(-N3, steps=3)
                 if not s.dry:
+                    # user 00:30: a jam means it was not straight: back out 1.5 cm, re-align, try again (no twisting)
+                    T_b = self.T_now(); T_b[:2, 3] -= 0.015 * N
+                    try:
+                        self.line(f"back_out{n_force}", T_b, "slow")
+                    except Abort as e:
+                        s.log(f"back out: {str(e)[:100]}")
                     xyz = self.T_now()[:3, 3]; q2 = nt(xyz[:2]); n, t, z = float(q2[0]), float(q2[1]), float(xyz[2])
+                    self.align(n, z, yaw2 + dyaw)
+                    t = self.t_line
+                    TL = self.t_line
             else:
                 r -= 2.0
                 peak = F_STOP
@@ -483,6 +492,12 @@ class Episode:
         sh = self.refine_wall(img, e, d0, h_top)
         if sh is not None:
             e = e + sh * d0; Tg[:2, 3] = e; T_pre[:2, 3] = e
+        # straight drawer in the hand (user 00:30): turn the jaws to the wall's angle seen by the wrist camera
+        ang_w = self.wall_angle(img, e, d0, h_top)
+        if ang_w is not None and 0.5 <= abs(ang_w) <= 15.0:
+            yaw = yaw + ang_w; d0 = rot2(d0, ang_w)
+            Tg = tool_down_T(np.r_[e, Tg[2, 3]], yaw); T_pre = Tg.copy(); T_pre[2, 3] += 0.05
+        if sh is not None or ang_w is not None:
             self.line("front_correct", T_pre, "slow")
         self.line("down_to_front", Tg, "slow")
         g = s.gripper(1.0, "grasp the front wall")
@@ -494,7 +509,44 @@ class Episode:
             return None
         self.line("lift_slow", T_pre, "slow")
         self.lift_to("lift", SAFE_H, "normal")
+        s.summary(grasp_wall_angle=ang_w)
         return dict(yaw=yaw, d0=d0, drop=tip_h + TIP_OPEN, L_back=max(2 * half - 0.006, L_MIN), e=e.copy(), Tg=Tg.copy())
+
+    def align(self, n_at, z, yaw, meas=None, tries=3):
+        """Put the held drawer's centre line on the slot centre (T_C + EDGE_TARGET, the slot window centre) from the
+        side image (its camera-side edge), move, re-measure until within 3 mm (user 00:30: straight, then push)."""
+        s = self.s
+        for i in range(tries):
+            if meas is None:
+                meas = self.measure_held(n_at)
+            if not (meas.get("ok") and meas.get("t_span")):
+                break
+            # drawer centre (absolute t) = T_C + t_err_meas - t_span/2 + 0.065; t_err is measured against T_C
+            c_abs = T_C + meas["t_err"] - meas["t_span"] / 2 + 0.065
+            err = (T_C + EDGE_TARGET) - c_abs
+            s.log(f"align {i}: drawer centre t {c_abs:+.4f}, target {T_C + EDGE_TARGET:+.4f}, error {err * 1000:+.1f} mm")
+            self.align_log = getattr(self, "align_log", []) + [round(err, 4)]
+            if abs(err) <= 0.003:
+                break
+            if n_at > OFF - 0.13:                 # the drawer's back is already in the slot: small lateral steps only
+                err = float(np.clip(err, -0.004, 0.004))
+            self.t_line = float(np.clip(self.t_line + err, T_C - 0.025, T_C + 0.025))
+            self.line(f"align_t{i}", tool_down_T(np.r_[xy_of(n_at, self.t_line), z], yaw), "slow")
+            meas = None
+        s.summary(align=getattr(self, "align_log", []), t_line=round(self.t_line, 4))
+
+    def wall_angle(self, img, e, d_in, h_top):
+        """Wall angle (deg, CCW) from the wrist image at the pre-grasp pose (wallfit.wall_fit), or None."""
+        if img is None or self.s.dry:
+            return None
+        try:
+            import wallfit
+            r = wallfit.wall_fit(img, calib.pose_to_T(self.s.feedback()["pose"]), e, d_in, self.tz + h_top)
+            self.log(f"wall fit: {r}")
+            return None if r is None else r.get("angle_deg")
+        except Exception as ex:
+            self.log(f"wall fit failed: {ex}")
+            return None
 
     def refine_wall(self, img, e, d_in, h_top, half=0.04, max_shift=0.03):
         """Reset agent's wrist refinement: strongest bright->dark step along d_in at the wall-top height."""
@@ -770,13 +822,7 @@ class Episode:
         # while that edge estimate was -0.001..+0.011 (attempts 2-46), and in 0/16 since it moved to -0.005..-0.016
         # (attempts 48-71). Shift the insertion line so the estimate lands at EDGE_TARGET.
         self.t_line = T_C
-        if meas.get("ok") and meas.get("t_span"):
-            edge = meas["t_err"] - meas["t_span"] / 2 + 0.065
-            self.t_line = T_C + float(np.clip(EDGE_TARGET - edge, -0.02, 0.02))
-            meas["edge"] = round(edge, 4)
-            if abs(self.t_line - T_C) > 0.001:
-                T_al = tool_down_T(np.r_[xy_of(n0, self.t_line), z0], yaw2)
-                self.line("align_t", T_al, "slow")
+        self.align(n0, z0, yaw2, meas)
         s.summary(held=dict(n0_minus_off=round(n0 - OFF, 4), z0_above_table=round(z0 - self.tz, 4), yaw2=round(yaw2, 1), meas=meas, t_line=round(self.t_line, 4)))
         s.decide(f"held drawer: t err {meas['t_err']:+.3f} yaw err {meas['yaw_err']:+.1f} ({meas['n']} pts); insertion from n-OFF {n0 - OFF:+.3f}")
         ins = self.stage_insert(n0, z0, yaw2, meas)
