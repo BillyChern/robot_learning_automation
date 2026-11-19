@@ -33,7 +33,7 @@ evaluation:
   max_policy_seconds: 240        # user 2026-11-09 13:15 (was 150): eased chunks + remote inference made rollouts ~30 % slower
   dagger: true                     # after a failed rollout the execute program takes over from the policy's last pose (mode 'dagger')
 
-agents: {model: claude-opus-5-5, effort: medium, max_attempts: 25}
+agents: {model: claude-opus-5-5, effort: high, max_attempts: 25}   # effort medium -> high 2026-11-19 00:56 (user: push the hardest possible)
 vlm: {model: claude-opus-5-5, effort: low}
 
 training:
