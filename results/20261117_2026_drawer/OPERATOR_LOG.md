@@ -47,6 +47,7 @@ Interventions, stops and mid-run changes by the operator (the user, or Claude Co
 | 17:20 | user / Claude | Prevention: slot-opening keep-out 2 cm (was 3), so a push cannot recess the drawer more than ~1 cm (the reset undoes up to ~1.5 cm); notes to both agents; reset agent asked to try hooking the label plate for the current 2.4 cm recess before a person does it; relaunched | user: "just continue, prevent the issues from happening again" |
 | 21:20 | Claude | Keep-out per program role: reset may reach 4 cm into the slot opening (to recover a recessed drawer), the RL program stays at 2 cm (no recessing); note to the reset agent to try the hook | reset agent gave up twice: a 2.4 cm recess was out of reach at the shared limit |
 | 21:22 | reset agent / Claude | Reset agent gave up on the hook too (label window 2-3 mm deep, card channel ~1 mm, no gap above the tab; the 2F-85's rounded tips cannot catch them); pipeline paused for a person to pull the drawer to about flush | 2.2 cm recess not recoverable with this gripper |
+| 21:30 | user / Claude | Relaunched; reset repairs per failing reset 5 -> 10; note to the reset agent to keep trying physically (side pinch of the knob with the gripper rolled 90 deg, other variants) | user: "no the robot can! just keep trying!" |
 
 Force stops so far (25 N limit) were all real contacts: finger dragging on the pulled-out drawer (30.8 N), drawer meeting the
 table while placing (27.3 N), lifting while still gripping (26.6 N), drawer edge meeting the slot (25.4 N). Free moves: at

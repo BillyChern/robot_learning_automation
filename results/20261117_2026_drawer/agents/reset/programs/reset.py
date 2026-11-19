@@ -50,6 +50,13 @@ BACK_TILT = 40.0          # oblique pinch of the protruding wall's top edge: jaw
 BACK_ZC = 0.035           # slot centre, tilted BACK_TILT; pinch centre BACK_ZC along the tool z
 BACK_OPEN = 0.45
 DEEP_MAX = 0.015            # recessed deeper: fail fast (attempts 85-87: 2 cm ungrippable). 17:05 operator: handle <= 1.5 cm
+DEEP_VARIANTS = [   # recessed > 1.5 cm. attempt 92: the tab sat ~1-1.5 cm toward +t (image left; camera x = -tool x)
+    dict(name="level_dt+0.012", phi=0.0, h_add=0.0035, margin=0.006, dt=0.012, sweep=[(0.002, 0.0015), (0.0, 0.0)]),
+    dict(name="level_dt+0.006", phi=0.0, h_add=0.0035, margin=0.006, dt=0.006, sweep=[(0.002, 0.0015), (0.0, 0.0)]),
+    dict(name="level_dt+0.018", phi=0.0, h_add=0.0035, margin=0.006, dt=0.018, sweep=[(0.002, 0.0015), (0.0, 0.0)]),
+    dict(name="rolled_dt+0.012", phi=20.0, h_add=0.0, margin=0.004, dt=0.012, sweep=[(0.002, 0.0015), (0.0, 0.0025)]),
+]
+DRAG = 0.03
 DEEP_LEVEL = 0.016          # above this the level-finger variant (missed on the robot at 2 cm) would be used: off
 T_C = -0.087              # drawer centre line along the front
 TABLE_OPEN = 0.15          # table pick opening (~72 mm): +-3 cm around a 1 cm wall (attempt 52 missed at 51 mm)
@@ -96,6 +103,9 @@ class Reset:
         self.rgbd = (None, None, None)
         self.pin_dy = self.pin_dz = 0.0
         self.retried = False
+        self.deep_cfg = None
+        self.from_recess = False
+        self.pin_dt = 0.0         # sideways (t) offset of the tab: attempt 92 saw it ~1-1.5 cm toward +t in the recessed drawer
         self.depth = 0.0          # how far the drawer front sits behind flush (pushed in past flush: no stop)
         self.bias = np.array([0.02, 0.03])   # box centre - blob centre, default from attempt 19
 
@@ -248,6 +258,8 @@ class Reset:
             return "table"
         if p["out"] is not None and p["protr"] >= PROTR_GRASP:
             return "out"
+        if p["out"] is not None and p["protr"] > BACK_PROTR:
+            return "slot_back"           # sticks out 1-4.5 cm (attempt 93 after the recessed pull: 'missing' before)
         if p["face_pts"] > 40 and p["face_pts"] > 2 * p["inside_pts"]:
             return "slot_back" if p["protr"] > BACK_PROTR else "slot"
         if p.get("face_depth") is not None and 0.008 < p["face_depth"] < 0.08:
@@ -263,8 +275,9 @@ class Reset:
         z = np.r_[np.sin(th) * N, -np.cos(th)]
         x = np.r_[TT, 0.0]
         Rm = rot_axis(np.r_[N, 0.0], PIN_PHI) @ np.stack([x, np.cross(z, x), z], 1)
-        dshift = max(self.depth - 0.002, 0.0)     # 2 mm margin on the side-camera depth (finger edge clears the face by ~1 mm)
-        tip = np.r_[xy_of(OFF - out_m + dshift, self.pin_t), self.tz + PIN_H]
+        margin = self.deep_cfg["margin"] if self.deep_cfg is not None else 0.002
+        dshift = max(self.depth - margin, 0.0)     # margin on the side-camera depth (finger edge clears the face by ~1 mm)
+        tip = np.r_[xy_of(OFF - out_m + dshift, self.pin_t + self.pin_dt), self.tz + PIN_H]
         T = np.eye(4); T[:3, :3] = Rm; T[:3, 3] = tip - PIN_ZT * Rm[:, 2] + Rm @ np.r_[0.0, self.pin_dy, self.pin_dz]
         return T
 
@@ -275,13 +288,18 @@ class Reset:
         s = self.s
         PIN_OUT, PIN_H = PIN_BASE
         sweep = PIN_SWEEP
-        if self.depth > DEEP_LEVEL:
-            # recessed drawer: the tab sits near the slot opening's 1.5 cm floor; the rolled lower finger would dip below
-            # it (1 cm front limit there): level fingers, tips 7 mm higher, deeper along z (the opening allows 5 cm)
+        if self.deep_cfg is not None:
+            # recessed drawer variant (21:30: keep trying physical variants): roll, tip height, depth margin, offsets
+            c = self.deep_cfg
+            PIN_PHI, PIN_H = c["phi"], PIN_BASE[1] + c["h_add"]
+            self.pin_dt = c.get("dt", 0.0)
+            sweep = c["sweep"]
+        elif self.depth > DEEP_LEVEL:
             PIN_PHI, PIN_H = 0.0, PIN_BASE[1] + 0.0035   # attempt 85: +7 mm put the pads on the label plate
             sweep = PIN_SWEEP_DEEP
         else:
             PIN_PHI = PIN_PHI0
+            self.pin_dt = 0.0
         self.pin_t = PIN_T
         self.pin_dy = self.pin_dz = 0.0
         T0 = self.pin_T(PIN_OUT)
@@ -344,6 +362,41 @@ class Reset:
             self.line("up_from_pin", T_hi2, "normal")
         self.to_ready()
         return held
+
+    def press_drag(self, k=0):
+        """Recessed drawer, last resort: closed fingertips (level, tilted 50 deg) set on the top of the pull tab's outer
+        end, pressed ~3 mm down, dragged DRAG out along -N slowly (friction), lifted straight up."""
+        global PIN_PHI, PIN_H, PIN_OUT
+        s = self.s
+        PIN_PHI, PIN_OUT, PIN_H = 0.0, PIN_BASE[0], 0.031 + 0.004 * k      # tip end ~on the tab top (h ~0.03)
+        self.pin_t, self.pin_dy, self.pin_dz = PIN_T, 0.0, 0.0
+        self.pin_dt = 0.012                                                  # attempt 92: tab ~1.2 cm toward +t (image left = +t: camera x = -tool x)
+        self.deep_cfg = dict(margin=-0.002)                                  # 2 mm deeper than the tab end
+        Tg = self.pin_T(PIN_OUT)
+        z = Tg[:3, 2]
+        Tg[:3, 3] += (0.047 - PIN_ZT) * z * -1.0                              # closed tips reach 6 mm further than pre-closed
+        T_pre = Tg.copy(); T_pre[2, 3] += 0.03
+        PIN_PHI = PIN_PHI0
+        T0h = self.pin_T(PIN_OUT); PIN_PHI = 0.0
+        T_hi = T0h.copy(); T_hi[:3, 3] -= 0.05 * T0h[:3, 2]; T_hi[2, 3] = self.tz + PIN_HI; T_hi[:2, 3] -= 0.04 * N
+        s.decide(f"press-drag try {k}: closed tips onto the tab top at depth {self.depth:.3f}, press 3 mm, drag {DRAG} m out")
+        self.to_ready()
+        s.gripper(1.0, "close for press-drag")
+        q = self.ik(T_hi, [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (20.0, 40.0, 60.0) for j6 in (-90.0, 90.0)])
+        s.move_joint("above_tab_drag", q, "normal")
+        self.line("to_tab_drag_pre", T_pre, "slow", tip_margin=PIN_MARGIN)
+        self.line("touch_tab", Tg, "slow", tip_margin=PIN_MARGIN)
+        T_press = Tg.copy(); T_press[2, 3] -= 0.003
+        self.line("press_tab", T_press, "slow", tip_margin=PIN_MARGIN)
+        img = s.wrist.latest()[0]
+        if img is not None:
+            cv2.imwrite(os.path.join(s.A, f"wrist_press{k}.jpg"), img[360:720, 320:960])
+        T_out = T_press.copy(); T_out[:3, 3] -= np.r_[DRAG * N, 0.0]
+        self.line("drag_out", T_out, "slow", tip_margin=PIN_MARGIN)
+        T_up = T_out.copy(); T_up[2, 3] += 0.10
+        self.line("up_from_drag", T_up, "slow", tip_margin=PIN_MARGIN)
+        self.deep_cfg = None
+        self.to_ready()
 
     # ------------------------------------------------------------ backwards drawer: pinch the protruding wall's top
     def back_T(self, protr, top, dn=0.0):
@@ -747,9 +800,48 @@ class Reset:
         s.require(st != "missing", "drawer not found (no drawer blob on the table and the bottom slot looks empty)")
         held = None
         self.to_ready()
+        if st == "slot_deep":
+            self.depth = float(p["face_depth"])
+            # the tab pinch fits the keep-out (3 cm into the slot opening) only up to ~1.5 cm past flush: the model's
+            # forward finger points sit ~7 mm ahead of the fingertip (offline sweep: 2.5 cm needs the tab 5 mm beyond the tips)
+            if self.depth > DEEP_MAX:
+                s.phase("recessed")
+                tries = [("pinch", v) for v in DEEP_VARIANTS] + [("drag", 0), ("drag", 1)]
+                for kind, v in tries:
+                    s.decide(f"drawer recessed {self.depth:.3f} m: try {kind} {v['name'] if kind == 'pinch' else v}")
+                    try:
+                        if kind == "pinch":
+                            self.deep_cfg = v
+                            self.pull_pin(0)
+                            self.deep_cfg = None
+                        else:
+                            self.press_drag(v)
+                    except Abort as e:
+                        if "check failed" not in str(e):
+                            raise
+                        s.decide(f"{kind} refused by the model: {str(e)[:100]}")
+                        self.deep_cfg = None
+                        self.to_ready()
+                    self.go_home("home_after_try")
+                    p = self.perceive(f"after_{kind}")
+                    st = self.state_of(p)
+                    s.summary(**{f"recessed_after_{kind}_{v['name'] if kind == 'pinch' else v}": dict(state=st, depth=p.get("face_depth"), protr=p["protr"])})
+                    if st != "slot_deep":
+                        break
+                    self.depth = float(p["face_depth"])
+                    if self.depth <= DEEP_MAX:
+                        break
+                s.require(st != "slot_deep" or self.depth <= DEEP_MAX,
+                          f"drawer still recessed {self.depth:.3f} m after all variants; a person must pull it out to about flush")
+            if st == "slot_deep":
+                s.decide(f"drawer pushed {self.depth:.3f} m past flush: pinch the tab that much deeper")
+                st = "slot"
+            elif st == "slot":
+                self.depth = 0.0
+            self.from_recess = st in ("slot_back", "out", "table")   # pulled out by its tab: the right way round
         if st == "slot_back":
             s.phase("pull_back")
-            self.backwards = True
+            self.backwards = not self.from_recess
             self.pull_back(p)
             self.go_home("home_after_back")
             p = self.perceive("after_back")
@@ -757,15 +849,6 @@ class Reset:
             s.require(st in ("out", "table") or s.dry, f"backwards drawer not pulled out (state {st}, protrusion {p['protr']:.3f})")
             if s.dry and st != "out":
                 p = dict(p, out=dict(t=T_C, h_top=0.075, h_bot=0.03, n=0), protr=PULL + 0.012); st = "out"
-        if st == "slot_deep":
-            self.depth = float(p["face_depth"])
-            # the tab pinch fits the keep-out (3 cm into the slot opening) only up to ~1.5 cm past flush: the model's
-            # forward finger points sit ~7 mm ahead of the fingertip (offline sweep: 2.5 cm needs the tab 5 mm beyond the tips)
-            s.require(self.depth <= DEEP_MAX,
-                      f"drawer pushed {self.depth:.3f} m past flush (more than {DEEP_MAX:.3f}): its pull tab is out of reach inside "
-                      f"the cabinet keep-out (3 cm into the slot opening); pull it out to about flush by hand")
-            s.decide(f"drawer pushed {self.depth:.3f} m past flush: pinch the tab that much deeper")
-            st = "slot"
         if st == "slot":
             s.phase("pull_out")
             for k in range(1):
