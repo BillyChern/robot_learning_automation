@@ -147,3 +147,29 @@ action inside the keep-out/kinematic envelope (tools/offline_test.py).
   check accepts the tilted pusher up to +0.019, checked offline at push yaw 0/5/10 deg), so the last push step is no
   longer refused; terminal reward now also -2 x the slot window's "behind" share (recessed counts like sticking out);
   K_PUSH 8 -> 10 (the full push from 2.5 cm before the face to the limit is ~8.6 cm at <= 15 mm per step).
+- URGENT 00:05 (episodes 11-23 all jam at tool n-OFF -0.047..-0.068; the free AWAC policy drifted to the action bounds:
+  dz +0.3..+0.97 lifting, dt -0.8, yaw +-0.97; one arm fault). Data over all episodes: insertions reached their end in
+  6/26, 5 of them with the tool turned >= +5 deg; jams sit at a fixed depth; ep 10's push broke free after a 47 N
+  peak and then slid at 4-14 N (static friction close to the 50 N stop). Changes (anchor to what worked):
+  * prior v5: 12 mm advance, yaw ramped to +9 deg (2 deg/step), dt = dz = 0.
+  * executed action = prior + residual clipped to [0.25, 0.3, 0.15, 0.3] (rlcommon.anchor), in train AND eval.
+  * insertion dz 1 mm per unit (was 3), cumulative z in [-3, +2] mm; held drawer 3 mm lower (BOTTOM_H 0.021 -> 0.018:
+    top at ~9.2 cm under the 9.5 cm rail, bottom above the 1.5 cm floor).
+  * push: after a force stop it unloads, re-reads the tip and tries again (up to 3), like the insertion; pushes at
+    h 0.062 (0.057-0.068, above the knob, below the drawer top), 1.5 cm beside the pull (3 cm put the fingers into the
+    slot-side keep-out once the push frame turns 9 deg: model refusal at +0.009).
+  Offline: flow test 6/6 reach the insertion end and run the full push, no refusals; learner --check ok.
+- attempt 70 (6e64d0a, eval mean, anchored prior): insertion jammed again at -0.06 with yaw +9.6 (3 stops, then a
+  tracking abort). insert_end images: the gripper holds the front wall, the drawer still ~6 cm out, its side wall
+  visible up to the cabinet face. Jams sit at a fixed depth for every yaw/dz tried, so a lateral offset is the next
+  suspect: the grasp point along the wall comes from the side camera's partial rim (rect 0.096-0.12 of ~0.13, the
+  hidden part is on the far side), so it is biased toward the camera (-t) and the drawer sits off-centre in the hand.
+  -> find_drawer moves the rim centre along the pull wall away from the camera by half the missing width (<= 2 cm,
+  summary objects.drawer.shift_w). (A wrist-image end-of-wall fit was tried offline: the 5 cm pre-grasp view does not
+  show both ends.)
+- 00:40 finding (all real episodes with a held-drawer measurement): with the drawer's -t edge (the side facing the
+  side camera) giving its centre as t_err - t_span/2 + 0.065, insertions reached their end in 11/21 episodes while that
+  estimate was -0.001..+0.011 (attempts 2-46) and in 0/16 since it moved to -0.005..-0.016 (attempts 48-71, after the
+  pause). -> scripted lateral alignment before the learned steps: the insertion line t_line = T_C + (0.003 - edge),
+  clipped to +-2 cm (summary held.t_line, held.meas.edge); the learned dt stays relative to that line.
+- attempt 72 (89c6aea): with the lateral alignment (t_line -0.067, +2 cm) the insertion reached its end (2-24 N); the push moved the drawer ~1.5 cm then jammed 3x: it pushed at the tool t + 1.5 cm, i.e. ~2.4 cm off the drawer centre. -> push frame and push point now use the drawer centre (T_C + EDGE_TARGET + learned dt) + 1.5 cm.

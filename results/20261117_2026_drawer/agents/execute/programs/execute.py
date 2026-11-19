@@ -36,8 +36,9 @@ READY_XYZ = (0.40, -0.10, 0.25)
 TIP_OPEN = 0.027
 HOLD_MAX = 97.0
 SAFE_H = 0.20
+EDGE_TARGET = 0.003           # m: held-drawer edge-based centre offset of the reached insertions
 T_C = -0.087                 # slot centre line along the front (reset: pull triangulated at -0.088)
-BOTTOM_H = 0.021             # drawer bottom above the table while sliding in
+BOTTOM_H = 0.018             # drawer bottom above the table while sliding in
 BACK_GAP = 0.03              # drawer back in front of the front plane at the start of the insertion
 INS_NMAX = OFF - 0.036       # vertical tool axis limit (keep-out: body cylinder 45 mm + 1 cm)
 K_INS, K_PUSH = 20, 10
@@ -50,8 +51,8 @@ L_FACE = 0.13                # drawer outer size for the wall geometry of the pu
 MAX_FORCE = 3                # own force stops per insertion before the stage ends
 L_MIN = 0.155                # drawer depth floor: the side camera sees only part of the rim (dry run 1: 0.093;
                              # reset agent: obb 0.154 x 0.14-0.15), a short estimate would put its back into the cabinet
-PUSH_TILT, PUSH_H, PUSH_ZT = 40.0, 0.050, 0.047      # tilt from vertical, fingertip height, tip along tool z (closed)
-PUSH_DT = 0.030              # push point beside the pull (t offset from the drawer centre line)
+PUSH_TILT, PUSH_H, PUSH_ZT = 40.0, 0.062, 0.047      # tilt from vertical, fingertip height, tip along tool z (closed)
+PUSH_DT = 0.015              # push point beside the pull (t offset from the drawer centre line)
 PUSH_TMAX = -0.060           # closed fingers (+-14 mm along t in the model) clear of the slot-side keep-out box (t > -0.045)
 PUSH_NMAX = OFF + 0.017      # model fingertip limit
 PUSH_HI = 0.14
@@ -119,6 +120,7 @@ class Episode:
         self.events = []
         self.ret = 0.0
         self.orient_state = "unknown"
+        self.t_line = T_C
 
     # ------------------------------------------------------------ motion helpers (reset agent's)
     def log(self, m):
@@ -218,7 +220,16 @@ class Episode:
         c = np.array([cx, cy]); u = np.array([np.cos(np.radians(a)), np.sin(np.radians(a))]); v = np.array([-u[1], u[0]])
         faces = [(u, w0 / 2), (-u, w0 / 2), (v, h0 / 2), (-v, h0 / 2)]
         p, half = max(faces, key=lambda f: float(f[0] @ -N))     # outward normal closest to -N: the pull wall
-        return dict(xy=np.round(b["xy"], 4).tolist(), c=c, p=p, half=float(half), h_top=h_top, size=[round(w0, 3), round(h0, 3)],
+        # the side camera sees the rim only partly (rect ~0.10-0.12 of ~0.13): its centre is biased toward the camera.
+        # Along the pull wall, move the centre away from the camera by half the missing width (tuning 00:30: the grasp,
+        # and so the drawer in the hand, sat ~1-2 cm toward -t; insertions jam at a fixed depth)
+        along = h0 if abs(float(p @ u)) > 0.7 else w0
+        wdir = np.array([-p[1], p[0]])
+        cam = calib.T_base_side()[:2, 3]
+        away = wdir if float(wdir @ (c - cam)) > 0 else -wdir
+        shift_w = float(np.clip((L_FACE - along) / 2, 0.0, 0.02))
+        c = c + away * shift_w
+        return dict(xy=np.round(b["xy"], 4).tolist(), c=c, p=p, half=float(half), h_top=h_top, size=[round(w0, 3), round(h0, 3)], shift_w=round(shift_w, 4),
                     rect_ang=round(a, 1), front_dev_deg=round(wrapd(ang(p) - ang(-N)), 1), n=int(b["n"]))
 
     def measure_held(self, n_tool):
@@ -243,7 +254,7 @@ class Episode:
     # ------------------------------------------------------------ learned steps
     def policy(self, obs):
         a, info = self.actor.act(obs, explore=(self.mode == "train"), rng=self.rng)
-        return np.clip(a, -1, 1), info
+        return rc.anchor(a, obs), info
 
     def try_step(self, name, T, tip_margin):
         """Model-check a straight slow line to T; run it. Returns (status, result): ok | refused | force | abort."""
@@ -272,7 +283,8 @@ class Episode:
         """Learned insertion while holding the drawer. Returns dict(end, n, t)."""
         s = self.s
         s.phase("insert_learned")
-        n, t, z, dyaw = n0, T_C, z0, 0.0
+        TL = self.t_line
+        n, t, z, dyaw = n0, TL, z0, 0.0
         f0 = self.force(); peak = 0.0
         # tuning 03:08: the held-drawer side-depth measurement is not trustworthy (t err a steady -2 cm, yaw swinging
         # +-12 deg while the wrist sees the wall within 2 deg of the jaws) and it confounded the data (the action sign
@@ -281,14 +293,14 @@ class Episode:
         end = "steps"; n_force = 0
         for k in range(K_INS):
             f = self.force() - f0
-            o = self.obs(0, (n - INS_NMAX) / 0.1, t - T_C, z - z0, dyaw, ma, mb, np.array([f @ N3, f @ T3, f @ Z3]), peak, k, K_INS, 1)
+            o = self.obs(0, (n - INS_NMAX) / 0.1, t - TL, z - z0, dyaw, ma, mb, np.array([f @ N3, f @ T3, f @ Z3]), peak, k, K_INS, 1)
             a, info = self.policy(o)
-            adv, ddt, ddz, ddy = 0.0075 * (1 + a[0]), 0.004 * a[1], 0.003 * a[2], 2.0 * a[3]
+            adv, ddt, ddz, ddy = 0.0075 * (1 + a[0]), 0.004 * a[1], 0.001 * a[2], 2.0 * a[3]
             if adv < MIN_ADV and peak <= F_SOFT:
                 adv = MIN_ADV
                 a = a.copy(); a[0] = adv / 0.0075 - 1.0          # log the action that was executed
-            tgt = (min(n + adv, INS_NMAX), float(np.clip(t + ddt, T_C - 0.025, T_C + 0.025)),
-                   float(np.clip(z + ddz, z0 - 0.006, z0 + 0.012)), float(np.clip(dyaw + ddy, -10, 10)))
+            tgt = (min(n + adv, INS_NMAX), float(np.clip(t + ddt, TL - 0.025, TL + 0.025)),
+                   float(np.clip(z + ddz, z0 - 0.003, z0 + 0.002)), float(np.clip(dyaw + ddy, -10, 10)))
             status, res, scale = "refused", {}, 1.0
             for _ in range(3):
                 nn = n + scale * (tgt[0] - n); tt_ = t + scale * (tgt[1] - t); zz = z + scale * (tgt[2] - z); yy = dyaw + scale * (tgt[3] - dyaw)
@@ -323,8 +335,8 @@ class Episode:
                 r -= 2.0
             self.trans.append(dict(obs=o, act=a, rew=r))
             self.ret += r
-            self.events.append(["ins", k, status, np.round(a, 2).tolist(), round(r, 3), round(n - OFF, 4), round(t - T_C, 4), round(z - z0, 4), round(dyaw, 1), round(peak, 1)])
-            self.log(f"insert step {k}: a {np.round(a, 2).tolist()} (mu {info['mu']}) -> {status} {res.get('reason', '')} n-OFF {n - OFF:+.4f} dt {t - T_C:+.4f} dz {z - z0:+.4f} dyaw {dyaw:+.1f} peak {peak:.1f} N r {r:+.3f}")
+            self.events.append(["ins", k, status, np.round(a, 2).tolist(), round(r, 3), round(n - OFF, 4), round(t - TL, 4), round(z - z0, 4), round(dyaw, 1), round(peak, 1)])
+            self.log(f"insert step {k}: a {np.round(a, 2).tolist()} (mu {info['mu']}) -> {status} {res.get('reason', '')} n-OFF {n - OFF:+.4f} dt {t - TL:+.4f} dz {z - z0:+.4f} dyaw {dyaw:+.1f} peak {peak:.1f} N r {r:+.3f}")
             if dropped:
                 end = "dropped"; break
             if status == "force" and n_force < MAX_FORCE:
@@ -334,7 +346,7 @@ class Episode:
             if n >= INS_NMAX - 0.003:      # the last mm are often refused (model shrinks the step)
                 end = "reached"; break
         self.snap("insert_end")
-        s.summary(insert=dict(end=end, steps=len(self.trans), n_minus_off=round(n - OFF, 4), dt=round(t - T_C, 4),
+        s.summary(insert=dict(end=end, steps=len(self.trans), n_minus_off=round(n - OFF, 4), dt=round(t - TL, 4), t_line=round(TL, 4),
                               dz=round(z - z0, 4), dyaw=round(dyaw, 1)))
         return dict(end=end, n=n, t=t, z=z, yaw=yaw2 + dyaw)
 
@@ -350,13 +362,13 @@ class Episode:
         self.line("to_push_pre", T_pre, "normal", tip_margin=TIP_MARGIN_PUSH)
         f0 = self.force(); peak = 0.0
         ma = float(np.clip((OFF - face_n) / 0.05, -3, 3)); mb = 1.0 if ins_ok else 0.0
-        end = "steps"; k0 = len(self.trans)
+        end = "steps"; k0 = len(self.trans); n_force = 0
         for k in range(K_PUSH):
             f = self.force() - f0
             o = self.obs(1, (n - PUSH_NMAX) / 0.1, t - t0, h - PUSH_H, 0.0, ma, mb, np.array([f @ N3, f @ T3, f @ Z3]), peak, k, K_PUSH, 0)
             a, info = self.policy(o)
             adv, ddt, ddz = 0.0075 * (1 + a[0]), 0.003 * a[1], 0.003 * a[2]
-            tgt = (min(n + adv, PUSH_NMAX), float(np.clip(t + ddt, t0 - 0.015, min(t0 + 0.006, PUSH_TMAX + 0.002))), float(np.clip(h + ddz, 0.040, 0.062)))
+            tgt = (min(n + adv, PUSH_NMAX), float(np.clip(t + ddt, t0 - 0.015, min(t0 + 0.006, PUSH_TMAX + 0.002))), float(np.clip(h + ddz, 0.057, 0.068)))
             status, res, scale = "refused", {}, 1.0
             for _ in range(3):
                 nn = n + scale * (tgt[0] - n); tt_ = t + scale * (tgt[1] - t); hh = h + scale * (tgt[2] - h)
@@ -369,6 +381,15 @@ class Episode:
                 peak = float(res.get("max_force_n", 0.0))
                 r -= 0.1 * max(0.0, peak - F_SOFT) / 5.0
                 n, t, h = nn, tt_, hh
+            elif status == "force" and n_force < MAX_FORCE and not s.dry:
+                # 00:05: a held drawer needs ~45-50 N to break free (ep 10 broke free at 47 N, then slid at 4-14 N):
+                # unload, re-read the tip from the measured pose and try again (up to MAX_FORCE stops)
+                r -= 1.0; peak = F_STOP; n_force += 1
+                self.unload(-np.r_[push_dirs()[0], 0.0], steps=3)
+                Tm = self.T_now(); tip = Tm[:3, 3] + PUSH_ZT * Tm[:3, 2]
+                u, v = push_dirs(); rel = tip[:2] - xy_of(PUSH_FRAME["n0"], PUSH_FRAME["t0"])
+                n, t, h = PUSH_FRAME["n0"] + float(rel @ u), PUSH_FRAME["t0"] + float(rel @ v), float(tip[2] - self.tz)
+                status = "force_retry"
             else:
                 r -= 2.0 if status in ("force", "abort") else 1.0
                 peak = 25.0 if status in ("force", "abort") else peak
@@ -376,7 +397,7 @@ class Episode:
             self.ret += r
             self.events.append(["push", k, status, np.round(a, 2).tolist(), round(r, 3), round(n - OFF, 4), round(t - t0, 4), round(h, 4), round(peak, 1)])
             self.log(f"push step {k}: a {np.round(a, 2).tolist()} (mu {info['mu']}) -> {status} {res.get('reason', '')} tip n-OFF {n - OFF:+.4f} dt {t - t0:+.4f} h {h:.3f} peak {peak:.1f} N r {r:+.3f}")
-            if status != "ok":
+            if status not in ("ok", "force_retry"):
                 end = status; break
             if n >= PUSH_NMAX - 0.0005:
                 end = "reached"; break
@@ -710,7 +731,7 @@ class Episode:
         d = self.find_drawer(before, tz)
         prof0 = checks.slot_profile(P, tz, CAB, FLUSH_TOL)
         s.summary(objects=dict(drawer=None if d is None else dict(xy=d["xy"], rect_c=np.round(d["c"], 4).tolist(), size=d["size"],
-                                                                  h_top=round(d["h_top"], 3), front_dev_deg=d["front_dev_deg"])),
+                                                                  h_top=round(d["h_top"], 3), front_dev_deg=d["front_dev_deg"], shift_w=d.get("shift_w"))),
                   slot_before=prof0)
         s.require(d is not None, "no drawer on the table")
         s.view.set_scene(objects=[dict(xy=list(map(float, d["c"])), z_top=self.tz + d["h_top"], r=d["half"], label="drawer")])
@@ -744,7 +765,19 @@ class Episode:
         g = float(s.feedback()["gripper"])
         s.require(g < HOLD_MAX or s.dry, f"drawer lost while carrying (gripper {g:.1f})")
         meas = self.measure_held(n0)
-        s.summary(held=dict(n0_minus_off=round(n0 - OFF, 4), z0_above_table=round(z0 - self.tz, 4), yaw2=round(yaw2, 1), meas=meas))
+        # scripted lateral alignment (00:40): the drawer's -t edge (the side facing the camera, well measured) puts
+        # its centre at t_err - t_span/2 + 0.065 (drawer ~0.13 wide); insertions reached their end in 11/21 episodes
+        # while that edge estimate was -0.001..+0.011 (attempts 2-46), and in 0/16 since it moved to -0.005..-0.016
+        # (attempts 48-71). Shift the insertion line so the estimate lands at EDGE_TARGET.
+        self.t_line = T_C
+        if meas.get("ok") and meas.get("t_span"):
+            edge = meas["t_err"] - meas["t_span"] / 2 + 0.065
+            self.t_line = T_C + float(np.clip(EDGE_TARGET - edge, -0.02, 0.02))
+            meas["edge"] = round(edge, 4)
+            if abs(self.t_line - T_C) > 0.001:
+                T_al = tool_down_T(np.r_[xy_of(n0, self.t_line), z0], yaw2)
+                self.line("align_t", T_al, "slow")
+        s.summary(held=dict(n0_minus_off=round(n0 - OFF, 4), z0_above_table=round(z0 - self.tz, 4), yaw2=round(yaw2, 1), meas=meas, t_line=round(self.t_line, 4)))
         s.decide(f"held drawer: t err {meas['t_err']:+.3f} yaw err {meas['yaw_err']:+.1f} ({meas['n']} pts); insertion from n-OFF {n0 - OFF:+.3f}")
         ins = self.stage_insert(n0, z0, yaw2, meas)
         s.phase("release")
@@ -773,9 +806,12 @@ class Episode:
         # (attempt 20 pushed at 7.4 cm: the tip went over the wall top and the retreat dragged the drawer 2 cm out)
         # push along the slot axis the insertion found (tuning 03:08: insertions only got through with the tool
         # turned +5.6..+10 deg; pushes straight along the yaml normal then jammed after 1-2 cm, 4/4)
-        PUSH_FRAME.update(yaw=float(np.clip(ins["yaw"] - yaw2, -10, 10)), n0=face_n, t0=float(ins["t"]))
-        s.summary(push_frame=dict(PUSH_FRAME))
-        self.stage_push(face_n, min(ins["t"] + PUSH_DT, PUSH_TMAX), ins["end"] == "reached")
+        # the drawer centre is no longer under the tool once the insertion line was shifted sideways: it sits where the
+        # alignment put it (T_C + EDGE_TARGET) plus the learned dt (attempt 72: pushing 2.4 cm off-centre jammed after 1.5 cm)
+        c_t = T_C + EDGE_TARGET + (ins["t"] - self.t_line) if self.t_line != T_C else float(ins["t"])
+        PUSH_FRAME.update(yaw=float(np.clip(ins["yaw"] - yaw2, -10, 10)), n0=face_n, t0=float(c_t))
+        s.summary(push_frame=dict(PUSH_FRAME, drawer_t=round(c_t, 4)))
+        self.stage_push(face_n, min(c_t + PUSH_DT, PUSH_TMAX), ins["end"] == "reached")
         self.finish(before)
 
 

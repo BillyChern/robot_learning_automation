@@ -6676,3 +6676,863 @@ Structured output provided successfully
 ```
 </details>
 
+**00:03:40 execute agent:** No response requested.
+
+### 00:03:41 orchestrator -> execute agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+EPISODE 10 (22:09), for the next tuning turn: the push policy's mean actions sit at the edges: dt ~+0.87..+0.90,
+dz ~-0.80..-0.88 on every step (yaw ~-0.7), so the tip ran to the sideways bound (dt +2 mm logged = clipped?) and down
+to h 0.040, with low force (4-14 N) while the drawer stayed ~1 cm out (front share 0.48). That looks like the tip
+pushing beside or below the drawer front rather than on it. Worth checking whether AWAC on ~150 transitions is
+extrapolating to the action bounds, and whether the push's dt/dz bounds let it miss the front.
+
+THE LEARNED POLICY IS NOW WORSE THAN THE PRIOR (22:57), for your tuning turn at episode 20:
+- Episodes 4-5 (before your AWAC switch, close to the prior): the insertion reached its end (n-OFF -0.036); the push then jammed.
+- Episodes 11-14 (attempts 48, 50, 52, 54): EVERY insertion jams at n-OFF -0.049..-0.055 with 40-54 N peaks, ending in
+  a force stop or a tracking-deviation abort ("insertion ended with abort/force: no push"); the drawer stays ~5-10 cm
+  out (after_side images). The policy mean has dz +0.4..+0.7 every step (LIFTING the held drawer ~1-2 mm per step)
+  and large dt (-0.7..-0.86), yaw +-0.7. Lifting presses the drawer into the rail above the slot: that matches the jam.
+- The slot readings of all recent episodes are near identical (front 0.46-0.49, flush ~0.2): the drawer never got near.
+So the update is moving the policy away from what worked. Consider: re-anchor to the prior (stronger/slower-decaying BC,
+or a trust region), bound dz (the slot is only ~1 cm taller than the drawer), check the AWAC temperature / advantage
+normalisation with ~15 episodes of all-fail data, and check that the observation still tells the policy where it is.
+
+ARM FAULT IN EVALUATION EPISODE 20 (23:40): your policy's mean action at insert step 13 was advance 0.79, dz +0.97,
+yaw -0.97 (both near the bounds) after steps of dz +0.66/+0.28, yaw +0.64 and cumulative yaw +10 deg; the drawer jammed
+and the arm's own controller faulted: JOINT_FAULT, actuator 5 FOLLOWING_ERROR (torques 10/34/-50/4/-28/-3 Nm), before
+the 50 N / tracking stops could act. The operator cleared it; robot sessions now clear such non-e-stop faults at
+start. This is the same regression as noted at 22:57 (lifting and yawing at the bounds); the eval uses the mean.
+
+URGENT (00:05): THE USER IS VERY SHORT ON TIME. Push the hardest possible to get the first real successes NOW.
+- The evaluation after 20 episodes was cut after 3 episodes (all fail, one arm fault): no need to measure a policy we
+  know is broken. Evaluations are now 5 episodes every 30; your tuning turn is every 5 episodes.
+- Facts from your own data: the prior-like policy (episodes 4-5) brought the insertion to its END (n-OFF -0.036); every
+  learned-policy episode since your AWAC switch jams ~5 cm short, lifting (dz +0.3..+0.97) and yawing at the bounds.
+- So in THIS turn: go back to what worked (prior actions for the insertion, or a strong anchor to them with small
+  bounded corrections, dz bounded to ~+-1 mm per step), fix the push so it lands on the drawer front and stops at flush
+  (do not recess past ~1 cm), and run a real test episode before you finish. Get one verified success first, then let
+  the learning refine. Keep every change small and tested on the robot.
+
+Before collection continues: no robot run now; update your program for the note above and test it offline.
+This is a reflection turn while the robot runs the other agent's program: you cannot use the robot or the cameras now (no run actions, not even dry runs). If this run shows a problem or a clear, safe improvement (robustness first, then speed), edit programs/execute.py, check it offline on this machine, commit, and reply done; reply done at once if nothing should change. Your next run uses what you committed, and its result comes back to you the same way.
+```
+
+**00:03:54 tool Bash:**
+
+```bash
+git log --oneline | head -3; ls rl/transitions | grep -c json; python3 - <<'EOF'
+import json,glob
+for f in sorted(glob.glob("rl/transitions/*ep*.json")):
+    m=json.load(open(f)); ev=m.get("events",[])
+    ins=[e for e in ev if e[0]=="ins"]; pu=[e for e in ev if e[0]=="push"]
+    li=ins[-1] if ins else None; lp=pu[-1] if pu else None
+    print(f.split("/")[-1][:18], m.get("reason","")[:40] if m.get("reason") else None, "ins_end", li[2] if li else None, li[5] if li else None, "dz",li[7] if li else None,"dyaw",li[8] if li else None, "| push", len(pu), lp[2] if lp else None, lp[5] if lp else None, "h", lp[7] if lp else None, "peaks", [e[-1] for e in pu])
+EOF
+```
+
+<details><summary>00:03:54 result</summary>
+
+```text
+24aca78 push limit inside the 2 cm keep-out, recessed penalised, 10 push steps
+2630472 log side-image brightness
+4409637 diagnostic snapshots at insert/push end; back-off within the inner-finger gap
+36
+eval_ep0020.json None ins_end abort -0.0469 dz 0.0031 dyaw 9.5 | push 0 None None h None peaks []
+eval_ep0021.json the drawer sticks out of the slot ins_end force -0.0598 dz 0.0011 dyaw 9.1 | push 0 None None h None peaks []
+eval_ep0022.json the drawer sticks out of the slot ins_end abort -0.0544 dz 0.003 dyaw 10.0 | push 0 None None h None peaks []
+eval_ep0023.json None ins_end abort -0.0472 dz 0.0024 dyaw 9.8 | push 0 None None h None peaks []
+train_ep0000.json the drawer sticks out of the slot ins_end force -0.0616 dz 0.0062 dyaw -4.9 | push 0 None None h None peaks []
+train_ep0001.json the drawer sticks out of the slot ins_end ok -0.0593 dz -0.003 dyaw -2.0 | push 0 None None h None peaks []
+train_ep0002.json the drawer sticks out of the slot ins_end force -0.0607 dz 0.0119 dyaw -1.8 | push 0 None None h None peaks []
+train_ep0003.json the drawer sticks out of the slot ins_end force -0.0582 dz 0.0085 dyaw -5.5 | push 0 None None h None peaks []
+train_ep0004.json the drawer sticks
+... (2124 more characters)
+```
+</details>
+
+**00:04:00 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+import json,glob
+for f in sorted(glob.glob("rl/transitions/*ep*.json"))+sorted(glob.glob("rl/transitions/train_test_20261118_04*.json")):
+    m=json.load(open(f)); ins=[e for e in m.get("events",[]) if e[0]=="ins"]
+    if not ins: continue
+    reached = ins[-1][5] > -0.04
+    dts=[e[6] for e in ins]; dzs=[e[7] for e in ins]; dy=[e[8] for e in ins]
+    first_jam = next((e[5] for e in ins if e[2]!="ok" or e[-1]>30), None)
+    print(f.split("/")[-1][:22], "REACH" if reached else "jam  ", "jam@",first_jam, "dt max/min %.4f %.4f"%(max(dts),min(dts)), "dz max %.4f last %.4f"%(max(dzs),dzs[-1]), "dyaw@-0.08", next((e[8] for e in ins if e[5]>-0.085),None))
+EOF
+```
+
+<details><summary>00:04:00 result</summary>
+
+```text
+eval_ep0020.json jam   jam@ -0.0666 dt max/min 0.0019 -0.0065 dz max 0.0031 last 0.0031 dyaw@-0.08 9.2
+eval_ep0021.json jam   jam@ -0.0655 dt max/min 0.0009 -0.0026 dz max 0.0011 last 0.0011 dyaw@-0.08 9.1
+eval_ep0022.json jam   jam@ -0.0659 dt max/min 0.0004 -0.0057 dz max 0.0030 last 0.0030 dyaw@-0.08 9.2
+eval_ep0023.json jam   jam@ -0.066 dt max/min 0.0016 -0.0055 dz max 0.0024 last 0.0024 dyaw@-0.08 9.0
+train_ep0000.json jam   jam@ -0.0682 dt max/min 0.0045 -0.0022 dz max 0.0082 last 0.0062 dyaw@-0.08 -4.9
+train_ep0001.json jam   jam@ None dt max/min 0.0117 0.0003 dz max 0.0020 last -0.0030 dyaw@-0.08 -0.1
+train_ep0002.json jam   jam@ -0.0681 dt max/min -0.0012 -0.0060 dz max 0.0119 last 0.0119 dyaw@-0.08 -3.1
+train_ep0003.json jam   jam@ -0.0632 dt max/min 0.0012 -0.0090 dz max 0.0085 last 0.0085 dyaw@-0.08 -5.4
+train_ep0004.json REACH jam@ None dt max/min 0.0018 -0.0020 dz max 0.0005 last -0.0012 dyaw@-0.08 10.0
+train_ep0005.json REACH jam@ -0.036 dt max/min 0.0002 -0.0045 dz max 0.0034 last 0.0034 dyaw@-0.08 9.9
+train_ep0006.json jam   jam@ -0.0676 dt max/min 0.0054 0.0009 dz max 0.0044 last 0.0008 dyaw@-0.08 -5.2
+train_ep0007.json jam   jam@ -0.0646 dt max/min 0.0031 -0.001
+... (1512 more characters)
+```
+</details>
+
+**00:04:43 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+p="programs/rlcommon.py"; s=open(p).read()
+old="""    return a[0] if single else a
+
+
+def rl_dir():"""
+new="""    # v5 (00:05, urgent): insertions reached their end mostly with the tool turned +5..+10 deg (5/12 vs 1/14):
+    # the prior ramps the yaw to +9 deg (2 deg per unit of a3); dz and dt stay 0.
+    cum = o[:, 4] * 5.0
+    a[ins, 3] = np.clip((YAW_TARGET - cum[ins]) / 2.0, -0.9, 0.9)
+    return a[0] if single else a
+
+
+YAW_TARGET = 9.0
+RESIDUAL = np.array([0.25, 0.3, 0.15, 0.3])     # max |policy - prior| per dimension (executed action)
+
+
+def anchor(a_pol, obs):
+    \"\"\"Executed action = prior + residual clipped to RESIDUAL (00:05: the unconstrained learned policy drifted to the
+    action bounds, lifting and yawing the held drawer into jams and an arm fault).\"\"\"
+... (1146 more characters)
+```
+
+<details><summary>00:04:43 result</summary>
+
+```text
+40:BOTTOM_H = 0.018             # drawer bottom above the table while sliding in
+286:            adv, ddt, ddz, ddy = 0.0075 * (1 + a[0]), 0.004 * a[1], 0.001 * a[2], 2.0 * a[3]
+291:                   float(np.clip(z + ddz, z0 - 0.003, z0 + 0.002)), float(np.clip(dyaw + ddy, -10, 10)))
+```
+</details>
+
+**00:04:45 tool Bash:**
+
+```bash
+sed -n '/    def stage_push/,/self.snap("push_end")/p' programs/execute.py
+```
+
+<details><summary>00:04:45 result</summary>
+
+```text
+def stage_push(self, face_n, t0, ins_ok):
+        s = self.s
+        s.phase("push_learned")
+        n = min(face_n - 0.025, PUSH_NMAX - 0.03); t, h = t0, PUSH_H
+        T_pre = push_T(n, t, h, self.tz)
+        T_hi = T_pre.copy(); T_hi[2, 3] += 0.06
+        s.gripper(1.0, "close: the fingertips are the pusher")
+        q = self.ik(T_hi, [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (20.0, 40.0, 60.0) for j6 in (-90.0, 90.0)])
+        s.move_joint("above_push", q, "normal")
+        self.line("to_push_pre", T_pre, "normal", tip_margin=TIP_MARGIN_PUSH)
+        f0 = self.force(); peak = 0.0
+        ma = float(np.clip((OFF - face_n) / 0.05, -3, 3)); mb = 1.0 if ins_ok else 0.0
+        end = "steps"; k0 = len(self.trans)
+        for k in range(K_PUSH):
+            f = self.force() - f0
+            o = self.obs(1, (n - PUSH_NMAX) / 0.1, t - t0, h - PUSH_H, 0.0, ma, mb, np.array([f @ N3, f @ T3, f @ Z3]), peak, k, K_PUSH, 0)
+            a, info = self.policy(o)
+            adv, ddt, ddz = 0.0075 * (1 + a[0]), 0.003 * a[1], 0.003 * a[2]
+            tgt = (min(n + adv, PUSH_NMAX), float(np.clip(t + ddt, t0 - 0.015, min(t0 + 0.006, PUSH_TMAX + 0.002))), float(np.clip(h + ddz, 0.040, 0
+... (1379 more characters)
+```
+</details>
+
+**00:04:57 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+p="programs/execute.py"; s=open(p).read()
+old='''            else:
+                r -= 2.0 if status in ("force", "abort") else 1.0
+                peak = 25.0 if status in ("force", "abort") else peak
+            self.trans.append(dict(obs=o, act=a, rew=r))
+            self.ret += r
+            self.events.append(["push", k,'''
+new='''            elif status == "force" and n_force < MAX_FORCE and not s.dry:
+                # 00:05: a held drawer needs ~45-50 N to break free (ep 10 broke free at 47 N, then slid at 4-14 N):
+                # unload, re-read the tip from the measured pose and try again (up to MAX_FORCE stops)
+                r -= 1.0; peak = F_STOP; n_force += 1
+                self.unload(-np.r_[push_dirs()[0], 0.0], steps=3)
+                Tm = self.T_n
+... (1406 more characters)
+```
+
+<details><summary>00:05:05 result</summary>
+
+```text
+insert step 0: a [0.64, 0.2, 0.15, 0.6] (mu [0.628, 0.046, -0.112, 0.066]) -> ok  n-OFF -0.1727 dt +0.0008 dz +0.0001 dyaw +1.2 peak 5.4 N r +0.103
+RESULT 0 [ 0.404 -0.151] -5.7 ('ran', 9, {'end': 'force', 'steps': 9, 'n_minus_off': np.float64(-0.109), 'dt': -0.0001, 'dz': 0.0003, 'dyaw': 9.0}, None)
+   insert step 0: a [0.62, -0.3, -0.15, 0.6] (mu [0.628, 0.046, -0.112, 0.066]) -> force ins00: contact force 26.0 N > 25 N at t=0.5s n-OFF -0.1850 dt +0.0000 dz +0.0000 dyaw +0.0 peak 40.0 N r -1.020
+RESULT 1 [ 0.431 -0.091] 35.6 ('ran', 7, {'end': 'force', 'steps': 7, 'n_minus_off': np.float64(-0.1351), 'dt': -0.0004, 'dz': 0.0003, 'dyaw': 5.2}, None)
+   insert step 0: a [0.58, 0.12, 0.11, 0.6] (mu [0.628, 0.046, -0.112, 0.066]) -> force ins00: contact force 26.0 N > 25 N at t=0.5s n-OFF -0.1850 dt +0.0000 dz +0.0000 dyaw +0.0 peak 40.0 N r -1.020
+   push step 0: a [0.38, 0.08, 0.03, -0.3] (mu [0.403, 0.197, -0.046, -0.1]) -> ok  tip n-OFF -0.0606 dt +0.0002 h 0.050 peak 3.0 N r -0.020
+RESULT 2 [ 0.422 -0.2  ] 43.3 ('ran', 22, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.0379), 'dt': -0.0011, 'dz': 0.0, 'dyaw': 9.6}, {'end': 'refused', 'steps': 9, 'tip_n_minus_off': n
+... (340 more characters)
+```
+</details>
+
+**00:05:10 tool Bash:**
+
+```bash
+RLPJ_RL_DIR=/tmp/rlcopy timeout 1500 uv run python runs/20261117_2026_drawer/agents/execute/tools/offline_test.py 3 2>&1 | grep -E "refused|^RESULT" | cut -c1-260
+```
+
+<details><summary>00:05:17 result</summary>
+
+```text
+RESULT 0 [ 0.404 -0.151] -5.7 ('ran', 23, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': -0.0004, 'dz': 0.0003, 'dyaw': 8.7}, {'end': 'steps', 'steps': 10, 'tip_n_minus_off': np.float64(0.0161), 'dt': -0.0032, 'h': 0.0497})
+   push step 8: a [0.83, -0.06, -0.15, 0.2] (mu [0.819, -0.292, -0.258, 0.032]) -> refused model tip n-OFF +0.0090 dt -0.0011 h 0.051 peak 2.2 N r -1.020
+RESULT 1 [ 0.431 -0.091] 35.6 ('ran', 21, {'end': 'reached', 'steps': 12, 'n_minus_off': np.float64(-0.0387), 'dt': -0.0006, 'dz': -0.0001, 'dyaw': 9.6}, {'end': 'refused', 'steps': 9, 'tip_n_minus_off': np.float64(0.009), 'dt': -0.0011, 'h': 0.0509})
+RESULT 2 [ 0.422 -0.2  ] 43.3 ('ran', 22, {'end': 'reached', 'steps': 12, 'n_minus_off': np.float64(-0.0379), 'dt': -0.0005, 'dz': 0.0002, 'dyaw': 8.7}, {'end': 'steps', 'steps': 10, 'tip_n_minus_off': np.float64(0.0162), 'dt': -0.0034, 'h': 0.0514})
+```
+</details>
+
+**00:05:31 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute && python3 - <<'EOF'
+p="programs/execute.py"; s=open(p).read()
+s=s.replace("PUSH_TILT, PUSH_H, PUSH_ZT = 40.0, 0.050, 0.047","PUSH_TILT, PUSH_H, PUSH_ZT = 40.0, 0.062, 0.047")
+s=s.replace("float(np.clip(h + ddz, 0.045, 0.058)))","float(np.clip(h + ddz, 0.057, 0.068)))")
+import re
+s=re.sub(r"PUSH_DT = 0\.030 ", "PUSH_DT = 0.015 ", s)
+open(p,"w").write(s)
+EOF
+grep -n "^PUSH_DT\|PUSH_TILT, PUSH_H\|0.057, 0.068" programs/execute.py; cd /home/r2r/robot_learning_final_pj && RLPJ_RL_DIR=/tmp/rlcopy timeout 2000 uv run python runs/20261117_2026_drawer/agents/execute/tools/offline_test.py 6 2>&1 | grep -E "refused|^RESULT|Traceback" | cut -c1-200
+```
+
+<details><summary>00:05:46 result</summary>
+
+```text
+53:PUSH_TILT, PUSH_H, PUSH_ZT = 40.0, 0.062, 0.047      # tilt from vertical, fingertip height, tip along tool z (closed)
+54:PUSH_DT = 0.015              # push point beside the pull (t offset from the drawer centre line)
+359:            tgt = (min(n + adv, PUSH_NMAX), float(np.clip(t + ddt, t0 - 0.015, min(t0 + 0.006, PUSH_TMAX + 0.002))), float(np.clip(h + ddz, 0.057, 0.068)))
+RESULT 0 [ 0.404 -0.151] -5.7 ('ran', 22, {'end': 'reached', 'steps': 12, 'n_minus_off': np.float64(-0.0378), 'dt': 0.002, 'dz': 0.0006, 'dyaw': 8.4}, {'end': 'steps', 'steps': 10, 'tip_n_minus_off': 
+RESULT 1 [ 0.431 -0.091] 35.6 ('ran', 23, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': -0.0027, 'dz': 0.0009, 'dyaw': 9.6}, {'end': 'steps', 'steps': 10, 'tip_n_minus_off':
+RESULT 2 [ 0.422 -0.2  ] 43.3 ('ran', 22, {'end': 'reached', 'steps': 12, 'n_minus_off': np.float64(-0.0378), 'dt': -0.0013, 'dz': 0.0002, 'dyaw': 9.6}, {'end': 'steps', 'steps': 10, 'tip_n_minus_off'
+RESULT 3 [ 0.358 -0.045] 24.3 ('ran', 23, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': -0.0028, 'dz': 0.0013, 'dyaw': 8.9}, {'end': 'steps', 'steps': 10, 'tip_n_minus_off':
+RESULT 4 [ 0.3
+... (387 more characters)
+```
+</details>
+
+**00:05:56 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute && PY=/home/r2r/robot_learning_final_pj/third_party/openpi/.venv/bin/python && RLPJ_RL_DIR=/tmp/rlcopy $PY programs/learner.py --check | tail -1 | cut -c1-60 && cat >> notes/design.md <<'EOF'
+- URGENT 00:05 (episodes 11-23 all jam at tool n-OFF -0.047..-0.068; the free AWAC policy drifted to the action bounds:
+  dz +0.3..+0.97 lifting, dt -0.8, yaw +-0.97; one arm fault). Data over all episodes: insertions reached their end in
+  6/26, 5 of them with the tool turned >= +5 deg; jams sit at a fixed depth; ep 10's push broke free after a 47 N
+  peak and then slid at 4-14 N (static friction close to the 50 N stop). Changes (anchor to what worked):
+  * prior v5: 12 mm advance, yaw ramped to +9 deg (2 deg/step), dt = dz
+... (915 more characters)
+```
+
+<details><summary>00:05:58 result</summary>
+
+```text
+check: one update {'lc': 0.09328968077898026, 'la': -5.90149
+6e64d0a anchor to the prior (v5 yaw ramp, bounded residuals), dz 1 mm/step, lower drawer, push retries and lands above the knob
+```
+</details>
+
+**00:06:07 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Policy re-anchored to what worked, push fixed (commit 6e64d0a); tested offline only, no robot run yet",
+ "report": "I re-anchored the policy to what worked and fixed the push (commit 6e64d0a). It is tested offline only: you asked for a real test episode before finishing, but this turn allows no robot runs, so the next real episode will be the first test. There are still no real successes.\n\n**What the data shows (all 26 episodes)**\n- Insertions reached their end in only 6 of 26, and 5 of those 6 had the tool turned +5\u00b0 or more.\n- The jams sit at a fixed depth: tool position about \u22120.05 to \u22120.07 m from the front plane.\n- After the AWAC switch the unconstrained policy drifted to the action limits (liftin
+... (1652 more characters)
+```
+
+<details><summary>00:06:07 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**00:06:09 execute agent:** No response requested.
+
+### 00:06:09 orchestrator -> execute agent
+
+```text
+RL tuning turn after 20 training episodes (0 independent successes so far); evaluations: none yet. Look at rl_curve.jsonl, your learner log and these episodes; change the reward, hyperparameters, learner or episode program if the curve calls for it (say why in notes/), check offline, commit and reply done. The failed or unsure episodes:
+Find the cause, fix programs/execute.py, test it with a run (moves_robot true) and reply done when it works.
+```
+
+**00:06:15 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "RLPJ_RL_MODE=eval RLPJ_EPISODE=-1 /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
+ "moves_robot": true,
+ "what": "Real test episode (mean policy anchored to prior v5): insertion with yaw ramp to +9 deg and bounded corrections, lower held drawer, release, push at 6.2 cm with retries after force stops, retreat, verify",
+ "report": ""
+}
+```
+
+<details><summary>00:06:15 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**00:12:53 execute agent:** No response requested.
+
+### 00:12:54 orchestrator -> execute agent
+
+```text
+# attempt_70: exit code 2; outcome: fail
+
+command: RLPJ_RL_MODE=eval RLPJ_EPISODE=-1 /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: Real test episode (mean policy anchored to prior v5): insertion with yaw ramp to +9 deg and bounded corrections, lower held drawer, release, push at 6.2 cm with retries after force stops, retreat, verify; commit: 6e64d0a; duration_s: 130.3; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "6e64d0a7cc",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9583, 0.5613, 90.4586], "gripper": 39.7},
+"fk_check_mm": 0.18,
+"rl_mode": "eval",
+"episode": -1,
+"policy": {"source": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute/rl/policy/actor.npz", "updates": 19360, "mtime": "Wed Nov 18 23:35:36 2026"},
+"transitions": 13,
+"return": -4.178,
+"objects": {"drawer": {"xy": [0.4386, -0.1576], "rect_c": [0.4463, -0.1404], "size": [0.12, 0.096], "h_top": 0.071, "front_dev_deg": 11.9}},
+"slot_before": {"n": 353, "flush": 0.0, "behind": 1.0, "front": 0.0, "median_d": 0.0374},
+"side_brightness": 137.7,
+"pull_check": {"face": "A", "lr": ["A", "D"], "found": true, "area": 231, "side": "left"},
+"decisions": ["front wall at [0.411, -0.164] (face +12 deg from facing the robot), top 0.071, depth 0.096", "held drawer: t err -0.037 yaw err -23.9 (899 pts); insertion from n-OFF -0.185", "insertion ended with abort: no push (a force stop fails the episode anyway)"],
+"segments": [["ready", true, 0.146, 0.46, 11.85, 39.9], ["above_front", true, 0.088, 0.12, 4.3, 39.5], ["down_to_front_pre", true, 0.08, 0.37, 2.01, 39.3], ["front_correct", true, 0.021, 0.1, 2.0, 39.0], ["down_to_front", true, 0.017, 0.12, 5.17, 39.7], ["lift_slow", true, 0.018, 0.14, 5.17, 39.7], 
+"grasp_reading": 88.2,
+"wall_shift": 0.019000000000000045,
+"held": {"n0_minus_off": -0.185, "z0_above_table": 0.1024, "yaw2": 21.9, "meas": {"ok": true, "n": 899, "t_err": -0.0371, "yaw_err": -23.91, "t_span": 0.066}},
+"insert": {"end": "abort", "steps": 13, "n_minus_off": -0.0579, "dt": -0.0013, "dz": 0.0007, "dyaw": 9.6},
+"release": {"frac": 0.4, "reading": 39.7, "tries": 1},
+"transitions_file": "transitions/eval_test_20261119_001239.npz",
+"verify": {"check": false, "judge": null, "bonus": 0.0, "reason": "the drawer sticks out of the slot", "slot": {"n": 1696, "flush": 0.189, "behind": 0.29, "front": 0.461, "median_d": -0.0021}, "cabinet_moved_m": 0.0074, "drawer_on_table": false, "terminal_reward": -1.124},
+"first_failed_check": "geometric check False: the drawer sticks out of the slot",
+"return_home": "already at default pose",
+"exit_code": 2,
+"gripper_final": {"cmd": 0.4, "reading": 39.73799133300781},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 105 lines; last 40:
+[00:11:56] insert step 9: a [0.57, -0.04, -0.03, 0.0] (mu [0.573, -0.043, -0.031, 0.246]) -> ok  n-OFF -0.0644 dt -0.0004 dz +0.0005 dyaw +9.6 peak 23.3 N r +0.098
+[00:11:56] plan 22_ins10: T=1.1s check ok=True tip>0.055 vmax=3.8deg/s lin=0.018m/s
+[00:11:57] exec 22_ins10: {'segment': 'ins10', 'ok': False, 'reason': 'contact force 53.1 N > 50 N at t=0.73s', 'T_plan': 1.12, 'max_dev_deg': 0.05, 'max_dev_mm': 0.53, 'n': 30, 'max_force_n': 53.1, 't_exec': 0.78, 'rate_hz': 38.5, 'final_err_deg': 0.566}
+[00:11:57] plan 23_unload0: T=0.5s check ok=True tip>0.055 vmax=1.2deg/s lin=0.006m/s
+[00:11:57] exec 23_unload0: {'segment': 'unload0', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.105, 'max_dev_mm': 0.73, 'n': 21, 'max_force_n': 5.9, 't_exec': 0.57, 'rate_hz': 36.8, 'final_err_deg': 0.032}
+[00:11:58] plan 24_unload1: T=0.5s check ok=True tip>0.055 vmax=1.2deg/s lin=0.006m/s
+[00:11:58] exec 24_unload1: {'segment': 'unload1', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.021, 'm
+... (7440 more characters)
+```
+
+**00:12:58 execute agent:** Finally diagnostic images. Looking at the insertion-end views.
+
+**00:12:59 tool Read:** `/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute/attempts/attempt_70/insert_end_wrist.jpg`
+
+<details><summary>00:12:59 result</summary>
+
+```text
+[image]
+```
+</details>
+
+**00:12:59 tool Read:** `/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute/attempts/attempt_70/insert_end_side.jpg`
+
+<details><summary>00:12:59 result</summary>
+
+```text
+[image]
+```
+</details>
+
+**00:13:25 tool Bash:**
+
+```bash
+python3 -c "
+import json,numpy as np
+d=json.load(open('inputs/calibration/handeye_kinova.json')); T=np.array(d['T_tool_cam']); print('t_tool_cam',np.round(T[:3,3],3)); print('cam z in tool',np.round(T[:3,2],3)); print(d.get('camera_offset_from_tool_mm'))
+a=np.radians(21.9); x=np.array([np.cos(a),np.sin(a),0]); z=np.array([0,0,-1.]); y=np.cross(z,x); R=np.stack([x,y,z],1)
+off=R@T[:3,3]; N=np.array([0.9282,0.3722,0]); print('cam offset base',np.round(off,3),'along N',round(off@N,3))"
+```
+
+<details><summary>00:13:26 result</summary>
+
+```text
+t_tool_cam [-0.001  0.054 -0.125]
+cam z in tool [0.004 0.013 1.   ]
+[-1.4110201057704337, 53.7032211295379, -124.68079452885752]
+cam offset base [ 0.019 -0.05   0.125] along N -0.001
+```
+</details>
+
+**00:14:07 tool Bash:**
+
+```bash
+cat >> programs/wallfit.py <<'EOF'
+
+
+def ends_fit(img, T_tool, e, d_in, z, span=0.10, a_vals=(0.002, 0.005, 0.008)):
+    """Both ends of the wall's top strip along the wall (w = d_in turned +90 deg): brightness along w on the strip
+    just inside the outer edge; wood (dark) between the table (bright) on either side. Returns dict(lo, hi, centre,
+    length) in m along w from e, or None."""
+    g = cv2.GaussianBlur(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (5, 5), 0).astype(float)
+    scale = img.shape[1] / 1280.0
+    w = np.array([-d_in[1], d_in[0]])
+    ss = np.arange(-span, span + 1e-9, 0.002)
+    prof = []
+    for sv in ss:
+        P = np.array([np.r_[e + sv * w + a * d_in, z] for a in a_vals])
+        uv = project_base_to_wrist(P, T_tool) * scale
+        ok = np.all(np.isfinite(uv), 1) & 
+... (2045 more characters)
+```
+
+<details><summary>00:14:08 result</summary>
+
+```text
+attempt_70 w·TT 0.98 held t err -0.0371 -> {'lo': -0.005999999999999922, 'hi': 0.0180000000000001, 'centre': 0.006000000000000089, 'length': 0.02400000000000002} ins end -0.0579
+attempt_44 w·TT 0.90 held t err -0.0261 -> {'lo': -0.043999999999999956, 'hi': 0.016000000000000097, 'centre': -0.01399999999999993, 'length': 0.06000000000000005} ins end -0.036
+attempt_43 w·TT 0.95 held t err -0.0282 -> {'lo': -0.043999999999999956, 'hi': 0.0180000000000001, 'centre': -0.012999999999999928, 'length': 0.062000000000000055} ins end -0.036
+attempt_41 w·TT 0.90 held t err -0.022 -> {'lo': -0.043999999999999956, 'hi': 0.0200000000000001, 'centre': -0.011999999999999927, 'length': 0.06400000000000006} ins end -0.0597
+attempt_39 w·TT 0.99 held t err -0.0264 -> {'lo': -0.043999999999999956, 'hi': 0.0180000000000001, 'centre': -0.012999999999999928, 'length': 0.062000000000000055} ins end -0.036
+attempt_37 w·TT 1.00 held t err -0.0202 -> {'lo': -0.043999999999999956, 'hi': 0.0180000000000001, 'centre': -0.012999999999999928, 'length': 0.062000000000000055} ins end -0.058
+attempt_35 w·TT 0.96 held t err -0.0181 -> {'lo': -0.043999999999999956, 'hi': 0.0180000000000001, 'centre': -0.0129999999999999
+... (51 more characters)
+```
+</details>
+
+**00:14:47 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute && python3 - <<'EOF'
+p="programs/execute.py"; s=open(p).read()
+old='''        p, half = max(faces, key=lambda f: float(f[0] @ -N))     # outward normal closest to -N: the pull wall'''
+new='''        p, half = max(faces, key=lambda f: float(f[0] @ -N))     # outward normal closest to -N: the pull wall
+        # the side camera sees the rim only partly (rect ~0.10-0.12 of ~0.13): its centre is biased toward the camera.
+        # Along the pull wall, move the centre away from the camera by half the missing width (tuning 00:30: the grasp,
+        # and so the drawer in the hand, sat ~1-2 cm toward -t; insertions jam at a fixed depth)
+        along = h0 if abs(float(p @ u)) > 0.7 else w0
+        wdir = np.array([-p[1]
+... (670 more characters)
+```
+
+<details><summary>00:14:47 result</summary>
+
+```text
+228:        shift_w = float(np.clip((L_FACE - along) / 2, 0.0, 0.02))
+229:        c = c + away * shift_w
+230:        return dict(xy=np.round(b["xy"], 4).tolist(), c=c, p=p, half=float(half), h_top=h_top, size=[round(w0, 3), round(h0, 3)], shift_w=round(shift_w, 4),
+49:L_FACE = 0.13                # drawer outer size for the wall geometry of the pull detection (real ~0.13)
+```
+</details>
+
+**00:14:59 tool Bash:**
+
+```bash
+sed -i 's/                                                                  h_top=round(d\["h_top"\], 3), front_dev_deg=d\["front_dev_deg"\])),/                                                                  h_top=round(d["h_top"], 3), front_dev_deg=d["front_dev_deg"], shift_w=d.get("shift_w"))),/' programs/execute.py && grep -c 'shift_w=d.get' programs/execute.py; cd /home/r2r/robot_learning_final_pj && RLPJ_RL_DIR=/tmp/rlcopy timeout 900 uv run python runs/20261117_2026_drawer/agents/execute/tools/offline_test.py 2 2>&1 | grep -E "^RESULT|Traceback|Error" | cut -c1-120; cd runs/20261117_2026_drawer/agents/execute && cat >> notes/design.md <<'EOF'
+- attempt 70 (6e64d0a, eval mean, anchored prior): insertion jammed again at -0.06 with yaw +9.6 (3 stops, then a
+  tracking abort). insert_e
+... (828 more characters)
+```
+
+<details><summary>00:14:59 result</summary>
+
+```text
+1
+Traceback (most recent call last):
+FileNotFoundError: [Errno 2] No such file or directory: '/home/r2r/realsense_calib/results/side_pose_935322070708.json'
+ceb0967 grasp point: correct the side camera's partial-rim bias along the pull wall
+[This command modified 2 files you've previously read: programs/execute.py, notes/design.md. Call Read before editing.]
+```
+</details>
+
+**00:15:29 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+p="tools/offline_test.py"; s=open(p).read()
+s=s.replace("import execute as X\n","""import execute as X
+import json as _json
+_C = os.path.join(WS, "inputs", "calibration")
+calib.T_base_side = lambda: np.array(_json.load(open(os.path.join(_C, "side_pose_935322070708.json")))["T_base_side"])
+_I = _json.load(open(os.path.join(_C, "intrinsics_935322070708_1280x720.json")))
+calib.side_intrinsics = lambda: (np.array(_I["K"]), np.array(_I["dist"], float))
+""",1)
+s=s.replace("def synth_blobs(c, yaw_deg, size=(0.15, 0.14), h=0.074):","def synth_blobs(c, yaw_deg, size=(0.12, 0.10), h=0.074):")
+open(p,"w").write(s)
+EOF
+cd /home/r2r/robot_learning_final_pj && RLPJ_RL_DIR=/tmp/rlcopy timeout 1200 uv run python runs/20261117_2026_drawer/agents/execute/tools/offline_test.py 3 2>&1 | grep
+... (236 more characters)
+```
+
+<details><summary>00:15:37 result</summary>
+
+```text
+DECIDE front wall at [0.351, -0.131] (face -28 deg from facing the robot), top 0.074, depth 0.120
+RESULT 0 [ 0.404 -0.151] -5.7 ('ran', 22, {'end': 'reached', 'steps': 12, 'n_minus_off': np.float64(-0.0373), 'dt': 0.0006, 'dz': 0.0001, 'dyaw': 9.1}, {'end': 
+DECIDE front wall at [0.379, -0.11] (face +14 deg from facing the robot), top 0.074, depth 0.120
+RESULT 1 [ 0.431 -0.091] 35.6 ('ran', 23, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': -0.0021, 'dz': -0.0002, 'dyaw': 9.6}, {'end':
+DECIDE front wall at [0.372, -0.226] (face +21 deg from facing the robot), top 0.074, depth 0.120
+RESULT 2 [ 0.422 -0.2  ] 43.3 ('ran', 22, {'end': 'reached', 'steps': 12, 'n_minus_off': np.float64(-0.0375), 'dt': -0.0028, 'dz': 0.0014, 'dyaw': 9.6}, {'end':
+6d190ad offline test: local side calibration, partial-rim synthetic drawer
+```
+</details>
+
+**00:15:40 execute agent:** I'm testing the corrected grasp point on the robot: the drawer should now sit centred in the gripper.
+
+**00:15:42 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "RLPJ_RL_MODE=eval RLPJ_EPISODE=-1 /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
+ "moves_robot": true,
+ "what": "Real test episode: grasp point corrected for the side camera's partial-rim bias (drawer centred in the hand), anchored insertion, release, push with retries, verify",
+ "report": ""
+}
+```
+
+<details><summary>00:15:42 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**00:21:38 execute agent:** No response requested.
+
+### 00:21:38 orchestrator -> execute agent
+
+```text
+# attempt_71: exit code 2; outcome: fail
+
+command: RLPJ_RL_MODE=eval RLPJ_EPISODE=-1 /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: Real test episode: grasp point corrected for the side camera's partial-rim bias (drawer centred in the hand), anchored insertion, release, push with retries, verify; commit: 6d190ad; duration_s: 137.1; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "6d190ad523",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9579, 0.5613, 90.4588], "gripper": 39.7},
+"fk_check_mm": 0.18,
+"rl_mode": "eval",
+"episode": -1,
+"policy": {"source": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute/rl/policy/actor.npz", "updates": 19360, "mtime": "Wed Nov 18 23:35:36 2026"},
+"transitions": 13,
+"return": -4.236,
+"objects": {"drawer": {"xy": [0.4501, -0.124], "rect_c": [0.4524, -0.1038], "size": [0.116, 0.102], "h_top": 0.069, "front_dev_deg": 20.4, "shift_w": 0.007}},
+"slot_before": {"n": 299, "flush": 0.0, "behind": 1.0, "front": 0.0, "median_d": 0.0452},
+"side_brightness": 137.6,
+"pull_check": {"face": "A", "lr": ["A", "D"], "found": true, "area": 234, "side": "left"},
+"decisions": ["front wall at [0.419, -0.134] (face +20 deg from facing the robot), top 0.069, depth 0.102", "held drawer: t err -0.045 yaw err -12.6 (1090 pts); insertion from n-OFF -0.185", "insertion ended with abort: no push (a force stop fails the episode anyway)"],
+"segments": [["ready", true, 0.125, 0.45, 11.86, 39.9], ["above_front", true, 0.077, 0.09, 4.79, 39.7], ["down_to_front_pre", true, 0.074, 0.31, 2.05, 39.0], ["front_correct", true, 0.016, 0.1, 2.29, 39.3], ["down_to_front", true, 0.017, 0.1, 5.15, 39.6], ["lift_slow", true, 0.019, 0.13, 5.16, 39.7]
+"grasp_reading": 88.2,
+"wall_shift": 0.022000000000000047,
+"held": {"n0_minus_off": -0.185, "z0_above_table": 0.0998, "yaw2": 21.9, "meas": {"ok": true, "n": 1090, "t_err": -0.0447, "yaw_err": -12.58, "t_span": 0.072}},
+"insert": {"end": "abort", "steps": 13, "n_minus_off": -0.0561, "dt": -0.002, "dz": 0.0007, "dyaw": 9.6},
+"release": {"frac": 0.4, "reading": 39.7, "tries": 3},
+"transitions_file": "transitions/eval_test_20261119_002122.npz",
+"verify": {"check": false, "judge": null, "bonus": 0.0, "reason": "the drawer sticks out of the slot", "slot": {"n": 1572, "flush": 0.162, "behind": 0.323, "front": 0.429, "median_d": 0.0054}, "cabinet_moved_m": 0.0038, "drawer_on_table": false, "terminal_reward": -1.18},
+"first_failed_check": "geometric check False: the drawer sticks out of the slot",
+"return_home": "already at default pose",
+"exit_code": 2,
+"gripper_final": {"cmd": 0.4, "reading": 39.73799133300781},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.3]
+}
+
+log.txt: 113 lines; last 40:
+[00:20:36] exec 25_unload2: {'segment': 'unload2', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.019, 'max_dev_mm': 0.13, 'n': 21, 'max_force_n': 6.3, 't_exec': 0.55, 'rate_hz': 38.2, 'final_err_deg': 0.007}
+[00:20:36] insert step 10: a [0.35, -0.16, 0.15, 0.0] (mu [0.218, -0.157, 0.211, 0.114]) -> force 22_ins10: contact force 50.3 N > 50 N at t=0.86s n-OFF -0.0592 dt -0.0011 dz +0.0006 dyaw +9.6 peak 40.0 N r -1.020
+[00:20:37] plan 26_ins11: T=1.1s check ok=True tip>0.053 vmax=3.9deg/s lin=0.018m/s
+[00:20:37] exec 26_ins11: {'segment': 'ins11', 'ok': False, 'reason': 'contact force 51.7 N > 50 N at t=0.79s', 'T_plan': 1.05, 'max_dev_deg': 0.29, 'max_dev_mm': 1.6, 'n': 32, 'max_force_n': 51.7, 't_exec': 0.85, 'rate_hz': 37.6, 'final_err_deg': 0.235}
+[00:20:38] plan 27_unload0: T=0.5s check ok=True tip>0.053 vmax=1.2deg/s lin=0.006m/s
+[00:20:38] exec 27_unload0: {'segment': 'unload0', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.217, 'max_dev_mm': 0.67, 'n': 21, 'max_force_n': 10.6, 't_exec': 
+... (7135 more characters)
+```
+
+**00:22:06 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+import json,glob,os
+rows=[]
+for a in sorted(glob.glob("attempts/attempt_*/summary.json"), key=lambda p:int(p.split("_")[-1].split("/")[0])):
+    try: d=json.load(open(a))
+    except: continue
+    h=d.get("held",{}).get("meas"); ins=d.get("insert")
+    if not h or not ins or not h.get("ok"): continue
+    te=h["t_err"]; sp=h.get("t_span")
+    if sp is None: continue
+    edge=te - sp/2 + 0.065
+    reached = ins["n_minus_off"] > -0.04
+    rows.append((a.split("/")[1], "REACH" if reached else "jam", round(te,3), sp, round(edge,3), ins.get("dt"), ins.get("dyaw")))
+for r in rows: print(r)
+EOF
+```
+
+<details><summary>00:22:06 result</summary>
+
+```text
+('attempt_2', 'REACH', -0.101, 0.019, -0.045, -0.004, -0.4)
+('attempt_3', 'jam', -0.015, 0.093, 0.004, 0.0069, -0.3)
+('attempt_5', 'REACH', -0.013, 0.085, 0.01, -0.007, 5.5)
+('attempt_7', 'REACH', -0.016, 0.08, 0.009, -0.0004, -5.7)
+('attempt_14', 'REACH', -0.012, 0.085, 0.011, -0.0166, 1.1)
+('attempt_16', 'jam', -0.009, 0.106, 0.003, 0.0008, 3.2)
+('attempt_17', 'jam', -0.024, 0.079, 0.002, 0.0243, -5.3)
+('attempt_20', 'REACH', -0.021, 0.081, 0.003, -0.0021, 10.0)
+('attempt_23', 'jam', -0.028, 0.076, -0.001, -0.0004, -4.9)
+('attempt_25', 'jam', -0.021, 0.083, 0.003, 0.007, -2.0)
+('attempt_27', 'jam', -0.025, 0.077, 0.001, -0.0048, -1.8)
+('attempt_29', 'jam', -0.02, 0.082, 0.004, -0.0064, -5.5)
+('attempt_31', 'REACH', -0.021, 0.085, 0.002, 0.0018, 9.0)
+('attempt_33', 'REACH', -0.017, 0.093, 0.001, -0.0045, 9.8)
+('attempt_35', 'jam', -0.018, 0.096, -0.001, 0.0039, -5.2)
+('attempt_37', 'jam', -0.02, 0.089, 0.0, -0.0005, -1.2)
+('attempt_39', 'REACH', -0.026, 0.075, 0.001, -0.0029, 5.6)
+('attempt_41', 'jam', -0.022, 0.084, 0.001, 0.0004, -3.3)
+('attempt_43', 'REACH', -0.028, 0.075, -0.001, -0.0033, 10.0)
+('attempt_44', 'REACH', -0.026, 0.075, 0.001, -0.0013, 9.2)
+('attempt_46', 'REACH',
+... (915 more characters)
+```
+</details>
+
+**00:22:45 tool Bash:**
+
+```bash
+grep -n "T_C" programs/execute.py | sed -n 1,40p
+```
+
+<details><summary>00:22:45 result</summary>
+
+```text
+39:T_C = -0.087                 # slot centre line along the front (reset: pull triangulated at -0.088)
+237:        m = (h > 0.025) & (h < 0.058) & (q[:, 0] > n_tool - 0.03) & (q[:, 0] < OFF - 0.005) & (np.abs(q[:, 1] - T_C) < 0.11)
+245:        return dict(ok=True, n=int(m.sum()), t_err=round(float(t_c - T_C), 4), yaw_err=round(float(dev), 2),
+284:        n, t, z, dyaw = n0, T_C, z0, 0.0
+293:            o = self.obs(0, (n - INS_NMAX) / 0.1, t - T_C, z - z0, dyaw, ma, mb, np.array([f @ N3, f @ T3, f @ Z3]), peak, k, K_INS, 1)
+299:            tgt = (min(n + adv, INS_NMAX), float(np.clip(t + ddt, T_C - 0.025, T_C + 0.025)),
+335:            self.events.append(["ins", k, status, np.round(a, 2).tolist(), round(r, 3), round(n - OFF, 4), round(t - T_C, 4), round(z - z0, 4), round(dyaw, 1), round(peak, 1)])
+336:            self.log(f"insert step {k}: a {np.round(a, 2).tolist()} (mu {info['mu']}) -> {status} {res.get('reason', '')} n-OFF {n - OFF:+.4f} dt {t - T_C:+.4f} dz {z - z0:+.4f} dyaw {dyaw:+.1f} peak {peak:.1f} N r {r:+.3f}")
+346:        s.summary(insert=dict(end=end, steps=len(self.trans), n_minus_off=round(n - OFF, 4), dt=round(t - T_C, 4),
+754:        T0 = tool_down_T(np.r_[xy_of(
+... (20 more characters)
+```
+</details>
+
+**00:22:59 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+p="programs/execute.py"; s=open(p).read()
+a=s.index("    def stage_insert"); b=s.index("    def stage_push")
+seg=s[a:b]
+seg=seg.replace("n, t, z, dyaw = n0, T_C, z0, 0.0","TL = self.t_line\n        n, t, z, dyaw = n0, TL, z0, 0.0")
+seg=seg.replace("t - T_C, z - z0, dyaw, ma, mb","t - TL, z - z0, dyaw, ma, mb")
+seg=seg.replace("float(np.clip(t + ddt, T_C - 0.025, T_C + 0.025))","float(np.clip(t + ddt, TL - 0.025, TL + 0.025))")
+seg=seg.replace("round(t - T_C, 4), round(z - z0, 4), round(dyaw, 1), round(peak, 1)])","round(t - TL, 4), round(z - z0, 4), round(dyaw, 1), round(peak, 1)])")
+seg=seg.replace("dt {t - T_C:+.4f}","dt {t - TL:+.4f}")
+seg=seg.replace("dt=round(t - T_C, 4),","dt=round(t - TL, 4), t_line=round(TL, 4),")
+s=s[:a]+seg+s[b:]
+old='''        meas = self.measu
+... (1836 more characters)
+```
+
+<details><summary>00:23:04 result</summary>
+
+```text
+123:        self.t_line = T_C
+264:            seg = s.planner.cart_line(name, q0, T, SLOW)
+286:        TL = self.t_line
+349:        s.summary(insert=dict(end=end, steps=len(self.trans), n_minus_off=round(n - OFF, 4), dt=round(t - TL, 4), t_line=round(TL, 4),
+419:                seg = s.planner.cart_line(f"chk{i}", q, T, SLOW)
+772:        self.t_line = T_C
+775:            self.t_line = T_C + float(np.clip(EDGE_TARGET - edge, -0.02, 0.02))
+777:            if abs(self.t_line - T_C) > 0.001:
+778:                T_al = tool_down_T(np.r_[xy_of(n0, self.t_line), z0], yaw2)
+780:        s.summary(held=dict(n0_minus_off=round(n0 - OFF, 4), z0_above_table=round(z0 - self.tz, 4), yaw2=round(yaw2, 1), meas=meas, t_line=round(self.t_line, 4)))
+RESULT 0 [ 0.404 -0.151] -5.7 ('ran', 22, {'end': 'reached', 'steps': 12, 'n_minus_off': np.float64(-0.038), 'dt': 0.0003, 't_line': -0.087, 'dz': 0.0, 'dyaw': 
+RESULT 1 [ 0.431 -0.091] 35.6 ('ran', 22, {'end': 'reached', 'steps': 12, 'n_minus_off': np.float64(-0.038), 'dt': -0.0019, 't_line': -0.087, 'dz': 0.0007, 'dya
+```
+</details>
+
+**00:23:12 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute && cat >> notes/design.md <<'EOF'
+- 00:40 finding (all real episodes with a held-drawer measurement): with the drawer's -t edge (the side facing the
+  side camera) giving its centre as t_err - t_span/2 + 0.065, insertions reached their end in 11/21 episodes while that
+  estimate was -0.001..+0.011 (attempts 2-46) and in 0/16 since it moved to -0.005..-0.016 (attempts 48-71, after the
+  pause). -> scripted lateral alignment before the learned steps: the insertion line t_line = T_C + (0.003 - edge),
+  clipped to +-2 cm (summary held.t_line, held.meas.edge); the learned dt stays relative to that line.
+EOF
+git add -A && git commit -qm "scripted lateral alignment from the held drawer's camera-side edge before the lear
+... (45 more characters)
+```
+
+<details><summary>00:23:12 result</summary>
+
+```text
+89c6aea scripted lateral alignment from the held drawer's camera-side edge before the learned insertion
+```
+</details>
+
+**00:23:17 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "RLPJ_RL_MODE=eval RLPJ_EPISODE=-1 /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
+ "moves_robot": true,
+ "what": "Real test episode: after carrying the drawer in front of the slot, shift sideways (up to 2 cm, slow) so the drawer's measured edge matches the episodes whose insertions got through, then anchored insertion, release, push with retries, verify",
+ "report": ""
+}
+```
+
+<details><summary>00:23:17 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**00:30:02 execute agent:** No response requested.
+
+### 00:30:03 orchestrator -> execute agent
+
+```text
+# attempt_72: exit code 2; outcome: fail
+
+command: RLPJ_RL_MODE=eval RLPJ_EPISODE=-1 /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: Real test episode: after carrying the drawer in front of the slot, shift sideways (up to 2 cm, slow) so the drawer's measured edge matches the episodes whose insertions got through, then anchored insertion, release, push with retries, verify; commit: 89c6aea; duration_s: 190.3; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "89c6aea075",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9584, 0.56, 90.4579], "gripper": 39.7},
+"fk_check_mm": 0.18,
+"rl_mode": "eval",
+"episode": -1,
+"policy": {"source": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute/rl/policy/actor.npz", "updates": 19360, "mtime": "Wed Nov 18 23:35:36 2026"},
+"transitions": 20,
+"return": -5.588,
+"objects": {"drawer": {"xy": [0.4429, -0.1739], "rect_c": [0.4447, -0.1523], "size": [0.114, 0.098], "h_top": 0.071, "front_dev_deg": 22.7, "shift_w": 0.0078}},
+"slot_before": {"n": 344, "flush": 0.0, "behind": 1.0, "front": 0.0, "median_d": 0.0383},
+"side_brightness": 137.7,
+"pull_check": {"face": "A", "lr": ["A", "D"], "found": true, "area": 252, "side": "left"},
+"decisions": ["front wall at [0.414, -0.183] (face +23 deg from facing the robot), top 0.071, depth 0.098", "held drawer: t err -0.046 yaw err -1.2 (1176 pts); insertion from n-OFF -0.185", "push retreat: back to n-OFF -0.040, then up"],
+"segments": [["ready", true, 0.066, 0.25, 11.87, 39.8], ["above_front", true, 0.077, 0.1, 5.64, 39.7], ["down_to_front_pre", true, 0.065, 0.3, 1.99, 39.2], ["front_correct", true, 0.021, 0.09, 2.5, 39.6], ["down_to_front", true, 0.017, 0.1, 5.16, 39.7], ["lift_slow", true, 0.027, 0.14, 5.18, 39.8], 
+"grasp_reading": 88.2,
+"wall_shift": 0.02400000000000005,
+"held": {"n0_minus_off": -0.185, "z0_above_table": 0.1025, "yaw2": 21.9, "meas": {"ok": true, "n": 1176, "t_err": -0.0457, "yaw_err": -1.2, "t_span": 0.073, "edge": -0.0172}, "t_line": -0.067},
+"insert": {"end": "reached", "steps": 13, "n_minus_off": -0.036, "dt": -0.0002, "t_line": -0.067, "dz": 0.0004, "dyaw": 8.4},
+"release": {"frac": 0.62, "reading": 62.0, "tries": 1},
+"push_frame": {"yaw": 8.399999999999999, "n0": 0.47859999999999997, "t0": -0.06717497809455045},
+"push": {"end": "force", "steps": 7, "tip_n_minus_off": -0.0263, "dt": -0.0025, "h": 0.0637},
+"transitions_file": "transitions/eval_test_20261119_002947.npz",
+"verify": {"check": false, "judge": null, "bonus": 0.0, "reason": "the drawer sticks out of the slot", "slot": {"n": 1495, "flush": 0.067, "behind": 0.382, "front": 0.524, "median_d": -0.0173}, "cabinet_moved_m": 0.0013, "drawer_on_table": false, "terminal_reward": -1.678},
+"first_failed_check": "geometric check False: the drawer sticks out of the slot",
+"return_home": "already at default pose",
+"exit_code": 2,
+"gripper_final": {"cmd": 1.0, "reading": 99.12664031982422},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 158 lines; last 40:
+[00:28:59] exec 41_unload0: {'segment': 'unload0', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.09, 'max_dev_mm': 0.84, 'n': 21, 'max_force_n': 16.4, 't_exec': 0.57, 'rate_hz': 36.8, 'final_err_deg': 0.026}
+[00:28:59] plan 42_unload1: T=0.5s check ok=True tip>0.055 vmax=0.9deg/s lin=0.006m/s
+[00:29:00] exec 42_unload1: {'segment': 'unload1', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.015, 'max_dev_mm': 0.14, 'n': 21, 'max_force_n': 6.9, 't_exec': 0.56, 'rate_hz': 37.5, 'final_err_deg': 0.007}
+[00:29:00] plan 43_unload2: T=0.5s check ok=True tip>0.055 vmax=0.9deg/s lin=0.006m/s
+[00:29:00] exec 43_unload2: {'segment': 'unload2', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.016, 'max_dev_mm': 0.1
+... (8678 more characters)
+```
+
+**00:30:10 execute agent:** The lateral alignment worked: the insertion reached its end. The push then went 1.5 cm and jammed, because it pushed about 2.4 cm off the drawer's centre (the drawer is no longer centred under the tool). I'm aiming the push at the drawer's estimated centre instead.
+
+**00:30:17 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+p="programs/execute.py"; s=open(p).read()
+old='''        PUSH_FRAME.update(yaw=float(np.clip(ins["yaw"] - yaw2, -10, 10)), n0=face_n, t0=float(ins["t"]))
+        s.summary(push_frame=dict(PUSH_FRAME))
+        self.stage_push(face_n, min(ins["t"] + PUSH_DT, PUSH_TMAX), ins["end"] == "reached")'''
+new='''        # the drawer centre is no longer under the tool once the insertion line was shifted sideways: it sits where the
+        # alignment put it (T_C + EDGE_TARGET) plus the learned dt (attempt 72: pushing 2.4 cm off-centre jammed after 1.5 cm)
+        c_t = T_C + EDGE_TARGET + (ins["t"] - self.t_line) if self.t_line != T_C else float(ins["t"])
+        PUSH_FRAME.update(yaw=float(np.clip(ins["yaw"] - yaw2, -10, 10)), n0=face_n, t0=float(c_t))
+        s.summary(push_frame=
+... (940 more characters)
+```
+
+<details><summary>00:30:24 result</summary>
+
+```text
+RESULT 0 [ 0.404 -0.151] -5.7 ('ran', 23, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': -0.0027, 't_line': -0.087, 'dz': 0.0, 'dyaw': 9.6}, {'end': 'steps', 'steps': 10, 'ti
+RESULT 1 [ 0.431 -0.091] 35.6 ('ran', 22, {'end': 'reached', 'steps': 12, 'n_minus_off': np.float64(-0.0389), 'dt': -0.0025, 't_line': -0.087, 'dz': 0.0005, 'dyaw': 9.6}, {'end': 'steps', 'steps': 10,
+cd65db2 push at the drawer centre after the lateral alignment
+```
+</details>
+
+**00:30:28 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "RLPJ_RL_MODE=eval RLPJ_EPISODE=-1 /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
+ "moves_robot": true,
+ "what": "Real test episode: lateral alignment + anchored insertion (reached its end last time), then the push aimed at the drawer's centre (1.5 cm beside the pull) instead of the tool line, with retries, retreat, verify",
+ "report": ""
+}
+```
+
+<details><summary>00:30:28 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
