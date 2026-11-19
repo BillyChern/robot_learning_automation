@@ -50,7 +50,7 @@ shaping; when to stop training. Its notes must say why.
 ## 6. Implementation (2026-11-17)
 
 - Task `config/tasks/drawer_rl.yaml` (`mode: rl`): fixtures (cabinet front plane, bottom-slot window), `keep_out`
-  (cabinet body from 1 cm behind the front plane; the bottom-slot opening, 1.5-9.5 cm above the table, open to 3 cm
+  (cabinet body from 1 cm behind the front plane; the bottom-slot opening, 1.5-9.5 cm above the table, open to 2 cm (3 cm until 2026-11-18 17:20: a drawer recessed 2 cm needed a person)
   because closed fingertips are modelled ~1 cm too deep: reset attempt 16 held the tab yet was refused), drawer layout
   and priors, `rl` settings.
 - `rlpj.orchestrator.loop`: `run-all` for RL is check -> develop reset -> develop execute (the RL agent; prompt
