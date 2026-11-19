@@ -52,7 +52,7 @@ class AgentRunner:
         cfg = config.load()["agents"]
         self.ws = workspace
         self.model = model or workspace.session.get("model") or cfg["model"]
-        self.effort = effort or workspace.session.get("effort") or cfg["effort"]
+        self.effort = effort or os.environ.get("RLPJ_AGENT_EFFORT") or workspace.session.get("effort") or cfg["effort"]
         self.max_budget_usd = cfg.get("max_budget_usd") if max_budget_usd is None else max_budget_usd
         self.timeout_s = timeout_s or cfg.get("turn_timeout_s", 3600)
         self.fake = os.environ.get("RLPJ_FAKE_CLAUDE")          # local fake binary: run here, no ssh (tests)
