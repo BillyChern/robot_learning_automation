@@ -270,6 +270,14 @@ class RobotSession:
 
         # ---- start state
         st = self.robot.arm_state(); t0 = time.time()
+        if st == "ARMSTATE_IN_FAULT" and not self.dry and hasattr(self.robot, "clear_fault_unless_estop"):
+            try:                                        # a latched fault from the last run (e.g. a jam): clear it once
+                cleared, f = self.robot.clear_fault_unless_estop()
+                self.log(f"arm in fault {f}: " + ("cleared (not an emergency stop)" if cleared else "NOT cleared (emergency stop: a person must release it)"))
+                self.S.set(fault_at_start=dict(faults=f, cleared=cleared))
+                time.sleep(1.0); st = self.robot.arm_state()
+            except Exception as e:
+                self.log(f"clearing the fault failed: {e!r}")
         while st != READY and time.time() - t0 < 30 and not self.stop["flag"]:
             if int(time.time() - t0) % 5 == 0:
                 self.log(f"waiting for {READY} (now {st})")

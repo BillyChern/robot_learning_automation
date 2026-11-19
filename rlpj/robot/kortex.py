@@ -99,6 +99,22 @@ class Robot:
             s = self.base.GetArmState()
         return Base_pb2.ArmState.Name(s.active_state)
 
+    def faults(self):
+        """Names of the base safety faults now active (e.g. JOINT_FAULT, EMERGENCY_STOP_ACTIVATED)."""
+        with self.fb_lock:
+            a = self.cyc.RefreshFeedback().base.fault_bank_a
+        return [n for n, v in Base_pb2.SafetyIdentifier.items() if v and a & v]
+
+    def clear_fault_unless_estop(self):
+        """Clear a latched fault (e.g. a joint following error after a jam); never an emergency stop, which a person
+        must release. Returns (cleared, faults before)."""
+        f = self.faults()
+        if not f or any("EMERGENCY_STOP" in n for n in f):
+            return False, f
+        with self.lock:
+            self.base.ClearFaults()
+        return True, f
+
     def fk_oracle(self, q_deg):
         """Read-only: the controller's own FK. Rejects some joint sets with ERROR_INTERNAL."""
         ja = Base_pb2.JointAngles()
