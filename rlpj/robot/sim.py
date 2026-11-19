@@ -2,6 +2,8 @@
 kinematics) for videos, and numeric checks (joint limits, speeds, table clearance)."""
 import functools
 
+from pathlib import Path
+
 import numpy as np
 from .kin import Kin, LIMITS_DEG, VMAX_DEG
 from . import calib
@@ -16,13 +18,23 @@ def cell_keep_in():
     except Exception:
         return {}
 
-@functools.lru_cache(None)
+def program_role():
+    """Role of the running robot program (execute/reset/...) from its attempt dir (.../agents/<role>/attempts/...), or None."""
+    import os
+    parts = Path(os.environ.get("RLPJ_ATTEMPT_DIR", "")).parts
+    return parts[parts.index("agents") + 1] if "agents" in parts[:-1] else None
+
+
 def cell_keep_out():
-    """Boxes no gripper point may enter (task keep_out: [{name, center, half, yaw_deg}], base frame), or ()."""
+    """Boxes no gripper point may enter (task keep_out: [{name, center, half, yaw_deg, roles?}], base frame), or ().
+    A box with `roles` applies only to programs of those roles (else to every program); unknown role: every box."""
     try:
         from rlpj import config
+        role = program_role()
         return tuple((b.get("name", "box"), np.asarray(b["center"], float), np.asarray(b["half"], float),
-                      np.radians(float(b.get("yaw_deg", 0.0)))) for b in config.load().get("task", {}).get("keep_out") or [])
+                      np.radians(float(b.get("yaw_deg", 0.0))))
+                     for b in config.load().get("task", {}).get("keep_out") or []
+                     if not b.get("roles") or role is None or role in b["roles"])
     except Exception:
         return ()
 

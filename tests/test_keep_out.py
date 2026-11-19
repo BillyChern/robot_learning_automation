@@ -7,6 +7,8 @@ from rlpj.robot.sim import in_boxes
 
 TASK = yaml.safe_load((config.ROOT / "config/tasks/drawer_rl.yaml").read_text())
 B = [(b["name"], np.asarray(b["center"]), np.asarray(b["half"]), np.radians(b["yaw_deg"])) for b in TASK["keep_out"]]
+B_RESET = [(b["name"], np.asarray(b["center"]), np.asarray(b["half"]), np.radians(b["yaw_deg"])) for b in TASK["keep_out"]
+           if "reset" in b.get("roles", ["reset"])]
 N = np.asarray(TASK["fixtures"]["cabinet"]["front_normal"])
 T = np.array([-N[1], N[0]])
 OFF = TASK["fixtures"]["cabinet"]["front_offset"]
@@ -30,7 +32,9 @@ def test_front_of_cabinet_is_allowed():
 def test_slot_opening_is_open_to_2cm():
     assert in_boxes(at(0.012, -0.08, 0.05), B) == []          # closed fingertips at the drawer face, modelled 1.2 cm deep
     assert in_boxes(at(0.011, -0.077, 0.029), B) == []        # reset attempt 16: holding the pull tab
-    assert in_boxes(at(0.025, -0.08, 0.05), B) == ["cabinet"]       # deeper than 2 cm: refused (no recessing the drawer)
+    assert in_boxes(at(0.025, -0.08, 0.05), B) == ["slot_rl_limit"]  # RL program: deeper than 2 cm refused
+    assert in_boxes(at(0.035, -0.08, 0.05), B_RESET) == []              # reset program: may reach a recessed drawer
+    assert in_boxes(at(0.045, -0.08, 0.05), B_RESET) == ["cabinet"]
     assert in_boxes(at(0.015, -0.08, 0.15), B) == ["cabinet_front"]   # same depth above the slot: refused
     assert in_boxes(at(0.015, -0.14, 0.05), B) == ["cabinet_front"]   # beside the slot opening: refused
 
@@ -45,3 +49,14 @@ def test_escape_from_inside_is_allowed_deeper_is_not():
     d0, faces = box_depths(inside, B)
     assert box_depths(out, B, faces)[0] == {}                                         # leaving: nothing inside
     assert box_depths(deeper, B, faces)[0]["cabinet_front"] > d0["cabinet_front"] + 0.005   # 6 mm deeper: +6 mm
+
+
+def test_role_filter(monkeypatch):
+    from rlpj.robot import sim
+    monkeypatch.setenv("RLPJ_TASK", "drawer_rl")
+    monkeypatch.setenv("RLPJ_ATTEMPT_DIR", "/x/runs/r/agents/reset/attempts/attempt_1")
+    assert "slot_rl_limit" not in [b[0] for b in sim.cell_keep_out()]
+    monkeypatch.setenv("RLPJ_ATTEMPT_DIR", "/x/runs/r/agents/execute/attempts/attempt_1")
+    assert "slot_rl_limit" in [b[0] for b in sim.cell_keep_out()]
+    monkeypatch.delenv("RLPJ_ATTEMPT_DIR")
+    assert "slot_rl_limit" in [b[0] for b in sim.cell_keep_out()]       # unknown program: strictest
