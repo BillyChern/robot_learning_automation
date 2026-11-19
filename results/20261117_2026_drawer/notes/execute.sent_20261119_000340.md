@@ -15,3 +15,19 @@ THE LEARNED POLICY IS NOW WORSE THAN THE PRIOR (22:57), for your tuning turn at 
 So the update is moving the policy away from what worked. Consider: re-anchor to the prior (stronger/slower-decaying BC,
 or a trust region), bound dz (the slot is only ~1 cm taller than the drawer), check the AWAC temperature / advantage
 normalisation with ~15 episodes of all-fail data, and check that the observation still tells the policy where it is.
+
+ARM FAULT IN EVALUATION EPISODE 20 (23:40): your policy's mean action at insert step 13 was advance 0.79, dz +0.97,
+yaw -0.97 (both near the bounds) after steps of dz +0.66/+0.28, yaw +0.64 and cumulative yaw +10 deg; the drawer jammed
+and the arm's own controller faulted: JOINT_FAULT, actuator 5 FOLLOWING_ERROR (torques 10/34/-50/4/-28/-3 Nm), before
+the 50 N / tracking stops could act. The operator cleared it; robot sessions now clear such non-e-stop faults at
+start. This is the same regression as noted at 22:57 (lifting and yawing at the bounds); the eval uses the mean.
+
+URGENT (00:05): THE USER IS VERY SHORT ON TIME. Push the hardest possible to get the first real successes NOW.
+- The evaluation after 20 episodes was cut after 3 episodes (all fail, one arm fault): no need to measure a policy we
+  know is broken. Evaluations are now 5 episodes every 30; your tuning turn is every 5 episodes.
+- Facts from your own data: the prior-like policy (episodes 4-5) brought the insertion to its END (n-OFF -0.036); every
+  learned-policy episode since your AWAC switch jams ~5 cm short, lifting (dz +0.3..+0.97) and yawing at the bounds.
+- So in THIS turn: go back to what worked (prior actions for the insertion, or a strong anchor to them with small
+  bounded corrections, dz bounded to ~+-1 mm per step), fix the push so it lands on the drawer front and stops at flush
+  (do not recess past ~1 cm), and run a real test episode before you finish. Get one verified success first, then let
+  the learning refine. Keep every change small and tested on the robot.
