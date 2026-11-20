@@ -1,0 +1,9 @@
+COMMIT b59f2b9df495e808fa190777c04a94deb5632e70 (DIRTY)
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[15:43:03] session to_home: attempt /home/r2r/robot_learning_final_pj/runs/drawers_setup/home/real_20261120 dry=False record=None
+[15:43:03] arm state ARMSTATE_SERVOING_READY, joints [14.81, 7.37, 238.83, 352.4, 316.0, 116.68], gripper 52.8
+[15:43:03] model FK vs measured tool_pose at start: 1.3 mm
+[15:43:07] plan 01_to_home: T=41.1s check ok=True tip>0.200 vmax=4.5deg/s lin=0.017m/s
+[15:43:48] exec 01_to_home: {'segment': 'to_home', 'ok': True, 'reason': '', 'T_plan': 41.15, 'max_dev_deg': 0.03, 'max_dev_mm': 0.13, 'n': 1647, 'max_force_n': 6.8, 't_exec': 41.22, 'rate_hz': 40.0, 'final_err_deg': 0.007}
+[15:43:48] CLAIM success
+summary: /home/r2r/robot_learning_final_pj/runs/drawers_setup/home/real_20261120/summary.json outcome: success exit 0

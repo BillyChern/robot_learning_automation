@@ -15324,3 +15324,6 @@ LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.11
 summary: /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_121/summary.json outcome: fail exit 2
 == attempt_121 finished: exit 2, outcome fail, 354 s
 == operator note delivered to the reset agent
+== code sync to the agent host: ok
+== delivering the operator note to the reset agent before collection continues
+== operator note delivered to the reset agent

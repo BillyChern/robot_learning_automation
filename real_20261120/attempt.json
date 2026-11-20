@@ -1,0 +1,11 @@
+{
+ "command": "python to_home.py",
+ "moves_robot": true,
+ "record_dir": null,
+ "exit_code": 0,
+ "outcome": "success",
+ "duration_s": 57.1,
+ "stopped_by": null,
+ "started": 1795207382.6193275,
+ "ended": 1795207439.6937366
+}
