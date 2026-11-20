@@ -1,10 +1,18 @@
-COMMIT 9020b78ed3c43321186ff29aecd539a4ee98da75 (DIRTY)
+COMMIT e09e963eef4d76b1b2e5dcb50b06d24f527d640f (DIRTY)
 LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
-[23:03:06] session escape_home: attempt /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/dry_1 dry=True record=None
-[23:03:06] arm state ARMSTATE_SERVOING_READY, joints [349.38, 37.84, 266.82, 359.05, 311.52, 16.79], gripper 39.7
-[23:03:06] model FK vs measured tool_pose at start: 1.2 mm
-[23:03:07] == phase: escape
-[23:03:07] DECISION: tool at [0.49, 0.095, 0.116]: back 2 cm, up 10 cm, then Home
-[23:03:08] plan 01_back_from_cabinet: T=1.9s check ok=False tip>0.103 vmax=4.1deg/s lin=0.018m/s
-[23:03:08] STOP RECORD: {'kind': 'failed check', 'why': "model check failed for 01_back_from_cabinet: {'joint_limit_violations': 0, 'max_joint_speed': 4.1183967718737335, 'joint_speed_ok': True, 'keep_in_violations': 0, 'keep_out_violations': ['cabinet_front'], 'min_tip_above_table': 0.10348402955803533, 'min_body_above_table': 0.1706123674102561, 'min_li", 'step': 'escape', 'segment': None, 'q_now': [349.38, 37.84, 266.82, 359.05, 311.52, 16.79], 'gripper': 39.7}
-summary: /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/dry_1/summary.json outcome: fail exit 2
+[14:28:08] session side_calib: attempt /home/r2r/robot_learning_final_pj/runs/drawers_setup/sidecal/dry_1 dry=True record=None
+[14:28:08] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_IN_FAULT)
+[14:28:08] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_IN_FAULT)
+[14:28:13] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_IN_FAULT)
+[14:28:14] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_IN_FAULT)
+[14:28:18] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_IN_FAULT)
+[14:28:18] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_IN_FAULT)
+[14:28:23] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_IN_FAULT)
+[14:28:24] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_IN_FAULT)
+[14:28:28] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_IN_FAULT)
+[14:28:33] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_IN_FAULT)
+[14:28:34] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_IN_FAULT)
+[14:28:38] arm state ARMSTATE_IN_FAULT, joints [14.82, 7.37, 238.84, 352.41, 315.96, 116.69], gripper 52.8
+[14:28:38] model FK vs measured tool_pose at start: 1.3 mm
+[14:28:38] STOP RECORD: {'kind': 'failed check', 'why': 'arm state ARMSTATE_IN_FAULT (need ARMSTATE_SERVOING_READY)', 'step': 'start', 'segment': None, 'q_now': [14.82, 7.37, 238.84, 352.41, 315.96, 116.69], 'gripper': 52.8}
+summary: /home/r2r/robot_learning_final_pj/runs/drawers_setup/sidecal/dry_1/summary.json outcome: fail exit 2

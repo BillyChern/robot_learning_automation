@@ -1,20 +1,57 @@
-COMMIT 9020b78ed3c43321186ff29aecd539a4ee98da75 (DIRTY)
+COMMIT e09e963eef4d76b1b2e5dcb50b06d24f527d640f (DIRTY)
 LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
-[23:03:45] session escape_home: attempt /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/real_1 dry=False record=None
-[23:03:45] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_SERVOING_MANUALLY_CONTROLLED)
-[23:03:46] arm state ARMSTATE_SERVOING_READY, joints [349.38, 37.84, 266.82, 359.05, 311.52, 16.79], gripper 39.7
-[23:03:46] model FK vs measured tool_pose at start: 1.2 mm
-[23:03:46] == phase: escape
-[23:03:46] DECISION: tool at [0.49, 0.095, 0.116]: back 2 cm, up 10 cm, then Home
-[23:03:47] plan 01_back_from_cabinet: T=1.9s check ok=True tip>0.103 vmax=4.1deg/s lin=0.018m/s
-[23:03:49] exec 01_back_from_cabinet: {'segment': 'back_from_cabinet', 'ok': True, 'reason': '', 'T_plan': 1.93, 'max_dev_deg': 0.027, 'max_dev_mm': 0.18, 'n': 78, 'max_force_n': 12.1, 't_exec': 1.99, 'rate_hz': 39.2, 'final_err_deg': 0.012}
-[23:03:51] plan 02_up: T=10.2s check ok=True tip>0.103 vmax=2.8deg/s lin=0.018m/s
-[23:03:56] exec 02_up: {'segment': 'up', 'ok': False, 'reason': 'contact force 51.5 N > 50 N at t=4.20s', 'T_plan': 10.23, 'max_dev_deg': 0.018, 'max_dev_mm': 0.14, 'n': 168, 'max_force_n': 51.5, 't_exec': 4.24, 'rate_hz': 39.6, 'final_err_deg': 10.431}
-[23:03:56] STOP RECORD: {'kind': 'failed check', 'why': '02_up: contact force 51.5 N > 50 N at t=4.20s', 'step': 'escape', 'segment': 'up', 'progress': 0.411, 't': 4.2, 'q_meas': [-10.16, 32.82, -95.41, -1.01, -51.08, 17.31], 'q_plan': [-10.16, 32.81, -95.4, -1.01, -51.08, 17.31], 'tool_meas': [0.4711, 0.0871, 0.1494, 179.8018, -0.7815, 27.3257], 'tool_plan_xyz': [0.472, 0.0875, 0.149], 'dev_deg': 0.01, 'dev_mm': 0.1, 'q_now': [349.84, 32.75, 264.64, 358.99, 308.81, 17.31], 'gripper': 39.7}
-[23:03:56] == phase: return_home
-[23:03:56] return plan ok=True: [('return_lift', True), ('return_home', True)]
-[23:03:57] plan 03_return_lift: T=3.5s check ok=True tip>0.138 vmax=2.9deg/s lin=0.018m/s
-[23:04:00] exec 03_return_lift: {'segment': 'return_lift', 'ok': True, 'reason': '', 'T_plan': 3.49, 'max_dev_deg': 0.033, 'max_dev_mm': 0.48, 'n': 140, 'max_force_n': 47.6, 't_exec': 3.54, 'rate_hz': 39.5, 'final_err_deg': 0.011}
-[23:04:01] plan 04_return_home: T=2.0s check ok=True tip>0.104 vmax=7.4deg/s lin=0.066m/s
-[23:04:03] exec 04_return_home: {'segment': 'return_home', 'ok': True, 'reason': '', 'T_plan': 2.02, 'max_dev_deg': 0.058, 'max_dev_mm': 0.38, 'n': 81, 'max_force_n': 48.8, 't_exec': 2.08, 'rate_hz': 38.9, 'final_err_deg': 0.036}
-summary: /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/real_1/summary.json outcome: fail exit 2
+[14:35:49] session side_calib: attempt /home/r2r/robot_learning_final_pj/runs/drawers_setup/sidecal/real_1 dry=False record=None
+[14:35:49] arm state ARMSTATE_SERVOING_READY, joints [14.82, 7.37, 238.83, 352.41, 315.96, 116.69], gripper 52.8
+[14:35:49] model FK vs measured tool_pose at start: 1.3 mm
+[14:35:50] == phase: find_board
+[14:35:53] DECISION: board centre ~[0.175, -0.072, -0.04] (old side calibration)
+[14:35:53] == phase: home
+[14:35:56] plan 01_to_home: T=41.2s check ok=True tip>0.200 vmax=4.5deg/s lin=0.017m/s
+[14:36:37] exec 01_to_home: {'segment': 'to_home', 'ok': True, 'reason': '', 'T_plan': 41.17, 'max_dev_deg': 0.031, 'max_dev_mm': 0.17, 'n': 1648, 'max_force_n': 4.3, 't_exec': 41.24, 'rate_hz': 40.0, 'final_err_deg': 0.007}
+[14:36:39] DECISION: 17 of 24 views have an IK solution inside the joint limits
+[14:36:39] == phase: view_00
+[14:36:45] plan 02_view_00: T=58.5s check ok=True tip>0.123 vmax=2.9deg/s lin=0.018m/s
+[14:37:43] exec 02_view_00: {'segment': 'view_00', 'ok': True, 'reason': '', 'T_plan': 58.46, 'max_dev_deg': 0.024, 'max_dev_mm': 0.17, 'n': 2339, 'max_force_n': 5.3, 't_exec': 58.51, 'rate_hz': 40.0, 'final_err_deg': 0.008}
+[14:37:45] DECISION: view 0: board wrist 4 / side 27 corners, skipped
+[14:37:45] == phase: view_01
+[14:37:46] plan 03_view_01: T=16.1s check ok=True tip>0.110 vmax=4.6deg/s lin=0.009m/s
+[14:38:03] exec 03_view_01: {'segment': 'view_01', 'ok': True, 'reason': '', 'T_plan': 16.08, 'max_dev_deg': 0.029, 'max_dev_mm': 0.09, 'n': 644, 'max_force_n': 3.0, 't_exec': 16.15, 'rate_hz': 39.9, 'final_err_deg': 0.005}
+[14:38:04] DECISION: view 1: board wrist 0 / side 27 corners, skipped
+[14:38:04] == phase: view_02
+[14:38:11] plan 04_view_02: T=65.4s check ok=False tip>0.110 vmax=4.6deg/s lin=0.004m/s
+[14:38:11] DECISION: view 2 (el 80 az 30): not reachable safely (_02: {'joint_limit_violations': 0, 'max_joint_speed': 4.599999759741991, 'joint_speed_ok': True, 'near_base': True, 'keep_in_violations': 0, 'min_tip_above_table': 0.1097)
+[14:38:11] == phase: view_03
+[14:38:11] plan 05_view_03: T=5.8s check ok=True tip>0.110 vmax=4.6deg/s lin=0.005m/s
+[14:38:17] exec 05_view_03: {'segment': 'view_03', 'ok': True, 'reason': '', 'T_plan': 5.78, 'max_dev_deg': 0.023, 'max_dev_mm': 0.07, 'n': 232, 'max_force_n': 5.8, 't_exec': 5.84, 'rate_hz': 39.7, 'final_err_deg': 0.01}
+[14:38:19] DECISION: view 3: board wrist 0 / side 25 corners, skipped
+[14:38:19] == phase: view_04
+[14:38:25] plan 06_view_04: T=66.6s check ok=True tip>0.113 vmax=4.6deg/s lin=0.004m/s
+[14:39:32] exec 06_view_04: {'segment': 'view_04', 'ok': True, 'reason': '', 'T_plan': 66.6, 'max_dev_deg': 0.031, 'max_dev_mm': 0.08, 'n': 2664, 'max_force_n': 3.6, 't_exec': 66.66, 'rate_hz': 40.0, 'final_err_deg': 0.008}
+[14:39:33] DECISION: view 4: board wrist 2 / side 25 corners, skipped
+[14:39:33] == phase: view_05
+[14:39:39] plan 07_view_05: T=60.8s check ok=True tip>0.113 vmax=4.6deg/s lin=0.003m/s
+[14:40:40] exec 07_view_05: {'segment': 'view_05', 'ok': True, 'reason': '', 'T_plan': 60.84, 'max_dev_deg': 0.032, 'max_dev_mm': 0.09, 'n': 2434, 'max_force_n': 6.1, 't_exec': 60.9, 'rate_hz': 40.0, 'final_err_deg': 0.008}
+[14:40:41] DECISION: view 5: board wrist 0 / side 27 corners, skipped
+[14:40:41] == phase: view_06
+[14:40:48] plan 08_view_06: T=67.0s check ok=True tip>0.119 vmax=4.6deg/s lin=0.002m/s
+[14:41:55] exec 08_view_06: {'segment': 'view_06', 'ok': True, 'reason': '', 'T_plan': 66.97, 'max_dev_deg': 0.029, 'max_dev_mm': 0.09, 'n': 2679, 'max_force_n': 6.7, 't_exec': 67.03, 'rate_hz': 40.0, 'final_err_deg': 0.007}
+[14:41:56] DECISION: view 6: board wrist 2 / side 27 corners, skipped
+[14:41:56] == phase: view_07
+[14:42:02] plan 09_view_07: T=63.9s check ok=True tip>0.123 vmax=4.6deg/s lin=0.003m/s
+[14:43:06] exec 09_view_07: {'segment': 'view_07', 'ok': True, 'reason': '', 'T_plan': 63.92, 'max_dev_deg': 0.033, 'max_dev_mm': 0.09, 'n': 2557, 'max_force_n': 3.8, 't_exec': 63.97, 'rate_hz': 40.0, 'final_err_deg': 0.006}
+[14:43:08] DECISION: view 7: board wrist 3 / side 27 corners, skipped
+[14:43:08] == phase: view_08
+[14:43:14] plan 10_view_08: T=61.7s check ok=False tip>0.131 vmax=4.6deg/s lin=0.005m/s
+[14:43:14] DECISION: view 8 (el 66 az 210): not reachable safely (_08: {'joint_limit_violations': 0, 'max_joint_speed': 4.599999919389575, 'joint_speed_ok': True, 'near_base': True, 'keep_in_violations': 0, 'min_tip_above_table': 0.1309)
+[14:43:14] == phase: view_09
+[14:43:18] plan 11_view_09: T=45.1s check ok=False tip>0.117 vmax=4.6deg/s lin=0.009m/s
+[14:43:18] DECISION: view 9 (el 66 az 240): not reachable safely (_09: {'joint_limit_violations': 0, 'max_joint_speed': 4.599999794261578, 'joint_speed_ok': True, 'near_base': True, 'keep_in_violations': 0, 'min_tip_above_table': 0.1173)
+[14:43:18] == phase: view_10
+[14:43:24] plan 12_view_10: T=63.9s check ok=True tip>0.117 vmax=4.6deg/s lin=0.002m/s
+[14:44:28] exec 12_view_10: {'segment': 'view_10', 'ok': True, 'reason': '', 'T_plan': 63.89, 'max_dev_deg': 0.036, 'max_dev_mm': 0.07, 'n': 2556, 'max_force_n': 3.3, 't_exec': 63.96, 'rate_hz': 40.0, 'final_err_deg': 0.008}
+[14:44:29] DECISION: view 10: board wrist 2 / side 27 corners, skipped
+[14:44:29] == phase: view_11
+[14:44:36] plan 13_view_11: T=63.2s check ok=True tip>0.117 vmax=4.6deg/s lin=0.007m/s
+[14:45:39] exec 13_view_11: {'segment': 'view_11', 'ok': True, 'reason': '', 'T_plan': 63.24, 'max_dev_deg': 0.034, 'max_dev_mm': 0.1, 'n': 2529, 'max_force_n': 3.8, 't_exec': 63.29, 'rate_hz': 40.0, 'final_err_deg': 0.008}
+[14:45:40] DECISION: view 11: board wrist 0 / side 25 corners, skipped
+[14:45:40] == phase: view_12

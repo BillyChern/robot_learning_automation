@@ -1,1 +1,1 @@
-python escape_home.py
+python side_calib_capture.py

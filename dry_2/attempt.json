@@ -1,11 +1,11 @@
 {
- "command": "python escape_home.py",
+ "command": "python side_calib_capture.py",
  "moves_robot": false,
  "record_dir": null,
- "exit_code": 0,
- "outcome": "success",
- "duration_s": 16.1,
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration_s": 59.2,
  "stopped_by": null,
- "started": 1794974602.9625165,
- "ended": 1794974619.0795465
+ "started": 1795203146.4307566,
+ "ended": 1795203205.6575632
 }

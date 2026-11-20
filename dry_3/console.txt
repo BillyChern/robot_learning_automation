@@ -1,19 +1,57 @@
-COMMIT 9020b78ed3c43321186ff29aecd539a4ee98da75 (DIRTY)
+COMMIT e09e963eef4d76b1b2e5dcb50b06d24f527d640f (DIRTY)
 LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
-[23:06:05] session escape_home: attempt /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/dry_3 dry=True record=None
-[23:06:05] arm state ARMSTATE_SERVOING_READY, joints [349.37, 37.85, 266.82, 359.04, 311.56, 16.79], gripper 39.7
-[23:06:05] model FK vs measured tool_pose at start: 1.2 mm
-[23:06:06] == phase: escape
-[23:06:06] DECISION: tool at [0.49, 0.095, 0.116]: drag the drawer 7 cm back, up 12 cm, then Home
-Traceback (most recent call last):
-  File "/home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/escape_home.py", line 18, in <module>
-    s.move_line("drag_back", T1, speed="slow", tip_margin=0.0)
-  File "/home/r2r/robot_learning_final_pj/rlpj/robot/session.py", line 394, in move_line
-    self._execute(self.planner.cart_line(name, q0, np.asarray(T_goal, float), speed_of(speed)), tip_margin=tip_margin)
-                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/r2r/robot_learning_final_pj/rlpj/robot/plan.py", line 159, in cart_line
-    n = int(max(np.ceil(L / step), 2))
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-ValueError: cannot convert float NaN to integer
-[23:06:06] STOP RECORD: {'kind': 'exception', 'why': "ValueError('cannot convert float NaN to integer')", 'step': 'escape', 'segment': None, 'q_now': [349.37, 37.85, 266.82, 359.04, 311.56, 16.79], 'gripper': 39.7}
-summary: /home/r2r/robot_learning_final_pj/runs/drawers_setup/escape/dry_3/summary.json outcome: fail exit 3
+[14:33:52] session side_calib: attempt /home/r2r/robot_learning_final_pj/runs/drawers_setup/sidecal/dry_3 dry=True record=None
+[14:33:52] arm state ARMSTATE_SERVOING_READY, joints [14.82, 7.37, 238.83, 352.41, 315.96, 116.69], gripper 52.8
+[14:33:52] model FK vs measured tool_pose at start: 1.3 mm
+[14:33:54] == phase: find_board
+[14:33:56] DECISION: board centre ~[0.176, -0.072, -0.04] (old side calibration)
+[14:33:56] == phase: home
+[14:33:59] plan 01_to_home: T=41.2s check ok=True tip>0.200 vmax=4.5deg/s lin=0.017m/s
+[14:34:02] DECISION: 17 of 24 views have an IK solution inside the joint limits
+[14:34:02] == phase: view_00
+[14:34:07] plan 02_view_00: T=58.4s check ok=True tip>0.123 vmax=2.9deg/s lin=0.018m/s
+[14:34:09] DECISION: view 0: saved pose 0 (wrist 16, side 27 corners)
+[14:34:09] == phase: view_01
+[14:34:11] plan 03_view_01: T=16.1s check ok=True tip>0.109 vmax=4.6deg/s lin=0.009m/s
+[14:34:12] DECISION: view 1: saved pose 1 (wrist 16, side 27 corners)
+[14:34:12] == phase: view_02
+[14:34:19] plan 04_view_02: T=65.4s check ok=False tip>0.109 vmax=4.6deg/s lin=0.004m/s
+[14:34:19] DECISION: view 2 (el 80 az 30): not reachable safely (_02: {'joint_limit_violations': 0, 'max_joint_speed': 4.5999997452582875, 'joint_speed_ok': True, 'near_base': True, 'keep_in_violations': 0, 'min_tip_above_table': 0.109)
+[14:34:19] == phase: view_03
+[14:34:19] plan 05_view_03: T=5.8s check ok=True tip>0.109 vmax=4.6deg/s lin=0.005m/s
+[14:34:21] DECISION: view 3: saved pose 2 (wrist 16, side 27 corners)
+[14:34:21] == phase: view_04
+[14:34:27] plan 06_view_04: T=66.6s check ok=True tip>0.113 vmax=4.6deg/s lin=0.004m/s
+[14:34:29] DECISION: view 4: saved pose 3 (wrist 16, side 27 corners)
+[14:34:29] == phase: view_05
+[14:34:35] plan 07_view_05: T=60.8s check ok=True tip>0.113 vmax=4.6deg/s lin=0.003m/s
+[14:34:36] DECISION: view 5: saved pose 4 (wrist 16, side 27 corners)
+[14:34:36] == phase: view_06
+[14:34:43] plan 08_view_06: T=66.9s check ok=True tip>0.119 vmax=4.6deg/s lin=0.002m/s
+[14:34:44] DECISION: view 6: saved pose 5 (wrist 16, side 27 corners)
+[14:34:44] == phase: view_07
+[14:34:50] plan 09_view_07: T=63.9s check ok=True tip>0.122 vmax=4.6deg/s lin=0.003m/s
+[14:34:52] DECISION: view 7: saved pose 6 (wrist 16, side 25 corners)
+[14:34:52] == phase: view_08
+[14:34:58] plan 10_view_08: T=61.8s check ok=False tip>0.131 vmax=4.6deg/s lin=0.005m/s
+[14:34:58] DECISION: view 8 (el 66 az 210): not reachable safely (_08: {'joint_limit_violations': 0, 'max_joint_speed': 4.599999738894667, 'joint_speed_ok': True, 'near_base': True, 'keep_in_violations': 0, 'min_tip_above_table': 0.1306)
+[14:34:58] == phase: view_09
+[14:35:02] plan 11_view_09: T=45.1s check ok=False tip>0.117 vmax=4.6deg/s lin=0.009m/s
+[14:35:02] DECISION: view 9 (el 66 az 240): not reachable safely (_09: {'joint_limit_violations': 0, 'max_joint_speed': 4.599999848893077, 'joint_speed_ok': True, 'near_base': True, 'keep_in_violations': 0, 'min_tip_above_table': 0.1170)
+[14:35:02] == phase: view_10
+[14:35:08] plan 12_view_10: T=63.9s check ok=True tip>0.117 vmax=4.6deg/s lin=0.002m/s
+[14:35:10] DECISION: view 10: saved pose 7 (wrist 16, side 27 corners)
+[14:35:10] == phase: view_11
+[14:35:16] plan 13_view_11: T=63.2s check ok=True tip>0.117 vmax=4.6deg/s lin=0.007m/s
+[14:35:17] DECISION: view 11: saved pose 8 (wrist 16, side 25 corners)
+[14:35:17] == phase: view_12
+[14:35:23] plan 14_view_12: T=60.3s check ok=True tip>0.117 vmax=4.6deg/s lin=0.008m/s
+[14:35:24] DECISION: view 12: saved pose 9 (wrist 16, side 24 corners)
+[14:35:24] == phase: view_13
+[14:35:30] plan 15_view_13: T=57.0s check ok=True tip>0.117 vmax=4.6deg/s lin=0.008m/s
+[14:35:31] DECISION: view 13: saved pose 10 (wrist 16, side 25 corners)
+[14:35:31] == phase: view_14
+[14:35:37] plan 16_view_14: T=65.2s check ok=True tip>0.118 vmax=4.6deg/s lin=0.006m/s
+[14:35:39] DECISION: view 14: saved pose 11 (wrist 16, side 25 corners)
+[14:35:39] CLAIM success
+summary: /home/r2r/robot_learning_final_pj/runs/drawers_setup/sidecal/dry_3/summary.json outcome: success exit 0
