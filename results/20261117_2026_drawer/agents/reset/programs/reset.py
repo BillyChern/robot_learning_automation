@@ -71,6 +71,7 @@ DEEP_LEVEL = 0.016          # above this the level-finger variant (missed on the
 T_C = scene.SLOT_C - 0.0045     # drawer centre line along the front (-0.087 before 2026-11-20)
 CAB_T = scene.CAB_T             # cabinet body t-span from the task yaml keep-out box
 TASK_LAYOUT = scene.TASK.get("layout", {"drawer": {"y": [-0.21, -0.126]}})
+FACE_GAP_MIN = 0.17           # 16:35 operator: drawer centre >= 17 cm in front of the cabinet face
 Y_CENTRE = -0.10                # robot's centre line on the table side (01:12: slide only toward it)
 DRIFT_MAX = 0.02                # 01:12: stop sliding/righting attempts after 2 cm of unintended drift
 TABLE_OPEN = 0.15          # table pick opening (~72 mm): +-3 cm around a 1 cm wall (attempt 52 missed at 51 mm)
@@ -121,10 +122,11 @@ class Reset:
         self.retried = False
         self.deep_cfg = None
         self.from_recess = False
+        self.or_stage = 0         # judge guess sequence for an unseen pull (attempt 124)
         self.tab_dt = TAB_DT0     # tab t offset from PIN_T: saved from the last hold, updated by the wrist measurement
         self.pin_dt = 0.0         # sideways (t) offset of the tab: attempt 92 saw it ~1-1.5 cm toward +t in the recessed drawer
         self.depth = 0.0          # how far the drawer front sits behind flush (pushed in past flush: no stop)
-        self.bias = np.array([0.02, 0.03])   # box centre - blob centre, default from attempt 19
+        self.bias = np.array([0.004, -0.005])   # box centre - blob centre (moved camera, attempt 124: (0.002..0.006, -0.004..-0.006); old camera (0.02, 0.03))
 
     # ------------------------------------------------------------ helpers
     def log(self, m):
@@ -730,7 +732,14 @@ class Reset:
             if path2 is not None and self.ask(path2, t.get("reset_orientation", ""), f"{tag}_q1b"):
                 self.s.decide("vision judge: second look confirms the pull faces the robot")
                 return True, robot
-            msg, pull = "pull on a far (hidden) wall: assume opposite the robot-facing wall, turn 180 deg and re-check", -robot
+            # attempt 124 (new side camera): the lower-right wall is cut off by the frame bottom (q2 'can't see'), and
+            # repeated 180 deg guesses just swapped a side-wall pull between the two side walls. Guess sequence over
+            # the picks: far wall (180), then the camera-side side wall (90), then far again (covers the 4th wall).
+            stage = self.or_stage; self.or_stage += 1
+            if stage % 3 == 1:
+                msg, pull = f"pull not on the robot-facing or far wall (180 deg turn did not show it): assume the {lab} side wall, turn 90 deg", vis
+            else:
+                msg, pull = "pull on a far (hidden) wall: assume opposite the robot-facing wall, turn 180 deg and re-check", -robot
         self.s.decide(f"vision judge: {msg}")
         return False, pull
 
@@ -828,16 +837,17 @@ class Reset:
         """Drawer centre l (xy) safe on the table: off the cabinet front, not toward the table edges (01:12: the
         drawer went off the table beyond y ~ -0.25 before the 2026-11-20 base shift), within the arm's easy reach."""
         ql = nt(l)
-        y0 = float(TASK_LAYOUT["drawer"]["y"][0])
         if ql[0] > OFF - 0.10 and CAB_T[0] - 0.055 < ql[1] < CAB_T[1] + 0.065:
             return False
-        return (y0 - 0.05) <= l[1] <= 0.0 and 0.30 <= l[0] <= 0.56
+        # 16:35: the moved side camera cuts off y < ~-0.18 (attempt 124: drawer at y -0.19 cut off at the frame bottom)
+        return -0.17 <= l[1] <= 0.05 and 0.30 <= l[0] <= 0.56
 
     def slide_ok(self, ctr, d, dist):
         """01:12 rule: a slide must move the drawer toward the robot's centre line (y ~ -0.1), never toward an edge."""
         end = ctr + d * dist
-        return abs(end[1] - Y_CENTRE) < abs(ctr[1] - Y_CENTRE) - 0.5 * dist * abs(d[1]) and self.landing_ok(end) \
-            and dist <= 0.12
+        # the edge the drawer went off (01:12) is the -y side; +y is the table middle / the new target area (16:35)
+        toward_edge = d[1] < -0.2 and end[1] < Y_CENTRE
+        return (not toward_edge) and self.landing_ok(end) and dist <= 0.125
 
     def right_side(self, c, tag):
         """Drawer lying on a side wall (00:43 / 01:01): it is light and the table slippery, so pushes slide it and a
@@ -1200,7 +1210,14 @@ class Reset:
                 away = unit(-N) * min(0.025, 0.05 - clr)
                 s.decide(f"placement {clr:.3f} m from the cabinet: aim {np.linalg.norm(away):.3f} m away from it")
                 target = target + away
-            s.summary(cabinet_clearance=round(self.cab_clear(target + self.bias, rot2(N, delta)), 3))
+            # 16:35 operator: keep the drawer centre >= 17 cm in front of the cabinet face (separate depth blob)
+            n_c = float(nt(target + self.bias)[0])
+            if OFF - n_c < FACE_GAP_MIN:
+                back = FACE_GAP_MIN - (OFF - n_c)
+                s.decide(f"placement centre {OFF - n_c:.3f} m from the cabinet face: aim {back:.3f} m further out")
+                target = target - N * back
+            s.summary(cabinet_clearance=round(self.cab_clear(target + self.bias, rot2(N, delta)), 3),
+                      face_gap=round(float(OFF - nt(target + self.bias)[0]), 3))
         a = rot2(N, delta)            # drawer axis from its front (pull) wall toward its back: pull faces the robot
         if held.get("pull") is not None:
             turn = wrapd(ang(-a) - ang(held["pull"]))

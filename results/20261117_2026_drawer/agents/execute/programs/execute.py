@@ -36,6 +36,7 @@ READY_XYZ = (0.40, -0.10, 0.25)
 TIP_OPEN = 0.027
 HOLD_MAX = 97.0
 SAFE_H = 0.20
+HAND_YAW = 7.0               # deg: tool yaw that makes the held drawer straight (data, see run())
 EDGE_TARGET = 0.0045           # m: held-drawer edge-based centre offset of the reached insertions
 SLOT_T = CAB["slot_t"]
 T_C = 0.5 * (SLOT_T[0] + SLOT_T[1]) - 0.0045   # slot-relative (base moved 2026-11-20): the drawer centre target is T_C + EDGE_TARGET = window centre
@@ -53,7 +54,7 @@ MAX_FORCE = 3                # own force stops per insertion before the stage en
 L_MIN = 0.155                # drawer depth floor: the side camera sees only part of the rim (dry run 1: 0.093;
                              # reset agent: obb 0.154 x 0.14-0.15), a short estimate would put its back into the cabinet
 PUSH_TILT, PUSH_H, PUSH_ZT = 40.0, 0.062, 0.047      # tilt from vertical, fingertip height, tip along tool z (closed)
-PUSH_DT = 0.015              # push point beside the pull (t offset from the drawer centre line)
+PUSH_DT = 0.0               # push on the drawer centre line (above the knob): every off-centre push (1.5-3 cm) jammed on contact (att 43,44,72, ep 4,5,8,25), the centred ones slid (att 7, 14, 20)
 PUSH_TMAX = SLOT_T[1] - 0.015  # closed fingers (+-14 mm along t in the model) clear of the slot-side keep-out box (t > slot_t[1])
 PUSH_NMAX = OFF + 0.012       # model tip; at h 0.062 the model refuses beyond ~+0.0125 (upper cabinet_front box)
 PUSH_HI = 0.14
@@ -804,7 +805,10 @@ class Episode:
             held = self.grasp(d)
         s.require(held is not None, "front wall not grasped after two tries")
         s.phase("carry")
-        yaw2 = wrapd(held["yaw"] + wrapd(ang(N) - ang(held["d0"])))
+        # straight drawer (user 00:30): the drawer sits ~7 deg turned in the jaws (insertions got through in 5/12
+        # episodes with the tool at +5..+10 deg, 1/14 otherwise, and jam again at 0, ep 24): the tool is turned by
+        # HAND_YAW for the whole insertion so the DRAWER's axis is on the slot normal; no yaw change during it
+        yaw2 = wrapd(held["yaw"] + wrapd(ang(N) - ang(held["d0"]))) + HAND_YAW
         z0 = self.tz + held["drop"] + BOTTOM_H
         n0 = min(OFF - BACK_GAP - held["L_back"], INS_NMAX - 0.05)
         T0 = tool_down_T(np.r_[xy_of(n0, T_C), z0], yaw2)

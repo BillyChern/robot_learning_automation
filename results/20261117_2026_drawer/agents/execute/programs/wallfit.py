@@ -80,3 +80,32 @@ def ends_fit(img, T_tool, e, d_in, z, span=0.10, a_vals=(0.002, 0.005, 0.008)):
     if i == 0 or j == len(ss) - 1:                    # an end not seen (out of the image)
         return dict(lo=float(ss[i]), hi=float(ss[j]), open=True)
     return dict(lo=float(ss[i]), hi=float(ss[j]), centre=float(0.5 * (ss[i] + ss[j])), length=float(ss[j] - ss[i]))
+
+
+def side_wall_angle(img, T_tool, c, ax, z, w_exp=0.065, s_range=(0.03, 0.11), search=0.025, min_step=40.0):
+    """Yaw of a held drawer from the wrist image: the outer edges of its two side walls (parallel to ax, the drawer
+    axis pointing into the slot, at +-w_exp from the centre point c) found at several positions s along ax; a line
+    fit per side gives the angle (deg, CCW) of the drawer axis relative to ax. Returns dict or None."""
+    g = cv2.GaussianBlur(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (5, 5), 0).astype(float)
+    scale = img.shape[1] / 1280.0
+    ax = np.asarray(ax, float) / np.linalg.norm(ax)
+    w = np.array([-ax[1], ax[0]])
+    out = {}
+    for side in (1, -1):
+        pts = []
+        for sv in np.linspace(s_range[0], s_range[1], 7):
+            base = c + sv * ax + side * w_exp * w
+            d_in = -side * w                                    # inward across the side wall
+            pos, step = edge_profile(g, T_tool, base, d_in, z, np.linspace(-0.004, 0.004, 3), half=search, scale=scale)
+            if pos is not None and step >= min_step:
+                pts.append((sv, side * w_exp - side * pos, step))   # lateral position of the outer edge along w
+        if len(pts) >= 4:
+            P = np.array(pts)
+            k, b0 = np.polyfit(P[:, 0], P[:, 1], 1)
+            res = float(np.std(P[:, 1] - (k * P[:, 0] + b0)))
+            out[side] = dict(angle_deg=float(np.degrees(np.arctan(k))), offset=float(b0), n=len(P), res_mm=round(res * 1000, 1),
+                             step=float(np.median(P[:, 2])))
+    if not out:
+        return None
+    best = min(out.values(), key=lambda r: r["res_mm"])
+    return dict(best, sides={int(k): v for k, v in out.items()})

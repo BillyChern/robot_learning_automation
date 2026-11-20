@@ -174,3 +174,10 @@
   shift the aim, re-approach (model-checked), check image. Held tab position saved to notes/tab_position.json
   (slot-centre relative) and used as the starting offset by later runs. Offline: 122 crops -> +11.1/+11.0 mm,
   attempt-93 crop (held) -> -1.1 mm; offline.py 5/5; deep variants 8/8.
+- attempt 124: new side camera: the drawer at the layout targets sits at the bottom edge, its lower-right wall cut off (judge q2 'can't see'); each check guessed 'far wall' -> 180 deg turn; 3 picks never showed the pull on the robot-facing wall -> it is on a side wall (180 swaps the side walls). Fix: guess sequence far (180), camera-side side wall (90), far again; covers all 4 walls in 3 picks.
+- 16:35 operator: new target area x 0.36-0.37, y -0.03..-0.01 (whole drawer in the moved camera's view), drawer
+  >= 17 cm in front of the cabinet face. place(): centre >= FACE_GAP_MIN 0.17 from the face (else aim further out
+  along -N); default blob bias (0.004, -0.005) from the new camera (attempt 124) instead of the old (0.02, 0.03).
+  landing_ok: y -0.17..0.05 (camera cuts off y < ~-0.18). slide_ok: no slide toward the -y edge (the side it fell
+  off), end must be a valid landing spot, <= 12.5 cm. Offline: offline.py 6/6 with the new targets, deep 8/8, hook 2/3
+  (the 3rd needs a slide toward the cabinet front: refused, needs a person).
