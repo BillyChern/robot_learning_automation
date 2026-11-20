@@ -54,6 +54,11 @@ def main():
     print(f"poses {len(Ts)} (dropped {int((~keep).sum())}) | spread {spread_mm:.1f} mm, {spread_deg:.2f} deg | "
           f"camera at {np.round(T[:3, 3] * 1000).tolist()} mm | moved {1000 * np.linalg.norm(T[:3, 3] - old[:3, 3]):.0f} mm, "
           f"{wc.angle_deg(old[:3, :3], T[:3, :3]):.1f} deg from the old calibration")
+    bz = [np.array(r["T_base_board"])[2, 3] for r in rows]
+    devs = [1000 * np.linalg.norm(np.array(r["T_base_side"])[:3, 3] - T[:3, 3]) for r in rows]
+    print("board z from the wrist (m): mean %.4f, sd %.4f | per-pose deviation (mm): %s" % (np.mean(bz), np.std(bz), np.round(devs, 1).tolist()))
+    print("per-pose wrist corners / side corners:", [(len(rc.detect(det, cv2.imread(str(cap / f"{n:02d}_wrist.png")))), len(rc.detect(det, cv2.imread(str(cap / f"{n:02d}_side.png"))))) for n in range(len(poses))])
+    json.dump(dict(T=T.tolist()), open(cap / "solution.json", "w"))
     if write:
         res = {"serial": SIDE_SERIAL, "name": "side D435", "intrinsics": ssrc, "T_base_side": T.tolist(),
                "n_poses": len(Ts), "spread_mm": spread_mm, "spread_deg": spread_deg, "automated": True,

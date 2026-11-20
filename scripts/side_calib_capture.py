@@ -62,7 +62,41 @@ def main():
         _, rv, tv = rc.view_rms(o, i, Ks, Ds)
         centre_board = np.r_[o.reshape(-1, 3).mean(0), 1.0]
         centre = (calib.T_base_side() @ rt_to_T(rv, tv) @ centre_board)[:3]
-        s.decide(f"board centre ~{np.round(centre, 3).tolist()} (old side calibration)")
+        s.decide(f"board centre ~{np.round(centre, 3).tolist()} (old side calibration, rough)")
+        # the wrist camera + hand-eye + FK give the board's pose in the base frame without the side calibration
+        wi = json.loads((rc.RESULTS / "intrinsics_kinova_1280x720.json").read_text())
+        Kw = np.array([[wi["fx"], 0, wi["cx"]], [0, wi["fy"], wi["cy"]], [0, 0, 1.0]]); Dw = np.zeros(5)
+
+        def wrist_centre():
+            time.sleep(1.5)
+            cw, okw = board_ok(det, s.wrist.latest()[0])
+            if len(cw) < 8:
+                return None, len(cw)
+            o, i = rc.obj_img(board, cw)
+            _, rv, tv = rc.view_rms(o, i, Kw, Dw)
+            T_bt = s.kin.fk(np.asarray(s.feedback()["q"], float))
+            return (T_bt @ X @ rt_to_T(rv, tv) @ centre_board)[:3], len(cw)
+
+        HOME0 = np.array([0.0, 15.0, 230.0, 0.0, 55.6, 90.0])
+        c_w, n_w = wrist_centre()
+        if c_w is None:
+            s.phase("home0"); s.move_joint("to_home0", HOME0, speed="slow")
+            c_w, n_w = wrist_centre()
+        if c_w is None:                                  # overview: high above the rough centre, looking down
+            for roll in range(0, 360, 30):
+                q, ep, er = s.kin.ik(look_at(centre + np.r_[0, 0, 0.45], centre, roll) @ rc.inv(X), HOME0)
+                if ep < 0.002 and er < 0.5:
+                    try:
+                        s.phase("overview"); s.move_joint("overview", q, speed="slow")
+                    except Exception as e:
+                        s.decide(f"overview refused: {str(e)[30:120]}"); continue
+                    c_w, n_w = wrist_centre()
+                    break
+        if c_w is None:
+            s.decide(f"the wrist camera did not find the board ({n_w} corners)"); s.claim("fail"); return
+        s.decide(f"board centre {np.round(c_w, 3).tolist()} from the wrist camera ({n_w} corners); "
+                 f"the side estimate was {1000 * np.linalg.norm(c_w - centre):.0f} mm off")
+        centre = c_w
         HOME = np.array([0.0, 15.0, 230.0, 0.0, 55.6, 90.0])
         q_now = np.asarray(s.feedback()["q"], float)
         if np.abs((q_now - HOME + 180) % 360 - 180).max() > 2:

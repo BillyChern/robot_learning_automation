@@ -2,6 +2,17 @@
 **Note 1**: commands run on 4090. Only the side camera usually needs redoing: it breaks when the robot base or the camera moves
 **Note 2**: one arm at a time. kinova_a: `--robot 192.168.2.9 --side 935322070708` (D435, since 2026-11-04; was 052622072135), kinova_b: `--robot 192.168.2.10 --side 935322070708`. Both now name the same camera, and results are saved by camera serial, so a side-pose run for one arm overwrites the other arm's `side_pose_935322070708.json`
 
+### Recalibrate the side camera, automated (no hand-guiding)
+Board taped flat on the table where the side camera sees it, arm READY (at Home or where the wrist camera sees the
+board), nobody in the cell, run on the 4090:
+```
+.venv/bin/python scripts/auto_side_calib.py          # --dry first to check the views; --no-write to only report
+```
+The arm locates the board with the wrist camera (hand-eye + FK, so the old side calibration only has to be roughly
+right), visits ~12 model-checked viewing poses, saves wrist + side images, and solves with `wristcalib.py`'s own maths
+(backup of the old file first). It prints the spread and how far the camera moved; check `rlpj.robot.check` (table
+height) afterwards. First used 2026-11-20 (12 poses, spread 11 mm / 0.8 deg: partial wrist views, ~3 mm on the mean).
+
 ### Recalibrate the side camera
 1. fix the robot base and the camera so they cannot turn, then back up the current calibration
     ```
