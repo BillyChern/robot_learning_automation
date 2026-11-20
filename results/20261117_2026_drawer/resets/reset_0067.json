@@ -1,0 +1,145 @@
+{
+ "reset": 67,
+ "t": "2026-11-20T18:02:25",
+ "targets": {
+  "drawer": [
+   0.366,
+   -0.012
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.05,
+  "objects": {
+   "drawer": {
+    "target": [
+     0.366,
+     -0.012
+    ],
+    "found": [
+     0.3562,
+     -0.0881
+    ],
+    "dist": 0.0767,
+    "ok": false
+   }
+  },
+  "extra_blobs": 5,
+  "reason": "drawer: 7.7 cm off"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.2525,
+    0.1465
+   ],
+   "z_top": 0.0035,
+   "height": 0.019,
+   "extent": [
+    0.0251,
+    0.0304
+   ],
+   "n": 124,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.005,
+   "outer_r": 0.0111
+  },
+  {
+   "xy": [
+    0.3562,
+    -0.0881
+   ],
+   "z_top": 0.0534,
+   "height": 0.0689,
+   "extent": [
+    0.1331,
+    0.1492
+   ],
+   "n": 5489,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0113,
+   "outer_r": 0.0787
+  },
+  {
+   "xy": [
+    0.4559,
+    0.1932
+   ],
+   "z_top": 0.0005,
+   "height": 0.016,
+   "extent": [
+    0.0468,
+    0.0168
+   ],
+   "n": 81,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.597,
+    0.0725
+   ],
+   "z_top": 0.2536,
+   "height": 0.2691,
+   "extent": [
+    0.1224,
+    0.1368
+   ],
+   "n": 10896,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0188,
+   "outer_r": 0.0479
+  },
+  {
+   "xy": [
+    0.877,
+    0.0354
+   ],
+   "z_top": -0.0037,
+   "height": 0.0118,
+   "extent": [
+    0.0211,
+    0.051
+   ],
+   "n": 101,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.9105,
+    0.1046
+   ],
+   "z_top": -0.0036,
+   "height": 0.0118,
+   "extent": [
+    0.041,
+    0.021
+   ],
+   "n": 91,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": {
+  "drawer": [
+   0.359,
+   -0.0893
+  ]
+ },
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_129",
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration": 457.6
+}

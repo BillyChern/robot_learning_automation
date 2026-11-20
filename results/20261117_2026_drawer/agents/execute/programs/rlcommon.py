@@ -45,7 +45,7 @@ def prior(obs):
 
 
 YAW_TARGET = 9.0
-RESIDUAL = np.array([0.25, 0.3, 0.15, 0.0])     # max |policy - prior| per dimension (executed action)
+RESIDUAL = np.array([0.25, 0.0, 0.15, 0.0])   # t held after the alignment too (17:48: the learned dt drifted 7 mm off it)     # max |policy - prior| per dimension (executed action)
 
 
 def anchor(a_pol, obs):

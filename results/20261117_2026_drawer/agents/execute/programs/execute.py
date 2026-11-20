@@ -53,10 +53,12 @@ L_FACE = 0.13                # drawer outer size for the wall geometry of the pu
 MAX_FORCE = 3                # own force stops per insertion before the stage ends
 L_MIN = 0.155                # drawer depth floor: the side camera sees only part of the rim (dry run 1: 0.093;
                              # reset agent: obb 0.154 x 0.14-0.15), a short estimate would put its back into the cabinet
-PUSH_TILT, PUSH_H, PUSH_ZT = 40.0, 0.062, 0.047      # tilt from vertical, fingertip height, tip along tool z (closed)
+PUSH_GRIP = 0.55            # pusher opening (ep 27: closed tips pushed the knob, drawer stopped 2.6 cm out): the two fingers
+                            # straddle the knob (~3.8 cm gap) and push the face on both sides of it
+PUSH_TILT, PUSH_H, PUSH_ZT = 40.0, 0.048, 0.027 + 0.020 * 0.55   # tilt, fingertip height (knob height), tip along tool z
 PUSH_DT = 0.0               # push on the drawer centre line (above the knob): every off-centre push (1.5-3 cm) jammed on contact (att 43,44,72, ep 4,5,8,25), the centred ones slid (att 7, 14, 20)
 PUSH_TMAX = SLOT_T[1] - 0.015  # closed fingers (+-14 mm along t in the model) clear of the slot-side keep-out box (t > slot_t[1])
-PUSH_NMAX = OFF + 0.012       # model tip; at h 0.062 the model refuses beyond ~+0.0125 (upper cabinet_front box)
+PUSH_NMAX = OFF + 0.012       # model tip; the flow test refuses steps beyond ~+0.012 (a static probe accepted +0.024: path differs)
 PUSH_HI = 0.14
 TIP_MARGIN_PUSH = 0.004
 
@@ -367,7 +369,7 @@ class Episode:
         n = min(face_n - 0.025, PUSH_NMAX - 0.03); t, h = t0, PUSH_H
         T_pre = push_T(n, t, h, self.tz)
         T_hi = T_pre.copy(); T_hi[2, 3] += 0.06
-        s.gripper(1.0, "close: the fingertips are the pusher")
+        s.gripper(PUSH_GRIP, "fingers apart: they straddle the knob")
         q = self.ik(T_hi, [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (20.0, 40.0, 60.0) for j6 in (-90.0, 90.0)])
         s.move_joint("above_push", q, "normal")
         self.line("to_push_pre", T_pre, "normal", tip_margin=TIP_MARGIN_PUSH)
@@ -379,7 +381,7 @@ class Episode:
             o = self.obs(1, (n - PUSH_NMAX) / 0.1, t - t0, h - PUSH_H, 0.0, ma, mb, np.array([f @ N3, f @ T3, f @ Z3]), peak, k, K_PUSH, 0)
             a, info = self.policy(o)
             adv, ddt, ddz = 0.0075 * (1 + a[0]), 0.003 * a[1], 0.003 * a[2]
-            tgt = (min(n + adv, PUSH_NMAX), float(np.clip(t + ddt, t0 - 0.015, min(t0 + 0.006, PUSH_TMAX + 0.002))), float(np.clip(h + ddz, 0.057, 0.068)))
+            tgt = (min(n + adv, PUSH_NMAX), float(np.clip(t + ddt, t0 - 0.015, min(t0 + 0.006, PUSH_TMAX + 0.002))), float(np.clip(h + ddz, 0.043, 0.054)))
             status, res, scale = "refused", {}, 1.0
             for _ in range(3):
                 nn = n + scale * (tgt[0] - n); tt_ = t + scale * (tgt[1] - t); hh = h + scale * (tgt[2] - h)
@@ -413,6 +415,10 @@ class Episode:
             if n >= PUSH_NMAX - 0.0005:
                 end = "reached"; break
         self.snap("push_end")
+        try:                                   # diagnostic: the slot right after the push (arm still in front of it)
+            P2 = tt.cloud(s.side, n=3); s.summary(slot_after_push=checks.slot_profile(P2, tt.table_fit(P2), CAB, FLUSH_TOL))
+        except Exception as ex:
+            s.log(f"slot after push: {ex}")
         s.summary(push=dict(end=end, steps=len(self.trans) - k0, tip_n_minus_off=round(n - OFF, 4), dt=round(t - t0, 4), h=round(h, 4)))
         if end in ("force", "abort") and not s.dry:
             self.unload(-np.r_[push_dirs()[0], 0.0])
@@ -450,6 +456,27 @@ class Episode:
     def push_retreat(self, n, t, h):
         """Leave the drawer front: back off horizontally to OFF-0.04 (if deeper), then up, then READY; the first
         candidate chain that passes the model check is executed (tools/offline_test.py grid)."""
+        # ep 28: the push reached the limit, then the 5 cm retreat pulled 27 N and the drawer ended 1.7 cm out: the
+        # fingers straddling the knob caught it. Back off 4 mm, open wider (0.35: ~5.5 cm gap, still inside the slot
+        # window in the model) and only then retreat.
+        s = self.s
+        if s.grip_frac > 0.36 and s.grip_frac < 0.9:
+            Tq = push_T(n - 0.004, t, h, self.tz)
+            if self.chain_ok([Tq]):
+                self.line("push_clear_knob", Tq, "slow", tip_margin=TIP_MARGIN_PUSH)
+                n = n - 0.004
+            s.gripper(0.35, "open wider: clear the knob before the retreat")
+        # operator 18:10: retreat UP first (clear of the knob and label plate), then back: back off only to just in
+        # front of the face (model), lift 5 cm, then back to OFF-0.04
+        n_up = min(n, OFF - 0.006)
+        Tu0 = push_T(n_up, t, h, self.tz); Tu1 = Tu0.copy(); Tu1[2, 3] += 0.05
+        Tu2 = Tu1.copy(); Tu2[:2, 3] -= max(0.0, n_up - (OFF - 0.04)) * push_dirs()[0]
+        if self.chain_ok([Tu0, Tu1, Tu2]):
+            s.decide(f"push retreat: up first at n-OFF {n_up - OFF:+.3f}, then back")
+            self.line("push_ret_front", Tu0, "slow", tip_margin=TIP_MARGIN_PUSH)
+            self.line("push_ret_up", Tu1, "slow", tip_margin=TIP_MARGIN_PUSH)
+            self.line("push_ret_back", Tu2, "normal", tip_margin=TIP_MARGIN_PUSH)
+            return
         nb = min(n - 0.01, OFF - 0.04)
         Tb = push_T(nb, t, h, self.tz)
         cands = []
@@ -846,9 +873,11 @@ class Episode:
         self.line("back_from_front", T_bk, "normal")
         self.lift_to("lift_clear", SAFE_H, "normal")
         face_n = ins["n"] - 0.008          # outer face of the front wall in front of the tool axis
-        if ins["end"] in ("dropped", "force", "abort"):
-            s.decide(f"insertion ended with {ins['end']}: no push (a force stop fails the episode anyway)")
+        if ins["end"] == "dropped":
+            s.decide("insertion ended with the drawer dropped: no push")
             self.finish(before); return
+        # ep 26: the insertion stopped on force at n-OFF -0.056 and the drawer ended nearly flush in the side view
+        # (flush 0.43, median_d 0.0) but the push was skipped: a jammed insertion still gets the push when reachable
         if face_n - 0.025 < OFF - 0.08:
             s.decide(f"drawer front at n-OFF {face_n - OFF:+.3f}: too far out for the tilted push (j3 limit), no push")
             self.finish(before); return
