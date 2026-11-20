@@ -25,7 +25,7 @@
   },
   "consecutive_failures": {
    "execute": 0,
-   "reset": 4
+   "reset": 5
   },
   "rl": {
    "total": 20,
@@ -59,7 +59,7 @@
    "first_success_attempt": 16,
    "first_success_after_attempts": 21,
    "time_to_first_success_s": 5425.0,
-   "repairs": 18,
+   "repairs": 19,
    "rounds": 0,
    "program_command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py",
    "last_report": "Attempt 102 (commit cc60dfb) worked on the robot. The drawer was placed 2.8 cm from the target (tolerance 5 cm). The vision judge confirmed the pull faces the robot (confidence 0.75), and the orchestrator's layout check passed.\n\nWhy attempts 100 and 101 failed: the drawer stood on the table lengthwise along the cabinet front. The table pick grabbed the end wall next to the cabinet's side post. There the gripper body would have entered the cabinet's no-go zone, so the safety check refused the move, before any motion in 100 and after a small correction in 101.\n\nThe fix: when the drawer is within 8 cm of the cabinet, the pick now grabs the end wall farther from it. If the safety check still refuses, it tries the other end. In attempt 102 the arm first got clear of its low stop position from attempt 101, then grabbed the far end on the first try (gripper reading 89.5, meaning it was holding the drawer).",
@@ -226,6 +226,10 @@
     [
      "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_122",
      "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_124",
+     "layout check failed: orientation not confirmed by the vision check: The drawer is out of the slot and sits upright, open side up, on the table near the bottom of the frame, but no metal pull shows on its outer walls, including the one facing the lower left. The pull is probably on a wall facing away from the robot base."
     ]
    ]
   }
