@@ -60,7 +60,8 @@ def main():
             s.decide(f"board not seen well by the side camera ({len(c)} corners)"); s.claim("fail"); return
         o, i = rc.obj_img(board, c)
         _, rv, tv = rc.view_rms(o, i, Ks, Ds)
-        centre_board = np.r_[o.reshape(-1, 3).mean(0), 1.0]
+        nx, ny = board.getChessboardSize(); sq = board.getSquareLength()
+        centre_board = np.r_[nx * sq / 2, ny * sq / 2, 0.0, 1.0]      # the whole board's centre, not the seen corners'
         centre = (calib.T_base_side() @ rt_to_T(rv, tv) @ centre_board)[:3]
         s.decide(f"board centre ~{np.round(centre, 3).tolist()} (old side calibration, rough)")
         # the wrist camera + hand-eye + FK give the board's pose in the base frame without the side calibration
@@ -117,7 +118,7 @@ def main():
                         best = (dq, q)
             return best
         cands = []
-        for el, r in ((80, 0.30), (66, 0.34)):
+        for el, r in ((80, 0.38), (66, 0.42)):            # far enough for the whole A4 board in the wrist view
             for az in range(0, 360, 30):
                 a = np.radians(az)
                 p = centre + r * np.r_[np.cos(np.radians(el)) * np.cos(a), np.cos(np.radians(el)) * np.sin(a), np.sin(np.radians(el))]

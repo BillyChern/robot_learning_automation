@@ -28,12 +28,12 @@ reset_orientation: >-
   at all (it is then on a wall facing away from the camera), the answer is false.
 objects: [drawer]
 
-fixtures:                          # measured 2026-11-17 after the side-camera recalibration (docs/RL_DESIGN.md section 5)
+fixtures:                          # measured 2026-11-17; shifted 2026-11-20 by (dn -9.3 mm, dt -46 mm) = base-frame (+8.5, -46.2) mm: the robot base moved relative to the table/cabinet (re-measured after the automated side-camera calibration)
   cabinet:
     front_normal: [0.9282, 0.3722] # unit xy normal of the front face, pointing into the cabinet (insertion direction)
-    front_offset: 0.5226           # front plane: normal . xy = offset (m)
+    front_offset: 0.5133           # front plane: normal . xy = offset (m)
     slot_h: [0.030, 0.090]         # bottom-slot window above the table (m): the drawer front fills it when inserted
-    slot_t: [-0.120, -0.045]       # window along the front (t = -n_y x + n_x y, m); the front spans -0.135..-0.026
+    slot_t: [-0.166, -0.091]       # window along the front (t = -n_y x + n_x y, m); the front spans -0.135..-0.026
     height: 0.27
   flush_tol: 0.012                 # |distance to the front plane| for a flush point (m)
 
@@ -41,15 +41,15 @@ keep_out:                          # model check: no gripper point inside (rlpj.
   # the cabinet body from 1 cm behind its front plane, except the bottom-slot opening (1.5-9.5 cm above the table), which is open to 4 cm for the reset program and 2 cm for the RL (execute) program (box slot_rl_limit, roles: [execute]): the RL push cannot recess the drawer more than ~1 cm, the reset can reach in to recover a recessed one (2.4 cm on 2026-11-18 needed a person): the
   # modelled fingertips of a closed gripper sit ~1 cm deeper than the real ones (2026-11-17, reset attempt 16: holding
   # the tab in front of the drawer face, modelled 10 mm behind it). The drawer face and the force stop cover the rest.
-  - {name: cabinet, center: [0.6773, 0.1854, 0.1340], half: [0.1350, 0.0750, 0.1550], yaw_deg: 21.85}
-  - {name: cabinet_front, center: [0.5381, 0.1296, -0.0110], half: [0.0150, 0.0750, 0.0100], yaw_deg: 21.85}
-  - {name: cabinet_front, center: [0.5381, 0.1296, 0.1840], half: [0.0150, 0.0750, 0.1050], yaw_deg: 21.85}
-  - {name: cabinet_front, center: [0.5595, 0.0762, 0.0390], half: [0.0150, 0.0175, 0.0400], yaw_deg: 21.85}
-  - {name: cabinet_front, center: [0.5176, 0.1806, 0.0390], half: [0.0150, 0.0200, 0.0400], yaw_deg: 21.85}
-  - {name: slot_rl_limit, center: [0.5436, 0.1291, 0.0390], half: [0.0100, 0.0375, 0.0400], yaw_deg: 21.85, roles: [execute]}
+  - {name: cabinet, center: [0.6858, 0.1392, 0.1340], half: [0.1350, 0.0750, 0.1550], yaw_deg: 21.85}
+  - {name: cabinet_front, center: [0.5466, 0.0834, -0.0110], half: [0.0150, 0.0750, 0.0100], yaw_deg: 21.85}
+  - {name: cabinet_front, center: [0.5466, 0.0834, 0.1840], half: [0.0150, 0.0750, 0.1050], yaw_deg: 21.85}
+  - {name: cabinet_front, center: [0.5680, 0.0300, 0.0390], half: [0.0150, 0.0175, 0.0400], yaw_deg: 21.85}
+  - {name: cabinet_front, center: [0.5261, 0.1344, 0.0390], half: [0.0150, 0.0200, 0.0400], yaw_deg: 21.85}
+  - {name: slot_rl_limit, center: [0.5521, 0.0829, 0.0390], half: [0.0100, 0.0375, 0.0400], yaw_deg: 21.85, roles: [execute]}
 
 layout:                            # reset target for the drawer centre on the table (base frame, m)
-  drawer: {x: [0.34, 0.44], y: [-0.20, -0.08]}    # beside the cabinet; y > -0.08 merged the drawer with the cabinet blob in the side-depth measurement (reset 15, 01:51)
+  drawer: {x: [0.34, 0.44], y: [-0.210, -0.126]}    # beside the cabinet; y > -0.08 merged the drawer with the cabinet blob in the side-depth measurement (reset 15, 01:51)
   radius: [0.36, 0.52]
   tolerance: 0.05
 
