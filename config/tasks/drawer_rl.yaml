@@ -49,7 +49,7 @@ keep_out:                          # model check: no gripper point inside (rlpj.
   - {name: slot_rl_limit, center: [0.5521, 0.0829, 0.0390], half: [0.0100, 0.0375, 0.0400], yaw_deg: 21.85, roles: [execute]}
 
 layout:                            # reset target for the drawer centre on the table (base frame, m)
-  drawer: {x: [0.34, 0.44], y: [-0.210, -0.126]}    # beside the cabinet; y > -0.08 merged the drawer with the cabinet blob in the side-depth measurement (reset 15, 01:51)
+  drawer: {x: [0.36, 0.37], y: [-0.03, -0.01]}    # 2026-11-20: whole drawer in the moved side camera's view at any yaw (+-30 deg), >= 17 cm in front of the cabinet face
   radius: [0.36, 0.52]
   tolerance: 0.05
 
