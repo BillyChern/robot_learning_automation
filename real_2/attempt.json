@@ -1,0 +1,11 @@
+{
+ "command": "python side_calib_capture.py",
+ "moves_robot": true,
+ "record_dir": null,
+ "exit_code": 0,
+ "outcome": "success",
+ "duration_s": 428.4,
+ "stopped_by": null,
+ "started": 1795204292.3113463,
+ "ended": 1795204720.7047815
+}

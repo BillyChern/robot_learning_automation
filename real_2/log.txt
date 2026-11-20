@@ -1,0 +1,69 @@
+COMMIT 27c063ac83516b323baa085a57ba09799327542e (DIRTY)
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[14:51:33] session side_calib: attempt /home/r2r/robot_learning_final_pj/runs/drawers_setup/sidecal/real_2 dry=False record=None
+[14:51:33] waiting for ARMSTATE_SERVOING_READY (now ARMSTATE_SERVOING_MANUALLY_CONTROLLED)
+[14:51:34] arm state ARMSTATE_SERVOING_READY, joints [14.82, 7.37, 238.83, 352.4, 315.96, 116.67], gripper 52.8
+[14:51:34] model FK vs measured tool_pose at start: 1.3 mm
+[14:51:35] == phase: find_board
+[14:51:37] DECISION: board centre ~[0.18, -0.074, -0.039] (old side calibration, rough)
+[14:51:39] DECISION: board centre [0.368, -0.055, -0.04] from the wrist camera (16 corners); the side estimate was 188 mm off
+[14:51:39] == phase: home
+[14:51:42] plan 01_to_home: T=41.2s check ok=True tip>0.200 vmax=4.5deg/s lin=0.017m/s
+[14:52:23] exec 01_to_home: {'segment': 'to_home', 'ok': True, 'reason': '', 'T_plan': 41.17, 'max_dev_deg': 0.027, 'max_dev_mm': 0.14, 'n': 1647, 'max_force_n': 6.5, 't_exec': 41.22, 'rate_hz': 40.0, 'final_err_deg': 0.007}
+[14:52:25] DECISION: 24 of 24 views have an IK solution inside the joint limits
+[14:52:25] == phase: view_00
+[14:52:30] plan 02_view_00: T=48.1s check ok=True tip>0.111 vmax=2.9deg/s lin=0.018m/s
+[14:53:18] exec 02_view_00: {'segment': 'view_00', 'ok': True, 'reason': '', 'T_plan': 48.06, 'max_dev_deg': 0.02, 'max_dev_mm': 0.15, 'n': 1923, 'max_force_n': 8.6, 't_exec': 48.12, 'rate_hz': 40.0, 'final_err_deg': 0.007}
+[14:53:19] DECISION: view 0: saved pose 0 (wrist 11, side 25 corners)
+[14:53:19] == phase: view_01
+[14:53:21] plan 03_view_01: T=11.0s check ok=True tip>0.108 vmax=4.6deg/s lin=0.003m/s
+[14:53:32] exec 03_view_01: {'segment': 'view_01', 'ok': True, 'reason': '', 'T_plan': 11.03, 'max_dev_deg': 0.044, 'max_dev_mm': 0.07, 'n': 443, 'max_force_n': 8.7, 't_exec': 11.11, 'rate_hz': 39.9, 'final_err_deg': 0.003}
+[14:53:33] DECISION: view 1: saved pose 1 (wrist 11, side 27 corners)
+[14:53:33] == phase: view_02
+[14:53:35] plan 04_view_02: T=18.2s check ok=True tip>0.108 vmax=4.6deg/s lin=0.003m/s
+[14:53:53] exec 04_view_02: {'segment': 'view_02', 'ok': True, 'reason': '', 'T_plan': 18.22, 'max_dev_deg': 0.036, 'max_dev_mm': 0.07, 'n': 729, 'max_force_n': 7.6, 't_exec': 18.28, 'rate_hz': 39.9, 'final_err_deg': 0.002}
+[14:53:55] DECISION: view 2: saved pose 2 (wrist 12, side 23 corners)
+[14:53:55] == phase: view_03
+[14:53:57] plan 05_view_03: T=23.7s check ok=True tip>0.109 vmax=4.6deg/s lin=0.006m/s
+[14:54:21] exec 05_view_03: {'segment': 'view_03', 'ok': True, 'reason': '', 'T_plan': 23.67, 'max_dev_deg': 0.027, 'max_dev_mm': 0.08, 'n': 948, 'max_force_n': 6.7, 't_exec': 23.73, 'rate_hz': 39.9, 'final_err_deg': 0.003}
+[14:54:23] DECISION: view 3: saved pose 3 (wrist 23, side 27 corners)
+[14:54:23] == phase: view_04
+[14:54:27] plan 06_view_04: T=41.8s check ok=True tip>0.109 vmax=4.6deg/s lin=0.003m/s
+[14:55:09] exec 06_view_04: {'segment': 'view_04', 'ok': True, 'reason': '', 'T_plan': 41.78, 'max_dev_deg': 0.03, 'max_dev_mm': 0.11, 'n': 1672, 'max_force_n': 6.2, 't_exec': 41.84, 'rate_hz': 40.0, 'final_err_deg': 0.008}
+[14:55:10] DECISION: view 4: saved pose 4 (wrist 11, side 27 corners)
+[14:55:10] == phase: view_05
+[14:55:13] plan 07_view_05: T=26.2s check ok=True tip>0.109 vmax=4.6deg/s lin=0.005m/s
+[14:55:39] exec 07_view_05: {'segment': 'view_05', 'ok': True, 'reason': '', 'T_plan': 26.2, 'max_dev_deg': 0.03, 'max_dev_mm': 0.09, 'n': 1048, 'max_force_n': 5.8, 't_exec': 26.25, 'rate_hz': 39.9, 'final_err_deg': 0.008}
+[14:55:40] DECISION: view 5: saved pose 5 (wrist 21, side 27 corners)
+[14:55:40] == phase: view_06
+[14:55:43] plan 08_view_06: T=24.5s check ok=True tip>0.110 vmax=4.6deg/s lin=0.004m/s
+[14:56:08] exec 08_view_06: {'segment': 'view_06', 'ok': True, 'reason': '', 'T_plan': 24.45, 'max_dev_deg': 0.031, 'max_dev_mm': 0.07, 'n': 979, 'max_force_n': 5.8, 't_exec': 24.52, 'rate_hz': 39.9, 'final_err_deg': 0.004}
+[14:56:09] DECISION: view 6: saved pose 6 (wrist 10, side 22 corners)
+[14:56:09] == phase: view_07
+[14:56:12] plan 09_view_07: T=27.7s check ok=True tip>0.110 vmax=4.6deg/s lin=0.007m/s
+[14:56:40] exec 09_view_07: {'segment': 'view_07', 'ok': True, 'reason': '', 'T_plan': 27.73, 'max_dev_deg': 0.033, 'max_dev_mm': 0.09, 'n': 1109, 'max_force_n': 6.1, 't_exec': 27.78, 'rate_hz': 39.9, 'final_err_deg': 0.007}
+[14:56:41] DECISION: view 7: saved pose 7 (wrist 14, side 27 corners)
+[14:56:41] == phase: view_08
+[14:56:42] plan 10_view_08: T=10.6s check ok=True tip>0.113 vmax=4.6deg/s lin=0.009m/s
+[14:56:53] exec 10_view_08: {'segment': 'view_08', 'ok': True, 'reason': '', 'T_plan': 10.59, 'max_dev_deg': 0.022, 'max_dev_mm': 0.07, 'n': 424, 'max_force_n': 7.0, 't_exec': 10.64, 'rate_hz': 39.8, 'final_err_deg': 0.004}
+[14:56:55] DECISION: view 8: saved pose 8 (wrist 11, side 27 corners)
+[14:56:55] == phase: view_09
+[14:56:57] plan 11_view_09: T=20.8s check ok=True tip>0.113 vmax=4.6deg/s lin=0.005m/s
+[14:57:18] exec 11_view_09: {'segment': 'view_09', 'ok': True, 'reason': '', 'T_plan': 20.82, 'max_dev_deg': 0.026, 'max_dev_mm': 0.08, 'n': 834, 'max_force_n': 2.1, 't_exec': 20.88, 'rate_hz': 39.9, 'final_err_deg': 0.003}
+[14:57:19] DECISION: view 9: saved pose 9 (wrist 10, side 21 corners)
+[14:57:19] == phase: view_10
+[14:57:21] plan 12_view_10: T=18.2s check ok=True tip>0.114 vmax=4.6deg/s lin=0.006m/s
+[14:57:39] exec 12_view_10: {'segment': 'view_10', 'ok': True, 'reason': '', 'T_plan': 18.16, 'max_dev_deg': 0.046, 'max_dev_mm': 0.1, 'n': 727, 'max_force_n': 5.1, 't_exec': 18.23, 'rate_hz': 39.9, 'final_err_deg': 0.004}
+[14:57:41] DECISION: view 10: saved pose 10 (wrist 12, side 25 corners)
+[14:57:41] == phase: view_11
+[14:57:44] plan 13_view_11: T=33.8s check ok=True tip>0.112 vmax=4.6deg/s lin=0.006m/s
+[14:58:18] exec 13_view_11: {'segment': 'view_11', 'ok': True, 'reason': '', 'T_plan': 33.82, 'max_dev_deg': 0.028, 'max_dev_mm': 0.1, 'n': 1354, 'max_force_n': 4.3, 't_exec': 33.89, 'rate_hz': 40.0, 'final_err_deg': 0.009}
+[14:58:19] DECISION: view 11: saved pose 11 (wrist 17, side 12 corners)
+[14:58:19] CLAIM success
+[14:58:20] == phase: return_home
+[14:58:20] return plan ok=True: [('return_lift', True), ('return_home', True)]
+[14:58:20] plan 14_return_lift: T=3.9s check ok=True tip>0.118 vmax=3.4deg/s lin=0.018m/s
+[14:58:24] exec 14_return_lift: {'segment': 'return_lift', 'ok': True, 'reason': '', 'T_plan': 3.86, 'max_dev_deg': 0.023, 'max_dev_mm': 0.11, 'n': 155, 'max_force_n': 3.5, 't_exec': 3.92, 'rate_hz': 39.5, 'final_err_deg': 0.012}
+[14:58:25] plan 15_return_home: T=4.1s check ok=True tip>0.156 vmax=18.4deg/s lin=0.047m/s
+[14:58:29] exec 15_return_home: {'segment': 'return_home', 'ok': True, 'reason': '', 'T_plan': 4.11, 'max_dev_deg': 0.112, 'max_dev_mm': 0.12, 'n': 166, 'max_force_n': 4.0, 't_exec': 4.18, 'rate_hz': 39.7, 'final_err_deg': 0.055}
+summary: /home/r2r/robot_learning_final_pj/runs/drawers_setup/sidecal/real_2/summary.json outcome: success exit 0

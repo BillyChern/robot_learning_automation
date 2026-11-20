@@ -55,3 +55,30 @@ LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.11
 [14:45:39] exec 13_view_11: {'segment': 'view_11', 'ok': True, 'reason': '', 'T_plan': 63.24, 'max_dev_deg': 0.034, 'max_dev_mm': 0.1, 'n': 2529, 'max_force_n': 3.8, 't_exec': 63.29, 'rate_hz': 40.0, 'final_err_deg': 0.008}
 [14:45:40] DECISION: view 11: board wrist 0 / side 25 corners, skipped
 [14:45:40] == phase: view_12
+[14:45:46] plan 14_view_12: T=60.3s check ok=True tip>0.117 vmax=4.6deg/s lin=0.008m/s
+[14:46:47] exec 14_view_12: {'segment': 'view_12', 'ok': True, 'reason': '', 'T_plan': 60.33, 'max_dev_deg': 0.035, 'max_dev_mm': 0.09, 'n': 2414, 'max_force_n': 3.6, 't_exec': 60.39, 'rate_hz': 40.0, 'final_err_deg': 0.008}
+[14:46:48] DECISION: view 12: board wrist 3 / side 25 corners, skipped
+[14:46:48] == phase: view_13
+[14:46:54] plan 15_view_13: T=57.0s check ok=True tip>0.117 vmax=4.6deg/s lin=0.008m/s
+[14:47:51] exec 15_view_13: {'segment': 'view_13', 'ok': True, 'reason': '', 'T_plan': 56.96, 'max_dev_deg': 0.036, 'max_dev_mm': 0.12, 'n': 2279, 'max_force_n': 2.1, 't_exec': 57.02, 'rate_hz': 40.0, 'final_err_deg': 0.007}
+[14:47:52] DECISION: view 13: board wrist 2 / side 13 corners, skipped
+[14:47:52] == phase: view_14
+[14:47:58] plan 16_view_14: T=65.2s check ok=True tip>0.118 vmax=4.6deg/s lin=0.006m/s
+[14:49:03] exec 16_view_14: {'segment': 'view_14', 'ok': True, 'reason': '', 'T_plan': 65.22, 'max_dev_deg': 0.045, 'max_dev_mm': 0.11, 'n': 2610, 'max_force_n': 3.3, 't_exec': 65.28, 'rate_hz': 40.0, 'final_err_deg': 0.008}
+[14:49:05] DECISION: view 14: board wrist 4 / side 25 corners, skipped
+[14:49:05] == phase: view_15
+[14:49:12] plan 17_view_15: T=73.2s check ok=True tip>0.127 vmax=4.6deg/s lin=0.004m/s
+[14:50:25] exec 17_view_15: {'segment': 'view_15', 'ok': True, 'reason': '', 'T_plan': 73.19, 'max_dev_deg': 0.032, 'max_dev_mm': 0.1, 'n': 2928, 'max_force_n': 3.3, 't_exec': 73.25, 'rate_hz': 40.0, 'final_err_deg': 0.008}
+[14:50:27] DECISION: view 15: board wrist 2 / side 11 corners, skipped
+[14:50:27] == phase: view_16
+[14:50:29] plan 18_view_16: T=18.9s check ok=True tip>0.119 vmax=4.6deg/s lin=0.009m/s
+[14:50:48] exec 18_view_16: {'segment': 'view_16', 'ok': True, 'reason': '', 'T_plan': 18.93, 'max_dev_deg': 0.026, 'max_dev_mm': 0.09, 'n': 758, 'max_force_n': 5.2, 't_exec': 19.0, 'rate_hz': 39.9, 'final_err_deg': 0.002}
+[14:50:49] DECISION: view 16: board wrist 2 / side 23 corners, skipped
+[14:50:49] CLAIM fail
+[14:50:49] == phase: return_home
+[14:50:50] return plan ok=True: [('return_lift', True), ('return_home', True)]
+[14:50:50] plan 19_return_lift: T=5.0s check ok=True tip>0.119 vmax=4.5deg/s lin=0.017m/s
+[14:50:55] exec 19_return_lift: {'segment': 'return_lift', 'ok': True, 'reason': '', 'T_plan': 5.01, 'max_dev_deg': 0.024, 'max_dev_mm': 0.12, 'n': 201, 'max_force_n': 5.5, 't_exec': 5.08, 'rate_hz': 39.6, 'final_err_deg': 0.013}
+[14:50:56] plan 20_return_home: T=12.1s check ok=True tip>0.165 vmax=18.4deg/s lin=0.019m/s
+[14:51:09] exec 20_return_home: {'segment': 'return_home', 'ok': True, 'reason': '', 'T_plan': 12.12, 'max_dev_deg': 0.092, 'max_dev_mm': 0.07, 'n': 486, 'max_force_n': 4.8, 't_exec': 12.17, 'rate_hz': 39.9, 'final_err_deg': 0.014}
+summary: /home/r2r/robot_learning_final_pj/runs/drawers_setup/sidecal/real_1/summary.json outcome: fail exit 2
