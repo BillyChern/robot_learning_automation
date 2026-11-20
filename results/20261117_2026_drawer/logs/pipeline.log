@@ -17485,3 +17485,532 @@ LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.11
 [18:15:59] plan 20_ready: T=0.5s check ok=True tip>0.208 vmax=0.0deg/s lin=0.000m/s
 [18:16:00] exec 20_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.002, 'max_dev_mm': 0.01, 'n': 21, 'max_force_n': 0.2, 't_exec': 0.57, 'rate_hz': 36.8, 'final_err_deg': 0.001}
 [18:16:01] plan 21_home_after_pull0: T=11.8s check ok=True tip>0.195 vmax=18.4deg/s lin=0.053m/s
+[18:16:13] exec 21_home_after_pull0: {'segment': 'home_after_pull0', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.108, 'max_dev_mm': 0.39, 'n': 473, 'max_force_n': 6.7, 't_exec': 11.86, 'rate_hz': 39.9, 'final_err_deg': 0.012}
+[18:16:13] near-cabinet blob too thin (W 0.046): not a drawer on the table
+[18:16:13] perceive after_pull0: {'tag': 'after_pull0', 'table_z': -0.0155, 'front_top': 0.063, 'face_depth': 0.0011, 'slot_med': -0.0178, 'blobs': 1, 'low_pts': 1381, 'near_cabinet': False, 'drawer_blobs': [], 'protr': 0.0622, 'front_pts': 1208, 'face_pts': 362, 'inside_pts': 197, 'out': {'t': -0.1128, 'h_top': 0.0754, 'h_bot': 0.0268, 'n': 366}}
+[18:16:13] STOP RECORD: {'kind': 'failed check', 'why': 'drawer not pulled out (protrusion 0.062)', 'step': 'pull_out', 'segment': 'home_after_pull0', 'progress': 1.0, 't': 11.81, 'q_meas': [-0.0, 15.0, -130.0, -0.0, 55.01, 90.01], 'q_plan': [0.0, 15.0, -130.0, 0.0, 55.0, 90.0], 'tool_meas': [0.5791, 0.0048, 0.4273, 89.96, 0.5617, 90.4588], 'tool_plan_xyz': [0.5792, 0.0048, 0.4272], 'dev_deg': 0.01, 'dev_mm': 0.0, 'q_now': [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], 'gripper': 70.3}
+summary: /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_132/summary.json outcome: fail exit 2
+== attempt_132 finished: exit 2, outcome fail, 156 s
+== reset failed (2 in a row): drawer: not found
+== reset program failed 2 times in a row; asking the agent to repair it
+== operator note delivered to the reset agent
+== ROBOT: Treat the protruding drawer as the right way round: tab pinch-and-pull, centring the knob between the finger pads with repeated wrist-camera measurements, pull it to about 7 cm out. Then extract it, place it at the new target in front of the slot with the pull facing the robot, and verify.
+   $ /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_132/targets.json
+   starting in 5 s (Enter=now, n=refuse, s=skip)    starting in 4 s (Enter=now, n=refuse, s=skip)    starting in 3 s (Enter=now, n=refuse, s=skip)    starting in 2 s (Enter=now, n=refuse, s=skip)    starting in 1 s (Enter=now, n=refuse, s=skip)    go                                            
+== attempt_133 [ROBOT] $ /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_132/targets.json
+COMMIT f0946d979bbde3af9efa2475816a632349590769
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[18:22:24] session reset: attempt /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_133 dry=False record=None
+[18:22:24] arm state ARMSTATE_SERVOING_READY, joints [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], gripper 70.3
+[18:22:24] model FK vs measured tool_pose at start: 0.2 mm
+[18:22:25] == phase: perceive
+[18:22:25] near-cabinet blob too thin (W 0.025): not a drawer on the table
+[18:22:25] perceive start: {'tag': 'start', 'table_z': -0.0156, 'front_top': 0.0667, 'face_depth': 0.0029, 'slot_med': -0.0198, 'blobs': 2, 'low_pts': 1377, 'near_cabinet': False, 'drawer_blobs': [], 'protr': 0.0618, 'front_pts': 1172, 'face_pts': 332, 'inside_pts': 215, 'out': {'t': -0.1159, 'h_top': 0.0767, 'h_bot': 0.0267, 'n': 375}}
+[18:22:25] DECISION: start state: slot_near
+[18:22:27] plan 01_ready: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[18:22:39] exec 01_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.112, 'max_dev_mm': 0.43, 'n': 473, 'max_force_n': 5.7, 't_exec': 11.85, 'rate_hz': 39.9, 'final_err_deg': 0.015}
+[18:22:39] DECISION: drawer face median 0.020 m out: tab pinch-and-pull (right way round by default)
+[18:22:39] == phase: pull_out
+[18:22:39] gripper -> 0.71 (pre-close to ~25 mm for the pull tab)
+[18:22:40] gripper reading 70.3
+[18:22:41] plan 02_above_pin: T=13.1s check ok=True tip>0.078 vmax=16.1deg/s lin=0.057m/s
+[18:22:54] exec 02_above_pin: {'segment': 'above_pin', 'ok': True, 'reason': '', 'T_plan': 13.11, 'max_dev_deg': 0.081, 'max_dev_mm': 0.32, 'n': 526, 'max_force_n': 6.1, 't_exec': 13.18, 'rate_hz': 39.9, 'final_err_deg': 0.009}
+[18:22:54] DECISION: pin try 0.0: offset dy +0.000 dz +0.003 (tool frame)
+[18:22:55] plan 03_to_pin_pre0: T=2.7s check ok=True tip>0.035 vmax=9.0deg/s lin=0.048m/s
+[18:22:57] exec 03_to_pin_pre0: {'segment': 'to_pin_pre0', 'ok': True, 'reason': '', 'T_plan': 2.66, 'max_dev_deg': 0.076, 'max_dev_mm': 0.34, 'n': 107, 'max_force_n': 5.8, 't_exec': 2.72, 'rate_hz': 39.3, 'final_err_deg': 0.041}
+[18:22:58] plan 04_approach_pin0: T=5.1s check ok=True tip>0.004 vmax=2.4deg/s lin=0.018m/s
+[18:23:03] exec 04_approach_pin0: {'segment': 'approach_pin0', 'ok': True, 'reason': '', 'T_plan': 5.09, 'max_dev_deg': 0.016, 'max_dev_mm': 0.09, 'n': 205, 'max_force_n': 3.1, 't_exec': 5.16, 'rate_hz': 39.7, 'final_err_deg': 0.007}
+[18:23:03] DECISION: wrist tab measurement 0_0: tab +34.2 mm along t from the aim
+[18:23:04] plan 05_back_for_tab0: T=5.1s check ok=True tip>0.004 vmax=2.4deg/s lin=0.018m/s
+[18:23:09] exec 05_back_for_tab0: {'segment': 'back_for_tab0', 'ok': True, 'reason': '', 'T_plan': 5.12, 'max_dev_deg': 0.012, 'max_dev_mm': 0.11, 'n': 205, 'max_force_n': 6.2, 't_exec': 5.16, 'rate_hz': 39.7, 'final_err_deg': 0.005}
+[18:23:10] plan 06_to_tab_pre0: T=6.8s check ok=True tip>0.034 vmax=2.0deg/s lin=0.009m/s
+[18:23:17] exec 06_to_tab_pre0: {'segment': 'to_tab_pre0', 'ok': True, 'reason': '', 'T_plan': 6.83, 'max_dev_deg': 0.043, 'max_dev_mm': 0.1, 'n': 274, 'max_force_n': 7.6, 't_exec': 6.89, 'rate_hz': 39.8, 'final_err_deg': 0.004}
+[18:23:17] plan 07_approach_tab0: T=5.1s check ok=True tip>0.004 vmax=2.7deg/s lin=0.018m/s
+[18:23:22] exec 07_approach_tab0: {'segment': 'approach_tab0', 'ok': True, 'reason': '', 'T_plan': 5.11, 'max_dev_deg': 0.018, 'max_dev_mm': 0.1, 'n': 205, 'max_force_n': 12.9, 't_exec': 5.17, 'rate_hz': 39.7, 'final_err_deg': 0.006}
+[18:23:23] DECISION: wrist tab measurement 0_1: tab +5.0 mm along t from the aim
+[18:23:23] plan 08_back_for_tab1: T=5.1s check ok=True tip>0.004 vmax=2.7deg/s lin=0.018m/s
+[18:23:29] exec 08_back_for_tab1: {'segment': 'back_for_tab1', 'ok': True, 'reason': '', 'T_plan': 5.11, 'max_dev_deg': 0.017, 'max_dev_mm': 0.09, 'n': 205, 'max_force_n': 15.6, 't_exec': 5.17, 'rate_hz': 39.7, 'final_err_deg': 0.008}
+[18:23:29] plan 09_to_tab_pre1: T=0.9s check ok=True tip>0.034 vmax=4.6deg/s lin=0.011m/s
+[18:23:30] exec 09_to_tab_pre1: {'segment': 'to_tab_pre1', 'ok': True, 'reason': '', 'T_plan': 0.87, 'max_dev_deg': 0.053, 'max_dev_mm': 0.11, 'n': 36, 'max_force_n': 2.2, 't_exec': 0.94, 'rate_hz': 38.3, 'final_err_deg': 0.029}
+[18:23:30] plan 10_approach_tab1: T=5.1s check ok=True tip>0.004 vmax=2.2deg/s lin=0.018m/s
+[18:23:36] exec 10_approach_tab1: {'segment': 'approach_tab1', 'ok': True, 'reason': '', 'T_plan': 5.1, 'max_dev_deg': 0.017, 'max_dev_mm': 0.11, 'n': 205, 'max_force_n': 37.2, 't_exec': 5.17, 'rate_hz': 39.7, 'final_err_deg': 0.004}
+[18:23:36] DECISION: wrist tab measurement 0_2: tab +3.5 mm along t from the aim
+[18:23:37] plan 11_back_for_tab2: T=5.1s check ok=True tip>0.004 vmax=2.2deg/s lin=0.018m/s
+[18:23:42] exec 11_back_for_tab2: {'segment': 'back_for_tab2', 'ok': True, 'reason': '', 'T_plan': 5.11, 'max_dev_deg': 0.013, 'max_dev_mm': 0.1, 'n': 206, 'max_force_n': 31.9, 't_exec': 5.19, 'rate_hz': 39.7, 'final_err_deg': 0.006}
+[18:23:42] plan 12_to_tab_pre2: T=0.5s check ok=True tip>0.034 vmax=3.7deg/s lin=0.013m/s
+[18:23:43] exec 12_to_tab_pre2: {'segment': 'to_tab_pre2', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.047, 'max_dev_mm': 0.17, 'n': 21, 'max_force_n': 2.7, 't_exec': 0.56, 'rate_hz': 37.5, 'final_err_deg': 0.027}
+[18:23:44] plan 13_approach_tab2: T=5.2s check ok=True tip>0.004 vmax=2.4deg/s lin=0.018m/s
+[18:23:49] exec 13_approach_tab2: {'segment': 'approach_tab2', 'ok': True, 'reason': '', 'T_plan': 5.23, 'max_dev_deg': 0.058, 'max_dev_mm': 0.18, 'n': 209, 'max_force_n': 37.7, 't_exec': 5.27, 'rate_hz': 39.7, 'final_err_deg': 0.005}
+[18:23:49] gripper -> 0.90 (pinch the tab)
+[18:23:50] gripper reading 90.0
+[18:23:50] gripper -> 0.71 (open, missed)
+[18:23:50] gripper reading 70.3
+[18:23:51] plan 14_back_pin0: T=5.1s check ok=True tip>0.004 vmax=2.4deg/s lin=0.018m/s
+[18:23:56] exec 14_back_pin0: {'segment': 'back_pin0', 'ok': True, 'reason': '', 'T_plan': 5.12, 'max_dev_deg': 0.019, 'max_dev_mm': 0.13, 'n': 206, 'max_force_n': 17.6, 't_exec': 5.19, 'rate_hz': 39.7, 'final_err_deg': 0.007}
+[18:23:56] DECISION: pin try 0.1: offset dy +0.002 dz +0.002 (tool frame)
+[18:23:56] plan 15_to_pin_pre1: T=0.5s check ok=True tip>0.035 vmax=1.8deg/s lin=0.008m/s
+[18:23:57] exec 15_to_pin_pre1: {'segment': 'to_pin_pre1', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.027, 'max_dev_mm': 0.16, 'n': 21, 'max_force_n': 1.5, 't_exec': 0.56, 'rate_hz': 37.5, 'final_err_deg': 0.015}
+[18:23:58] plan 16_approach_pin1: T=5.1s check ok=True tip>0.006 vmax=2.4deg/s lin=0.018m/s
+[18:24:03] exec 16_approach_pin1: {'segment': 'approach_pin1', 'ok': True, 'reason': '', 'T_plan': 5.1, 'max_dev_deg': 0.019, 'max_dev_mm': 0.12, 'n': 205, 'max_force_n': 38.1, 't_exec': 5.17, 'rate_hz': 39.7, 'final_err_deg': 0.006}
+[18:24:03] gripper -> 0.90 (pinch the tab)
+[18:24:03] gripper reading 90.0
+[18:24:03] gripper -> 0.71 (open, missed)
+[18:24:04] gripper reading 70.3
+[18:24:05] plan 17_back_pin1: T=5.1s check ok=True tip>0.006 vmax=2.4deg/s lin=0.018m/s
+[18:24:10] exec 17_back_pin1: {'segment': 'back_pin1', 'ok': True, 'reason': '', 'T_plan': 5.12, 'max_dev_deg': 0.015, 'max_dev_mm': 0.12, 'n': 206, 'max_force_n': 18.7, 't_exec': 5.18, 'rate_hz': 39.8, 'final_err_deg': 0.007}
+[18:24:10] DECISION: pin try 0.2: offset dy +0.000 dz +0.002 (tool frame)
+[18:24:10] plan 18_to_pin_pre2: T=0.5s check ok=True tip>0.035 vmax=1.9deg/s lin=0.008m/s
+[18:24:11] exec 18_to_pin_pre2: {'segment': 'to_pin_pre2', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.029, 'max_dev_mm': 0.16, 'n': 21, 'max_force_n': 2.1, 't_exec': 0.57, 'rate_hz': 36.8, 'final_err_deg': 0.014}
+[18:24:11] plan 19_approach_pin2: T=5.1s check ok=True tip>0.005 vmax=2.4deg/s lin=0.018m/s
+[18:24:17] exec 19_approach_pin2: {'segment': 'approach_pin2', 'ok': True, 'reason': '', 'T_plan': 5.1, 'max_dev_deg': 0.024, 'max_dev_mm': 0.12, 'n': 205, 'max_force_n': 37.4, 't_exec': 5.16, 'rate_hz': 39.7, 'final_err_deg': 0.005}
+[18:24:17] gripper -> 0.90 (pinch the tab)
+[18:24:17] gripper reading 90.0
+[18:24:17] gripper -> 0.71 (open, missed)
+[18:24:18] gripper reading 70.3
+[18:24:18] plan 20_back_pin2: T=5.1s check ok=True tip>0.005 vmax=2.4deg/s lin=0.018m/s
+[18:24:24] exec 20_back_pin2: {'segment': 'back_pin2', 'ok': True, 'reason': '', 'T_plan': 5.12, 'max_dev_deg': 0.017, 'max_dev_mm': 0.08, 'n': 205, 'max_force_n': 14.9, 't_exec': 5.17, 'rate_hz': 39.7, 'final_err_deg': 0.005}
+[18:24:24] DECISION: pin try 0.3: offset dy +0.004 dz -0.001 (tool frame)
+[18:24:24] plan 21_to_pin_pre3: T=0.5s check ok=True tip>0.035 vmax=3.5deg/s lin=0.017m/s
+[18:24:24] exec 21_to_pin_pre3: {'segment': 'to_pin_pre3', 'ok': True, 'reason': '', 'T_plan': 0.52, 'max_dev_deg': 0.044, 'max_dev_mm': 0.16, 'n': 22, 'max_force_n': 1.3, 't_exec': 0.59, 'rate_hz': 37.3, 'final_err_deg': 0.025}
+[18:24:25] plan 22_approach_pin3: T=5.1s check ok=True tip>0.010 vmax=2.4deg/s lin=0.018m/s
+[18:24:30] exec 22_approach_pin3: {'segment': 'approach_pin3', 'ok': True, 'reason': '', 'T_plan': 5.11, 'max_dev_deg': 0.014, 'max_dev_mm': 0.09, 'n': 206, 'max_force_n': 19.9, 't_exec': 5.18, 'rate_hz': 39.8, 'final_err_deg': 0.005}
+[18:24:30] gripper -> 0.90 (pinch the tab)
+[18:24:31] gripper reading 90.0
+[18:24:31] gripper -> 0.71 (open, missed)
+[18:24:31] gripper reading 70.3
+[18:24:32] plan 23_back_pin3: T=5.1s check ok=True tip>0.009 vmax=2.4deg/s lin=0.018m/s
+[18:24:37] exec 23_back_pin3: {'segment': 'back_pin3', 'ok': True, 'reason': '', 'T_plan': 5.12, 'max_dev_deg': 0.014, 'max_dev_mm': 0.11, 'n': 206, 'max_force_n': 12.2, 't_exec': 5.2, 'rate_hz': 39.6, 'final_err_deg': 0.006}
+[18:24:39] plan 24_up_from_pin: T=6.8s check ok=False tip>0.040 vmax=4.8deg/s lin=0.020m/s
+[18:24:39] DECISION: up_from_pin option 0 refused by the model (model check failed for 24_up_from_pin: {'joint_limit_violations': 202, 'max_join); next option
+[18:24:40] plan 25_up_from_pin_alt1: T=9.3s check ok=True tip>0.040 vmax=4.8deg/s lin=0.020m/s
+[18:24:49] exec 25_up_from_pin_alt1: {'segment': 'up_from_pin_alt1', 'ok': True, 'reason': '', 'T_plan': 9.29, 'max_dev_deg': 0.053, 'max_dev_mm': 0.16, 'n': 373, 'max_force_n': 8.2, 't_exec': 9.36, 'rate_hz': 39.9, 'final_err_deg': 0.01}
+[18:24:51] plan 26_ready: T=13.6s check ok=True tip>0.121 vmax=15.1deg/s lin=0.057m/s
+[18:25:05] exec 26_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 13.56, 'max_dev_deg': 0.092, 'max_dev_mm': 0.36, 'n': 544, 'max_force_n': 9.2, 't_exec': 13.64, 'rate_hz': 39.9, 'final_err_deg': 0.009}
+[18:25:05] plan 27_ready: T=0.5s check ok=True tip>0.208 vmax=0.0deg/s lin=0.000m/s
+[18:25:06] exec 27_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.005, 'max_dev_mm': 0.03, 'n': 21, 'max_force_n': 0.4, 't_exec': 0.56, 'rate_hz': 37.5, 'final_err_deg': 0.002}
+[18:25:07] plan 28_home_after_pull0: T=11.8s check ok=True tip>0.195 vmax=18.4deg/s lin=0.053m/s
+[18:25:19] exec 28_home_after_pull0: {'segment': 'home_after_pull0', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.131, 'max_dev_mm': 0.4, 'n': 473, 'max_force_n': 6.0, 't_exec': 11.87, 'rate_hz': 39.8, 'final_err_deg': 0.013}
+[18:25:20] perceive after_pull0: {'tag': 'after_pull0', 'table_z': -0.0155, 'front_top': 0.0694, 'face_depth': 0.0046, 'slot_med': -0.0195, 'blobs': 2, 'low_pts': 1402, 'near_cabinet': True, 'drawer_blobs': [{'xy': [0.4417, 0.0685], 'obb_c': [0.4706, 0.0874], 'L': 0.126, 'W': 0.063, 'yaw': -67.9, 'h': 0.06911545019287886, 'n': 3025, 'near_cabinet': True}], 'protr': 0.073, 'front_pts': 1346, 'face_pts': 351, 'inside_pts': 192, 'out': {'t': -0.1084, 'h_top': 0.0737, 'h_bot': 0.0259, 'n': 380}}
+[18:25:20] == phase: check0
+[18:25:21] plan 29_ready: T=11.8s check ok=True tip>0.195 vmax=18.4deg/s lin=0.053m/s
+[18:25:33] exec 29_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.074, 'max_dev_mm': 0.29, 'n': 473, 'max_force_n': 5.9, 't_exec': 11.87, 'rate_hz': 39.8, 'final_err_deg': 0.014}
+[18:25:35] plan 30_home_for_check: T=11.8s check ok=True tip>0.195 vmax=18.4deg/s lin=0.053m/s
+[18:25:47] exec 30_home_for_check: {'segment': 'home_for_check', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.084, 'max_dev_mm': 0.26, 'n': 473, 'max_force_n': 8.2, 't_exec': 11.87, 'rate_hz': 39.8, 'final_err_deg': 0.015}
+[18:25:47] perceive check0: {'tag': 'check0', 'table_z': -0.0156, 'front_top': 0.0685, 'face_depth': 0.0044, 'slot_med': -0.022, 'blobs': 1, 'low_pts': 1377, 'near_cabinet': True, 'drawer_blobs': [{'xy': [0.4492, 0.0637], 'obb_c': [0.4709, 0.085], 'L': 0.125, 'W': 0.064, 'yaw': -67.8, 'h': 0.07280693023824693, 'n': 2992, 'near_cabinet': True}], 'protr': 0.0732, 'front_pts': 1334, 'face_pts': 346, 'inside_pts': 201, 'out': {'t': -0.1079, 'h_top': 0.0784, 'h_bot': 0.0262, 'n': 360}}
+[18:25:54] vision judge check0_q1: success=False conf=0.75 reason=The drawer is still partly in the bottom slot, tilted against the cabinet with its pull facing outward; it is not lying free and upright on the table at a target.
+[18:26:01] vision judge check0_q2: success=False conf=0.75 reason=The drawer is still partly in the bottom slot, cocked at an angle, and its metal pull is on the wall facing the lower left toward the camera, not the lower right.
+[18:26:08] vision judge check0_q1b: success=False conf=0.85 reason=The drawer is still partly inside the bottom slot of the cabinet, pulled out and cocked, with the pull facing the camera; it has not been placed on its own on the table at the target.
+[18:26:08] DECISION: vision judge: pull on a far (hidden) wall: assume opposite the robot-facing wall, turn 180 deg and re-check
+[18:26:08] DECISION: pull wall faces 180 deg away from the robot side: pick and turn it
+[18:26:08] == phase: pick0
+[18:26:08] gripper -> 0.15 (open wide (~72 mm) to straddle the end wall)
+[18:26:09] gripper reading 14.8
+[18:26:09] DECISION: table drawer obb [0.471, 0.085] L 0.155 W 0.064 yaw -68; grasp end wall at [0.444, 0.15] (cabinet dist 0.049) top 0.073
+[18:26:10] plan 31_ready: T=11.8s check ok=True tip>0.199 vmax=18.4deg/s lin=0.053m/s
+[18:26:22] exec 31_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.129, 'max_dev_mm': 0.42, 'n': 472, 'max_force_n': 5.5, 't_exec': 11.85, 'rate_hz': 39.8, 'final_err_deg': 0.015}
+[18:26:23] plan 32_above_drawer_wall: T=10.2s check ok=True tip>0.169 vmax=18.4deg/s lin=0.048m/s
+[18:26:34] exec 32_above_drawer_wall: {'segment': 'above_drawer_wall', 'ok': True, 'reason': '', 'T_plan': 10.23, 'max_dev_deg': 0.133, 'max_dev_mm': 0.27, 'n': 410, 'max_force_n': 4.2, 't_exec': 10.3, 'rate_hz': 39.8, 'final_err_deg': 0.015}
+[18:26:34] plan 33_down_to_wall_pre: T=1.9s check ok=True tip>0.105 vmax=9.6deg/s lin=0.063m/s
+[18:26:36] exec 33_down_to_wall_pre: {'segment': 'down_to_wall_pre', 'ok': True, 'reason': '', 'T_plan': 1.93, 'max_dev_deg': 0.07, 'max_dev_mm': 0.3, 'n': 78, 'max_force_n': 4.5, 't_exec': 1.99, 'rate_hz': 39.2, 'final_err_deg': 0.051}
+[18:26:36] refine_wall: inner edge at -0.004 along d_in, step 70, shift -0.009
+[18:26:36] DECISION: wall refined by wrist camera: shift -0.009 m toward the drawer centre
+[18:26:36] plan 34_wall_correct: T=0.9s check ok=True tip>0.105 vmax=2.2deg/s lin=0.018m/s
+[18:26:37] exec 34_wall_correct: {'segment': 'wall_correct', 'ok': True, 'reason': '', 'T_plan': 0.92, 'max_dev_deg': 0.029, 'max_dev_mm': 0.14, 'n': 38, 'max_force_n': 1.0, 't_exec': 0.99, 'rate_hz': 38.4, 'final_err_deg': 0.015}
+[18:26:38] plan 35_down_to_wall: T=5.1s check ok=True tip>0.055 vmax=2.7deg/s lin=0.018m/s
+[18:26:43] exec 35_down_to_wall: {'segment': 'down_to_wall', 'ok': True, 'reason': '', 'T_plan': 5.1, 'max_dev_deg': 0.032, 'max_dev_mm': 0.15, 'n': 205, 'max_force_n': 6.0, 't_exec': 5.17, 'rate_hz': 39.7, 'final_err_deg': 0.006}
+[18:26:43] gripper -> 1.00 (grasp the end wall)
+[18:26:44] gripper reading 99.1
+[18:26:44] DECISION: end wall grasp reading 99.1: nothing held
+[18:26:44] gripper -> 0.15 (open, missed)
+[18:26:45] gripper reading 14.8
+[18:26:46] plan 36_up_from_wall: T=5.1s check ok=True tip>0.055 vmax=2.7deg/s lin=0.018m/s
+[18:26:51] exec 36_up_from_wall: {'segment': 'up_from_wall', 'ok': True, 'reason': '', 'T_plan': 5.12, 'max_dev_deg': 0.02, 'max_dev_mm': 0.1, 'n': 206, 'max_force_n': 3.8, 't_exec': 5.18, 'rate_hz': 39.8, 'final_err_deg': 0.008}
+[18:26:52] plan 37_lift_empty: T=1.9s check ok=True tip>0.105 vmax=9.6deg/s lin=0.062m/s
+[18:26:53] exec 37_lift_empty: {'segment': 'lift_empty', 'ok': True, 'reason': '', 'T_plan': 1.93, 'max_dev_deg': 0.07, 'max_dev_mm': 0.29, 'n': 77, 'max_force_n': 2.5, 't_exec': 1.98, 'rate_hz': 38.9, 'final_err_deg': 0.049}
+[18:26:53] == phase: check1
+[18:26:55] plan 38_ready: T=10.3s check ok=True tip>0.170 vmax=18.4deg/s lin=0.049m/s
+[18:27:06] exec 38_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 10.34, 'max_dev_deg': 0.148, 'max_dev_mm': 0.33, 'n': 415, 'max_force_n': 5.3, 't_exec': 10.41, 'rate_hz': 39.9, 'final_err_deg': 0.017}
+[18:27:07] plan 39_home_for_check: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[18:27:19] exec 39_home_for_check: {'segment': 'home_for_check', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.139, 'max_dev_mm': 0.45, 'n': 473, 'max_force_n': 6.4, 't_exec': 11.85, 'rate_hz': 39.9, 'final_err_deg': 0.014}
+[18:27:19] perceive check1: {'tag': 'check1', 'table_z': -0.0154, 'front_top': 0.0617, 'face_depth': 0.0149, 'slot_med': -0.0276, 'blobs': 2, 'low_pts': 1431, 'near_cabinet': True, 'drawer_blobs': [{'xy': [0.4444, 0.0672], 'obb_c': [0.4771, 0.0719], 'L': 0.132, 'W': 0.063, 'yaw': -68.1, 'h': 0.0705428299339709, 'n': 3418, 'near_cabinet': True}], 'protr': 0.076, 'front_pts': 1364, 'face_pts': 257, 'inside_pts': 132, 'out': {'t': -0.1107, 'h_top': 0.0742, 'h_bot': 0.0264, 'n': 418}}
+[18:27:28] vision judge check1_q1: success=False conf=0.7 reason=The drawer is upright with its pull facing the robot, but it is still at the cabinet's bottom slot (partly inside it or right against it) instead of out on the table at a target away from the cabinet.
+[18:27:36] vision judge check1_q2: success=False conf=0.75 reason=The drawer is still partly in the bottom slot of the cabinet, and its metal pull is on the front wall facing the camera and lower left, not on a wall facing the lower right.
+[18:27:45] vision judge check1_q1b: success=False conf=0.6 reason=The drawer is still at the mouth of the cabinet's bottom slot and looks partly inserted, not placed on the table away from the cabinet. Its pull does face the lower left.
+[18:27:45] DECISION: vision judge: pull not on the robot-facing or far wall (180 deg turn did not show it): assume the lower right side wall, turn 90 deg
+[18:27:45] DECISION: pull wall faces 180 deg away from the robot side: pick and turn it
+[18:27:45] == phase: pick1
+[18:27:45] gripper -> 0.15 (open wide (~72 mm) to straddle the end wall)
+[18:27:45] gripper reading 14.8
+[18:27:45] DECISION: table drawer obb [0.477, 0.072] L 0.155 W 0.063 yaw -68; grasp end wall at [0.451, 0.137] (cabinet dist 0.044) top 0.071
+[18:27:47] plan 40_ready: T=11.8s check ok=True tip>0.199 vmax=18.4deg/s lin=0.053m/s
+[18:27:59] exec 40_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.164, 'max_dev_mm': 0.61, 'n': 473, 'max_force_n': 6.1, 't_exec': 11.86, 'rate_hz': 39.9, 'final_err_deg': 0.013}
+[18:28:00] plan 41_above_drawer_wall: T=10.1s check ok=True tip>0.169 vmax=18.4deg/s lin=0.047m/s
+[18:28:10] exec 41_above_drawer_wall: {'segment': 'above_drawer_wall', 'ok': True, 'reason': '', 'T_plan': 10.08, 'max_dev_deg': 0.112, 'max_dev_mm': 0.19, 'n': 404, 'max_force_n': 4.3, 't_exec': 10.15, 'rate_hz': 39.8, 'final_err_deg': 0.018}
+[18:28:11] plan 42_down_to_wall_pre: T=2.0s check ok=True tip>0.103 vmax=9.8deg/s lin=0.064m/s
+[18:28:13] exec 42_down_to_wall_pre: {'segment': 'down_to_wall_pre', 'ok': True, 'reason': '', 'T_plan': 1.96, 'max_dev_deg': 0.074, 'max_dev_mm': 0.32, 'n': 79, 'max_force_n': 4.6, 't_exec': 2.02, 'rate_hz': 39.1, 'final_err_deg': 0.049}
+[18:28:13] refine_wall: inner edge at -0.018 along d_in, step 73, shift -0.023
+[18:28:13] DECISION: wall refined by wrist camera: shift -0.023 m toward the drawer centre
+[18:28:13] plan 43_wall_correct: T=2.4s check ok=True tip>0.103 vmax=2.2deg/s lin=0.018m/s
+[18:28:16] exec 43_wall_correct: {'segment': 'wall_correct', 'ok': True, 'reason': '', 'T_plan': 2.35, 'max_dev_deg': 0.017, 'max_dev_mm': 0.1, 'n': 95, 'max_force_n': 1.4, 't_exec': 2.41, 'rate_hz': 39.4, 'final_err_deg': 0.01}
+[18:28:17] plan 44_down_to_wall: T=5.1s check ok=True tip>0.053 vmax=2.7deg/s lin=0.018m/s
+[18:28:22] exec 44_down_to_wall: {'segment': 'down_to_wall', 'ok': True, 'reason': '', 'T_plan': 5.1, 'max_dev_deg': 0.016, 'max_dev_mm': 0.14, 'n': 205, 'max_force_n': 2.4, 't_exec': 5.16, 'rate_hz': 39.7, 'final_err_deg': 0.007}
+[18:28:22] gripper -> 1.00 (grasp the end wall)
+[18:28:23] gripper reading 89.1
+[18:28:23] plan 45_lift_drawer_slow: T=5.1s check ok=True tip>0.036 vmax=2.7deg/s lin=0.018m/s
+[18:28:29] exec 45_lift_drawer_slow: {'segment': 'lift_drawer_slow', 'ok': True, 'reason': '', 'T_plan': 5.12, 'max_dev_deg': 0.016, 'max_dev_mm': 0.1, 'n': 205, 'max_force_n': 3.9, 't_exec': 5.18, 'rate_hz': 39.6, 'final_err_deg': 0.008}
+[18:28:29] plan 46_lift_drawer: T=2.0s check ok=True tip>0.086 vmax=9.8deg/s lin=0.064m/s
+[18:28:31] exec 46_lift_drawer: {'segment': 'lift_drawer', 'ok': True, 'reason': '', 'T_plan': 1.96, 'max_dev_deg': 0.089, 'max_dev_mm': 0.46, 'n': 80, 'max_force_n': 2.6, 't_exec': 2.03, 'rate_hz': 39.4, 'final_err_deg': 0.053}
+[18:28:31] == phase: place1
+[18:28:31] DECISION: placement centre 0.150 m from the cabinet face: aim 0.020 m further out
+[18:28:31] DECISION: place: pull known, turn -75 deg, pull wall toward -143 deg (robot side, normal 22 + 15), grasp point [0.454, 0.033], tool 0.092 above table
+[18:28:32] plan 47_above_target: T=6.0s check ok=True tip>0.152 vmax=18.4deg/s lin=0.040m/s
+[18:28:38] exec 47_above_target: {'segment': 'above_target', 'ok': True, 'reason': '', 'T_plan': 5.98, 'max_dev_deg': 0.141, 'max_dev_mm': 0.24, 'n': 240, 'max_force_n': 5.9, 't_exec': 6.05, 'rate_hz': 39.7, 'final_err_deg': 0.034}
+[18:28:38] plan 48_down_to_place_pre: T=1.8s check ok=True tip>0.094 vmax=9.4deg/s lin=0.060m/s
+[18:28:40] exec 48_down_to_place_pre: {'segment': 'down_to_place_pre', 'ok': True, 'reason': '', 'T_plan': 1.84, 'max_dev_deg': 0.066, 'max_dev_mm': 0.26, 'n': 75, 'max_force_n': 2.3, 't_exec': 1.9, 'rate_hz': 39.5, 'final_err_deg': 0.046}
+[18:28:41] plan 49_place_down: T=5.1s check ok=True tip>0.044 vmax=2.8deg/s lin=0.018m/s
+[18:28:46] exec 49_place_down: {'segment': 'place_down', 'ok': True, 'reason': '', 'T_plan': 5.09, 'max_dev_deg': 0.028, 'max_dev_mm': 0.18, 'n': 204, 'max_force_n': 2.1, 't_exec': 5.15, 'rate_hz': 39.6, 'final_err_deg': 0.007}
+[18:28:46] gripper -> 0.40 (release the drawer)
+[18:28:47] gripper reading 39.7
+[18:28:48] plan 50_up_from_drawer: T=5.1s check ok=True tip>0.056 vmax=2.8deg/s lin=0.018m/s
+[18:28:53] exec 50_up_from_drawer: {'segment': 'up_from_drawer', 'ok': True, 'reason': '', 'T_plan': 5.12, 'max_dev_deg': 0.019, 'max_dev_mm': 0.11, 'n': 205, 'max_force_n': 3.8, 't_exec': 5.17, 'rate_hz': 39.7, 'final_err_deg': 0.006}
+[18:28:53] plan 51_clear_up: T=1.8s check ok=True tip>0.106 vmax=9.4deg/s lin=0.060m/s
+[18:28:55] exec 51_clear_up: {'segment': 'clear_up', 'ok': True, 'reason': '', 'T_plan': 1.84, 'max_dev_deg': 0.072, 'max_dev_mm': 0.33, 'n': 74, 'max_force_n': 2.7, 't_exec': 1.9, 'rate_hz': 38.9, 'final_err_deg': 0.049}
+[18:28:55] == phase: check2
+[18:28:58] plan 52_ready: T=16.3s check ok=True tip>0.164 vmax=18.4deg/s lin=0.018m/s
+[18:29:14] exec 52_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 16.34, 'max_dev_deg': 0.118, 'max_dev_mm': 0.13, 'n': 654, 'max_force_n': 4.8, 't_exec': 16.39, 'rate_hz': 39.9, 'final_err_deg': 0.008}
+[18:29:15] plan 53_home_for_check: T=11.8s check ok=True tip>0.198 vmax=18.4deg/s lin=0.053m/s
+[18:29:27] exec 53_home_for_check: {'segment': 'home_for_check', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.169, 'max_dev_mm': 0.53, 'n': 473, 'max_force_n': 6.7, 't_exec': 11.86, 'rate_hz': 39.9, 'final_err_deg': 0.014}
+[18:29:27] perceive check2: {'tag': 'check2', 'table_z': -0.0153, 'front_top': 0.0686, 'face_depth': 0.0257, 'slot_med': 0.0243, 'blobs': 2, 'low_pts': 2250, 'near_cabinet': False, 'drawer_blobs': [{'xy': [0.4045, -0.0624], 'obb_c': [0.4116, -0.0555], 'L': 0.118, 'W': 0.108, 'yaw': 29.7, 'h': 0.0669, 'n': 5263}], 'protr': 0.2142, 'front_pts': 731, 'face_pts': 0, 'inside_pts': 158, 'out': {'t': -0.1646, 'h_top': 0.0697, 'h_bot': 0.029, 'n': 102}}
+[18:29:35] vision judge check2_q1: success=False conf=0.75 reason=The drawer is out of the cabinet and upright on the table with its open side up, but none of the walls I can see has the metal pull, so the pull must be on a wall facing away from the camera and not on the wall facing the robot base.
+[18:29:42] vision judge check2_q2: success=False conf=0.75 reason=The drawer sits upright on the table away from the cabinet, but its visible lower-right outer wall has no metal pull, so the pull must be on a hidden side.
+[18:29:51] vision judge check2_q1b: success=False conf=0.75 reason=The drawer is out of the cabinet and upright on the table, but no metal pull shows on the wall facing the lower left (toward the robot base), so the pull must be on a wall facing away from the camera.
+[18:29:51] DECISION: vision judge: pull on a far (hidden) wall: assume opposite the robot-facing wall, turn 180 deg and re-check
+[18:29:51] DECISION: pull wall faces 180 deg away from the robot side: pick and turn it
+[18:29:51] == phase: pick2
+[18:29:51] gripper -> 0.15 (open wide (~72 mm) to straddle the end wall)
+[18:29:52] gripper reading 14.8
+[18:29:52] DECISION: table drawer obb [0.412, -0.056] L 0.155 W 0.108 yaw 30; grasp end wall at [0.35, -0.09] (cabinet dist 0.222) top 0.067
+[18:29:53] plan 54_ready: T=11.8s check ok=True tip>0.199 vmax=18.4deg/s lin=0.053m/s
+[18:30:05] exec 54_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.151, 'max_dev_mm': 0.47, 'n': 473, 'max_force_n': 5.7, 't_exec': 11.86, 'rate_hz': 39.9, 'final_err_deg': 0.013}
+[18:30:06] plan 55_above_drawer_wall: T=3.1s check ok=True tip>0.169 vmax=18.4deg/s lin=0.043m/s
+[18:30:09] exec 55_above_drawer_wall: {'segment': 'above_drawer_wall', 'ok': True, 'reason': '', 'T_plan': 3.1, 'max_dev_deg': 0.102, 'max_dev_mm': 0.12, 'n': 125, 'max_force_n': 5.1, 't_exec': 3.17, 'rate_hz': 39.4, 'final_err_deg': 0.068}
+[18:30:09] plan 56_down_to_wall_pre: T=2.0s check ok=True tip>0.099 vmax=12.3deg/s lin=0.065m/s
+[18:30:11] exec 56_down_to_wall_pre: {'segment': 'down_to_wall_pre', 'ok': True, 'reason': '', 'T_plan': 2.01, 'max_dev_deg': 0.088, 'max_dev_mm': 0.33, 'n': 81, 'max_force_n': 2.8, 't_exec': 2.08, 'rate_hz': 38.9, 'final_err_deg': 0.06}
+[18:30:12] refine_wall: inner edge at +0.035 along d_in, step 80, shift +0.030
+[18:30:12] DECISION: wall refined by wrist camera: shift +0.030 m toward the drawer centre
+[18:30:12] plan 57_wall_correct: T=3.1s check ok=True tip>0.099 vmax=2.5deg/s lin=0.018m/s
+[18:30:15] exec 57_wall_correct: {'segment': 'wall_correct', 'ok': True, 'reason': '', 'T_plan': 3.06, 'max_dev_deg': 0.017, 'max_dev_mm': 0.11, 'n': 124, 'max_force_n': 5.0, 't_exec': 3.13, 'rate_hz': 39.6, 'final_err_deg': 0.008}
+[18:30:16] plan 58_down_to_wall: T=5.1s check ok=True tip>0.049 vmax=3.2deg/s lin=0.018m/s
+[18:30:21] exec 58_down_to_wall: {'segment': 'down_to_wall', 'ok': True, 'reason': '', 'T_plan': 5.1, 'max_dev_deg': 0.018, 'max_dev_mm': 0.11, 'n': 205, 'max_force_n': 8.9, 't_exec': 5.17, 'rate_hz': 39.7, 'final_err_deg': 0.007}
+[18:30:21] gripper -> 1.00 (grasp the end wall)
+[18:30:22] gripper reading 100.0
+[18:30:22] DECISION: end wall grasp reading 100.0: nothing held
+[18:30:22] gripper -> 0.15 (open, missed)
+[18:30:23] gripper reading 14.8
+[18:30:24] plan 59_up_from_wall: T=5.1s check ok=True tip>0.049 vmax=3.2deg/s lin=0.018m/s
+[18:30:29] exec 59_up_from_wall: {'segment': 'up_from_wall', 'ok': True, 'reason': '', 'T_plan': 5.12, 'max_dev_deg': 0.018, 'max_dev_mm': 0.09, 'n': 206, 'max_force_n': 6.1, 't_exec': 5.18, 'rate_hz': 39.8, 'final_err_deg': 0.01}
+[18:30:30] plan 60_lift_empty: T=2.0s check ok=True tip>0.099 vmax=11.8deg/s lin=0.065m/s
+[18:30:32] exec 60_lift_empty: {'segment': 'lift_empty', 'ok': True, 'reason': '', 'T_plan': 2.02, 'max_dev_deg': 0.09, 'max_dev_mm': 0.34, 'n': 81, 'max_force_n': 2.8, 't_exec': 2.06, 'rate_hz': 39.3, 'final_err_deg': 0.062}
+[18:30:32] == phase: check3
+[18:30:32] plan 61_ready: T=2.8s check ok=True tip>0.169 vmax=18.4deg/s lin=0.041m/s
+[18:30:35] exec 61_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 2.77, 'max_dev_deg': 0.105, 'max_dev_mm': 0.21, 'n': 112, 'max_force_n': 3.4, 't_exec': 2.84, 'rate_hz': 39.4, 'final_err_deg': 0.071}
+[18:30:37] plan 62_home_for_check: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[18:30:48] exec 62_home_for_check: {'segment': 'home_for_check', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.123, 'max_dev_mm': 0.34, 'n': 473, 'max_force_n': 7.5, 't_exec': 11.87, 'rate_hz': 39.8, 'final_err_deg': 0.013}
+[18:30:49] perceive check3: {'tag': 'check3', 'table_z': -0.0155, 'front_top': 0.0684, 'face_depth': 0.0264, 'slot_med': 0.0257, 'blobs': 3, 'low_pts': 2293, 'near_cabinet': False, 'drawer_blobs': [{'xy': [0.4017, -0.0715], 'obb_c': [0.4107, -0.0654], 'L': 0.12, 'W': 0.105, 'yaw': 14.7, 'h': 0.0685, 'n': 5192}], 'protr': 0.2118, 'front_pts': 254, 'face_pts': 0, 'inside_pts': 165, 'out': {'t': -0.1663, 'h_top': 0.0692, 'h_bot': 0.0312, 'n': 98}}
+[18:30:57] vision judge check3_q1: success=False conf=0.75 reason=The drawer is out of the slot and sitting upright on the table, but neither of the walls facing the camera shows the metal pull, so the pull does not face the robot base.
+[18:31:05] vision judge check3_q2: success=False conf=0.7 reason=The drawer is out of the slot and upright on the table, but the wall facing the lower right has no visible metal pull, so the front is not facing that way.
+[18:31:12] vision judge check3_q1b: success=False conf=0.75 reason=The drawer is out of the slot and upright on the table, but no metal pull shows on the visible lower-left or lower-right walls, so the pull is facing away from the robot.
+[18:31:12] DECISION: vision judge: pull on a far (hidden) wall: assume opposite the robot-facing wall, turn 180 deg and re-check
+[18:31:12] DECISION: pull wall faces 180 deg away from the robot side: pick and turn it
+[18:31:12] DECISION: drawer 0.062 m from the target after 3 picks: stop correcting, verify
+[18:31:12] == phase: verify
+[18:31:14] plan 63_ready: T=11.8s check ok=True tip>0.199 vmax=18.4deg/s lin=0.053m/s
+[18:31:26] exec 63_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.072, 'max_dev_mm': 0.31, 'n': 472, 'max_force_n': 5.8, 't_exec': 11.85, 'rate_hz': 39.8, 'final_err_deg': 0.013}
+[18:31:27] plan 64_home_final: T=11.8s check ok=True tip>0.199 vmax=18.4deg/s lin=0.053m/s
+[18:31:39] exec 64_home_final: {'segment': 'home_final', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.046, 'max_dev_mm': 0.24, 'n': 472, 'max_force_n': 8.1, 't_exec': 11.85, 'rate_hz': 39.8, 'final_err_deg': 0.013}
+[18:31:39] perceive final: {'tag': 'final', 'table_z': -0.0154, 'front_top': 0.0693, 'face_depth': 0.0265, 'slot_med': 0.0262, 'blobs': 2, 'low_pts': 2560, 'near_cabinet': False, 'drawer_blobs': [{'xy': [0.4005, -0.0728], 'obb_c': [0.4108, -0.066], 'L': 0.12, 'W': 0.107, 'yaw': 15.9, 'h': 0.0686, 'n': 5275}], 'protr': 0.2118, 'front_pts': 261, 'face_pts': 0, 'inside_pts': 184, 'out': {'t': -0.1662, 'h_top': 0.07, 'h_bot': 0.0274, 'n': 95}}
+[18:31:39] CLAIM fail
+summary: /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_133/summary.json outcome: fail exit 2
+== attempt_133 finished: exit 2, outcome fail, 566 s
+== ROBOT: The drawer is on the table near (0.40, -0.07), probably backwards. Judge its orientation with an orientation-only question, pick it and turn it so the pull faces the robot, place it at the target (0.365, -0.021), and verify.
+   $ /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_132/targets.json
+   starting in 5 s (Enter=now, n=refuse, s=skip)    starting in 4 s (Enter=now, n=refuse, s=skip)    starting in 3 s (Enter=now, n=refuse, s=skip)    starting in 2 s (Enter=now, n=refuse, s=skip)    starting in 1 s (Enter=now, n=refuse, s=skip)    go                                            
+== attempt_134 [ROBOT] $ /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_132/targets.json
+COMMIT 33d556779b932c2f29c34dabea1df878763d5909
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[18:33:27] session reset: attempt /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_134 dry=False record=None
+[18:33:27] arm state ARMSTATE_SERVOING_READY, joints [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], gripper 14.8
+[18:33:27] model FK vs measured tool_pose at start: 0.2 mm
+[18:33:28] == phase: perceive
+[18:33:28] perceive start: {'tag': 'start', 'table_z': -0.0156, 'front_top': 0.0688, 'face_depth': 0.0267, 'slot_med': 0.0262, 'blobs': 3, 'low_pts': 2253, 'near_cabinet': False, 'drawer_blobs': [{'xy': [0.403, -0.0735], 'obb_c': [0.4128, -0.0665], 'L': 0.119, 'W': 0.107, 'yaw': 14.0, 'h': 0.0688, 'n': 5091}], 'protr': 0.2112, 'front_pts': 259, 'face_pts': 1, 'inside_pts': 172, 'out': {'t': -0.1653, 'h_top': 0.0706, 'h_bot': 0.0268, 'n': 114}}
+[18:33:28] DECISION: start state: table
+[18:33:30] plan 01_ready: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[18:33:42] exec 01_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.111, 'max_dev_mm': 0.41, 'n': 473, 'max_force_n': 6.0, 't_exec': 11.86, 'rate_hz': 39.9, 'final_err_deg': 0.013}
+[18:33:42] == phase: check0
+[18:33:42] plan 02_ready: T=0.5s check ok=True tip>0.222 vmax=0.0deg/s lin=0.000m/s
+[18:33:43] exec 02_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.002, 'max_dev_mm': 0.01, 'n': 21, 'max_force_n': 0.2, 't_exec': 0.56, 'rate_hz': 37.5, 'final_err_deg': 0.0}
+[18:33:44] plan 03_home_for_check: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[18:33:56] exec 03_home_for_check: {'segment': 'home_for_check', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.083, 'max_dev_mm': 0.31, 'n': 472, 'max_force_n': 7.9, 't_exec': 11.85, 'rate_hz': 39.8, 'final_err_deg': 0.014}
+[18:33:57] perceive check0: {'tag': 'check0', 'table_z': -0.0155, 'front_top': 0.0691, 'face_depth': 0.0271, 'slot_med': 0.0264, 'blobs': 3, 'low_pts': 2340, 'near_cabinet': False, 'drawer_blobs': [{'xy': [0.4032, -0.0735], 'obb_c': [0.4112, -0.0662], 'L': 0.118, 'W': 0.105, 'yaw': 13.7, 'h': 0.0696, 'n': 5172}], 'protr': 0.2108, 'front_pts': 258, 'face_pts': 5, 'inside_pts': 188, 'out': {'t': -0.1656, 'h_top': 0.0718, 'h_bot': 0.0282, 'n': 113}}
+[18:34:04] vision judge check0_q1: success=False conf=0.7 reason=The drawer is out of the cabinet and upright on the table, but the wall facing the lower left (toward the robot base) is plain wood with no visible metal pull, so the drawer does not appear to be turned the right way.
+[18:34:11] vision judge check0_q2: success=False conf=0.75 reason=The drawer sits upright on the table, but no metal pull shows on the wall facing the lower right (or on the other visible wall), so the pull seems to be on a hidden wall that faces away.
+[18:34:19] vision judge check0_q1b: success=False conf=0.7 reason=The drawer is upright on the table, but no metal pull shows on its visible outer wall facing the lower left toward the robot base, so it does not appear to be turned the right way.
+[18:34:19] DECISION: vision judge: pull on a far (hidden) wall: assume opposite the robot-facing wall, turn 180 deg and re-check
+[18:34:19] DECISION: pull wall faces 180 deg away from the robot side: pick and turn it
+[18:34:19] == phase: pick0
+[18:34:19] gripper -> 0.15 (open wide (~72 mm) to straddle the end wall)
+[18:34:19] gripper reading 14.8
+[18:34:19] DECISION: table drawer obb [0.411, -0.066] L 0.155 W 0.105 yaw 14; grasp end wall at [0.343, -0.083] (cabinet dist 0.226) top 0.070
+[18:34:20] plan 04_ready: T=11.8s check ok=True tip>0.199 vmax=18.4deg/s lin=0.053m/s
+[18:34:32] exec 04_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.127, 'max_dev_mm': 0.39, 'n': 473, 'max_force_n': 5.6, 't_exec': 11.86, 'rate_hz': 39.9, 'final_err_deg': 0.013}
+[18:34:32] plan 05_above_drawer_wall: T=2.2s check ok=True tip>0.169 vmax=13.6deg/s lin=0.068m/s
+[18:34:35] exec 05_above_drawer_wall: {'segment': 'above_drawer_wall', 'ok': True, 'reason': '', 'T_plan': 2.16, 'max_dev_deg': 0.081, 'max_dev_mm': 0.34, 'n': 87, 'max_force_n': 3.8, 't_exec': 2.22, 'rate_hz': 39.2, 'final_err_deg': 0.056}
+[18:34:35] plan 06_down_to_wall_pre: T=2.0s check ok=True tip>0.101 vmax=12.3deg/s lin=0.064m/s
+[18:34:37] exec 06_down_to_wall_pre: {'segment': 'down_to_wall_pre', 'ok': True, 'reason': '', 'T_plan': 1.97, 'max_dev_deg': 0.095, 'max_dev_mm': 0.34, 'n': 80, 'max_force_n': 3.0, 't_exec': 2.04, 'rate_hz': 39.2, 'final_err_deg': 0.062}
+[18:34:37] refine_wall: inner edge at +0.027 along d_in, step 72, shift +0.022
+[18:34:37] DECISION: wall refined by wrist camera: shift +0.022 m toward the drawer centre
+[18:34:38] plan 07_wall_correct: T=2.2s check ok=True tip>0.101 vmax=3.0deg/s lin=0.018m/s
+[18:34:40] exec 07_wall_correct: {'segment': 'wall_correct', 'ok': True, 'reason': '', 'T_plan': 2.24, 'max_dev_deg': 0.016, 'max_dev_mm': 0.09, 'n': 90, 'max_force_n': 3.2, 't_exec': 2.3, 'rate_hz': 39.1, 'final_err_deg': 0.007}
+[18:34:41] plan 08_down_to_wall: T=5.1s check ok=True tip>0.051 vmax=3.3deg/s lin=0.018m/s
+[18:34:46] exec 08_down_to_wall: {'segment': 'down_to_wall', 'ok': True, 'reason': '', 'T_plan': 5.1, 'max_dev_deg': 0.029, 'max_dev_mm': 0.14, 'n': 205, 'max_force_n': 8.3, 't_exec': 5.16, 'rate_hz': 39.7, 'final_err_deg': 0.009}
+[18:34:46] gripper -> 1.00 (grasp the end wall)
+[18:34:47] gripper reading 100.0
+[18:34:47] DECISION: end wall grasp reading 100.0: nothing held
+[18:34:47] gripper -> 0.15 (open, missed)
+[18:34:48] gripper reading 14.8
+[18:34:48] plan 09_up_from_wall: T=5.1s check ok=True tip>0.051 vmax=3.3deg/s lin=0.018m/s
+[18:34:54] exec 09_up_from_wall: {'segment': 'up_from_wall', 'ok': True, 'reason': '', 'T_plan': 5.12, 'max_dev_deg': 0.02, 'max_dev_mm': 0.1, 'n': 206, 'max_force_n': 6.5, 't_exec': 5.19, 'rate_hz': 39.7, 'final_err_deg': 0.008}
+[18:34:54] plan 10_lift_empty: T=2.0s check ok=True tip>0.101 vmax=11.8deg/s lin=0.064m/s
+[18:34:56] exec 10_lift_empty: {'segment': 'lift_empty', 'ok': True, 'reason': '', 'T_plan': 1.98, 'max_dev_deg': 0.08, 'max_dev_mm': 0.3, 'n': 80, 'max_force_n': 2.4, 't_exec': 2.03, 'rate_hz': 39.4, 'final_err_deg': 0.054}
+[18:34:56] == phase: check1
+[18:34:56] plan 11_ready: T=2.0s check ok=True tip>0.169 vmax=11.7deg/s lin=0.063m/s
+[18:34:58] exec 11_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 1.95, 'max_dev_deg': 0.136, 'max_dev_mm': 0.53, 'n': 79, 'max_force_n': 4.7, 't_exec': 2.02, 'rate_hz': 39.1, 'final_err_deg': 0.063}
+[18:35:00] plan 12_home_for_check: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[18:35:12] exec 12_home_for_check: {'segment': 'home_for_check', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.045, 'max_dev_mm': 0.25, 'n': 473, 'max_force_n': 7.8, 't_exec': 11.85, 'rate_hz': 39.9, 'final_err_deg': 0.015}
+[18:35:12] perceive check1: {'tag': 'check1', 'table_z': -0.0155, 'front_top': 0.0687, 'face_depth': 0.0266, 'slot_med': 0.0259, 'blobs': 2, 'low_pts': 2964, 'near_cabinet': False, 'drawer_blobs': [{'xy': [0.4255, -0.0712], 'obb_c': [0.4402, -0.0627], 'L': 0.118, 'W': 0.107, 'yaw': 10.5, 'h': 0.0679, 'n': 5068}], 'protr': 0.1742, 'front_pts': 178, 'face_pts': 5, 'inside_pts': 182, 'out': {'t': -0.1644, 'h_top': 0.0662, 'h_bot': 0.026, 'n': 63}}
+[18:35:21] vision judge check1_q1: success=False conf=0.7 reason=The drawer is out of the cabinet and upright on the table, but neither of its visible outer walls has the metal pull, so the front is not facing the lower left toward the robot.
+[18:35:28] vision judge check1_q2: success=False conf=0.7 reason=The drawer is out of the slot and upright on the table, but the wall facing the lower right has no visible metal pull, so the pull is probably on a hidden far wall.
+[18:35:37] vision judge check1_q1b: success=False conf=0.65 reason=The drawer is upright on the table, but there is no metal pull on the wall facing the lower left toward the robot base, so the drawer seems to be turned the wrong way.
+[18:35:37] DECISION: vision judge: pull not on the robot-facing or far wall (180 deg turn did not show it): assume the lower right side wall, turn 90 deg
+[18:35:37] DECISION: pull wall faces 180 deg away from the robot side: pick and turn it
+[18:35:37] == phase: pick1
+[18:35:37] gripper -> 0.15 (open wide (~72 mm) to straddle the end wall)
+[18:35:37] gripper reading 14.8
+[18:35:37] DECISION: table drawer obb [0.44, -0.063] L 0.155 W 0.107 yaw 10; grasp end wall at [0.371, -0.076] (cabinet dist 0.197) top 0.068
+[18:35:39] plan 13_ready: T=11.8s check ok=True tip>0.199 vmax=18.4deg/s lin=0.053m/s
+[18:35:51] exec 13_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.048, 'max_dev_mm': 0.22, 'n': 473, 'max_force_n': 5.8, 't_exec': 11.86, 'rate_hz': 39.9, 'final_err_deg': 0.015}
+[18:35:51] plan 14_above_drawer_wall: T=1.9s check ok=True tip>0.169 vmax=10.9deg/s lin=0.062m/s
+[18:35:53] exec 14_above_drawer_wall: {'segment': 'above_drawer_wall', 'ok': True, 'reason': '', 'T_plan': 1.91, 'max_dev_deg': 0.086, 'max_dev_mm': 0.25, 'n': 78, 'max_force_n': 3.3, 't_exec': 1.99, 'rate_hz': 39.2, 'final_err_deg': 0.059}
+[18:35:53] plan 15_down_to_wall_pre: T=2.0s check ok=True tip>0.100 vmax=11.8deg/s lin=0.065m/s
+[18:35:55] exec 15_down_to_wall_pre: {'segment': 'down_to_wall_pre', 'ok': True, 'reason': '', 'T_plan': 2.0, 'max_dev_deg': 0.084, 'max_dev_mm': 0.31, 'n': 81, 'max_force_n': 2.5, 't_exec': 2.07, 'rate_hz': 39.1, 'final_err_deg': 0.056}
+[18:35:56] refine_wall: inner edge at +0.026 along d_in, step 75, shift +0.021
+[18:35:56] DECISION: wall refined by wrist camera: shift +0.021 m toward the drawer centre
+[18:35:56] plan 16_wall_correct: T=2.1s check ok=True tip>0.100 vmax=3.2deg/s lin=0.018m/s
+[18:35:58] exec 16_wall_correct: {'segment': 'wall_correct', 'ok': True, 'reason': '', 'T_plan': 2.13, 'max_dev_deg': 0.018, 'max_dev_mm': 0.09, 'n': 86, 'max_force_n': 4.3, 't_exec': 2.21, 'rate_hz': 38.9, 'final_err_deg': 0.009}
+[18:35:59] plan 17_down_to_wall: T=5.1s check ok=True tip>0.050 vmax=3.1deg/s lin=0.018m/s
+[18:36:04] exec 17_down_to_wall: {'segment': 'down_to_wall', 'ok': True, 'reason': '', 'T_plan': 5.1, 'max_dev_deg': 0.029, 'max_dev_mm': 0.13, 'n': 205, 'max_force_n': 8.2, 't_exec': 5.17, 'rate_hz': 39.7, 'final_err_deg': 0.007}
+[18:36:04] gripper -> 1.00 (grasp the end wall)
+[18:36:05] gripper reading 100.0
+[18:36:05] DECISION: end wall grasp reading 100.0: nothing held
+[18:36:05] gripper -> 0.15 (open, missed)
+[18:36:06] gripper reading 14.8
+[18:36:07] plan 18_up_from_wall: T=5.1s check ok=True tip>0.050 vmax=3.1deg/s lin=0.018m/s
+[18:36:12] exec 18_up_from_wall: {'segment': 'up_from_wall', 'ok': True, 'reason': '', 'T_plan': 5.12, 'max_dev_deg': 0.017, 'max_dev_mm': 0.11, 'n': 205, 'max_force_n': 4.9, 't_exec': 5.16, 'rate_hz': 39.7, 'final_err_deg': 0.007}
+[18:36:13] plan 19_lift_empty: T=2.0s check ok=True tip>0.100 vmax=11.3deg/s lin=0.065m/s
+[18:36:15] exec 19_lift_empty: {'segment': 'lift_empty', 'ok': True, 'reason': '', 'T_plan': 2.0, 'max_dev_deg': 0.122, 'max_dev_mm': 0.54, 'n': 80, 'max_force_n': 2.9, 't_exec': 2.05, 'rate_hz': 39.0, 'final_err_deg': 0.06}
+[18:36:15] == phase: check2
+[18:36:15] plan 20_ready: T=1.9s check ok=True tip>0.169 vmax=9.8deg/s lin=0.059m/s
+[18:36:17] exec 20_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 1.85, 'max_dev_deg': 0.076, 'max_dev_mm': 0.32, 'n': 75, 'max_force_n': 2.8, 't_exec': 1.91, 'rate_hz': 39.3, 'final_err_deg': 0.056}
+[18:36:18] plan 21_home_for_check: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[18:36:30] exec 21_home_for_check: {'segment': 'home_for_check', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.09, 'max_dev_mm': 0.33, 'n': 473, 'max_force_n': 6.8, 't_exec': 11.86, 'rate_hz': 39.9, 'final_err_deg': 0.015}
+[18:36:30] perceive check2: {'tag': 'check2', 'table_z': -0.0155, 'front_top': 0.0613, 'face_depth': 0.0268, 'slot_med': 0.0267, 'blobs': 1, 'low_pts': 2056, 'near_cabinet': True, 'drawer_blobs': [{'xy': [0.4611, -0.0511], 'obb_c': [0.4685, -0.0579], 'L': 0.121, 'W': 0.108, 'yaw': 10.1, 'h': 0.06677249197365895, 'n': 6508, 'near_cabinet': True}], 'protr': 0.1453, 'front_pts': 126, 'face_pts': 0, 'inside_pts': 170, 'out': {'t': -0.1632, 'h_top': 0.0602, 'h_bot': 0.0268, 'n': 45}}
+[18:36:39] vision judge check2_q1: success=False conf=0.7 reason=The drawer is upright on the table in front of the cabinet. Neither outer wall facing the camera (lower-left or lower-right) shows the metal pull, so the pull is probably on a far wall and not facing the robot.
+[18:36:46] vision judge check2_q2: success=False conf=0.7 reason=The drawer is out of the slot and upright on the table, but neither visible outer wall, including the one facing the lower right, shows the metal pull, so the pull is probably on a far wall.
+[18:36:54] vision judge check2_q1b: success=False conf=0.7 reason=The drawer sits upright on the table in front of the cabinet, but neither visible wall facing the robot shows the metal pull, so its front is probably turned away from the robot.
+[18:36:54] DECISION: vision judge: pull on a far (hidden) wall: assume opposite the robot-facing wall, turn 180 deg and re-check
+[18:36:54] DECISION: pull wall faces 180 deg away from the robot side: pick and turn it
+[18:36:54] == phase: pick2
+[18:36:54] gripper -> 0.15 (open wide (~72 mm) to straddle the end wall)
+[18:36:54] gripper reading 14.8
+[18:36:54] DECISION: table drawer obb [0.468, -0.058] L 0.155 W 0.108 yaw 10; grasp end wall at [0.399, -0.07] (cabinet dist 0.169) top 0.067
+[18:36:56] plan 22_ready: T=11.8s check ok=True tip>0.199 vmax=18.4deg/s lin=0.053m/s
+[18:37:08] exec 22_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.096, 'max_dev_mm': 0.36, 'n': 473, 'max_force_n': 6.0, 't_exec': 11.86, 'rate_hz': 39.9, 'final_err_deg': 0.014}
+[18:37:08] plan 23_above_drawer_wall: T=1.9s check ok=True tip>0.169 vmax=9.4deg/s lin=0.059m/s
+[18:37:10] exec 23_above_drawer_wall: {'segment': 'above_drawer_wall', 'ok': True, 'reason': '', 'T_plan': 1.85, 'max_dev_deg': 0.075, 'max_dev_mm': 0.28, 'n': 75, 'max_force_n': 3.4, 't_exec': 1.92, 'rate_hz': 39.1, 'final_err_deg': 0.049}
+[18:37:10] plan 24_down_to_wall_pre: T=2.0s check ok=True tip>0.099 vmax=11.3deg/s lin=0.065m/s
+[18:37:12] exec 24_down_to_wall_pre: {'segment': 'down_to_wall_pre', 'ok': True, 'reason': '', 'T_plan': 2.01, 'max_dev_deg': 0.078, 'max_dev_mm': 0.33, 'n': 82, 'max_force_n': 3.2, 't_exec': 2.09, 'rate_hz': 39.2, 'final_err_deg': 0.055}
+[18:37:13] refine_wall: inner edge at +0.026 along d_in, step 72, shift +0.021
+[18:37:13] DECISION: wall refined by wrist camera: shift +0.021 m toward the drawer centre
+[18:37:13] plan 25_wall_correct: T=2.1s check ok=True tip>0.099 vmax=3.4deg/s lin=0.018m/s
+[18:37:15] exec 25_wall_correct: {'segment': 'wall_correct', 'ok': True, 'reason': '', 'T_plan': 2.14, 'max_dev_deg': 0.019, 'max_dev_mm': 0.08, 'n': 87, 'max_force_n': 5.0, 't_exec': 2.22, 'rate_hz': 39.2, 'final_err_deg': 0.008}
+[18:37:16] plan 26_down_to_wall: T=5.1s check ok=True tip>0.049 vmax=2.9deg/s lin=0.018m/s
+[18:37:21] exec 26_down_to_wall: {'segment': 'down_to_wall', 'ok': True, 'reason': '', 'T_plan': 5.1, 'max_dev_deg': 0.034, 'max_dev_mm': 0.15, 'n': 205, 'max_force_n': 9.1, 't_exec': 5.17, 'rate_hz': 39.7, 'final_err_deg': 0.008}
+[18:37:21] gripper -> 1.00 (grasp the end wall)
+[18:37:22] gripper reading 96.5
+[18:37:23] plan 27_lift_drawer_slow: T=5.1s check ok=True tip>0.032 vmax=2.9deg/s lin=0.018m/s
+[18:37:28] exec 27_lift_drawer_slow: {'segment': 'lift_drawer_slow', 'ok': True, 'reason': '', 'T_plan': 5.12, 'max_dev_deg': 0.016, 'max_dev_mm': 0.09, 'n': 206, 'max_force_n': 4.7, 't_exec': 5.19, 'rate_hz': 39.7, 'final_err_deg': 0.007}
+[18:37:28] plan 28_lift_drawer: T=2.0s check ok=True tip>0.082 vmax=10.9deg/s lin=0.065m/s
+[18:37:30] exec 28_lift_drawer: {'segment': 'lift_drawer', 'ok': True, 'reason': '', 'T_plan': 2.02, 'max_dev_deg': 0.077, 'max_dev_mm': 0.29, 'n': 81, 'max_force_n': 3.6, 't_exec': 2.06, 'rate_hz': 39.3, 'final_err_deg': 0.05}
+[18:37:30] == phase: place2
+[18:37:30] DECISION: place: pull known, turn -145 deg, pull wall toward -135 deg (robot side, normal 22 + 23), grasp point [0.408, 0.007], tool 0.088 above table
+[18:37:33] plan 29_above_target: T=15.8s check ok=True tip>0.152 vmax=18.4deg/s lin=0.009m/s
+[18:37:49] exec 29_above_target: {'segment': 'above_target', 'ok': True, 'reason': '', 'T_plan': 15.77, 'max_dev_deg': 0.11, 'max_dev_mm': 0.09, 'n': 632, 'max_force_n': 4.8, 't_exec': 15.84, 'rate_hz': 39.9, 'final_err_deg': 0.009}
+[18:37:49] plan 30_down_to_place_pre: T=1.9s check ok=True tip>0.090 vmax=10.6deg/s lin=0.062m/s
+[18:37:51] exec 30_down_to_place_pre: {'segment': 'down_to_place_pre', 'ok': True, 'reason': '', 'T_plan': 1.9, 'max_dev_deg': 0.115, 'max_dev_mm': 0.52, 'n': 77, 'max_force_n': 3.0, 't_exec': 1.97, 'rate_hz': 39.1, 'final_err_deg': 0.056}
+[18:37:52] plan 31_place_down: T=5.1s check ok=True tip>0.040 vmax=3.0deg/s lin=0.018m/s
+[18:37:55] exec 31_place_down: {'segment': 'place_down', 'ok': False, 'reason': 'contact force 58.6 N > 50 N at t=3.06s', 'T_plan': 5.08, 'max_dev_deg': 0.036, 'max_dev_mm': 0.3, 'n': 123, 'max_force_n': 58.6, 't_exec': 3.11, 'rate_hz': 39.5, 'final_err_deg': 2.541}
+[18:37:55] STOP RECORD: {'kind': 'failed check', 'why': '31_place_down: contact force 58.6 N > 50 N at t=3.06s', 'step': 'place2', 'segment': 'place_down', 'progress': 0.601, 't': 3.06, 'q_meas': [-0.48, 32.7, 248.1, 358.22, 324.03, -134.91], 'q_plan': [-0.48, 32.73, 248.09, 358.22, 324.03, -134.91], 'tool_meas': [0.4078, 0.007, 0.0878, 0.0283, 179.9694, 44.6807], 'tool_plan_xyz': [0.4086, 0.007, 0.0865], 'dev_deg': 0.04, 'dev_mm': 0.3, 'q_now': [359.52, 32.81, 248.07, 358.22, 324.16, 225.09], 'gripper': 96.5}
+[18:37:55] == phase: return_home
+[18:37:55] return plan ok=False: [('return_lift', True), ('return_home', False)]
+summary: /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_134/summary.json outcome: fail exit 2
+== attempt_134 finished: exit 2, outcome fail, 279 s
+== ROBOT: Release the drawer and back the arm off from its stop pose. Pick the drawer by an end wall at its measured length (about 0.12 m), retrying if the grasp is only marginal. Turn it so the pull faces the robot (orientation-only judge), place it at (0.365, -0.021), and verify.
+   $ /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_132/targets.json
+   starting in 5 s (Enter=now, n=refuse, s=skip)    starting in 4 s (Enter=now, n=refuse, s=skip)    starting in 3 s (Enter=now, n=refuse, s=skip)    starting in 2 s (Enter=now, n=refuse, s=skip)    starting in 1 s (Enter=now, n=refuse, s=skip)    go                                            
+== attempt_135 [ROBOT] $ /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_132/targets.json
+COMMIT 181e619032bac69487a2c61842b164f01b61c35a
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[18:39:12] session reset: attempt /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_135 dry=False record=None
+[18:39:12] arm state ARMSTATE_SERVOING_READY, joints [359.52, 32.83, 248.07, 358.22, 324.15, 225.09], gripper 96.5
+[18:39:12] model FK vs measured tool_pose at start: 1.4 mm
+[18:39:13] == phase: perceive
+[18:39:13] DECISION: start: gripper reads 96.5 low near the cabinet (maybe still on the pull tab): open first
+[18:39:13] gripper -> 0.71 (let go before backing off)
+[18:39:14] gripper reading 70.3
+[18:39:14] DECISION: start pose low (0.103 m above the table): back off and up first
+[18:39:14] gripper -> 0.00 (open fully before backing off (fingers away from any wall))
+[18:39:15] gripper reading 0.9
+[18:39:15] plan 01_escape_back: T=4.1s check ok=True tip>0.074 vmax=3.2deg/s lin=0.018m/s
+[18:39:20] exec 01_escape_back: {'segment': 'escape_back', 'ok': True, 'reason': '', 'T_plan': 4.1, 'max_dev_deg': 0.021, 'max_dev_mm': 0.15, 'n': 165, 'max_force_n': 2.7, 't_exec': 4.17, 'rate_hz': 39.6, 'final_err_deg': 0.005}
+[18:39:21] plan 02_escape_up: T=6.1s check ok=True tip>0.074 vmax=3.3deg/s lin=0.018m/s
+[18:39:27] exec 02_escape_up: {'segment': 'escape_up', 'ok': True, 'reason': '', 'T_plan': 6.14, 'max_dev_deg': 0.022, 'max_dev_mm': 0.09, 'n': 246, 'max_force_n': 4.2, 't_exec': 6.19, 'rate_hz': 39.7, 'final_err_deg': 0.007}
+[18:39:28] plan 03_ready: T=15.0s check ok=True tip>0.134 vmax=18.4deg/s lin=0.016m/s
+[18:39:43] exec 03_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 15.01, 'max_dev_deg': 0.093, 'max_dev_mm': 0.08, 'n': 601, 'max_force_n': 3.1, 't_exec': 15.09, 'rate_hz': 39.8, 'final_err_deg': 0.009}
+[18:39:45] plan 04_home_start: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[18:39:57] exec 04_home_start: {'segment': 'home_start', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.127, 'max_dev_mm': 0.38, 'n': 473, 'max_force_n': 8.4, 't_exec': 11.87, 'rate_hz': 39.8, 'final_err_deg': 0.013}
+[18:39:57] session home set to HOME_Q
+[18:39:57] perceive start: {'tag': 'start', 'table_z': -0.0156, 'front_top': 0.0681, 'face_depth': 0.0269, 'slot_med': 0.0259, 'blobs': 1, 'low_pts': 2002, 'near_cabinet': True, 'drawer_blobs': [{'xy': [0.4729, -0.0514], 'obb_c': [0.4856, -0.0498], 'L': 0.119, 'W': 0.107, 'yaw': -4.3, 'h': 0.06768043056468434, 'n': 6083, 'near_cabinet': True}], 'protr': 0.1124, 'front_pts': 147, 'face_pts': 0, 'inside_pts': 183, 'out': {'t': -0.1607, 'h_top': 0.0678, 'h_bot': 0.0268, 'n': 76}}
+[18:39:57] DECISION: start state: table
+[18:39:59] plan 05_ready: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[18:40:11] exec 05_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.121, 'max_dev_mm': 0.44, 'n': 472, 'max_force_n': 6.0, 't_exec': 11.85, 'rate_hz': 39.8, 'final_err_deg': 0.013}
+[18:40:11] == phase: check0
+[18:40:11] plan 06_ready: T=0.5s check ok=True tip>0.222 vmax=0.0deg/s lin=0.000m/s
+[18:40:11] exec 06_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 0.5, 'max_dev_deg': 0.003, 'max_dev_mm': 0.02, 'n': 20, 'max_force_n': 0.2, 't_exec': 0.55, 'rate_hz': 36.4, 'final_err_deg': 0.003}
+[18:40:13] plan 07_home_for_check: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[18:40:25] exec 07_home_for_check: {'segment': 'home_for_check', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.115, 'max_dev_mm': 0.39, 'n': 473, 'max_force_n': 7.5, 't_exec': 11.86, 'rate_hz': 39.9, 'final_err_deg': 0.014}
+[18:40:25] perceive check0: {'tag': 'check0', 'table_z': -0.0154, 'front_top': 0.0695, 'face_depth': 0.0266, 'slot_med': 0.0258, 'blobs': 1, 'low_pts': 2003, 'near_cabinet': True, 'drawer_blobs': [{'xy': [0.4727, -0.0465], 'obb_c': [0.4851, -0.0518], 'L': 0.119, 'W': 0.109, 'yaw': -6.0, 'h': 0.06725525384564543, 'n': 6088, 'near_cabinet': True}], 'protr': 0.1119, 'front_pts': 116, 'face_pts': 0, 'inside_pts': 185, 'out': {'t': -0.1614, 'h_top': 0.0689, 'h_bot': 0.0256, 'n': 73}}
+[18:40:33] vision judge check0_q1: success=False conf=0.7 reason=The drawer is out on the table and upright, but the wall facing the lower left (toward the robot base) is plain wood with no metal pull visible, so the drawer looks turned the wrong way.
+[18:40:40] vision judge check0_q2: success=False conf=0.7 reason=The drawer is out of the slot and sitting upright on the table, but none of its visible outer walls, including the one facing the lower right, shows the metal pull.
+[18:40:47] vision judge check0_q1b: success=False conf=0.7 reason=The drawer sits upright on the table in front of the cabinet, but its visible lower-left (robot-facing) wall has no metal pull, so the pull appears to face away from the robot.
+[18:40:47] DECISION: vision judge: pull on a far (hidden) wall: assume opposite the robot-facing wall, turn 180 deg and re-check
+[18:40:47] DECISION: pull wall faces 180 deg away from the robot side: pick and turn it
+[18:40:47] == phase: pick0
+[18:40:47] gripper -> 0.15 (open wide (~72 mm) to straddle the end wall)
+[18:40:48] gripper reading 14.8
+[18:40:48] DECISION: table drawer obb [0.485, -0.052] L 0.119 W 0.109 yaw -6; grasp end wall at [0.433, -0.046] (cabinet dist 0.129) top 0.067
+[18:40:50] plan 08_ready: T=11.8s check ok=True tip>0.199 vmax=18.4deg/s lin=0.053m/s
+[18:41:01] exec 08_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.134, 'max_dev_mm': 0.45, 'n': 473, 'max_force_n': 5.8, 't_exec': 11.85, 'rate_hz': 39.9, 'final_err_deg': 0.013}
+[18:41:02] plan 09_above_drawer_wall: T=2.2s check ok=True tip>0.169 vmax=12.1deg/s lin=0.070m/s
+[18:41:04] exec 09_above_drawer_wall: {'segment': 'above_drawer_wall', 'ok': True, 'reason': '', 'T_plan': 2.17, 'max_dev_deg': 0.081, 'max_dev_mm': 0.29, 'n': 88, 'max_force_n': 5.0, 't_exec': 2.24, 'rate_hz': 39.3, 'final_err_deg': 0.062}
+[18:41:04] plan 10_down_to_wall_pre: T=2.0s check ok=True tip>0.099 vmax=10.6deg/s lin=0.065m/s
+[18:41:06] exec 10_down_to_wall_pre: {'segment': 'down_to_wall_pre', 'ok': True, 'reason': '', 'T_plan': 2.01, 'max_dev_deg': 0.078, 'max_dev_mm': 0.33, 'n': 81, 'max_force_n': 4.0, 't_exec': 2.07, 'rate_hz': 39.1, 'final_err_deg': 0.054}
+[18:41:07] refine_wall: no dark interior along the profile
+[18:41:07] plan 11_down_to_wall: T=5.1s check ok=True tip>0.049 vmax=2.8deg/s lin=0.018m/s
+[18:41:12] exec 11_down_to_wall: {'segment': 'down_to_wall', 'ok': True, 'reason': '', 'T_plan': 5.09, 'max_dev_deg': 0.017, 'max_dev_mm': 0.16, 'n': 204, 'max_force_n': 6.2, 't_exec': 5.15, 'rate_hz': 39.6, 'final_err_deg': 0.006}
+[18:41:12] gripper -> 1.00 (grasp the end wall)
+[18:41:14] gripper reading 99.1
+[18:41:14] DECISION: end wall grasp reading 99.1: nothing held
+[18:41:14] gripper -> 0.15 (open, missed)
+[18:41:15] gripper reading 14.8
+[18:41:15] plan 12_up_from_wall: T=5.1s check ok=True tip>0.049 vmax=2.8deg/s lin=0.018m/s
+[18:41:20] exec 12_up_from_wall: {'segment': 'up_from_wall', 'ok': True, 'reason': '', 'T_plan': 5.12, 'max_dev_deg': 0.018, 'max_dev_mm': 0.09, 'n': 205, 'max_force_n': 3.8, 't_exec': 5.17, 'rate_hz': 39.7, 'final_err_deg': 0.008}
+[18:41:21] plan 13_lift_empty: T=2.0s check ok=True tip>0.099 vmax=10.6deg/s lin=0.065m/s
+[18:41:23] exec 13_lift_empty: {'segment': 'lift_empty', 'ok': True, 'reason': '', 'T_plan': 2.01, 'max_dev_deg': 0.075, 'max_dev_mm': 0.3, 'n': 81, 'max_force_n': 2.4, 't_exec': 2.07, 'rate_hz': 39.1, 'final_err_deg': 0.053}
+[18:41:23] == phase: check1
+[18:41:23] plan 14_ready: T=2.2s check ok=True tip>0.169 vmax=12.1deg/s lin=0.070m/s
+[18:41:25] exec 14_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 2.17, 'max_dev_deg': 0.078, 'max_dev_mm': 0.29, 'n': 88, 'max_force_n': 3.5, 't_exec': 2.23, 'rate_hz': 39.5, 'final_err_deg': 0.055}
+[18:41:27] plan 15_home_for_check: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[18:41:39] exec 15_home_for_check: {'segment': 'home_for_check', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.125, 'max_dev_mm': 0.39, 'n': 473, 'max_force_n': 7.9, 't_exec': 11.85, 'rate_hz': 39.9, 'final_err_deg': 0.014}
+[18:41:39] perceive check1: {'tag': 'check1', 'table_z': -0.0154, 'front_top': 0.0617, 'face_depth': 0.0266, 'slot_med': 0.0219, 'blobs': 1, 'low_pts': 2246, 'near_cabinet': True, 'drawer_blobs': [{'xy': [0.4635, -0.0296], 'obb_c': [0.4843, -0.0469], 'L': 0.116, 'W': 0.113, 'yaw': -18.7, 'h': 0.06431590034985353, 'n': 6292, 'near_cabinet': True}], 'protr': 0.1103, 'front_pts': 215, 'face_pts': 0, 'inside_pts': 168, 'out': {'t': -0.1642, 'h_top': 0.0635, 'h_bot': 0.0282, 'n': 100}}
+[18:41:48] vision judge check1_q1: success=False conf=0.6 reason=The drawer is out of the slot and upright on the table, but its wall facing the lower left toward the robot shows plain wood with no metal pull, so the front is not facing the robot.
+[18:41:55] vision judge check1_q2: success=False conf=0.7 reason=The drawer is out of the slot and sitting upright on the table, but the wall facing the camera and lower right is plain wood with no metal pull, so the pull must be on a side facing away from the camera.
+[18:42:04] vision judge check1_q1b: success=False conf=0.6 reason=The drawer is out of the slot and sits upright on the table, but the wall facing the robot looks like plain wood with no metal pull, so the drawer seems to be turned the wrong way.
+[18:42:04] DECISION: vision judge: pull not on the robot-facing or far wall (180 deg turn did not show it): assume the lower right side wall, turn 90 deg
+[18:42:04] DECISION: pull wall faces 180 deg away from the robot side: pick and turn it
+[18:42:04] == phase: pick1
+[18:42:04] gripper -> 0.15 (open wide (~72 mm) to straddle the end wall)
+[18:42:04] gripper reading 14.8
+[18:42:04] DECISION: table drawer obb [0.484, -0.047] L 0.116 W 0.113 yaw -19; grasp end wall at [0.436, -0.031] (cabinet dist 0.120) top 0.064
+[18:42:05] plan 16_ready: T=11.8s check ok=True tip>0.199 vmax=18.4deg/s lin=0.053m/s
+[18:42:17] exec 16_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.126, 'max_dev_mm': 0.34, 'n': 473, 'max_force_n': 5.7, 't_exec': 11.86, 'rate_hz': 39.9, 'final_err_deg': 0.013}
+[18:42:18] plan 17_above_drawer_wall: T=2.9s check ok=True tip>0.169 vmax=18.4deg/s lin=0.060m/s
+[18:42:21] exec 17_above_drawer_wall: {'segment': 'above_drawer_wall', 'ok': True, 'reason': '', 'T_plan': 2.93, 'max_dev_deg': 0.105, 'max_dev_mm': 0.2, 'n': 118, 'max_force_n': 3.5, 't_exec': 2.99, 'rate_hz': 39.5, 'final_err_deg': 0.08}
+[18:42:21] plan 18_down_to_wall_pre: T=2.0s check ok=True tip>0.096 vmax=10.8deg/s lin=0.067m/s
+[18:42:23] exec 18_down_to_wall_pre: {'segment': 'down_to_wall_pre', 'ok': True, 'reason': '', 'T_plan': 2.05, 'max_dev_deg': 0.08, 'max_dev_mm': 0.32, 'n': 83, 'max_force_n': 3.1, 't_exec': 2.11, 'rate_hz': 39.3, 'final_err_deg': 0.056}
+[18:42:24] refine_wall: no dark interior along the profile
+[18:42:24] plan 19_down_to_wall: T=5.1s check ok=True tip>0.046 vmax=2.8deg/s lin=0.018m/s
+[18:42:30] exec 19_down_to_wall: {'segment': 'down_to_wall', 'ok': True, 'reason': '', 'T_plan': 5.09, 'max_dev_deg': 0.017, 'max_dev_mm': 0.12, 'n': 204, 'max_force_n': 6.1, 't_exec': 5.14, 'rate_hz': 39.7, 'final_err_deg': 0.007}
+[18:42:30] gripper -> 1.00 (grasp the end wall)
+[18:42:30] gripper reading 100.0
+[18:42:30] DECISION: end wall grasp reading 100.0: nothing held
+[18:42:30] gripper -> 0.15 (open, missed)
+[18:42:31] gripper reading 14.8
+[18:42:32] plan 20_up_from_wall: T=5.1s check ok=True tip>0.046 vmax=2.8deg/s lin=0.018m/s
+[18:42:37] exec 20_up_from_wall: {'segment': 'up_from_wall', 'ok': True, 'reason': '', 'T_plan': 5.11, 'max_dev_deg': 0.018, 'max_dev_mm': 0.09, 'n': 206, 'max_force_n': 4.8, 't_exec': 5.18, 'rate_hz': 39.8, 'final_err_deg': 0.007}
+[18:42:38] plan 21_lift_empty: T=2.1s check ok=True tip>0.096 vmax=10.8deg/s lin=0.066m/s
+[18:42:40] exec 21_lift_empty: {'segment': 'lift_empty', 'ok': True, 'reason': '', 'T_plan': 2.05, 'max_dev_deg': 0.079, 'max_dev_mm': 0.31, 'n': 83, 'max_force_n': 2.8, 't_exec': 2.13, 'rate_hz': 39.0, 'final_err_deg': 0.053}
+[18:42:40] == phase: check2
+[18:42:40] plan 22_ready: T=2.9s check ok=True tip>0.169 vmax=18.4deg/s lin=0.060m/s
+[18:42:43] exec 22_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 2.93, 'max_dev_deg': 0.105, 'max_dev_mm': 0.2, 'n': 118, 'max_force_n': 2.6, 't_exec': 2.99, 'rate_hz': 39.5, 'final_err_deg': 0.069}
+[18:42:45] plan 23_home_for_check: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[18:42:56] exec 23_home_for_check: {'segment': 'home_for_check', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.137, 'max_dev_mm': 0.41, 'n': 473, 'max_force_n': 7.2, 't_exec': 11.87, 'rate_hz': 39.8, 'final_err_deg': 0.012}
+[18:42:57] perceive check2: {'tag': 'check2', 'table_z': -0.0155, 'front_top': None, 'face_depth': 0.0267, 'slot_med': 0.0258, 'blobs': 1, 'low_pts': 2097, 'near_cabinet': True, 'drawer_blobs': [{'xy': [0.4794, -0.0411], 'obb_c': [0.5208, -0.0491], 'L': 0.117, 'W': 0.107, 'yaw': -2.0, 'h': 0.06520049551865136, 'n': 5098, 'near_cabinet': True}], 'protr': 0.0748, 'front_pts': 47, 'face_pts': 1, 'inside_pts': 172, 'out': None}
+[18:43:07] vision judge check2_q1: success=False conf=0.65 reason=The drawer is out of the slot and sitting upright on the table, but neither visible outer wall, including the lower-left wall facing the robot, shows the metal pull, so the pull appears to be facing away from the robot.
+[18:43:14] vision judge check2_q2: success=False conf=0.75 reason=The drawer is out of the slot and upright on the table, but its lower-right outer wall is plain wood with no metal pull visible, so the pull is facing another way.
+[18:43:21] vision judge check2_q1b: success=False conf=0.75 reason=The drawer is upright on the table in front of the cabinet, but neither wall facing the robot or camera shows the metal pull, so the pull probably faces the cabinet.
+[18:43:21] DECISION: vision judge: pull on a far (hidden) wall: assume opposite the robot-facing wall, turn 180 deg and re-check
+[18:43:21] DECISION: pull wall faces 180 deg away from the robot side: pick and turn it
+[18:43:21] == phase: pick2
+[18:43:21] gripper -> 0.15 (open wide (~72 mm) to straddle the end wall)
+[18:43:21] gripper reading 14.8
+[18:43:21] DECISION: table drawer obb [0.521, -0.049] L 0.117 W 0.107 yaw -2; grasp end wall at [0.469, -0.047] (cabinet dist 0.096) top 0.065
+[18:43:23] plan 24_ready: T=11.8s check ok=True tip>0.199 vmax=18.4deg/s lin=0.053m/s
+[18:43:35] exec 24_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.141, 'max_dev_mm': 0.42, 'n': 473, 'max_force_n': 5.9, 't_exec': 11.88, 'rate_hz': 39.8, 'final_err_deg': 0.013}
+[18:43:35] plan 25_above_drawer_wall: T=2.5s check ok=True tip>0.169 vmax=8.2deg/s lin=0.077m/s
+[18:43:38] exec 25_above_drawer_wall: {'segment': 'above_drawer_wall', 'ok': True, 'reason': '', 'T_plan': 2.45, 'max_dev_deg': 0.088, 'max_dev_mm': 0.63, 'n': 99, 'max_force_n': 4.4, 't_exec': 2.52, 'rate_hz': 39.3, 'final_err_deg': 0.037}
+[18:43:38] plan 26_down_to_wall_pre: T=2.0s check ok=True tip>0.097 vmax=10.1deg/s lin=0.066m/s
+[18:43:40] exec 26_down_to_wall_pre: {'segment': 'down_to_wall_pre', 'ok': True, 'reason': '', 'T_plan': 2.04, 'max_dev_deg': 0.078, 'max_dev_mm': 0.33, 'n': 82, 'max_force_n': 4.7, 't_exec': 2.1, 'rate_hz': 39.0, 'final_err_deg': 0.053}
+[18:43:41] refine_wall: no dark interior along the profile
+[18:43:41] plan 27_down_to_wall: T=5.1s check ok=True tip>0.047 vmax=2.6deg/s lin=0.018m/s
+[18:43:46] exec 27_down_to_wall: {'segment': 'down_to_wall', 'ok': True, 'reason': '', 'T_plan': 5.09, 'max_dev_deg': 0.016, 'max_dev_mm': 0.14, 'n': 205, 'max_force_n': 5.7, 't_exec': 5.15, 'rate_hz': 39.8, 'final_err_deg': 0.007}
+[18:43:46] gripper -> 1.00 (grasp the end wall)
+[18:43:47] gripper reading 99.1
+[18:43:47] DECISION: end wall grasp reading 99.1: nothing held
+[18:43:47] gripper -> 0.15 (open, missed)
+[18:43:48] gripper reading 14.8
+[18:43:49] plan 28_up_from_wall: T=5.1s check ok=True tip>0.047 vmax=2.6deg/s lin=0.018m/s
+[18:43:54] exec 28_up_from_wall: {'segment': 'up_from_wall', 'ok': True, 'reason': '', 'T_plan': 5.12, 'max_dev_deg': 0.017, 'max_dev_mm': 0.11, 'n': 205, 'max_force_n': 3.4, 't_exec': 5.17, 'rate_hz': 39.7, 'final_err_deg': 0.006}
+[18:43:54] plan 29_lift_empty: T=2.0s check ok=True tip>0.097 vmax=10.1deg/s lin=0.066m/s
+[18:43:57] exec 29_lift_empty: {'segment': 'lift_empty', 'ok': True, 'reason': '', 'T_plan': 2.04, 'max_dev_deg': 0.071, 'max_dev_mm': 0.28, 'n': 83, 'max_force_n': 3.2, 't_exec': 2.11, 'rate_hz': 39.3, 'final_err_deg': 0.05}
+[18:43:57] == phase: check3
+[18:43:57] plan 30_ready: T=2.5s check ok=True tip>0.169 vmax=8.2deg/s lin=0.077m/s
+[18:43:59] exec 30_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 2.45, 'max_dev_deg': 0.055, 'max_dev_mm': 0.26, 'n': 98, 'max_force_n': 4.6, 't_exec': 2.5, 'rate_hz': 39.2, 'final_err_deg': 0.036}
+[18:44:01] plan 31_home_for_check: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[18:44:13] exec 31_home_for_check: {'segment': 'home_for_check', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.135, 'max_dev_mm': 0.45, 'n': 473, 'max_force_n': 6.5, 't_exec': 11.86, 'rate_hz': 39.9, 'final_err_deg': 0.013}
+[18:44:13] perceive check3: {'tag': 'check3', 'table_z': -0.0154, 'front_top': 0.0606, 'face_depth': 0.0259, 'slot_med': 0.024, 'blobs': 2, 'low_pts': 2309, 'near_cabinet': True, 'drawer_blobs': [{'xy': [0.477, -0.0288], 'obb_c': [0.5117, -0.0477], 'L': 0.12, 'W': 0.108, 'yaw': -14.0, 'h': 0.0643341710049512, 'n': 5540, 'near_cabinet': True}], 'protr': 0.0799, 'front_pts': 84, 'face_pts': 0, 'inside_pts': 157, 'out': {'t': -0.1631, 'h_top': 0.0591, 'h_bot': 0.0255, 'n': 36}}
+[18:44:21] vision judge check3_q1: success=False conf=0.6 reason=The drawer is out of the slot and sitting upright on the table, but the metal pull can't be seen on the wall facing the lower left toward the robot base, so the drawer looks turned the wrong way.
+[18:44:28] vision judge check3_q2: success=False conf=0.75 reason=The drawer was pulled out and sits upright on the table, but neither visible outer wall, including the one facing the lower right, shows the metal pull, so the pull must be on a hidden side.
+[18:44:36] vision judge check3_q1b: success=False conf=0.7 reason=The drawer is out of the slot and upright on the table, but I can't see the grey metal pull on either wall that faces the camera or the robot base, so its front is probably turned away from the robot.
+[18:44:36] DECISION: vision judge: pull on a far (hidden) wall: assume opposite the robot-facing wall, turn 180 deg and re-check
+[18:44:36] DECISION: pull wall faces 180 deg away from the robot side: pick and turn it
+[18:44:36] DECISION: drawer 0.112 m from the target after 3 picks: stop correcting, verify
+[18:44:36] == phase: verify
+[18:44:38] plan 32_ready: T=11.8s check ok=True tip>0.199 vmax=18.4deg/s lin=0.053m/s
+[18:44:49] exec 32_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.113, 'max_dev_mm': 0.34, 'n': 472, 'max_force_n': 5.8, 't_exec': 11.85, 'rate_hz': 39.8, 'final_err_deg': 0.014}
+[18:44:51] plan 33_home_final: T=11.8s check ok=True tip>0.199 vmax=18.4deg/s lin=0.053m/s
+[18:45:03] exec 33_home_final: {'segment': 'home_final', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.113, 'max_dev_mm': 0.33, 'n': 472, 'max_force_n': 7.8, 't_exec': 11.86, 'rate_hz': 39.8, 'final_err_deg': 0.014}
+[18:45:03] perceive final: {'tag': 'final', 'table_z': -0.0155, 'front_top': 0.0594, 'face_depth': 0.0261, 'slot_med': 0.0233, 'blobs': 3, 'low_pts': 2355, 'near_cabinet': True, 'drawer_blobs': [{'xy': [0.4777, -0.0241], 'obb_c': [0.5114, -0.0469], 'L': 0.119, 'W': 0.108, 'yaw': -12.7, 'h': 0.06405576184233597, 'n': 5609, 'near_cabinet': True}], 'protr': 0.0792, 'front_pts': 88, 'face_pts': 1, 'inside_pts': 153, 'out': {'t': -0.1646, 'h_top': 0.0588, 'h_bot': 0.0261, 'n': 36}}
+[18:45:03] CLAIM fail
+summary: /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_135/summary.json outcome: fail exit 2
+== attempt_135 finished: exit 2, outcome fail, 362 s
+== operator note delivered to the reset agent

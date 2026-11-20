@@ -71,11 +71,18 @@ DEEP_LEVEL = 0.016          # above this the level-finger variant (missed on the
 T_C = scene.SLOT_C - 0.0045     # drawer centre line along the front (-0.087 before 2026-11-20)
 CAB_T = scene.CAB_T             # cabinet body t-span from the task yaml keep-out box
 TASK_LAYOUT = scene.TASK.get("layout", {"drawer": {"y": [-0.21, -0.126]}})
+# attempt 133: the task's reset_orientation text also demands 'on the table away from the cabinet': at check1 the pull
+# faced the robot but the drawer was still at the slot -> 'no' -> a needless turn made it backwards. Orientation only:
+ORIENT_Q = ("Judge ONLY which way the wooden drawer is turned, not where it is (it may still be at or partly in the "
+            "cabinet slot, or anywhere on the table). The drawer's metal pull - a small grey metal label frame with a "
+            "short metal tab below it - is on the outside of the drawer wall that faces the lower left of this image, "
+            "toward the robot base.")
 FACE_GAP_MIN = 0.17           # 16:35 operator: drawer centre >= 17 cm in front of the cabinet face
 Y_CENTRE = -0.10                # robot's centre line on the table side (01:12: slide only toward it)
 DRIFT_MAX = 0.02                # 01:12: stop sliding/righting attempts after 2 cm of unintended drift
 TABLE_OPEN = 0.15          # table pick opening (~72 mm): +-3 cm around a 1 cm wall (attempt 52 missed at 51 mm)
 L_DEFAULT = 0.13          # drawer depth until measured
+FIRM_MAX = 94.5           # table grasp: reading below this = a firm grasp of the wall (good ones 86-89.5)
 HOLD_MAX = 97.0           # gripper reading below this = holding something
 TOL = 0.05
 GOOD = 0.035              # correct when the error is above this
@@ -122,6 +129,7 @@ class Reset:
         self.retried = False
         self.deep_cfg = None
         self.from_recess = False
+        self.tab_img = None       # last close wrist view of the drawer front (pinch approach)
         self.or_stage = 0         # judge guess sequence for an unseen pull (attempt 124)
         self.tab_dt = TAB_DT0     # tab t offset from PIN_T: saved from the last hold, updated by the wrist measurement
         self.pin_dt = 0.0         # sideways (t) offset of the tab: attempt 92 saw it ~1-1.5 cm toward +t in the recessed drawer
@@ -221,7 +229,9 @@ class Reset:
         if img is None:
             return
         h = int(img.shape[0] * w / img.shape[1])
-        cv2.imwrite(os.path.join(self.s.A, f"{name}.jpg"), cv2.resize(img, (w, h)))
+        path = os.path.join(self.s.A, f"{name}.jpg")
+        cv2.imwrite(path, cv2.resize(img, (w, h)))
+        return path
 
     # ------------------------------------------------------------ perception
     def perceive(self, tag):
@@ -347,6 +357,29 @@ class Reset:
         T = np.eye(4); T[:3, :3] = Rm; T[:3, 3] = tip - PIN_ZT * Rm[:, 2] + Rm @ np.r_[0.0, self.pin_dy, self.pin_dz]
         return T
 
+    def judge_backwards(self):
+        """18:14 operator: decide 'backwards' only from a close look at the drawer front: the wrist image taken at the
+        pinch approach goes to the vision judge. Default (no image / judge unsure): the right way round."""
+        if self.tab_img is None or self.s.dry:
+            return False
+        ans = self.ask(self.tab_img, "This close-up from a camera on the robot gripper shows the front wall of a wooden drawer "
+                       "in a cabinet slot. That wall carries a metal pull: a grey metal label frame and/or a short metal tab "
+                       "or knob is clearly visible on the wood.", "front_pull")
+        back = ans is False
+        self.s.decide(f"close wrist view: metal pull {'NOT visible -> treat as backwards' if back else 'visible (or unsure) -> right way round'}")
+        return back
+
+    def lift_any(self, name, cands, speed):
+        """First model-feasible line among cands (a refused plan does not move the arm)."""
+        for j, T in enumerate(cands):
+            try:
+                self.line(name if j == 0 else f"{name}_alt{j}", T, speed, tip_margin=PIN_MARGIN)
+                return
+            except Abort as e:
+                if "check failed" not in str(e) or j == len(cands) - 1:
+                    raise
+                self.s.decide(f"{name} option {j} refused by the model ({str(e)[:80]}); next option")
+
     def measure_tab(self, tag):
         """Close wrist view at the pinch pose (fingers pre-closed around the expected tab): the tab is the grey metal
         run (low saturation) on the orange wood between the label frame and the fingertips. Its image-x centre vs
@@ -371,12 +404,15 @@ class Reset:
             s.log(f"measure_tab: projection unavailable ({str(e)[:80]}), fallback scale")
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         cents = []
-        for y in range(470, 660, 10):
+        for y in range(470, 710, 10):
             if y + 5 > img.shape[0]:
                 break
             row = hsv[y - 4:y + 5].astype(float)
             S = np.median(row[..., 1], 0); V = np.median(row[..., 2], 0)
             g = (S < 70) & (V > 70)
+            wood = (S > 110) & (V > 40)
+            # attempt 132: grey table/tape runs were taken for the tab: a tab run has wood right beside it
+            near_wood = np.convolve(wood.astype(float), np.ones(41), "same") > 5
             x, best = 0, None
             while x < len(g):
                 if g[x]:
@@ -384,21 +420,31 @@ class Reset:
                     while x < len(g) and g[x]:
                         x += 1
                     w = x - x0; c = (x0 + x) / 2
-                    if 40 <= w <= 170 and abs(c - u_pad) < 260 and (best is None or abs(c - u_pad) < abs(best - u_pad)):
-                        best = c
+                    flank = near_wood[max(x0 - 25, 0)] and near_wood[min(x + 24, len(g) - 1)]   # wood on both sides
+                    if 40 <= w <= 200 and flank and abs(c - u_pad) < 330 and (best is None or w > best[1]):
+                        best = (c, w)          # the knob is the widest metal run (frame bars are thin)
                 x += 1
             if best is not None:
                 cents.append(best)
+        # attempt 132 check image: two modes (knob 535-546, frame edge 644-656): keep the group with the most metal
+        groups = []
+        for c, w in sorted(cents):
+            if groups and c - groups[-1][-1][0] < 30:
+                groups[-1].append((c, w))
+            else:
+                groups.append([(c, w)])
+        grp = max(groups, key=lambda G: sum(w for _, w in G)) if groups else []
+        cents = [c for c, _ in grp]
         res = dict(rows=len(cents), u_pad=round(u_pad, 1), px_per_m=round(px_per_m), cents=[round(c) for c in cents])
         dt = None
-        if len(cents) >= 4:
+        if len(cents) >= 3:
             c = float(np.median(cents)); spread = float(np.median(np.abs(np.array(cents) - c)))
             res.update(u_tab=round(c, 1), spread=round(spread, 1))
             if spread < 25:
-                dt = float(np.clip((c - u_pad) / px_per_m * sgn, -0.025, 0.025))
+                dt = float(np.clip((c - u_pad) / px_per_m * sgn, -0.04, 0.04))
                 res["dt"] = round(dt, 4)
         s.summary(**{f"tab_measure_{tag}": res})
-        self.save(f"wrist_tab_{tag}", img)
+        self.tab_img = self.save(f"wrist_tab_{tag}", img) or self.tab_img
         s.decide(f"wrist tab measurement {tag}: " + (f"tab {dt * 1000:+.1f} mm along t from the aim" if dt is not None else f"not found {res}"))
         return dt
 
@@ -465,32 +511,35 @@ class Reset:
                 tries.append([dy, dz, "refused"])
                 continue
             if i == 0 and not s.dry:
-                # 15:52 operator: the knob needs ~2 mm; locate it in the close wrist view and centre it between the pads
-                time.sleep(0.4)
-                dt_m = self.measure_tab(f"{k}")
+                # 15:52 operator: the knob needs ~2 mm; locate it in the close wrist view and centre it between the pads.
+                # attempt 132: 34 mm off (capped at 25), the check saw the 9.7 mm rest but it was not applied: iterate
                 extra = (self.deep_cfg.get("dt", 0.0) - 0.012) if self.deep_cfg is not None else 0.0
-                if dt_m is not None and abs(dt_m) > 0.0025:
+                for it_m in range(3):
+                    time.sleep(0.4)
+                    dt_m = self.measure_tab(f"{k}_{it_m}")
+                    if dt_m is None:
+                        break
+                    if abs(dt_m) <= 0.0025:
+                        self.tab_dt = self.pin_dt - extra
+                        break
                     tab_old = self.tab_dt
-                    self.line(f"back_for_tab{i}", T_pre, "slow", tip_margin=PIN_MARGIN)
+                    self.line(f"back_for_tab{it_m}", T_pre, "slow", tip_margin=PIN_MARGIN)
                     self.pin_dt += dt_m                       # aim at the measured tab itself
                     self.tab_dt = self.pin_dt - extra         # later variants keep their spread around it
                     Tg = self.pin_T(PIN_OUT)
                     T_pre = Tg.copy(); T_pre[:3, 3] -= 0.05 * z
                     try:
-                        self.line(f"to_tab_pre{i}", T_pre, "slow", tip_margin=PIN_MARGIN)
-                        self.line(f"approach_tab{i}", Tg, "slow", tip_margin=PIN_MARGIN)
+                        self.line(f"to_tab_pre{it_m}", T_pre, "slow", tip_margin=PIN_MARGIN)
+                        self.line(f"approach_tab{it_m}", Tg, "slow", tip_margin=PIN_MARGIN)
                     except Abort as e:
                         if "check failed" not in str(e):
                             raise
-                        s.decide(f"measured tab position refused by the model ({str(e)[:90]}); keep the planned offsets")
+                        s.decide(f"measured tab position refused by the model ({str(e)[:90]}); back to the previous aim")
                         self.pin_dt -= dt_m; self.tab_dt = tab_old
                         Tg = self.pin_T(PIN_OUT); T_pre = Tg.copy(); T_pre[:3, 3] -= 0.05 * z
                         self.line(f"to_pin_pre{i}b", T_pre, "slow", tip_margin=PIN_MARGIN)
                         self.line(f"approach_pin{i}b", Tg, "slow", tip_margin=PIN_MARGIN)
-                    time.sleep(0.3)
-                    self.measure_tab(f"{k}_check")
-                elif dt_m is not None:
-                    self.tab_dt = self.pin_dt - extra
+                        break
             g = s.gripper(PINCH, "pinch the tab")
             img = s.wrist.latest()[0]
             if img is not None:
@@ -504,6 +553,8 @@ class Reset:
                 s.gripper(min(g / 100 + 0.008, 0.90), "keep squeezing (sets the model gripper close to the real one)")
                 # recessed: pull only to ~2 cm proud (a full 6.5 cm + depth folds j3); the wall-edge clamp takes over
                 pull_d = (self.depth + 0.02) if (self.depth > DEEP_LEVEL or self.deep_cfg is not None) else PULL
+                if self.depth < 0:      # already protruding (18:14: 1-7 cm out): pull only to ~7 cm out (j3/j5 limits)
+                    pull_d = float(np.clip(0.07 + self.depth, 0.025, PULL))
                 T_out = Tg.copy(); T_out[:3, 3] -= np.r_[pull_d * N, 0.0]
                 try:
                     self.line("pull_drawer", T_out, "slow", tip_margin=PIN_MARGIN)
@@ -518,12 +569,15 @@ class Reset:
             # the drawer now sticks out (the model does not know it): lift 12 cm straight up so the joint move to
             # READY passes above it (attempt 17 hit the drawer after a 6 cm lift)
             T_up = T_out.copy(); T_up[2, 3] += 0.12
-            self.line("up_from_pin", T_up, "slow", tip_margin=PIN_MARGIN)
+            T_b = T_out.copy(); T_b[:3, 3] -= 0.04 * T_out[:3, 2]; T_b[2, 3] += 0.10
+            T_u8 = T_out.copy(); T_u8[2, 3] += 0.08
+            self.lift_any("up_from_pin", [T_up, T_b, T_u8], "slow")    # (not toward the cabinet: the drawer sticks out)
         else:
             T_hi2 = T_pre.copy(); T_hi2[2, 3] = self.tz + PIN_HI; T_hi2[:2, 3] -= 0.04 * N
-            if self.depth > DEEP_LEVEL or self.deep_cfg is not None:   # attempts 85/122 (model): rolled high pose hits joint limits: lift straight up
-                T_hi2 = T_pre.copy(); T_hi2[2, 3] += 0.10
-            self.line("up_from_pin", T_hi2, "normal")
+            T_st = T_pre.copy(); T_st[2, 3] += 0.10
+            # attempts 85/122 (model): rolled high pose hits joint limits for recessed: lift straight up first
+            cands = [T_st, T_hi2, T_hi] if (self.depth > DEEP_LEVEL or self.deep_cfg is not None) else [T_hi2, T_st, T_hi]
+            self.lift_any("up_from_pin", cands, "normal")
         self.to_ready()
         return held
 
@@ -710,7 +764,7 @@ class Reset:
             return None, None
         from rlpj import config
         t = config.load()["task"]
-        ok = self.ask(path, t.get("reset_orientation", "The drawer's metal pull faces the lower left (the robot base)."), f"{tag}_q1")
+        ok = self.ask(path, ORIENT_Q, f"{tag}_q1")
         if ok is None:
             return None, None
         ctr, walls = self.walls_of(c)
@@ -729,7 +783,7 @@ class Reset:
         else:
             # attempts 77/78: in dim light the same scene got 'yes' (0.6) and 'no' (0.75): one more look before a turn
             path2 = self.side_full(tag + "b")
-            if path2 is not None and self.ask(path2, t.get("reset_orientation", ""), f"{tag}_q1b"):
+            if path2 is not None and self.ask(path2, ORIENT_Q, f"{tag}_q1b"):
                 self.s.decide("vision judge: second look confirms the pull faces the robot")
                 return True, robot
             # attempt 124 (new side camera): the lower-right wall is cut off by the frame bottom (q2 'can't see'), and
@@ -1063,8 +1117,11 @@ class Reset:
         s = self.s
         ctr = np.array(c["obb_c"]); u = np.array([np.cos(np.radians(c["yaw"])), np.sin(np.radians(c["yaw"]))])
         L = c["L"]
-        if L < 0.145:      # partial outline (attempts 75-77: 0.12 for a ~0.155 drawer): size from the known drawer
-            L = 0.155
+        # attempts 75-77 (old side camera, partial outline): L forced to 0.155. The moved camera sees the whole drawer
+        # (attempts 124/133/134: 0.12 x 0.105): forcing 0.155 put the grasp ~1.8 cm outside the end wall (2 misses in
+        # 134). Trust the measurement unless it is clearly partial.
+        if L < 0.10:
+            L = 0.12
         ends = [ctr + u * (L / 2 - 0.007), ctr - u * (L / 2 - 0.007)]
 
         def cab_d(v):      # distance of a grasp point from the cabinet footprint (attempts 100-101: the end near the
@@ -1107,8 +1164,9 @@ class Reset:
                     self.lift_to("lift_other_end", SAFE_H, "slow")
         g = s.gripper(1.0, "grasp the end wall")
         s.summary(table_grip=round(g, 1))
-        if g >= HOLD_MAX and not s.dry:
-            s.decide(f"end wall grasp reading {g:.1f}: nothing held")
+        if g >= FIRM_MAX and not s.dry:
+            # attempt 134: 96.5 = a marginal edge grasp; the drawer tilted in the hand and hit the table (58 N) on place
+            s.decide(f"end wall grasp reading {g:.1f}: {'nothing held' if g >= HOLD_MAX else 'only a marginal grasp'}")
             s.gripper(TABLE_OPEN, "open, missed")
             self.line("up_from_wall", T_pre, "slow")
             self.lift_to("lift_empty", SAFE_H, "normal")
@@ -1285,14 +1343,11 @@ class Reset:
         self.to_ready()
         if st == "slot_near":
             sm = float(p["slot_med"])
-            if sm >= -0.02:
-                self.depth = sm
-                s.decide(f"drawer face median {-sm:.3f} m out: tab pinch-and-pull first (the wall top is under the rail)")
-                st = "slot"
-            else:                      # 2-4 cm out: the wall-edge clamp (attempt 94 at 2.3 cm); the tab lift folds j3 there
-                s.decide(f"drawer face median {-sm:.3f} m out: clamp the protruding wall edge")
-                p = dict(p, protr=-sm)
-                st = "slot_back"
+            # 18:14 operator: after an RL episode the drawer is the right way round; 1-7 cm out -> the knob pinch-and-pull
+            # (attempt 131: the 2-4 cm wall-edge clamp was a false 'backwards' path and missed twice)
+            self.depth = sm
+            s.decide(f"drawer face median {-sm:.3f} m out: tab pinch-and-pull (right way round by default)")
+            st = "slot"
         if st == "slot_deep":
             self.depth = float(p["face_depth"])
             # the tab pinch fits the keep-out (3 cm into the slot opening) only up to ~1.5 cm past flush: the model's
@@ -1332,9 +1387,15 @@ class Reset:
             elif st == "slot":
                 self.depth = 0.0
             self.from_recess = st in ("slot_back", "out", "table")   # pulled out by its tab: the right way round
+        if st == "slot_back" and not self.from_recess:
+            # 18:14 operator: 'no pull seen' from the moved side camera does not mean backwards: knob pinch first
+            sm = p.get("slot_med")
+            self.depth = float(sm) if sm is not None and sm < 0 else -float(p["protr"])
+            s.decide(f"drawer sticking out ({-self.depth:.3f} m by the face median): tab pinch-and-pull (right way round by default)")
+            st = "slot"
         if st == "slot_back":
             s.phase("pull_back")
-            self.backwards = not self.from_recess
+            self.backwards = False
             self.pull_back(p)
             self.go_home("home_after_back")
             p = self.perceive("after_back")
@@ -1352,9 +1413,9 @@ class Reset:
                 if st != "slot":
                     break
                 s.decide(f"drawer still in the slot after pull {k} (protrusion {p['protr']:.3f})")
-            if st in ("slot", "slot_back") and p["protr"] > 0.006 and not s.dry:
+            if st in ("slot", "slot_back", "slot_near") and p["protr"] > 0.006 and not s.dry:
                 s.decide(f"drawer still in the slot, sticking out {p['protr']:.3f}: clamp the protruding wall edge and pull")
-                self.backwards = self.depth <= 0.012     # recessed drawers were pulled by their tab: the right way round
+                self.backwards = self.judge_backwards()  # 18:14: only if a close wrist view shows no metal pull
                 self.pull_back(p)
                 self.go_home("home_after_back")
                 p = self.perceive("after_back")

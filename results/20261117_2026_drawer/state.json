@@ -18,14 +18,14 @@
    "unsure": 0
   },
   "resets": {
-   "total": 70,
+   "total": 71,
    "ok": 37,
-   "fail": 33,
+   "fail": 34,
    "manual": 0
   },
   "consecutive_failures": {
    "execute": 0,
-   "reset": 0
+   "reset": 2
   },
   "rl": {
    "total": 25,
@@ -47,19 +47,19 @@
    "model": "claude-opus-5-5",
    "started": "2026-11-17T20:27:03",
    "ended": "2026-11-17T22:12:06",
-   "attempts": 59,
-   "robot_attempts": 48,
-   "turns": 592,
-   "cost_usd": 91.66061480000005,
-   "input_tokens": 1082,
-   "output_tokens": 541058,
-   "cache_read": 205999427,
-   "cache_creation": 4666515,
-   "duration_s": 7179.850999999999,
+   "attempts": 62,
+   "robot_attempts": 51,
+   "turns": 629,
+   "cost_usd": 95.01023980000001,
+   "input_tokens": 1150,
+   "output_tokens": 570471,
+   "cache_read": 217053292,
+   "cache_creation": 4735305,
+   "duration_s": 7640.191999999999,
    "first_success_attempt": 16,
    "first_success_after_attempts": 21,
    "time_to_first_success_s": 5425.0,
-   "repairs": 19,
+   "repairs": 20,
    "rounds": 0,
    "program_command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py",
    "last_report": "Attempt 102 (commit cc60dfb) worked on the robot. The drawer was placed 2.8 cm from the target (tolerance 5 cm). The vision judge confirmed the pull faces the robot (confidence 0.75), and the orchestrator's layout check passed.\n\nWhy attempts 100 and 101 failed: the drawer stood on the table lengthwise along the cabinet front. The table pick grabbed the end wall next to the cabinet's side post. There the gripper body would have entered the cabinet's no-go zone, so the safety check refused the move, before any motion in 100 and after a small correction in 101.\n\nThe fix: when the drawer is within 8 cm of the cabinet, the pick now grabs the end wall farther from it. If the safety check still refuses, it tries the other end. In attempt 102 the arm first got clear of its low stop position from attempt 101, then grabbed the far end on the first try (gripper reading 89.5, meaning it was holding the drawer).",
@@ -234,12 +234,20 @@
     [
      "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_129",
      "layout check failed: drawer: 7.7 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_131",
+     "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_132",
+     "layout check failed: drawer: not found"
     ]
    ]
   }
  },
  "next_episode": 29,
- "next_reset": 70,
+ "next_reset": 71,
  "vlm": {
   "calls": 29,
   "cost_usd": 1.7520620000000002

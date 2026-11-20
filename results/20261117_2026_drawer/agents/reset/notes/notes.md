@@ -181,3 +181,13 @@
   landing_ok: y -0.17..0.05 (camera cuts off y < ~-0.18). slide_ok: no slide toward the -y edge (the side it fell
   off), end must be a valid landing spot, <= 12.5 cm. Offline: offline.py 6/6 with the new targets, deep 8/8, hook 2/3
   (the 3rd needs a slide toward the cabinet front: refused, needs a person).
+- 18:14 operator / attempts 131-132: right-way drawer ~2 cm out after an RL episode. 131: median 2.1 cm -> clamp
+  ("backwards" path), 2 misses. 132: median 1.8 cm -> tab pinch; wrist measurement 34 mm (capped 25), the 9.7 mm
+  rest seen by the check was not applied -> 4 misses (knob left of the fingers in the images). Fixes: slot_near and
+  start slot_back -> tab pinch-and-pull (right way round by default); backwards only if a close wrist view sent to the
+  judge shows no metal pull; tab measurement iterated up to 3x, cap 40 mm, run must have wood on both sides
+  (rejects table/tape and frame edge), >= 3 rows; protruding drawer pulled only to ~7 cm out; lift after the pinch
+  tries straight-up / back-up / shorter options. Offline: tab pull 1-6 cm out x dt 0/34 mm all feasible when held;
+  images 122 -> +11 mm, 132 first view +27 (offline scale), 132 check/closed -> +9 mm.
+- attempt 133: tab centring converged (34 -> 5 -> 3.5 mm) but the pinch still closed on nothing (knob overlapping the left finger in the image); the cocked drawer then came out with the end-wall pick of its protruding part (near-cabinet candidate) - but the orientation judge used the task's reset_orientation text, which also requires 'on the table away from the cabinet': at check1 the pull DID face the robot (drawer still at the slot) -> 'no' -> 90/180 turns made it backwards. Fix: ORIENT_Q asks orientation only.
+- attempt 134: 2 end-wall misses + a marginal grasp (96.5) whose drawer hit the table on place (58 N). Cause: L forced to 0.155 when < 0.145 (old camera partial outline); the moved camera measures the whole drawer 0.12 x 0.105 -> grasp ~1.8 cm outside the wall. Fix: trust measured L (only < 0.10 -> 0.12); table grasp must read < FIRM_MAX 94.5 (good grasps 86-90 in all past attempts).
