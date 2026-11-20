@@ -150,3 +150,27 @@
   tip barely caught the top edge). Replaced by pinch-and-roll: fingers fully open straddle its 7 cm depth near the
   top, close, lift 1.2 cm, roll 40-45 deg about the bottom edge on the bottom-panel side (pivot path, cartesian or
   short joint moves, whole sequence model-checked first for both yaws), let go -> falls bottom-down.
+- attempt 121 + 01:01 operator: pinch across the tipped drawer missed 3x (100.0; the ~7.5 cm depth vs 85 mm stroke
+  + 1-2 cm side calibration: a finger landed on the edge and slid it 3 cm each time) -> drawer pushed off the side
+  camera's view (y ~ -0.28; state 'slot_deep' from the empty slot, face depth 0.04). The judge contradicted itself on
+  the open side (120: away, 121: toward). Now: open side from depth (camera-side face: points >= 2 cm inside the face
+  plane = open; 120/121 clouds: ~1580 face / 11 inside -> solid bottom panel facing the camera, open side away);
+  hook (operator option b): closed fingertips, tool tilted 70 deg (approach azimuth 0/+-35/+-60 to keep the body off
+  the cabinet), 2 cm under the upper wall's free edge, lift along an arc 60 deg about the far bottom edge; slide first
+  (low push on the solid face) if the upright landing spot would be out of view (y < -0.22) or at the cabinet;
+  wrist-camera look (brown blob on a table grid) when the side camera sees no drawer, slide it back to y ~ -0.15.
+- 2026-11-20 (resume): side camera re-calibrated, cabinet moved (+8.5, -46.2) mm in the base frame; yaml front_offset
+  0.5133, slot_t [-0.166, -0.091], keep-out shifted, layout y [-0.210, -0.126]. All along-front numbers now come from
+  the yaml: scene.SLOT_C (slot centre, was -0.0825), scene.CAB_T (cabinet t-span from the keep-out box 'cabinet',
+  now -0.201..-0.051), PIN_T / T_C slot-relative, perception windows slot-relative. tools/offline.py uses the yaml
+  keep-out (reset role). 01:12 rules: slides only toward the centre line y ~ -0.1 (slide_ok), landing zone off the
+  cabinet and y >= layout_y0 - 0.05 (landing_ok), righting stops after 2 cm unintended drift (DRIFT_MAX).
+  Offline: offline.py 5/5, deep variants + drags OK, clamp/back OK, escape OK, hook 3/3, wrist-find slides OK.
+- attempt 122: start 'slot' but the drawer was ~2 cm in (operator): new camera reads face depth 0.0156 with 241 face pts / 0 inside (old camera: ~0.021, 50 face / 250 inside) -> classified flush, pinch at the flush pose closed below the tab (wrist image: tab above, between the fingers). Fix: face depth > 0.008 = slot_deep (recessed variants). Model: at depth 0.0156 the missed-variant lift back to the rolled high pose hit joint limits -> deep variants lift straight up and pull depth+2 cm like > DEEP_LEVEL. PIN_T/T_C were already slot-relative (2fa22a8); insert.py T_C and survey.py window now slot-relative too.
+- 15:52 operator (attempt 122: 4 pinches closed on nothing): wrist images show the tab ~100 px image-left of the pads
+  = ~+11 mm along t (same as the +12 mm of attempt 93). New: measure_tab at the first approach of each pinch call
+  (grey low-saturation run on the wood between label frame and fingertips, rows 470-650 of the full wrist image;
+  pad centre / px-per-m from the wrist projection, fallback 625 px / 9500 px/m); |offset| > 2.5 mm -> back off,
+  shift the aim, re-approach (model-checked), check image. Held tab position saved to notes/tab_position.json
+  (slot-centre relative) and used as the starting offset by later runs. Offline: 122 crops -> +11.1/+11.0 mm,
+  attempt-93 crop (held) -> -1.1 mm; offline.py 5/5; deep variants 8/8.

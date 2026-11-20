@@ -31,7 +31,16 @@ SEED_DOWN = np.array([0, 25, -110, 0, -45, 90.0])
 TIP_OPEN = 0.027          # tips below the tool frame, open
 PROTR_GRASP = 0.045       # front-wall grasp needs this much drawer in front of the cabinet
 PULL = 0.065              # first pull with the pin grasp
-PIN_T = -0.088            # pin t (wrist triangulation, attempts 9-10)
+PIN_T = scene.SLOT_C - 0.0055   # pin t (wrist triangulation, attempts 9-10: -0.088 with the slot centre at -0.0825)
+TAB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "notes", "tab_position.json")
+try:                              # 15:52 operator: start from the last measured tab position (same slot geometry)
+    with open(TAB_FILE) as _f:
+        _tab = json.load(_f)
+    TAB_DT0 = float(_tab["t_from_slot"]) - (PIN_T - scene.SLOT_C)       # tab offset from PIN_T that held last time
+    if abs(float(_tab["slot_c"]) - scene.SLOT_C) > 0.001 or abs(TAB_DT0) > 0.03:
+        TAB_DT0 = None
+except Exception:
+    TAB_DT0 = None
 PIN_H = 0.052             # pin height above the table
 PIN_OUT = 0.010           # pad centre in front of the front plane
 PIN_BASE = (0.0026, 0.022)   # pre-closed fingertip (out, h) before the tool-frame offset
@@ -49,6 +58,7 @@ BACK_PROTR = 0.009        # a slot drawer sticking out more than this is in BACK
 BACK_TILT = 40.0          # oblique pinch of the protruding wall's top edge: jaws in the vertical plane through the
 BACK_ZC = 0.035           # slot centre, tilted BACK_TILT; pinch centre BACK_ZC along the tool z
 BACK_OPEN = 0.45
+FLUSH_MAX_DEPTH = 0.008   # face depth beyond this = recessed (attempt 122)
 DEEP_MAX = 0.015            # recessed deeper: fail fast (attempts 85-87: 2 cm ungrippable). 17:05 operator: handle <= 1.5 cm
 DEEP_VARIANTS = [   # recessed > 1.5 cm. attempt 92: the tab sat ~1-1.5 cm toward +t (image left; camera x = -tool x)
     dict(name="level_dt+0.012", phi=0.0, h_add=0.0035, margin=0.006, dt=0.012, sweep=[(0.002, 0.0015), (0.0, 0.0)]),
@@ -58,7 +68,11 @@ DEEP_VARIANTS = [   # recessed > 1.5 cm. attempt 92: the tab sat ~1-1.5 cm towar
 ]
 DRAG = 0.03
 DEEP_LEVEL = 0.016          # above this the level-finger variant (missed on the robot at 2 cm) would be used: off
-T_C = -0.087              # drawer centre line along the front
+T_C = scene.SLOT_C - 0.0045     # drawer centre line along the front (-0.087 before 2026-11-20)
+CAB_T = scene.CAB_T             # cabinet body t-span from the task yaml keep-out box
+TASK_LAYOUT = scene.TASK.get("layout", {"drawer": {"y": [-0.21, -0.126]}})
+Y_CENTRE = -0.10                # robot's centre line on the table side (01:12: slide only toward it)
+DRIFT_MAX = 0.02                # 01:12: stop sliding/righting attempts after 2 cm of unintended drift
 TABLE_OPEN = 0.15          # table pick opening (~72 mm): +-3 cm around a 1 cm wall (attempt 52 missed at 51 mm)
 L_DEFAULT = 0.13          # drawer depth until measured
 HOLD_MAX = 97.0           # gripper reading below this = holding something
@@ -107,6 +121,7 @@ class Reset:
         self.retried = False
         self.deep_cfg = None
         self.from_recess = False
+        self.tab_dt = TAB_DT0     # tab t offset from PIN_T: saved from the last hold, updated by the wrist measurement
         self.pin_dt = 0.0         # sideways (t) offset of the tab: attempt 92 saw it ~1-1.5 cm toward +t in the recessed drawer
         self.depth = 0.0          # how far the drawer front sits behind flush (pushed in past flush: no stop)
         self.bias = np.array([0.02, 0.03])   # box centre - blob centre, default from attempt 19
@@ -243,7 +258,7 @@ class Reset:
                 # attempts 95-96: the drawer can sit skewed (~30-45 deg) across the opening: fit its front wall from the
                 # wall-top points of the protruding part (wide t window), farthest rectangle edge from the cabinet
                 ht = float(np.percentile(h[front & (q[:, 0] < OFF - 0.01)], 98))
-                band = (q[:, 0] < OFF - 0.005) & (q[:, 0] > OFF - 0.16) & (q[:, 1] > -0.20) & (q[:, 1] < 0.03) & (h > ht - 0.012) & (h < ht + 0.01)
+                band = (q[:, 0] < OFF - 0.005) & (q[:, 0] > OFF - 0.16) & (q[:, 1] > scene.SLOT_C - 0.1175) & (q[:, 1] < scene.SLOT_C + 0.1125) & (h > ht - 0.012) & (h < ht + 0.01)
                 self.front_fit = None
                 if band.sum() > 40:
                     (cx, cy), (w0, h0), a0 = cv2.minAreaRect(np.ascontiguousarray(P[band, :2].astype(np.float32)))
@@ -262,10 +277,10 @@ class Reset:
         slot_med = float(np.median(q[wide, 0]) - (OFF + 0.002)) if wide.sum() > 40 else None
         # attempt 98: drawer standing ON THE TABLE pressed against the cabinet front (merged with the cabinet blob, so
         # no candidate): walls reach the table (h < 1.2 cm) in front of the plane; a drawer in the slot hangs >= 1.5 cm
-        low = (q[:, 1] > -0.26) & (q[:, 1] < 0.08) & (q[:, 0] < OFF - 0.012) & (q[:, 0] > OFF - 0.25) & (h > 0.004) & (h < 0.012)
+        low = (q[:, 1] > scene.SLOT_C - 0.1775) & (q[:, 1] < scene.SLOT_C + 0.1625) & (q[:, 0] < OFF - 0.012) & (q[:, 0] > OFF - 0.25) & (h > 0.004) & (h < 0.012)
         near_tab = None
         if not cand and low.sum() > 40:
-            body = (q[:, 1] > -0.26) & (q[:, 1] < 0.08) & (q[:, 0] < OFF - 0.012) & (q[:, 0] > OFF - 0.25) & (h > 0.004) & (h < 0.11)
+            body = (q[:, 1] > scene.SLOT_C - 0.1775) & (q[:, 1] < scene.SLOT_C + 0.1625) & (q[:, 0] < OFF - 0.012) & (q[:, 0] > OFF - 0.25) & (h > 0.004) & (h < 0.11)
             hb = float(np.percentile(h[body], 98))
             if 0.03 <= hb <= 0.11 and body.sum() > 150:
                 pts = P[body]
@@ -304,7 +319,13 @@ class Reset:
         if p["out"] is not None and p["protr"] > BACK_PROTR:
             return "slot_back"           # sticks out 1-4.5 cm (attempt 93 after the recessed pull: 'missing' before)
         if p["face_pts"] > 40 and p["face_pts"] > 2 * p["inside_pts"]:
-            return "slot_back" if p["protr"] > BACK_PROTR else "slot"
+            if p["protr"] > BACK_PROTR:
+                return "slot_back"
+            # attempt 122 (new side camera): a drawer ~2 cm past flush read face depth 0.0156 with 241 face points and
+            # no inside points (the face window is +-1.5 cm): flush reads -0.002..+0.004
+            if p.get("face_depth") is not None and p["face_depth"] > FLUSH_MAX_DEPTH:
+                return "slot_deep"
+            return "slot"
         if p.get("face_depth") is not None and 0.008 < p["face_depth"] < 0.08:
             return "slot_deep"
         return "missing"
@@ -324,6 +345,73 @@ class Reset:
         T = np.eye(4); T[:3, :3] = Rm; T[:3, 3] = tip - PIN_ZT * Rm[:, 2] + Rm @ np.r_[0.0, self.pin_dy, self.pin_dz]
         return T
 
+    def measure_tab(self, tag):
+        """Close wrist view at the pinch pose (fingers pre-closed around the expected tab): the tab is the grey metal
+        run (low saturation) on the orange wood between the label frame and the fingertips. Its image-x centre vs
+        the pad centre -> t offset (m) to add to the aim (attempt 122: tab ~100 px image-left of the pads = ~+11 mm).
+        None if not found / inconsistent."""
+        s = self.s
+        img = s.wrist.latest()[0]
+        if img is None:
+            return None
+        u_pad, px_per_m, sgn = 625.0, 9500.0, -1.0          # fallback: attempt 122 crops (image-left = +t)
+        try:
+            from rlpj.perception.wrist import project_base_to_wrist
+            T = calib.pose_to_T(s.feedback()["pose"])
+            tip = T[:3, 3] + PIN_ZT * T[:3, 2]
+            P0 = tip + 0.005 * np.r_[N, 0.0]
+            uv = project_base_to_wrist(np.array([tip, P0 - 0.005 * np.r_[TT, 0.0], P0 + 0.005 * np.r_[TT, 0.0]]), T)
+            if np.all(np.isfinite(uv)):
+                du = (uv[2, 0] - uv[1, 0]) / 0.01
+                if 3000 < abs(du) < 30000 and abs(uv[0, 0] - 625.0) < 120:
+                    u_pad, px_per_m, sgn = float(uv[0, 0]), abs(du), float(np.sign(du))
+        except Exception as e:
+            s.log(f"measure_tab: projection unavailable ({str(e)[:80]}), fallback scale")
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        cents = []
+        for y in range(470, 660, 10):
+            if y + 5 > img.shape[0]:
+                break
+            row = hsv[y - 4:y + 5].astype(float)
+            S = np.median(row[..., 1], 0); V = np.median(row[..., 2], 0)
+            g = (S < 70) & (V > 70)
+            x, best = 0, None
+            while x < len(g):
+                if g[x]:
+                    x0 = x
+                    while x < len(g) and g[x]:
+                        x += 1
+                    w = x - x0; c = (x0 + x) / 2
+                    if 40 <= w <= 170 and abs(c - u_pad) < 260 and (best is None or abs(c - u_pad) < abs(best - u_pad)):
+                        best = c
+                x += 1
+            if best is not None:
+                cents.append(best)
+        res = dict(rows=len(cents), u_pad=round(u_pad, 1), px_per_m=round(px_per_m), cents=[round(c) for c in cents])
+        dt = None
+        if len(cents) >= 4:
+            c = float(np.median(cents)); spread = float(np.median(np.abs(np.array(cents) - c)))
+            res.update(u_tab=round(c, 1), spread=round(spread, 1))
+            if spread < 25:
+                dt = float(np.clip((c - u_pad) / px_per_m * sgn, -0.025, 0.025))
+                res["dt"] = round(dt, 4)
+        s.summary(**{f"tab_measure_{tag}": res})
+        self.save(f"wrist_tab_{tag}", img)
+        s.decide(f"wrist tab measurement {tag}: " + (f"tab {dt * 1000:+.1f} mm along t from the aim" if dt is not None else f"not found {res}"))
+        return dt
+
+    def save_tab(self):
+        """Persist the tab position that held (slot-centre relative) for later resets (15:52 operator)."""
+        try:
+            extra = (self.deep_cfg.get("dt", 0.0) - 0.012) if self.deep_cfg is not None else 0.0   # variant spread
+            d = dict(slot_c=scene.SLOT_C, t_from_slot=round(float(self.pin_t + self.pin_dt - extra - scene.SLOT_C), 4),
+                     depth=round(float(self.depth), 4), when=time.strftime("%Y-%m-%d %H:%M"))
+            with open(TAB_FILE, "w") as f:
+                json.dump(d, f)
+            self.s.log(f"tab position saved: {d}")
+        except Exception as e:
+            self.s.log(f"tab position not saved: {e}")
+
     def pull_pin(self, k=0):
         """Pinch the pull tab, sweeping PIN_SWEEP tool-frame offsets (dy, dz) until the gripper holds it; pull PULL
         along -N, release, lift, back to READY. The pinch closes to PINCH so a held tab shows as a lower reading."""
@@ -336,13 +424,15 @@ class Reset:
             c = self.deep_cfg
             PIN_PHI, PIN_H = c["phi"], PIN_BASE[1] + c["h_add"]
             self.pin_dt = c.get("dt", 0.0)
+            if self.tab_dt is not None:             # measured this run: centre the variants on it (keep their spread)
+                self.pin_dt = self.tab_dt + (c.get("dt", 0.0) - 0.012)
             sweep = c["sweep"]
         elif self.depth > DEEP_LEVEL:
             PIN_PHI, PIN_H = 0.0, PIN_BASE[1] + 0.0035   # attempt 85: +7 mm put the pads on the label plate
             sweep = PIN_SWEEP_DEEP
         else:
             PIN_PHI = PIN_PHI0
-            self.pin_dt = 0.0
+            self.pin_dt = 0.0 if self.tab_dt is None else self.tab_dt
         self.pin_t = PIN_T
         self.pin_dy = self.pin_dz = 0.0
         T0 = self.pin_T(PIN_OUT)
@@ -372,6 +462,33 @@ class Reset:
                 s.decide(f"pin offset {i} refused by the model ({str(e)[:90]}); next offset")
                 tries.append([dy, dz, "refused"])
                 continue
+            if i == 0 and not s.dry:
+                # 15:52 operator: the knob needs ~2 mm; locate it in the close wrist view and centre it between the pads
+                time.sleep(0.4)
+                dt_m = self.measure_tab(f"{k}")
+                extra = (self.deep_cfg.get("dt", 0.0) - 0.012) if self.deep_cfg is not None else 0.0
+                if dt_m is not None and abs(dt_m) > 0.0025:
+                    tab_old = self.tab_dt
+                    self.line(f"back_for_tab{i}", T_pre, "slow", tip_margin=PIN_MARGIN)
+                    self.pin_dt += dt_m                       # aim at the measured tab itself
+                    self.tab_dt = self.pin_dt - extra         # later variants keep their spread around it
+                    Tg = self.pin_T(PIN_OUT)
+                    T_pre = Tg.copy(); T_pre[:3, 3] -= 0.05 * z
+                    try:
+                        self.line(f"to_tab_pre{i}", T_pre, "slow", tip_margin=PIN_MARGIN)
+                        self.line(f"approach_tab{i}", Tg, "slow", tip_margin=PIN_MARGIN)
+                    except Abort as e:
+                        if "check failed" not in str(e):
+                            raise
+                        s.decide(f"measured tab position refused by the model ({str(e)[:90]}); keep the planned offsets")
+                        self.pin_dt -= dt_m; self.tab_dt = tab_old
+                        Tg = self.pin_T(PIN_OUT); T_pre = Tg.copy(); T_pre[:3, 3] -= 0.05 * z
+                        self.line(f"to_pin_pre{i}b", T_pre, "slow", tip_margin=PIN_MARGIN)
+                        self.line(f"approach_pin{i}b", Tg, "slow", tip_margin=PIN_MARGIN)
+                    time.sleep(0.3)
+                    self.measure_tab(f"{k}_check")
+                elif dt_m is not None:
+                    self.tab_dt = self.pin_dt - extra
             g = s.gripper(PINCH, "pinch the tab")
             img = s.wrist.latest()[0]
             if img is not None:
@@ -381,9 +498,10 @@ class Reset:
             held = g < PINCH * 100 - 2.5 or s.dry
             if held:
                 s.decide(f"tab held at offset {i} (reading {g:.1f})")
+                self.save_tab()
                 s.gripper(min(g / 100 + 0.008, 0.90), "keep squeezing (sets the model gripper close to the real one)")
                 # recessed: pull only to ~2 cm proud (a full 6.5 cm + depth folds j3); the wall-edge clamp takes over
-                pull_d = (self.depth + 0.02) if self.depth > DEEP_LEVEL else PULL
+                pull_d = (self.depth + 0.02) if (self.depth > DEEP_LEVEL or self.deep_cfg is not None) else PULL
                 T_out = Tg.copy(); T_out[:3, 3] -= np.r_[pull_d * N, 0.0]
                 try:
                     self.line("pull_drawer", T_out, "slow", tip_margin=PIN_MARGIN)
@@ -401,7 +519,7 @@ class Reset:
             self.line("up_from_pin", T_up, "slow", tip_margin=PIN_MARGIN)
         else:
             T_hi2 = T_pre.copy(); T_hi2[2, 3] = self.tz + PIN_HI; T_hi2[:2, 3] -= 0.04 * N
-            if self.depth > DEEP_LEVEL:            # attempt 85: back to the rolled high pose hit joint limits: lift straight up
+            if self.depth > DEEP_LEVEL or self.deep_cfg is not None:   # attempts 85/122 (model): rolled high pose hits joint limits: lift straight up
                 T_hi2 = T_pre.copy(); T_hi2[2, 3] += 0.10
             self.line("up_from_pin", T_hi2, "normal")
         self.to_ready()
@@ -617,87 +735,213 @@ class Reset:
         return False, pull
 
     # ------------------------------------------------------------ tipped drawer
-    def right_side(self, c, tag):
-        """Drawer lying on a long side wall (00:43): footprint L x depth (~0.155 x 0.07), 0.10 tall, open side facing
-        +o or -o (o = footprint short axis). The vision judge says which; then the closed fingers push the top edge
-        from the open side toward the bottom panel (-o): it pivots on its -o bottom edge and lands bottom-down."""
+    def wrist_find(self, tag):
+        """attempt 121: the drawer ended off the side camera's view (near edge, y < ~-0.25). Look down with the wrist
+        camera, find the brown wood on the grey table (grid of table points at h 0.09 projected into the image), and
+        slide it back toward the middle with a low push on its near (-y) side. Returns True if it pushed."""
+        s = self.s
+        if s.dry:
+            return False
+        from rlpj.perception.wrist import project_base_to_wrist
+        T = tool_down_T(np.r_[0.42, -0.24, self.tz + 0.40], 0.0)
+        self.to_ready()
+        self.joint_to("look_down_wrist", T)
+        time.sleep(0.8)
+        img = s.wrist.latest()[0]
+        if img is None:
+            return False
+        self.save(f"wrist_find_{tag}", img)
+        Tm = calib.pose_to_T(s.feedback()["pose"])
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        mask = (hsv[..., 0] >= 3) & (hsv[..., 0] <= 25) & (hsv[..., 1] > 90) & (hsv[..., 2] > 40)
+        xs = np.arange(0.25, 0.63, 0.005); ys = np.arange(-0.43, -0.02, 0.005)
+        X, Y = np.meshgrid(xs, ys, indexing="ij")
+        G = np.stack([X.ravel(), Y.ravel(), np.full(X.size, self.tz + 0.09)], 1)
+        uv = project_base_to_wrist(G, Tm)
+        ok = np.all(np.isfinite(uv), 1) & (uv[:, 0] >= 0) & (uv[:, 0] < img.shape[1]) & (uv[:, 1] >= 0) & (uv[:, 1] < img.shape[0])
+        occ = np.zeros(X.size, np.uint8)
+        occ[ok] = mask[uv[ok, 1].astype(int), uv[ok, 0].astype(int)]
+        q = nt(G[:, :2])
+        occ[(q[:, 0] > OFF - 0.03) & (q[:, 1] > CAB_T[0] - 0.025) & (q[:, 1] < CAB_T[1] + 0.025)] = 0        # the cabinet
+        occ = occ.reshape(X.shape)
+        n, lab, st, cen = cv2.connectedComponentsWithStats(occ, connectivity=8)
+        if n < 2:
+            s.decide("wrist look: no wood on the table"); return False
+        k = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))
+        area = int(st[k, cv2.CC_STAT_AREA])
+        cells = np.argwhere(lab == k)
+        xy = np.stack([xs[cells[:, 0]], ys[cells[:, 1]]], 1)
+        c = xy.mean(0)
+        s.summary(**{f"wrist_find_{tag}": dict(area_cells=area, centre=np.round(c, 3).tolist(), y_min=round(float(xy[:, 1].min()), 3),
+                                               seen_frac=round(float(ok.mean()), 2))})
+        if area < 120:
+            s.decide(f"wrist look: wood blob too small ({area} cells)"); return False
+        s.decide(f"wrist look: drawer at {np.round(c, 3).tolist()} (y {xy[:, 1].min():.3f}..{xy[:, 1].max():.3f})")
+        y_goal = float(np.mean(TASK_LAYOUT["drawer"]["y"]))
+        if c[1] > y_goal - 0.05:
+            return False
+        sel = np.abs(xy[:, 0] - c[0]) < 0.03
+        y_min = float(xy[sel, 1].min()) if sel.any() else float(xy[:, 1].min())
+        dist = float(np.clip(y_goal - c[1], 0.03, 0.12))
+        d = np.array([0.0, 1.0])                                  # toward the robot's centre line (01:12 rule)
+        if not self.slide_ok(c, d, dist) and c[1] + dist > Y_CENTRE:
+            s.decide("wrist look: slide not allowed by the edge rule"); return False
+        self.slide(np.array([c[0], y_min]), d, dist, "drawer off the side camera's view")
+        return True
+
+    def open_side(self, c):
+        """Depth test for a drawer lying on its side (attempt 121: the judge said 'open side toward the camera' for a
+        drawer whose camera-facing face was the solid bottom panel; 120 said the opposite). Returns (o, ctr_m, D):
+        o = unit open-side direction, ctr_m = centre of the depth span, D = depth (from the top wall's points).
+        On the camera-facing face: points >= 2 cm inside the face plane at mid heights = an open side."""
         s = self.s
         ctr, walls = self.walls_of(c)
-        v = walls[2][0]
-        cam = calib.T_base_side()[:3, 3][:2] if not s.dry else np.array([0.0, -0.6])
-        vis = v if float(v @ unit(cam - ctr)) >= 0 else -v
-        o = None
-        path = self.side_full(f"{tag}_open")
-        if path is not None:
-            for d in (vis, -vis):
-                lab = self.image_label(ctr, d)
-                q = (f"The wooden drawer lies on its side on the table (a solid side wall is on top). Its open side - the face "
-                     f"through which you can see into the drawer - faces the {lab} of this image.")
-                if self.ask(path, q, f"{tag}_open_{lab.replace(' ', '_')}"):
-                    o = d
-                    break
-        if o is None:
-            o = -vis
-            s.decide("open side not identified by the judge: assume it faces away from the camera")
-        W = max(float(c["W"]), 0.06)
+        u, v = walls[0][0], walls[2][0]
+        P = np.asarray(c["pts"], float)
+        h = P[:, 2] - self.tz; h_top = float(c["h"])
+        d = P[:, :2] - ctr; a_ = d @ u; b_ = d @ v
+        top = (h > h_top - 0.015) & (np.abs(a_) < 0.06)
+        if top.sum() > 30:
+            b_lo, b_hi = float(np.percentile(b_[top], 3)), float(np.percentile(b_[top], 97))
+        else:
+            b_lo, b_hi = -float(c["W"]) / 2, float(c["W"]) / 2
+        D = float(np.clip(b_hi - b_lo, 0.055, 0.09)); b_m = (b_lo + b_hi) / 2
+        ctr_m = ctr + v * b_m
+        cam = calib.T_base_side()[:3, 3][:2] if not s.dry else np.array([0.3, -0.9])
+        sc = 1.0 if float(v @ (cam - ctr_m)) >= 0 else -1.0
+        mid = (np.abs(a_) < 0.04) & (h > 0.02) & (h < h_top - 0.025)
+        depth_in = sc * (b_m + sc * D / 2 - b_)            # distance inside the camera-side face plane
+        face = mid & (depth_in > -0.02) & (depth_in < 0.012)
+        inside = mid & (depth_in >= 0.02) & (depth_in < D + 0.01)
+        n_f, n_i = int(face.sum()), int(inside.sum())
+        is_open = n_i > 40 and n_i > 0.3 * (n_f + n_i)
+        o = sc * v if is_open else -sc * v
+        fb = float(np.median(b_[face])) if n_f > 30 else b_m + sc * D / 2
+        self.cam_face = ctr + v * fb                      # camera-side face (well measured: seen straight on)
+        self.cam_face_is_open = is_open
+        s.summary(open_side=dict(face=n_f, inside=n_i, cam_side_open=is_open, D=round(D, 3), b=[round(b_lo, 3), round(b_hi, 3)]))
+        s.decide(f"tipped drawer depth test: camera-side face {n_f} pts, {n_i} pts >= 2 cm inside -> open side "
+                 f"{'toward' if is_open else 'away from'} the camera ({ang(o):.0f} deg), depth {D:.3f}")
+        return o, ctr_m, D
+
+    def landing_ok(self, l):
+        """Drawer centre l (xy) safe on the table: off the cabinet front, not toward the table edges (01:12: the
+        drawer went off the table beyond y ~ -0.25 before the 2026-11-20 base shift), within the arm's easy reach."""
+        ql = nt(l)
+        y0 = float(TASK_LAYOUT["drawer"]["y"][0])
+        if ql[0] > OFF - 0.10 and CAB_T[0] - 0.055 < ql[1] < CAB_T[1] + 0.065:
+            return False
+        return (y0 - 0.05) <= l[1] <= 0.0 and 0.30 <= l[0] <= 0.56
+
+    def slide_ok(self, ctr, d, dist):
+        """01:12 rule: a slide must move the drawer toward the robot's centre line (y ~ -0.1), never toward an edge."""
+        end = ctr + d * dist
+        return abs(end[1] - Y_CENTRE) < abs(ctr[1] - Y_CENTRE) - 0.5 * dist * abs(d[1]) and self.landing_ok(end) \
+            and dist <= 0.12
+
+    def right_side(self, c, tag):
+        """Drawer lying on a side wall (00:43 / 01:01): it is light and the table slippery, so pushes slide it and a
+        pinch across its ~7.5 cm depth misses (85 mm stroke). Operator option (b): hook the closed fingertips inside
+        the opening under the upper wall's free edge and lift along an arc about the far bottom edge (bottom-panel
+        side): it rolls bottom-down. First slide it (low push on the solid bottom panel) if the landing zone would be
+        out of the side camera's view or at the cabinet."""
+        s = self.s
+        o, ctr, D = self.open_side(c)
+        ctr0 = ctr.copy()
         h_top = float(c["h"])
-        # landing zone (toward -o, ~0.10 + margin) must be clear of the cabinet; else slide the drawer toward +o first
-        land = ctr - o * (W / 2 + 0.11)
-        q_l = nt(land)
-        blocked = q_l[0] > OFF - 0.02 and -0.17 < q_l[1] < 0.01
-        yaw = ang(o)
-        yaw = yaw - 180 if yaw > 90 else yaw + 180 if yaw < -90 else yaw
-        if blocked:
-            s.gripper(1.0, "close the fingers to push")
-            s.decide(f"tipped drawer: landing zone {np.round(land, 3).tolist()} hits the cabinet: slide it 6 cm toward +o first")
-            p0 = ctr - o * (W / 2 + 0.035)
-            T0 = tool_down_T(np.r_[p0, self.tz + 0.025 + TIP_CLOSED], yaw)
-            T0h = T0.copy(); T0h[2, 3] = self.tz + SAFE_H
-            self.to_ready()
-            self.joint_to("above_slide", T0h)
-            self.line("down_slide", T0, "normal")
-            T1 = T0.copy(); T1[:2, 3] += o * 0.095
-            self.line("slide_drawer", T1, "slow")
-            self.lift_to("up_from_slide", SAFE_H, "normal")
-            ctr = ctr + o * 0.06
-        # attempt 120: the closed-finger push only slid it 1.5 cm per try (force ~5 N; tip grazed the top edge).
-        # Now: pinch across its depth near the top (bottom panel / top-wall rim), lift 1.2 cm, roll 45 deg about the
-        # bottom edge on the -o side (top toward -o), let go: past its balance angle it falls bottom-down.
-        h_g = h_top - 0.025
-        P = np.r_[ctr - o * (W / 2), self.tz + 0.012]
-        ax = np.cross(np.r_[o, 0.0], [0.0, 0.0, 1.0])
+        land = ctr - o * (D / 2 + h_top / 2)               # centre of the upright drawer after the roll
+        need = 0.0
+        for k in range(6):
+            if self.landing_ok(land + o * need):
+                break
+            need += 0.02
+        s.require(self.landing_ok(land + o * need), f"no safe landing zone for the tipped drawer at {np.round(ctr, 3).tolist()} "
+                  f"(open side {ang(o):.0f} deg): needs a person")
+        if need > 0:
+            # 01:12 operator: never slide it toward a table edge; only toward the robot's centre line (y ~ -0.1)
+            s.require(self.slide_ok(ctr, o, need), f"landing zone needs a {need:.2f} m slide toward {ang(o):.0f} deg, "
+                      "away from the robot's centre line (toward a table edge): not allowed, needs a person")
+            push_face = self.cam_face - o * 0.07 if self.cam_face_is_open else self.cam_face
+            self.slide(push_face, o, need, "tipped drawer: landing zone at the cabinet / table edge")
+            ctr = ctr + o * need
+        self.right_shift = ctr - ctr0
+        D = 0.07                                           # operator: ~7 cm deep (the top-wall span reads short)
+        f = self.cam_face + (ctr - ctr0)                   # camera-side face, moved with any slide
+        edge = f if self.cam_face_is_open else f + o * D   # upper wall's free edge (open side)
+        P = np.r_[edge - o * D, self.tz]                   # far bottom edge (bottom-panel side): the pivot
         best = None
-        for yw in (yaw, wrapd(yaw + 180.0)):
-            for roll, jm in ((45.0, False), (40.0, False), (45.0, True), (40.0, True), (35.0, True)):
-                seq = self.roll_seq(ctr, h_g, yw, P, ax, roll, jm)
-                ok, why = self.seq_ok(seq)
-                s.log(f"roll plan yaw {yw:.0f} roll {roll:.0f}: {'ok' if ok else why[:160]}")
-                if ok:
-                    best = (yw, roll, seq)
+        for az in (0.0, 35.0, -35.0, 60.0, -60.0):
+            for tilt in (70.0, 60.0):
+                for arc in (60.0, 50.0):
+                    seq = self.hook_seq(edge, o, az, h_top, tilt, P, arc)
+                    ok, why = self.seq_ok(seq)
+                    s.log(f"hook plan az {az:.0f} tilt {tilt:.0f} arc {arc:.0f}: {'ok' if ok else why[:150]}")
+                    if ok:
+                        best = (az, tilt, arc, seq)
+                        break
+                if best:
                     break
             if best:
                 break
-        s.require(best is not None, "no model-feasible roll for the tipped drawer")
-        yw, roll, seq = best
-        s.decide(f"tipped drawer at {np.round(ctr, 3).tolist()} (height {h_top:.3f}): open side toward {ang(o):.0f} deg; "
-                 f"pinch across it at {h_g:.3f} m (yaw {yw:.0f}) and roll it {roll:.0f} deg toward {ang(-o):.0f} deg")
-        s.gripper(0.0, "open fully to straddle the drawer depth")
+        s.require(best is not None, "no model-feasible hook-and-lift for the tipped drawer")
+        az, tilt, arc, seq = best
+        s.decide(f"tipped drawer at {np.round(ctr, 3).tolist()} (height {h_top:.3f}, depth {D:.3f}): hook under the upper "
+                 f"wall from the open side ({ang(o):.0f} deg, approach az {az:.0f}), tool tilt {tilt:.0f}, lift {arc:.0f} deg about the far bottom edge")
+        s.gripper(1.0, "close the fingers (hook)")
         self.to_ready()
         for kind, name, T, speed, grip in seq:
             if kind == "grip":
-                g = s.gripper(grip, name)
-                if name == "pinch across the drawer":
-                    s.summary(**{f"roll_grip_{tag}": round(g, 1)})
-                    if g >= HOLD_MAX and not s.dry:
-                        s.decide(f"roll pinch reading {g:.1f}: nothing held")
-                        s.gripper(TABLE_OPEN, "open, missed")
-                        self.lift_to("lift_empty_roll", SAFE_H, "slow")
-                        return
-                time.sleep(0.3)
+                s.gripper(grip, name)
             elif kind == "joint":
                 self.joint_to(name, T, speed)
             else:
                 self.line(name, T, speed)
+        self.lift_to("up_from_hook", SAFE_H, "normal")
+
+    def hook_T(self, tip, w, x, tilt):
+        """Closed-finger hook pose: tool z tilted `tilt` from straight down toward the horizontal direction w."""
+        z = unit(np.r_[w * np.sin(np.radians(tilt)), -np.cos(np.radians(tilt))])
+        xx = np.r_[x, 0.0]; xx = unit(xx - (xx @ z) * z)
+        T = np.eye(4); T[:3, :3] = np.stack([xx, np.cross(z, xx), z], 1); T[:3, 3] = tip - TIP_CLOSED * z
+        return T
+
+    def hook_seq(self, edge, o, az, h_top, tilt, P, arc):
+        """edge: xy of the upper wall's free edge (open side); approach azimuth az deg from -o (body clear of the cabinet)."""
+        ca, sa = np.cos(np.radians(az)), np.sin(np.radians(az))
+        w = np.array([ca * -o[0] - sa * -o[1], sa * -o[0] + ca * -o[1]])
+        x = np.array([-w[1], w[0]])
+        tip_in = np.r_[edge - o * 0.02, self.tz + h_top - 0.028]
+        tip_out = tip_in - np.r_[w * 0.07, 0.0]
+        T_in = self.hook_T(tip_in, w, x, tilt); T_out = self.hook_T(tip_out, w, x, tilt)
+        T_hi = T_out.copy(); T_hi[2, 3] = self.tz + SAFE_H
+        seq = [("joint", "above_hook", T_hi, "normal", 1.0), ("line", "down_to_hook_pre", T_out, "normal", 1.0),
+               ("line", "hook_in", T_in, "slow", 1.0)]
+        ax = np.cross(np.r_[o, 0.0], [0.0, 0.0, 1.0])
+        T = T_in
+        for th in np.linspace(arc / 3, arc, 3):
+            Rr = rot_axis(ax, th)
+            T = T_in.copy(); T[:3, 3] = P + Rr @ (T_in[:3, 3] - P)
+            seq.append(("line", f"hook_lift_{int(round(th))}", T, "slow", 1.0))
+        Tb = T.copy(); Tb[:3, 3] -= 0.05 * T[:3, 2]
+        seq.append(("line", "hook_out", Tb, "slow", 1.0))
+        return seq
+
+    def slide(self, face_pt, d, dist, why):
+        """Slide the drawer by dist along d: closed fingertips 2 cm above the table pushing its face at face_pt."""
+        s = self.s
+        yaw = ang(np.array([-d[1], d[0]]))
+        yaw = yaw - 180 if yaw > 90 else yaw + 180 if yaw < -90 else yaw
+        p0 = face_pt - d * 0.035
+        T0 = tool_down_T(np.r_[p0, self.tz + 0.02 + TIP_CLOSED], yaw)
+        T0h = T0.copy(); T0h[2, 3] = self.tz + SAFE_H
+        T1 = T0.copy(); T1[:2, 3] += d * (dist + 0.025)
+        s.decide(f"{why}: slide it {dist:.2f} m toward {ang(d):.0f} deg (low push at {np.round(face_pt, 3).tolist()})")
+        s.gripper(1.0, "close the fingers to push")
+        self.to_ready()
+        self.joint_to("above_slide", T0h)
+        self.line("down_slide", T0, "normal")
+        self.line("slide_drawer", T1, "slow")
+        self.lift_to("up_from_slide", SAFE_H, "normal")
 
     def roll_seq(self, ctr, h_g, yw, P, ax, roll, jm=False):
         """Motion list for the pinch-and-roll of a tipped drawer (see right_side)."""
@@ -815,7 +1059,7 @@ class Reset:
 
         def cab_d(v):      # distance of a grasp point from the cabinet footprint (attempts 100-101: the end near the
             n_, t_ = nt(v)   # cabinet's side post made the gripper body enter the cabinet_front keep-out)
-            return float(np.hypot(max(OFF - n_, 0.0), max(t_ - 0.0, -0.16 - t_, 0.0)))
+            return float(np.hypot(max(OFF - n_, 0.0), max(t_ - (CAB_T[1] + 0.005), (CAB_T[0] - 0.005) - t_, 0.0)))
         if min(cab_d(v) for v in ends) >= 0.08:
             ends.sort(key=lambda v: np.hypot(*v))
         else:
@@ -927,12 +1171,12 @@ class Reset:
 
     def cab_clear(self, centre, axis):
         """Smallest distance (m) from the drawer footprint (0.14 x 0.14 box at centre, axis = its front-back axis) to the
-        cabinet's footprint (front plane - 1 cm .. +30 cm, t -0.155..-0.005)."""
+        cabinet's footprint (front plane - 1 cm .. +30 cm, t over CAB_T from the task yaml)."""
         w = np.array([-axis[1], axis[0]])
         pts = np.array([centre + i * 0.07 * axis + j * 0.07 * w for i in np.linspace(-1, 1, 9) for j in np.linspace(-1, 1, 9)])
         q = nt(pts)
         dn = np.maximum(OFF - 0.01 - q[:, 0], 0.0)
-        dt = np.maximum(np.maximum(-0.155 - q[:, 1], q[:, 1] + 0.005), 0.0)
+        dt = np.maximum(np.maximum(CAB_T[0] - q[:, 1], q[:, 1] - CAB_T[1]), 0.0)
         return float(np.min(np.hypot(dn, dt)))
 
     def place(self, held, target, delta=None):
@@ -1011,6 +1255,12 @@ class Reset:
             self.go_home("home_start")
         p = self.perceive("start")
         st = self.state_of(p)
+        if st in ("missing", "slot_deep") and (p.get("face_depth") is None or p["face_depth"] > 0.03):
+            # an empty slot reads ~0.035-0.045 deep: the drawer may be on the table out of the side camera's view
+            if self.wrist_find("start"):
+                self.go_home("home_after_find")
+                p = self.perceive("after_find")
+                st = self.state_of(p)
         s.summary(start_state=st, start_perception={k: v for k, v in p.items() if k != "cand"})
         s.decide(f"start state: {st}")
         s.require(st != "missing", "drawer not found (no drawer blob on the table and the bottom slot looks empty)")
@@ -1136,13 +1386,24 @@ class Reset:
             k_r = 0
             while c["h"] > TIPPED_H and k_r < 3 and not s.dry:
                 s.phase(f"right{it}_{k_r}")
+                xy0 = np.array(c["xy"], float)
+                self.right_shift = np.zeros(2)
                 self.right_side(c, f"r{it}_{k_r}")
                 k_r += 1
                 self.go_home("home_after_right")
                 p = self.perceive(f"after_right{it}_{k_r}")
                 st = self.state_of(p)
+                if st != "table" and self.wrist_find(f"right{it}_{k_r}"):
+                    self.go_home("home_after_find")
+                    p = self.perceive(f"after_find{it}_{k_r}")
+                    st = self.state_of(p)
                 s.require(st == "table", f"drawer not seen on the table after tipping it upright (state {st})")
                 c = p["cand"][0]
+                drift = float(np.linalg.norm(np.array(c["xy"], float) - xy0 - self.right_shift))
+                s.summary(**{f"right_drift_{it}_{k_r}": round(drift, 3)})
+                if c["h"] > TIPPED_H:
+                    s.require(drift <= DRIFT_MAX, f"tipped drawer drifted {drift:.3f} m without righting (01:12 rule: stop "
+                              "after 2 cm of drift, never push it toward a table edge): needs a person")
             s.require(c["h"] <= TIPPED_H or s.dry, f"drawer still on its side after {k_r} tip pushes (height {c['h']:.3f})")
             self.bias = np.array(c["obb_c"]) - np.array(c["xy"])
             err = float(np.linalg.norm(np.array(c["xy"]) - tgt))

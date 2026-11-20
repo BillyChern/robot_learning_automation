@@ -37,7 +37,8 @@ TIP_OPEN = 0.027
 HOLD_MAX = 97.0
 SAFE_H = 0.20
 EDGE_TARGET = 0.0045           # m: held-drawer edge-based centre offset of the reached insertions
-T_C = -0.087                 # slot centre line along the front (reset: pull triangulated at -0.088)
+SLOT_T = CAB["slot_t"]
+T_C = 0.5 * (SLOT_T[0] + SLOT_T[1]) - 0.0045   # slot-relative (base moved 2026-11-20): the drawer centre target is T_C + EDGE_TARGET = window centre
 BOTTOM_H = 0.018             # drawer bottom above the table while sliding in
 BACK_GAP = 0.03              # drawer back in front of the front plane at the start of the insertion
 INS_NMAX = OFF - 0.036       # vertical tool axis limit (keep-out: body cylinder 45 mm + 1 cm)
@@ -53,7 +54,7 @@ L_MIN = 0.155                # drawer depth floor: the side camera sees only par
                              # reset agent: obb 0.154 x 0.14-0.15), a short estimate would put its back into the cabinet
 PUSH_TILT, PUSH_H, PUSH_ZT = 40.0, 0.062, 0.047      # tilt from vertical, fingertip height, tip along tool z (closed)
 PUSH_DT = 0.015              # push point beside the pull (t offset from the drawer centre line)
-PUSH_TMAX = -0.060           # closed fingers (+-14 mm along t in the model) clear of the slot-side keep-out box (t > -0.045)
+PUSH_TMAX = SLOT_T[1] - 0.015  # closed fingers (+-14 mm along t in the model) clear of the slot-side keep-out box (t > slot_t[1])
 PUSH_NMAX = OFF + 0.012       # model tip; at h 0.062 the model refuses beyond ~+0.0125 (upper cabinet_front box)
 PUSH_HI = 0.14
 TIP_MARGIN_PUSH = 0.004

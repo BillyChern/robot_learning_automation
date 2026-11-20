@@ -36,7 +36,7 @@ with RobotSession(program="reset") as s:
     K, dist = calib.side_intrinsics(); Tsb = np.linalg.inv(calib.T_base_side())
     def px(Pb):
         return calib.project(calib.apply(Tsb, np.atleast_2d(Pb)), K, dist).astype(int)
-    for t0, t1 in [(-0.135, -0.026), tuple(scene.SLOT_T)]:
+    for t0, t1 in [(scene.SLOT_C - 0.0525, scene.SLOT_C + 0.0565), tuple(scene.SLOT_T)]:
         for h in (scene.SLOT_H[0], scene.SLOT_H[1]):
             a, b2 = px(np.r_[scene.xy_of(scene.OFF, t0), tz + h]), px(np.r_[scene.xy_of(scene.OFF, t1), tz + h])
             cv2.line(col, tuple(a[0]), tuple(b2[0]), (0, 0, 255), 2)

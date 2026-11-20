@@ -9,3 +9,11 @@ RESUMED 2026-11-20 ~15:50 AFTER A LONG PAUSE (lab reboot, the setup was used in 
   (e.g. a hard-coded slot centre t = -0.0825 is now wrong: the window centre is -0.1285).
 - The drawer is in the bottom slot, pull out, but pushed in ~2 cm past flush (a person put it back).
 - Arm at Home; agents run at effort high.
+
+EXACT STALE CONSTANTS IN YOUR CODE (15:48), fix before any episode: the robot base moved, the slot is now 46 mm
+further along t (slot_t [-0.166, -0.091], centre -0.1285; was [-0.120, -0.045], centre -0.0825). In execute.py:
+  T_C = -0.087        -> make it slot-relative: (slot_t[0] + slot_t[1]) / 2 - 0.0045   (= -0.133 now)
+  PUSH_TMAX = -0.060  -> slot_t[1] - 0.015                                             (= -0.106 now)
+and any other absolute t / x / y of the cabinet, slot or pull (grep for numbers near -0.08 .. -0.06 and 0.5x).
+OFF already comes from the yaml. After the fix, the offline model check with the yaml's (shifted) keep-out boxes must
+pass for your nominal insertion and push.

@@ -1,0 +1,52 @@
+{
+ "reset": 61,
+ "t": "2026-11-20T15:51:10",
+ "targets": {
+  "drawer": [
+   0.341,
+   -0.186
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.05,
+  "objects": {
+   "drawer": {
+    "target": [
+     0.341,
+     -0.186
+    ],
+    "found": null,
+    "dist": null,
+    "ok": false
+   }
+  },
+  "extra_blobs": 1,
+  "reason": "drawer: not found"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.5873,
+    0.0852
+   ],
+   "z_top": 0.2522,
+   "height": 0.2678,
+   "extent": [
+    0.1203,
+    0.1433
+   ],
+   "n": 11637,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0222,
+   "outer_r": 0.0626
+  }
+ ],
+ "claimed": null,
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_122",
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration": 131.4
+}

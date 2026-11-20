@@ -7751,3 +7751,131 @@ Structured output provided successfully
 ```
 </details>
 
+**15:47:25 execute agent:** No response requested.
+
+### 15:47:25 orchestrator -> execute agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+RESUMED 2026-11-20 ~15:50 AFTER A LONG PAUSE (lab reboot, the setup was used in between). What changed:
+- The side camera was moved and is RE-CALIBRATED (automated: the arm visited 11-12 views of a board; spread 5.4 mm,
+  two independent runs agree to 3 mm; table check +1.3 mm).
+- The robot base moved relative to the table: the cabinet (on its tape marks) now sits (+8.5, -46.2) mm in the base
+  frame. The task yaml fixtures are SHIFTED accordingly: front_offset 0.5133 (was 0.5226), slot_t [-0.166, -0.091]
+  (was [-0.120, -0.045]), all keep-out boxes moved by the same offset, reset targets y [-0.210, -0.126]. Read every
+  cabinet/slot number from the task yaml (config.load()["task"]["fixtures"]), never from constants in your code
+  (e.g. a hard-coded slot centre t = -0.0825 is now wrong: the window centre is -0.1285).
+- The drawer is in the bottom slot, pull out, but pushed in ~2 cm past flush (a person put it back).
+- Arm at Home; agents run at effort high.
+
+EXACT STALE CONSTANTS IN YOUR CODE (15:48), fix before any episode: the robot base moved, the slot is now 46 mm
+further along t (slot_t [-0.166, -0.091], centre -0.1285; was [-0.120, -0.045], centre -0.0825). In execute.py:
+  T_C = -0.087        -> make it slot-relative: (slot_t[0] + slot_t[1]) / 2 - 0.0045   (= -0.133 now)
+  PUSH_TMAX = -0.060  -> slot_t[1] - 0.015                                             (= -0.106 now)
+and any other absolute t / x / y of the cabinet, slot or pull (grep for numbers near -0.08 .. -0.06 and 0.5x).
+OFF already comes from the yaml. After the fix, the offline model check with the yaml's (shifted) keep-out boxes must
+pass for your nominal insertion and push.
+
+Before collection continues: no robot run now; update your program for the note above and test it offline.
+This is a reflection turn while the robot runs the other agent's program: you cannot use the robot or the cameras now (no run actions, not even dry runs). If this run shows a problem or a clear, safe improvement (robustness first, then speed), edit programs/execute.py, check it offline on this machine, commit, and reply done; reply done at once if nothing should change. Your next run uses what you committed, and its result comes back to you the same way.
+```
+
+**15:48:04 tool Bash:**
+
+```bash
+git log --oneline | head -2; git status --short; grep -nE "\-0\.0[4-9][0-9]*|0\.5[0-9]{2,}|0\.4[0-9]{2,}" programs/execute.py programs/pullface.py programs/wallfit.py programs/rlcommon.py | grep -v "^\s*#" | head -40; grep -n "slot_t\|front_offset" /home/r2r/robot_learning_final_pj/config/tasks/drawer_rl.yaml
+```
+
+<details><summary>15:48:04 result</summary>
+
+```text
+801e416 user's rule: straight drawer (wrist grasp yaw, iterated lateral alignment), no yaw during insertion, back out + re-align on jams
+cd65db2 push at the drawer centre after the lateral alignment
+programs/execute.py:40:T_C = -0.087                 # slot centre line along the front (reset: pull triangulated at -0.088)
+programs/execute.py:56:PUSH_TMAX = -0.060           # closed fingers (+-14 mm along t in the model) clear of the slot-side keep-out box (t > -0.045)
+programs/execute.py:449:        """Leave the drawer front: back off horizontally to OFF-0.04 (if deeper), then up, then READY; the first
+programs/rlcommon.py:35:    # when the applied tool yaw was positive (+5.6..+9.8 deg, 3/3) and jammed at n-OFF ~-0.06 whenever it was
+34:    front_offset: 0.5133           # front plane: normal . xy = offset (m)
+36:    slot_t: [-0.166, -0.091]       # window along the front (t = -n_y x + n_x y, m); the front spans -0.135..-0.026
+```
+</details>
+
+**15:48:15 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+p="programs/execute.py"; s=open(p).read()
+s=s.replace("T_C = -0.087                 # slot centre line along the front (reset: pull triangulated at -0.088)",
+ "SLOT_T = CAB[\"slot_t\"]\nT_C = 0.5 * (SLOT_T[0] + SLOT_T[1]) - 0.0045   # slot-relative (base moved 2026-11-20): the drawer centre target is T_C + EDGE_TARGET = window centre")
+s=s.replace("PUSH_TMAX = -0.060           # closed fingers (+-14 mm along t in the model) clear of the slot-side keep-out box (t > -0.045)",
+ "PUSH_TMAX = SLOT_T[1] - 0.015  # closed fingers (+-14 mm along t in the model) clear of the slot-side keep-out box (t > slot_t[1])")
+open(p,"w").write(s)
+p="tools/offline_test.py"; s=open(p).read()
+s=s.replace("c = (rng.uniform(0.34, 0.44), rng.uniform(-0.20, -0.02))","lay = X.TASK['layout']['drawer'
+... (337 more characters)
+```
+
+<details><summary>15:48:15 result</summary>
+
+```text
+26:CAB = TASK["fixtures"]["cabinet"]
+39:EDGE_TARGET = 0.0045           # m: held-drawer edge-based centre offset of the reached insertions
+40:SLOT_T = CAB["slot_t"]
+41:T_C = 0.5 * (SLOT_T[0] + SLOT_T[1]) - 0.0045   # slot-relative (base moved 2026-11-20): the drawer centre target is T_C + EDGE_TARGET = window centre
+57:PUSH_TMAX = SLOT_T[1] - 0.015  # closed fingers (+-14 mm along t in the model) clear of the slot-side keep-out box (t > slot_t[1])
+105:        lay = X.TASK['layout']['drawer']; c = (rng.uniform(*lay['x']), rng.uniform(*lay['y']))
+{'drawer': {'x': [0.34, 0.44], 'y': [-0.21, -0.126]}, 'radius': [0.36, 0.52], 'tolerance': 0.05}
+```
+</details>
+
+**15:48:22 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute && sed -i 's/    ep.measure_held = lambda n: dict(ok=True, n=500, t_err=float(rng.normal(0, 0.008)), yaw_err=float(rng.normal(0, 3)))/    ep.measure_held = lambda n: dict(ok=True, n=500, t_err=float(rng.normal(-0.01, 0.01)), yaw_err=float(rng.normal(0, 3)), t_span=0.075)/' tools/offline_test.py && grep -c "t_span=0.075" tools/offline_test.py && cd /home/r2r/robot_learning_final_pj && FORCE_P=0.08 RLPJ_RL_DIR=/tmp/rlcopy timeout 2400 uv run python runs/20261117_2026_drawer/agents/execute/tools/offline_test.py 6 2>&1 | grep -E "^RESULT|Traceback|Error|refused|ABORT" | cut -c1-260
+```
+
+<details><summary>15:48:37 result</summary>
+
+```text
+1
+RESULT 0 [ 0.404 -0.187] -5.7 ('ran', 21, {'end': 'reached', 'steps': 14, 'n_minus_off': np.float64(-0.036), 'dt': 0.0042, 't_line': -0.158, 'dz': -0.0001, 'dyaw': 0.0}, {'end': 'reached', 'steps': 7, 'tip_n_minus_off': np.float64(0.012), 'dt': -0.003, 'h': 0.
+RESULT 1 [ 0.434 -0.141] -8.0 ('ran', 14, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.0386), 'dt': -0.0003, 't_line': -0.1227, 'dz': -0.001, 'dyaw': 0.0}, {'end': 'force', 'steps': 1, 'tip_n_minus_off': np.float64(-0.0716), 'dt': 0.0, 'h': 0.0
+RESULT 2 [ 0.426 -0.165] 9.8 ('ran', 21, {'end': 'reached', 'steps': 14, 'n_minus_off': np.float64(-0.036), 'dt': 0.0024, 't_line': -0.158, 'dz': 0.0002, 'dyaw': 0.0}, {'end': 'reached', 'steps': 7, 'tip_n_minus_off': np.float64(0.012), 'dt': -0.0031, 'h': 0.0
+RESULT 3 [ 0.378 -0.126] 50.7 ('ran', 20, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': 0.007, 't_line': -0.1414, 'dz': 0.0002, 'dyaw': 0.0}, {'end': 'reached', 'steps': 7, 'tip_n_minus_off': np.float64(0.012), 'dt': -0.0044, 'h': 0.
+RESULT 4 [ 0.354 -0.149] 23.4 ('ran', 21, {'end': 'reached', 'steps': 15, 'n_minus_off': np.float64(-0.036), 'dt': -0.0018, 't_line': -0.158, 'dz': -0.000
+... (511 more characters)
+```
+</details>
+
+**15:48:44 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute && echo "- 2026-11-20 resume (base moved, side camera recalibrated, fixtures shifted in the yaml): T_C and PUSH_TMAX now come from the yaml slot_t (T_C = window centre - 0.0045 = -0.133, PUSH_TMAX = slot_t[1] - 0.015 = -0.106); no other absolute cabinet numbers in the code (OFF, N, keep-out from the yaml). Offline flow test with drawer targets from the yaml layout and the shifted keep-out boxes: 6/6 insertions and pushes pass the model check, including lateral alignment at the +-2.5 cm extremes." >> notes/design.md && git add -A && git commit -qm "slot constants from the yaml (base moved): T_C, PUSH_TMAX; offline test uses the yaml layout" && git log --oneline | head -1
+```
+
+<details><summary>15:48:44 result</summary>
+
+```text
+a54ce05 slot constants from the yaml (base moved): T_C, PUSH_TMAX; offline test uses the yaml layout
+```
+</details>
+
+**15:48:50 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Slot constants now come from the yaml after the base move (commit a54ce05), checked offline",
+ "report": "The stale slot constants are fixed (commit a54ce05). `programs/execute.py` now takes them from the task yaml's `slot_t`:\n- **T_C** = window centre \u2212 0.0045 = \u22120.133 (was \u22120.087). The drawer-centre target T_C + EDGE_TARGET is therefore exactly the window centre, \u22120.1285.\n- **PUSH_TMAX** = slot_t[1] \u2212 0.015 = \u22120.106 (was \u22120.060).\n\nThe grep found no other absolute cabinet, slot or pull numbers in the code. The front plane, insertion direction, keep-out boxes and drawer size priors were already read from the yaml.\n\nOffline check:\n- `tools/offline_test.py` now draws drawer targets
+... (548 more characters)
+```
+
+<details><summary>15:48:50 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

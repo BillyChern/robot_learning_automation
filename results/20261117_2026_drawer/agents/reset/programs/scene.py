@@ -11,6 +11,21 @@ TT = np.array([-N[1], N[0]])                        # along the front (t = -n_y 
 OFF = float(CAB["front_offset"])
 SLOT_T = CAB["slot_t"]
 SLOT_H = CAB["slot_h"]
+SLOT_C = (SLOT_T[0] + SLOT_T[1]) / 2               # slot window centre along the front (-0.0825 before 2026-11-20)
+DT = SLOT_C - (-0.0825)                             # shift of all along-front (t) numbers measured before 2026-11-20
+
+
+def _cab_t():
+    """t-span of the cabinet body from the task keep-out box named 'cabinet' (yaml; fallback slot-relative)."""
+    for b in TASK.get("keep_out") or []:
+        if b.get("name") == "cabinet":
+            c = np.asarray(b["center"], float)[:2]
+            tc = float(c[0] * TT[0] + c[1] * TT[1])
+            return (tc - float(b["half"][1]), tc + float(b["half"][1]))
+    return (-0.155 + DT, -0.005 + DT)
+
+
+CAB_T = _cab_t()                                    # (-0.155, -0.005) before 2026-11-20
 
 
 def nt(xy):

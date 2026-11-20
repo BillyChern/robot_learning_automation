@@ -18,7 +18,7 @@ import reset as R
 from scene import N, TT, OFF, nt, xy_of
 
 HINT = None          # --pull_hint dx,dy: base-frame direction the pull face points to (one-off setup)
-T_C = -0.087          # drawer centre line along the front (pull triangulated at -0.088)
+T_C = R.T_C           # drawer centre line along the front: slot centre - 0.0045 (task yaml; -0.087 before 2026-11-20)
 INSERT_OUT = 0.065    # front wall this far in front of the yaml front plane after the slide (as after a pull)
 BOTTOM_H = 0.021      # drawer bottom height while sliding in (slot floor ~0.015)
 

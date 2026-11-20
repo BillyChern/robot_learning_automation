@@ -181,3 +181,4 @@ action inside the keep-out/kinematic envelope (tools/offline_test.py).
   (T_C + 0.0045 = -0.0825; up to 3 moves; summary align, t_line). A jam: unload, back out 1.5 cm, re-measure and
   re-align (lateral steps <= 4 mm while the back is in the slot), try again (up to 3). PUSH_NMAX OFF+0.012 (at h 0.062
   the model refuses beyond ~+0.0125). Offline: flow test 4/4 complete, no refusals; learner --check ok.
+- 2026-11-20 resume (base moved, side camera recalibrated, fixtures shifted in the yaml): T_C and PUSH_TMAX now come from the yaml slot_t (T_C = window centre - 0.0045 = -0.133, PUSH_TMAX = slot_t[1] - 0.015 = -0.106); no other absolute cabinet numbers in the code (OFF, N, keep-out from the yaml). Offline flow test with drawer targets from the yaml layout and the shifted keep-out boxes: 6/6 insertions and pushes pass the model check, including lateral alignment at the +-2.5 cm extremes.
