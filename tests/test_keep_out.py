@@ -12,6 +12,7 @@ B_RESET = [(b["name"], np.asarray(b["center"]), np.asarray(b["half"]), np.radian
 N = np.asarray(TASK["fixtures"]["cabinet"]["front_normal"])
 T = np.array([-N[1], N[0]])
 OFF = TASK["fixtures"]["cabinet"]["front_offset"]
+TC = sum(TASK["fixtures"]["cabinet"]["slot_t"]) / 2      # slot window centre along the front (shifted 2026-11-20)
 
 
 def at(d, t, h):
@@ -21,31 +22,31 @@ def at(d, t, h):
 
 
 def test_inside_cabinet_is_refused():
-    assert in_boxes(at(0.05, -0.08, 0.15), B) == ["cabinet"]
+    assert in_boxes(at(0.05, TC, 0.15), B) == ["cabinet"]
 
 
 def test_front_of_cabinet_is_allowed():
-    assert in_boxes(at(-0.02, -0.08, 0.05), B) == []          # pushing at the front face
-    assert in_boxes(at(0.005, -0.08, 0.05), B) == []         # touching the front plane
+    assert in_boxes(at(-0.02, TC, 0.05), B) == []          # pushing at the front face
+    assert in_boxes(at(0.005, TC, 0.05), B) == []         # touching the front plane
 
 
 def test_slot_opening_is_open_to_2cm():
-    assert in_boxes(at(0.012, -0.08, 0.05), B) == []          # closed fingertips at the drawer face, modelled 1.2 cm deep
-    assert in_boxes(at(0.011, -0.077, 0.029), B) == []        # reset attempt 16: holding the pull tab
-    assert in_boxes(at(0.025, -0.08, 0.05), B) == ["slot_rl_limit"]  # RL program: deeper than 2 cm refused
-    assert in_boxes(at(0.035, -0.08, 0.05), B_RESET) == []              # reset program: may reach a recessed drawer
-    assert in_boxes(at(0.045, -0.08, 0.05), B_RESET) == ["cabinet"]
-    assert in_boxes(at(0.015, -0.08, 0.15), B) == ["cabinet_front"]   # same depth above the slot: refused
-    assert in_boxes(at(0.015, -0.14, 0.05), B) == ["cabinet_front"]   # beside the slot opening: refused
+    assert in_boxes(at(0.012, TC, 0.05), B) == []          # closed fingertips at the drawer face, modelled 1.2 cm deep
+    assert in_boxes(at(0.011, TC + 0.003, 0.029), B) == []        # reset attempt 16: holding the pull tab
+    assert in_boxes(at(0.025, TC, 0.05), B) == ["slot_rl_limit"]  # RL program: deeper than 2 cm refused
+    assert in_boxes(at(0.035, TC, 0.05), B_RESET) == []              # reset program: may reach a recessed drawer
+    assert in_boxes(at(0.045, TC, 0.05), B_RESET) == ["cabinet"]
+    assert in_boxes(at(0.015, TC, 0.15), B) == ["cabinet_front"]   # same depth above the slot: refused
+    assert in_boxes(at(0.015, TC - 0.06, 0.05), B) == ["cabinet_front"]   # beside the slot opening: refused
 
 
 def test_beside_cabinet_is_allowed():
-    assert in_boxes(at(0.05, -0.25, 0.05), B) == []
+    assert in_boxes(at(0.05, TC - 0.17, 0.05), B) == []
 
 
 def test_escape_from_inside_is_allowed_deeper_is_not():
     from rlpj.robot.sim import box_depths
-    inside, deeper, out = at(0.012, -0.08, 0.15), at(0.018, -0.08, 0.15), at(-0.02, -0.08, 0.15)
+    inside, deeper, out = at(0.012, TC, 0.15), at(0.018, TC, 0.15), at(-0.02, TC, 0.15)
     d0, faces = box_depths(inside, B)
     assert box_depths(out, B, faces)[0] == {}                                         # leaving: nothing inside
     assert box_depths(deeper, B, faces)[0]["cabinet_front"] > d0["cabinet_front"] + 0.005   # 6 mm deeper: +6 mm

@@ -617,9 +617,9 @@ class Pipeline:
         self.st.save()
         return status
 
-    def _reflect_async(self, role, head, items):
+    def _reflect_async(self, role, head, items, force=False):
         """Start the agent's reflection on its last run in a thread (it overlaps with the other agent's robot run)."""
-        if not self.cfg["collection"].get("reflect_after_every_run"):
+        if not force and not self.cfg["collection"].get("reflect_after_every_run"):
             return
         self._join(role)
         t = threading.Thread(target=self._reflect, args=(role, head, list(items)), daemon=True, name=f"reflect-{role}")
@@ -1480,6 +1480,7 @@ class Pipeline:
     def _rl_review(self, recent):
         """Tuning turn: the RL agent gets the learning curve and recent failed episodes, may change its reward,
         learner, hyperparameters or episode program, and replies done (learner check again)."""
+        self._join("execute")
         r = self.st.rl
         evals = ", ".join(f"{e['success']}/{e['n']} after {e['after']}" for e in r["evals"][-6:]) or "none yet"
         train = self.st.counters.get("rl", {})
@@ -1533,6 +1534,13 @@ class Pipeline:
                 self._repair("execute")
                 r["learner_fails"] = 0
             self.st.save()
+            if rl.get("reflect_every_episode"):         # the RL agent studies this episode while the next reset runs
+                self._reflect_async("execute", f"Reflection after RL training episode {ep['index']} "
+                                    f"({r['episodes']} so far): {ep['final']} - {ep['reason']}. Look at what happened "
+                                    "(log, images, rewards, learner log) and improve your episode program, prior, reward "
+                                    "or learner if it helps; offline tests only; commit; then reply done. Keep it short.",
+                                    [(ep["attempt_dir"], f"episode {ep['index']}: {ep['final']} - {ep['reason']}")],
+                                    force=True)
         rate = self._rl_eval()
         return "max_episodes" if rate is not None else "stopped"
 
