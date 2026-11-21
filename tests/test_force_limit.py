@@ -111,3 +111,20 @@ def test_force_stop_total_inside_baseline_window():
     ex.force_limit = ex.force_cap = 65
     r = ex.run(Seg())
     assert "total" in r["reason"] and float(r["reason"].split("at t=")[1][:-1]) < 0.3, r
+
+
+class PreloadedCreepRobot(Robot):
+    """Starts above the cap (70 N) and creeps to 74 N: under the old +5 N rule this ran on."""
+    def feedback(self):
+        fb = super().feedback()
+        fb["force"] = np.array([0, 0, 74.0 if time.time() - self.t0 > 0.2 else 70.0])
+        return fb
+
+
+def test_force_stop_preloaded_move_may_only_ease_off():
+    import time as _t
+    globals()["time"] = _t
+    ex = Executor(PreloadedCreepRobot(force_at=0.0), Kin(), log=lambda *a: None)
+    ex.force_limit = ex.force_cap = 65
+    r = ex.run(Seg())
+    assert "total" in r["reason"], r

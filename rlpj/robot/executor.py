@@ -72,7 +72,9 @@ class Executor:
                     lim = self.limit()
                     # the total check needs no baseline: it runs from the first sample (a jam reached 84.9 N within the
                     # FORCE_SKIP_S window, 2026-11-21 04:52)
-                    if lim and fa > lim and fa > fa_first + 5.0:
+                    # a move that starts above the limit (after a jam) may only ease off: 2 N rise, else 5 N (an unload
+                    # move started at ~70 N and peaked at 76.5 N, 2026-11-21 13:11)
+                    if lim and fa > lim and fa > fa_first + (2.0 if fa_first > lim else 5.0):
                         r["reason"] = f"contact force {fa:.1f} N total > {lim:.0f} N at t={t:.2f}s"; break
                     if f0 is None or t < FORCE_SKIP_S:
                         f0 = np.asarray(f, float)
