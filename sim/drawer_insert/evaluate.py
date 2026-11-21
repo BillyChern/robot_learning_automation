@@ -25,11 +25,11 @@ def controller(name, policy_path=None):
 
 def run(args):
     """One episode: (controller name, policy path, seed) -> result dict."""
-    name, path, seed, variant = args
+    name, path, seed, variant, kind, k_pre = (tuple(args) + (None, 0))[:6]
     from . import params as P
     from .env import DrawerEnv, action_of
     env = DrawerEnv(seed)
-    o = env.reset(P.sample(np.random.default_rng(seed), variant))
+    o = env.reset(P.sample(np.random.default_rng(seed), variant), kind, k_pre)
     act = controller(name, path)
     first = None
     for k in range(10**6):
@@ -73,15 +73,17 @@ def main():
     ap.add_argument("--only", default="")
     ap.add_argument("--workers", type=int, default=12)
     ap.add_argument("--variant", default="carry", help="start variant: carry | aligned (params.VARIANTS)")
+    ap.add_argument("--preroll", default="", help="start from a scripted pre-roll, e.g. push:12 or drift:16 (jammed / partly in)")
     ap.add_argument("--out", default="")
     a = ap.parse_args()
+    kind, k_pre = (a.preroll.split(":")[0], int(a.preroll.split(":")[1])) if a.preroll else (None, 0)
     names = [n for n in ("straight", "wiggle", "policy") if (not a.only or n in a.only.split(","))]
     if not a.policy:
         names = [n for n in names if n != "policy"]
     out = {}
     with mp.get_context("spawn").Pool(a.workers, initializer=os.nice, initargs=(15,)) as pool:
         for name in names:
-            res = pool.map(run, [(name, a.policy, a.seed0 + i, a.variant) for i in range(a.n)], chunksize=4)
+            res = pool.map(run, [(name, a.policy, a.seed0 + i, a.variant, kind, k_pre) for i in range(a.n)], chunksize=4)
             out[name] = dict(summary=summary(res), episodes=res)
             sm = out[name]["summary"]
             print(f"{name:9s} success {sm['success']:.3f}  median max force {sm['max_f_median']:.0f} N  >65 N {sm['over_65n']:.2f}  "
@@ -90,7 +92,8 @@ def main():
                 print(f"   {row['bin']:16s} n {row['n']:4d}  success {row['success'] if row['success'] is None else round(row['success'], 3)}")
     if a.out:
         Path(a.out).mkdir(parents=True, exist_ok=True)
-        Path(a.out, f"eval_{a.variant}.json").write_text(json.dumps(out, default=float, indent=1))
+        tag = a.variant + (f"_{kind}{k_pre}" if kind else "")
+        Path(a.out, f"eval_{tag}.json").write_text(json.dumps(out, default=float, indent=1))
 
 
 if __name__ == "__main__":

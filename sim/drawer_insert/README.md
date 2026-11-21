@@ -109,7 +109,21 @@ Physics: MuJoCo 3.17, timestep 1 ms, implicitfast, elliptic cones, contact solre
 hand = 3 position-servoed joints (n, t, yaw) carrying a compliant grip (slide t + hinge yaw with springs and
 Coulomb joint friction = slip); hollow drawer of 5 boxes + 2 capsule edges; the hand itself does not collide.
 
-ENGINE_PLACEHOLDER
+## Engine: Newton (GPU) for training, MuJoCo (CPU) as the reference
+
+- NVIDIA Newton was tried first as asked: `newton[sim]` 1.8.0 (warp-lang 1.19.0, mujoco-warp 3.17.0) installed from
+  PyPI in minutes and its `SolverMuJoCo` (mujoco_warp) handles the box-in-box contacts: the aligned drawer slides to the
+  stop, no tunnelling of the 1 cm walls, yawed/offset drawers jam with a readable force (`newton_try/test_slot.py`).
+  One setting matters: Newton's default contact gap (0.1 m) gave ~200 contacts per world; `rigid_gap = 0` matches MuJoCo.
+- `env.py` (MuJoCo 3.17 CPU, one model compiled per episode, full per-episode randomization) is the reference: it
+  defines the task, runs the baselines, evaluation, rendering and tests, and is what the README numbers use.
+- `newton_env.py` is its GPU twin: one Newton model replicated over N worlds, each world's parameters parsed from its
+  own `scene.xml(p)` and written into the model arrays per reset. With the same 256 parameter sets and the straight
+  push it agrees with the CPU env per episode in 96.5 % of the episodes (success 40.6 % vs 38.7 %, median depth
+  difference 0.0 mm; remaining differences come from force-noise draws; `newton_try/validate.py`).
+- Throughput (RTX 4090): ~20k decisions/s at 4096 worlds (8 s per 48-step batch incl. reset) vs ~2.8k/s for the
+  12-worker CPU pool incl. PPO updates. Run r1 (first policy) trained on the CPU pool; r2 (the shipped policy)
+  continued on Newton; the CPU evaluation of the Newton-trained policy is also a sim-to-sim transfer check.
 
 ## Calling the policy on the robot (insertion phase)
 

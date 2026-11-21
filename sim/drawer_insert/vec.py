@@ -9,9 +9,11 @@ from .policy import OBS_DIM, obs_vector
 INFO_KEYS = ("success", "front_err", "f_end", "max_f", "n_stops", "e_t", "e_yaw", "depth")
 
 
-def worker(conn, seed, m):
+def worker(conn, seed, m, f_pen):
     os.nice(15)
+    from . import env as E
     from .env import DrawerEnv
+    E.F_PEN = f_pen
     envs = [DrawerEnv(seed * 1000 + i) for i in range(m)]
     done = np.ones(m, bool)
     while True:
@@ -38,13 +40,13 @@ def worker(conn, seed, m):
 class CpuPool:
     """num_workers processes x per_worker envs (MuJoCo CPU)."""
 
-    def __init__(self, num_workers=12, per_worker=32, seed=0):
+    def __init__(self, num_workers=12, per_worker=32, seed=0, f_pen=0.05):
         ctx = mp.get_context("spawn")
         self.m, self.num_envs = per_worker, num_workers * per_worker
         self.conns, self.procs = [], []
         for w in range(num_workers):
             a, b = ctx.Pipe()
-            p = ctx.Process(target=worker, args=(b, seed * 100 + w, per_worker), daemon=True)
+            p = ctx.Process(target=worker, args=(b, seed * 100 + w, per_worker, f_pen), daemon=True)
             p.start()
             self.conns.append(a); self.procs.append(p)
 

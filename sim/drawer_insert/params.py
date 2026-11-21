@@ -43,6 +43,9 @@ VARIANTS = dict(carry={}, aligned=dict(hand_off=(-0.005, 0.005), hand_yaw=(-2.0,
                                        est_sd_yaw=(0.3, 1.0), lift=(0.004, 0.010)))
 # 'aligned' plus a slot pose measured to +-3 mm / +-0.5 deg (e.g. squared against the real slot, not the yaml)
 VARIANTS["aligned_slot"] = dict(VARIANTS["aligned"], slot_dn=(-0.003, 0.003), slot_dt=(-0.003, 0.003), slot_dyaw=(-0.5, 0.5))
+# stress tests outside the training ranges (evaluation only)
+VARIANTS.update(noisy_force=dict(f_noise=(2.5, 5.0)), high_friction=dict(mu=(0.7, 1.0)), tight=dict(clearance=(0.002, 0.003)),
+                soft_arm=dict(kp_arm=(5e3, 2e4)), slow_steps=dict(dt_dec=(0.5, 1.0)), stiff_grip=dict(f_slide=(40.0, 80.0), f_yaw=(2.0, 4.0)))
 
 
 def sample(rng, variant="carry"):

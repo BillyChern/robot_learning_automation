@@ -39,12 +39,13 @@ class Agent(nn.Module):
                  **{f"b{i}": m.bias.detach().cpu().numpy() for i, m in enumerate(lin)})
 
 
-def make_env(engine, n, seed):
+def make_env(engine, n, seed, f_pen):
     if engine == "newton":
-        from .newton_env import NewtonEnv
-        return NewtonEnv(n, seed=seed)
+        from . import newton_env
+        newton_env.F_PEN = f_pen
+        return newton_env.NewtonEnv(n, seed=seed)
     from .vec import CpuPool
-    return CpuPool(num_workers=12, per_worker=n // 12, seed=seed)
+    return CpuPool(num_workers=12, per_worker=n // 12, seed=seed, f_pen=f_pen)
 
 
 def rollout(env, agent, starts, dev, deterministic=False):
@@ -120,6 +121,7 @@ def main():
     ap.add_argument("--fresh", type=float, default=0.4)
     ap.add_argument("--eval_every", type=int, default=10)
     ap.add_argument("--init", default="")
+    ap.add_argument("--f_pen", type=float, default=0.05, help="reward per 10 N of peak force above 40 N")
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
     torch.set_num_threads(4)
@@ -127,7 +129,7 @@ def main():
     out = RUNS / a.name
     out.mkdir(parents=True, exist_ok=True)
     dev = "cuda" if torch.cuda.is_available() else "cpu"
-    env = make_env(a.engine, a.envs, a.seed)
+    env = make_env(a.engine, a.envs, a.seed, a.f_pen)
     agent = Agent().to(dev)
     if a.init:
         agent.load_state_dict(torch.load(a.init, map_location=dev))
