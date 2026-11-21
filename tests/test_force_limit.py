@@ -94,3 +94,20 @@ def test_force_stop_total_over_cap_with_preload():
     ex.force_limit = ex.force_cap = 65
     r = ex.run(Seg())
     assert "total" in r["reason"], r
+
+
+class EarlyJamRobot(Robot):
+    """The total jumps from 40 N to 85 N within the first 0.1 s, inside the baseline window."""
+    def feedback(self):
+        fb = super().feedback()
+        fb["force"] = np.array([0, 0, 85.0 if time.time() - self.t0 > 0.1 else 40.0])
+        return fb
+
+
+def test_force_stop_total_inside_baseline_window():
+    import time as _t
+    globals()["time"] = _t
+    ex = Executor(EarlyJamRobot(force_at=0.0), Kin(), log=lambda *a: None)
+    ex.force_limit = ex.force_cap = 65
+    r = ex.run(Seg())
+    assert "total" in r["reason"] and float(r["reason"].split("at t=")[1][:-1]) < 0.3, r

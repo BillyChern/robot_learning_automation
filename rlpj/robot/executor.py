@@ -40,7 +40,7 @@ class Executor:
     def run(self, seg, settle_tol=0.15, settle_time=2.0):
         r = dict(segment=seg.name, ok=False, reason="", T_plan=round(seg.T, 2), max_dev_deg=0.0, max_dev_mm=0.0, n=0)
         vmax = seg.speed["jv"] * 1.1 + 1.0
-        t0 = time.time(); ts = None; q = None; f0 = None; over = 0
+        t0 = time.time(); ts = None; q = None; f0 = None; fa_first = None; over = 0
         self.running = True
         try:
             while True:
@@ -66,16 +66,22 @@ class Executor:
                     r["reason"] = f"arm state {fb['state']}"; break
                 f = fb.get("force")
                 if f is not None:                              # always logged; a stop only with a limit set
+                    fa = float(np.linalg.norm(f))
+                    fa_first = fa if fa_first is None else fa_first
+                    r["max_abs_force_n"] = round(max(r.get("max_abs_force_n", 0.0), fa), 1)
+                    lim = self.limit()
+                    # the total check needs no baseline: it runs from the first sample (a jam reached 84.9 N within the
+                    # FORCE_SKIP_S window, 2026-11-21 04:52)
+                    if lim and fa > lim and fa > fa_first + 5.0:
+                        r["reason"] = f"contact force {fa:.1f} N total > {lim:.0f} N at t={t:.2f}s"; break
                     if f0 is None or t < FORCE_SKIP_S:
                         f0 = np.asarray(f, float)
                     else:
                         df = float(np.linalg.norm(np.asarray(f, float) - f0))
                         r["max_force_n"] = round(max(r.get("max_force_n", 0.0), df), 1)
-                        r["max_abs_force_n"] = round(max(r.get("max_abs_force_n", 0.0), float(np.linalg.norm(f))), 1)
                         # change from the segment start AND total size: releasing a preload (retreat after a push)
                         # changes the estimate by the preload but ends near zero, so it does not stop the retreat
-                        lim = self.limit()
-                        fa, fa0 = float(np.linalg.norm(f)), float(np.linalg.norm(f0))
+                        fa0 = float(np.linalg.norm(f0))
                         if lim and df > lim and fa > lim:
                             r["reason"] = f"contact force {df:.1f} N > {lim:.0f} N at t={t:.2f}s"; break
                         # a preload carried over from the previous move (push steps) can take the total past the limit
