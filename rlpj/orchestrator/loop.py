@@ -17,7 +17,7 @@ import numpy as np
 
 from rlpj import config
 from . import attempts
-from .state import RunState, now_iso, report_md, update_meta
+from .state import RunState, now_iso, read_jsonl, report_md, update_meta
 
 RESTART_MSG = "The orchestrator restarted. Summarize in one line where your work stands, then continue."
 NO_OPERATOR = ("No operator is available: this run is fully autonomous and nobody will act on requests. Do it yourself "
@@ -1461,14 +1461,30 @@ class Pipeline:
     def _rl_eval(self):
         """Fixed evaluation: rl.eval_episodes episodes with RLPJ_RL_MODE=eval; returns the success rate or None (stop)."""
         rl, r = self.task["rl"], self.st.rl
-        n, ok = int(rl["eval_episodes"]), 0
-        self.op.notify(f"RL evaluation after {r['episodes']} training episodes: {n} episodes")
-        for _ in range(n):
+        n = int(rl["eval_episodes"])
+        # a restart or pause inside the round resumes it (2026-11-21: every relaunch restarted the round, so it never
+        # finished and training stalled for 12 evaluation episodes)
+        cur = r.get("eval_cur") or {}
+        if cur.get("after") != r["episodes"]:
+            cur = dict(after=r["episodes"], done=0, ok=0)
+            # evaluation episodes already recorded since the last training episode count toward this round
+            done = []
+            for e in read_jsonl(self.st.dir / "events.jsonl"):
+                if e.get("kind") == "episode" and e.get("mode") == "rl":
+                    done = []
+                elif e.get("kind") == "episode" and e.get("mode") == "rl_eval":
+                    done.append(e.get("final") == "success")
+            done = done[-n:]
+            cur.update(done=len(done), ok=sum(done))
+        self.op.notify(f"RL evaluation after {r['episodes']} training episodes: {n} episodes ({cur['done']} done before)")
+        while cur["done"] < n:
             self.restart_point()
             ep = self._rl_episode("rl_eval")
             if ep is None:
                 return None
-            ok += ep["final"] == "success"
+            cur["done"] += 1; cur["ok"] += ep["final"] == "success"
+            r["eval_cur"] = cur; self.st.save()
+        ok = cur["ok"]; r.pop("eval_cur", None)
         rate = ok / n
         r["evals"].append(dict(after=r["episodes"], success=ok, n=n, rate=round(rate, 3), t=now_iso()))
         self._rl_curve(kind="eval", after=r["episodes"], success=ok, n=n, rate=round(rate, 3))
