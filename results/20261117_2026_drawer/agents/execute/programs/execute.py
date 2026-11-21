@@ -625,7 +625,11 @@ class Episode:
         self.line("lift_slow", T_pre, "slow")
         self.lift_to("lift", SAFE_H, "normal")
         s.summary(grasp_wall_angle=ang_w)
-        return dict(yaw=yaw, d0=d0, drop=tip_h + TIP_OPEN, L_back=max(2 * half - 0.006, L_MIN), e=e.copy(), Tg=Tg.copy())
+        # along-wall offset of the tool from the drawer centre (w = d0 turned +90 deg; maps to +t once d0 is on N)
+        w_dir = np.array([-d0[1], d0[0]])
+        fp_off = float((e - np.asarray(c, float)) @ w_dir) if d.get("wrist_fp") else None
+        return dict(yaw=yaw, d0=d0, drop=tip_h + TIP_OPEN, L_back=max(2 * half - 0.006, L_MIN), e=e.copy(), Tg=Tg.copy(),
+                    wrist_fp=bool(d.get("wrist_fp")), fp_off=fp_off)
 
     def wrist_footprint(self, d):
         """Operator 01:50: the side camera's drawer outline is ~5 cm off (along the wall too). Look straight down from
@@ -1061,7 +1065,9 @@ class Episode:
         # straight drawer (user 00:30): the drawer sits ~7 deg turned in the jaws (insertions got through in 5/12
         # episodes with the tool at +5..+10 deg, 1/14 otherwise, and jam again at 0, ep 24): the tool is turned by
         # HAND_YAW for the whole insertion so the DRAWER's axis is on the slot normal; no yaw change during it
-        yaw2 = wrapd(held["yaw"] + wrapd(ang(N) - ang(held["d0"]))) + HAND_YAW
+        # HAND_YAW was inferred from side-camera grasps (their yaw was off); with the wrist footprint the jaws sit on the
+        # wall's true direction, so the drawer is straight in the hand (operator 04:50: no side-camera in-hand estimates)
+        yaw2 = wrapd(held["yaw"] + wrapd(ang(N) - ang(held["d0"]))) + (0.0 if held.get("wrist_fp") else HAND_YAW)
         z0 = self.tz + held["drop"] + BOTTOM_H
         n0 = min(OFF - BACK_GAP - held["L_back"], INS_NMAX - 0.05)
         T0 = tool_down_T(np.r_[xy_of(n0, T_C), z0], yaw2)
@@ -1084,7 +1090,7 @@ class Episode:
         # operator 00:22: ep 32 went in with the measured in-hand yaw +7.9 deg uncorrected and wedged skewed: cancel the
         # measured yaw (enough points only, at most 8 deg) by turning the hand before the insertion
         turned = False
-        if meas.get("ok") and meas.get("n", 0) >= 600 and abs(meas.get("yaw_err", 0.0)) > 1.0:
+        if not held.get("wrist_fp") and meas.get("ok") and meas.get("n", 0) >= 600 and abs(meas.get("yaw_err", 0.0)) > 1.0:
             dy = float(np.clip(meas["yaw_err"], -8.0, 8.0))
             yaw2 = yaw2 - dy
             T_c = tool_down_T(np.r_[xy_of(n0, T_C), z0], yaw2)
@@ -1094,7 +1100,14 @@ class Episode:
             else:
                 yaw2 = yaw2 + dy                         # not turned: keep the old yaw
                 s.summary(yaw_cancel=None, yaw_cancel_skipped=round(-dy, 1))
-        self.align(n0, z0, yaw2, None if turned else meas)   # re-measure after turning
+        if held.get("wrist_fp") and held.get("fp_off") is not None:
+            # operator 04:50: put the DRAWER centre on the slot centre from the wrist footprint (the side camera reads
+            # the held drawer 5-7 cm off): tool t = slot centre + (tool - drawer centre along the wall)
+            self.t_line = T_C + EDGE_TARGET + float(np.clip(held["fp_off"], -0.03, 0.03))
+            self.line("align_t_fp", tool_down_T(np.r_[xy_of(n0, self.t_line), z0], yaw2), "slow")
+            s.summary(t_line=round(self.t_line, 4), fp_off=round(held["fp_off"], 4))
+        else:
+            self.align(n0, z0, yaw2, None if turned else meas)   # re-measure after turning
         s.summary(held=dict(n0_minus_off=round(n0 - OFF, 4), z0_above_table=round(z0 - self.tz, 4), yaw2=round(yaw2, 1), meas=meas, t_line=round(self.t_line, 4)))
         s.decide(f"held drawer: t err {meas['t_err']:+.3f} yaw err {meas['yaw_err']:+.1f} ({meas['n']} pts); insertion from n-OFF {n0 - OFF:+.3f}")
         ins = self.stage_insert(n0, z0, yaw2, meas)

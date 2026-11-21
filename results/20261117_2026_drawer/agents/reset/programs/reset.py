@@ -41,6 +41,10 @@ try:                              # 15:52 operator: start from the last measured
     TAB_DT0 = float(_tab["t_from_slot"]) - (PIN_T - scene.SLOT_C)       # tab offset from PIN_T that held last time
     if abs(float(_tab["slot_c"]) - scene.SLOT_C) > 0.001 or abs(TAB_DT0) > 0.03:
         TAB_DT0 = None
+    # 05:20 operator: knob positions learned before a cabinet re-measurement are void: older than the task yaml -> ignore
+    _yaml = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", "..", "config", "tasks", "drawer_rl.yaml")
+    if os.path.exists(_yaml) and os.path.getmtime(TAB_FILE) < os.path.getmtime(_yaml):
+        TAB_DT0 = None
 except Exception:
     TAB_DT0 = None
 PIN_H = 0.052             # pin height above the table
@@ -195,6 +199,42 @@ class Reset:
 
     def line(self, name, T, speed="slow", tip_margin=0.008):
         self.s.move_line(name, T, speed, tip_margin=tip_margin)
+
+    def joint_to_via(self, name, T):
+        """Attempt 205: next to the cabinet the joint-space swing from READY to a pose above the drawer passes through
+        the cabinet_front keep-out although the pose itself is clear: go to a waypoint 12 cm toward the robot (-N) at
+        the same height first, then straight across."""
+        try:
+            self.joint_to(name, T)
+            return
+        except Abort as e:
+            if "check failed" not in str(e):
+                raise
+            self.log(f"{name}: direct joint move refused ({str(e)[:80]}): via a waypoint in front")
+        last = None
+        for back, up in ((0.12, 0.0), (0.18, 0.0), (0.12, 0.08)):
+            W = T.copy(); W[:2, 3] -= back * N; W[2, 3] += up
+            try:
+                self.joint_to(f"{name}_via", W)
+                self.line(name, T, "normal")
+                return
+            except Abort as e:
+                if "check failed" not in str(e) and "no IK" not in str(e):
+                    raise
+                last = e
+                self.to_ready()
+        raise last
+
+    def ready_via(self):
+        """Back to READY; if the joint move is refused near the cabinet, first straight back 12 cm along -N."""
+        try:
+            self.to_ready()
+        except Abort as e:
+            if "check failed" not in str(e):
+                raise
+            T = self.T_now(); T[:2, 3] -= 0.12 * N
+            self.line("back_for_ready", T, "normal")
+            self.to_ready()
 
     def to_ready(self):
         T = tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0)
@@ -880,6 +920,13 @@ class Reset:
                 for it_m in range(3):
                     time.sleep(0.4)
                     dt_m = self.measure_tab(f"{k}_{it_m}")
+                    if it_m == 0 and dt_m is not None and k == 0:
+                        # 05:20 operator: check the yaml's knob (slot centre - 5.5 mm, shifted -9 mm along t at 05:20)
+                        # against the wrist measurement; ~9 mm off again means the t shift was wrong
+                        off_y = float(self.pin_t + self.pin_dt + dt_m - PIN_T)
+                        s.summary(knob_vs_yaml_mm=round(off_y * 1000, 1))
+                        s.decide(f"knob check: measured {off_y * 1000:+.1f} mm along t from the yaml's knob (t {PIN_T:.4f})"
+                                 + ("  <-- ~9 mm: the 05:20 t shift of the cabinet looks wrong" if 0.006 <= abs(off_y) <= 0.013 else ""))
                     # 01:17 operator: +7.5, +6.8, +5.7 mm -> the aim walked 2 cm (the knob moved with the pads): a step
                     # must halve the offset, and the total walk stays within 12 mm of the first aim
                     if dt_m is not None and prev_abs is not None and abs(dt_m) > 0.5 * prev_abs:
@@ -1986,7 +2033,7 @@ class Reset:
             s.decide(f"table drawer obb {np.round(ctr, 3).tolist()} L {L:.3f} W {c['W']:.3f} yaw {c['yaw']:.0f}; grasp end wall at {np.round(e, 3).tolist()} (cabinet dist {cab_d(e):.3f}) top {h_top:.3f}")
             try:
                 self.to_ready()
-                self.joint_to("above_drawer_wall", T_hi)
+                self.joint_to_via("above_drawer_wall", T_hi)
                 self.line("down_to_wall_pre", T_pre, "normal")
                 time.sleep(0.4)
                 img = s.wrist.latest()[0]
@@ -2435,12 +2482,17 @@ class Reset:
         Tg = tool_down_T(np.r_[e, self.tz + tip_h + TIP_OPEN], yaw)
         T_hi = Tg.copy(); T_hi[2, 3] = self.tz + SAFE_H
         T_pre = Tg.copy(); T_pre[2, 3] += 0.05
-        T_out = Tg.copy(); T_out[:2, 3] -= dist * N
-        s.decide(f"drawer against the cabinet: grasp its robot-side wall at {np.round(e, 3).tolist()} and drag it {dist:.2f} m away along -N")
+        # 205: beside the +t corner straight -N leaves it ~2 cm from the curtain: drag diagonally toward the table
+        # centre when that lands safely (drag_dirs: landing zone, never toward an edge)
+        dirs = self.drag_dirs(ctr, dist)
+        d_out, dist = dirs[0] if dirs else (-N, dist)
+        T_out = Tg.copy(); T_out[:2, 3] += dist * d_out
+        self.drag_end = np.asarray(ctr, float) + d_out * dist
+        s.decide(f"drawer against the cabinet: grasp its robot-side wall at {np.round(e, 3).tolist()} and drag it {dist:.2f} m toward {ang(d_out):.0f} deg")
         s.gripper(TABLE_OPEN, "open to straddle the robot-side wall")
         try:
             self.to_ready()
-            self.joint_to("above_drag_wall", T_hi)
+            self.joint_to_via("above_drag_wall", T_hi)
             self.line("down_to_drag_pre", T_pre, "normal")
         except Abort as ex:
             if "check failed" not in str(ex) and "no IK" not in str(ex):
@@ -2460,6 +2512,7 @@ class Reset:
         Tu = self.T_now(); Tu[2, 3] += 0.05
         self.line("up_from_drag", Tu, "slow")
         self.lift_to("lift_after_drag", SAFE_H, "normal")
+        self.ready_via()
         s.decide(f"drag-away {'done' if ok else 'stopped at the 25 N limit'}")
         return True
 
@@ -2730,6 +2783,26 @@ class Reset:
                 s.decide("push-clear: two pushes did not move it"); return None
         return c if self.cab_clearance(c) >= clear else None
 
+    def free_from_cabinet(self, c):
+        """Attempt 205: an upright drawer beside the cabinet's +t corner: both end-wall picks and the robot-side-wall
+        drag were refused by the model on every try (5 picks). Drag-away once, else the drag-across (vertical pinch,
+        else the tilted pinch of attempts 193-196) toward the table centre. Returns True if something moved it."""
+        s = self.s
+        if not self.dragged_away:
+            self.dragged_away = True
+            try:
+                if self.drag_away(c):
+                    return True
+            except Abort as ex:
+                if "check failed" not in str(ex) and "no IK" not in str(ex):
+                    raise
+                s.decide(f"drag-away refused ({str(ex)[:80]})"); self.to_ready()
+        if not self.dragged_across:
+            self.dragged_across = True
+            s.decide("drawer at the cabinet: both end walls and the drag-away refused: pinch it across and drag it clear")
+            return bool(self.drag_across(c))
+        return False
+
     def drag_dirs(self, ctr, dist):
         """Drag directions away from the cabinet, toward the open table in front of the slot (attempt 191: straight -N
         from beside the +t corner ends outside the landing zone): (direction, distance) pairs that land safely."""
@@ -2767,7 +2840,11 @@ class Reset:
         half_l = 0.5 * max(float(c["L"]), float(c["W"]))
         # attempt 192: 60 checks ran out on steep tilts (their approach lines jump IK branches); offline the 15 deg
         # tilt with the jaws ~25 deg off the narrow axis works: every jaw angle at the mildest tilt first
-        cands = [(sh, dy, a) for sh in (0.0, 0.01, 0.02) if sh <= half_l - 0.025 for a in (-15.0, -20.0, -25.0, -30.0)
+        # 205: an upright drawer reaching y ~0.32 (curtain keep-in y <= 0.30): every pinch at its centre is outside
+        # the cell -> also shift the pinch along it toward -y (away from the curtain), and allow no tilt
+        sh_list = (0.0, -0.015, 0.01, -0.03, 0.02) if float(u_l[1]) > 0 else (0.0, 0.015, 0.01, 0.03, 0.02)
+        sh_list = [sh_ for sh_ in sh_list if abs(sh_) <= half_l - 0.025] or [0.0]
+        cands = [(sh, dy, a) for sh in sh_list for a in (0.0, -15.0, -20.0, -25.0, -30.0)
                  for dy in (0, 5, -5, 10, -10, 15, -15, 20, -20, 25, -25, 30, -30)]
         for sh, dy, a in cands:                           # a < 0 about +t: tool axis toward +N, body toward the robot
             if True:
@@ -3158,6 +3235,17 @@ class Reset:
                     s.decide(f"wrist views: open side toward {ang(o_ov):.0f} deg (outline {np.round(c['obb_c'], 3).tolist()})")
                 elif (c["L"] < 0.095 and c["h"] > 0.10) or c.get("wrist_fp"):
                     o_ov = self.judge_open_dir(c, f"r{it}_{k_r}")
+                if o_ov is None and c.get("wrist_fp"):
+                    # 04:32 operator: when the views and the judge are undecided, use the side depth test (consistent
+                    # in 197-199), run on the side camera's own outline (its points and outline agree); only its
+                    # direction is used, on the wrist outline
+                    self.go_home(f"home_for_opendepth{it}_{k_r}")      # the side view without the arm in it
+                    p_s = self.perceive(f"opendepth{it}_{k_r}")
+                    if p_s is not None and p_s["cand"] and p_s["cand"][0].get("pts") is not None:
+                        o_d, _, _ = self.open_side(p_s["cand"][0])
+                        ctr_w, walls_w = self.walls_of(c)
+                        o_ov = max((w[0] for w in walls_w), key=lambda w: float(w @ o_d))
+                        s.decide(f"views/judge undecided: side depth test -> open side toward {ang(o_ov):.0f} deg")
                 s.require(o_ov is not None or (c.get("pts") is not None and not c.get("wrist_fp")),
                           "tipped drawer located from above only and neither the wrist views nor the judge said which side is open")
                 try:
@@ -3235,9 +3323,8 @@ class Reset:
                     held = self.pick_table(fp or self.side_biased(c), None)
                     tries += 1
                     if held is None:
-                        if self.pick_refused and not self.dragged_away:
-                            self.dragged_away = True
-                            self.drag_away(fp or c)
+                        if self.pick_refused:
+                            self.free_from_cabinet(fp or c)
                         continue
                     self.place_plain(held, STAGE_XY, f"{it}")
                     self.go_home("home_after_stage")
@@ -3276,10 +3363,10 @@ class Reset:
                 held = None
             tries += 1
             if held is None:
-                if self.pick_refused and not self.dragged_away:
-                    # 02:21 operator: both end walls refused next to the cabinet -> drag it away by its robot-side wall
-                    self.dragged_away = True
-                    self.drag_away(c)
+                if self.pick_refused:
+                    # 02:21 operator: both end walls refused next to the cabinet -> drag it away by its robot-side wall;
+                    # 205: beside the cabinet's +t corner that is refused too -> the (tilted) pinch-and-drag across
+                    self.free_from_cabinet(c)
                 continue
             s.phase(f"place{it}")
             if np.linalg.norm(self.place_bias) > 0.002:

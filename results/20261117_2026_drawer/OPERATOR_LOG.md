@@ -165,3 +165,5 @@ most 8.5 N over 49 `ready` moves.
   keep-out and resuming a guard-paused run is the user's decision. Run stays PAUSED. Proposal files:
   ~/.claude/jobs/42b7911d/tmp/drawer_rl_proposed_0520.yaml and cabinet_guard_proposed_0520.sh.
 - 2026-11-21 12:17: user approved "shift the geometry and resume everything": proposed geometry applied and committed (front +15 mm, slot_t -9 mm, keep-out +(0.0173, -0.0028), guard REF (0.6083, 0.0462)); both agents notified; pipeline and guard relaunched.
+- 2026-11-21 12:40: user asked for a sim in parallel (RL in sim, SGS-RL, sim2real, NVIDIA Newton). Started a background worker building sim/drawer_insert/ (insertion only; Newton first, MuJoCo fallback; PPO with reset-to-states; numpy policy for the robot venv) on the 4090 GPU, niced, CPU-capped, no robot/camera access. RL agent told to prepare a step-policy hook in its insert phase.
+- 2026-11-21 12:50: resets 204-205: drawer upright against the cabinet front, all wall grasps refused by the keep-out; note: fingers-inside-the-open-top drag toward the robot.
