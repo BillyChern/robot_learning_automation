@@ -141,3 +141,9 @@ most 8.5 N over 49 `ready` moves.
   stayed small (10.3, 2.9, 1.5, 1.4 N) and the stop rule (change AND total over 65 N) never fired. Over the user's
   65 N cap. Fix (commit 1c2c064): also stop when the total is over the limit and rising (> start + 5 N); offline test
   added. The executor has logged the total per move since 01:16 (max_abs_force_n), which is how this was seen.
+- 2026-11-21 02:53: reset 183 (tipped-drawer repair): down_to_hook_pre stopped at 68.7 N (the force stop worked); note: wrap new approach moves in low_force(20).
+- 2026-11-21 02:44-03:08: reset 181 tipped the drawer while placing it; it stands on an end wall at the cabinet's corner.
+  Repairs 182-185 (hook, push, drag-across; 20 N approach stops working at 20.3-21.4 N) found no model-feasible move:
+  every option is refused by the cabinet keep-out boxes there. The reset agent gave up at 03:07 ("a person must move
+  the drawer ~10 cm from the cabinet, upright"); the orchestrator restarted a repair cycle. Notified the user at 03:09.
+  Keep-out boxes were not loosened.
