@@ -30,7 +30,27 @@ def cabinet(p):
         g += [box(f"side_{side}", (n_c + 0.5 * r, sg * (s + 0.5 * SIDE), zc), (n_h - 0.5 * r, 0.5 * SIDE, zh)),
               box(f"lip_{side}", (0.5 * r, sg * (s + 0.5 * (SIDE + r)), zc), (0.5 * r, 0.5 * (SIDE - r), zh)),
               f'<geom name="edge_{side}" type="capsule" pos="{r:.5f} {sg * (s + r):.5f} {zc:.5f}" size="{r:.5f} {zh - r:.5f}"/>']
+    if p.get("v2"):                                   # front lip on the bottom rail, rounded rail edges
+        lh, ld, r = p["lip_h"], p["lip_d"], 0.002
+        g += [box("floor_lip", (0.5 * ld, 0, f + 0.5 * lh - 0.5 * r), (0.5 * ld, s, 0.5 * (lh + r))),
+              f'<geom name="floor_lip_edge" type="capsule" pos="{r:.5f} 0 {f + lh - r:.5f}" size="{r} {s:.5f}" euler="1.5708 0 0"/>',
+              f'<geom name="rail_edge" type="capsule" pos="{r:.5f} 0 {top + r:.5f}" size="{r} {s:.5f}" euler="1.5708 0 0"/>']
     return "\n    ".join(x.replace("/>", ' class="cab"/>') for x in g)
+
+
+def quat(yaw, pitch, roll):
+    """Quaternion (w x y z) of Rz(yaw) Ry(pitch) Rx(roll), radians."""
+    def mul(a, b):
+        return np.array([a[0] * b[0] - a[1:] @ b[1:], *(a[0] * b[1:] + b[0] * a[1:] + np.cross(a[1:], b[1:]))])
+    q = lambda ang, ax: np.r_[np.cos(ang / 2), np.sin(ang / 2) * np.eye(3)[ax]]
+    return mul(mul(q(yaw, 2), q(pitch, 1)), q(roll, 0))
+
+
+def rotm(q):
+    w, x, y, z = q
+    return np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+                     [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+                     [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
 
 
 def drawer_geoms(p):
@@ -52,11 +72,15 @@ def drawer_geoms(p):
 def xml(p):
     """Full MJCF string. The hand origin is the tool point: top of the front wall, mid-thickness."""
     L, W, H, m = p["L"], p["W"], p["H"], p["mass"]
-    z_tool = p["floor_h"] + p["lift"] + H
+    v2 = bool(p.get("v2"))
+    z_tool = p["floor_h"] + p["lift"] + H + (p["lip_h"] if v2 else 0.0)
     psi = np.radians(p["hand_yaw"])
     c, s_ = np.cos(psi), np.sin(psi)
     dpos = (-s_ * p["hand_off"], c * p["hand_off"], -H)          # R(psi) @ (0, off, -H)
     dquat = (np.cos(psi / 2), 0, 0, np.sin(psi / 2))
+    if v2:                                                        # yaw, pitch (+ = back down), roll in the hand
+        q = quat(psi, np.radians(p["pitch0"]), np.radians(p["roll0"]))
+        dpos, dquat = rotm(q) @ np.array([0, p["hand_off"], -H]), q
     xc = 0.5 * (L - p["wall"])
     ixx, iyy, izz = m * (W**2 + H**2) / 12, m * (L**2 + H**2) / 12, m * (L**2 + W**2) / 12
     mt = HAND_MASS + m
@@ -65,6 +89,14 @@ def xml(p):
     d_yaw = 2.0 * np.sqrt(p["kp_arm_yaw"] * i_yaw)
     d_slide = np.sqrt(p["k_slide"] * m)
     d_hy = 0.5 * np.sqrt(p["k_yaw"] * m * L**2 / 3)
+    hz = pr = az = ""
+    if v2:
+        hz = f'\n      <joint name="hz" type="slide" axis="0 0 1" damping="{d_lin:.2f}"/>'
+        dp = 0.5 * np.sqrt(p["k_pitch"] * m * L**2 / 3)
+        pr = "".join(f'\n        <joint name="slip_{n}" type="hinge" axis="{a}" stiffness="{p["k_pitch"]:.3f}" '
+                     f'frictionloss="{p["f_pitch"]:.3f}" damping="{dp:.5f}" range="-0.14 0.14" limited="true"/>'
+                     for n, a in (("pitch", "0 1 0"), ("roll", "1 0 0")))
+        az = f'\n    <position name="az" joint="hz" kp="{p["kp_arm"]:.1f}" ctrlrange="-1 1"/>'
     return f"""<mujoco model="drawer_insert">
   <compiler angle="radian"/>
   <option timestep="0.001" integrator="implicitfast" cone="elliptic" gravity="0 0 -9.81"/>
@@ -86,7 +118,7 @@ def xml(p):
     <body name="hand" pos="0 0 {z_tool:.5f}">
       <joint name="hx" type="slide" axis="1 0 0" damping="{d_lin:.2f}"/>
       <joint name="hy" type="slide" axis="0 1 0" damping="{d_lin:.2f}"/>
-      <joint name="hyaw" type="hinge" axis="0 0 1" damping="{d_yaw:.4f}"/>
+      <joint name="hyaw" type="hinge" axis="0 0 1" damping="{d_yaw:.4f}"/>{hz}
       <inertial pos="0 0 0.05" mass="{HAND_MASS}" diaginertia="0.004 0.004 0.002"/>
       <geom class="vis" type="box" pos="-0.011 0 0.01" size="0.004 0.012 0.02"/>
       <geom class="vis" type="box" pos="0.011 0 0.01" size="0.004 0.012 0.02"/>
@@ -95,9 +127,9 @@ def xml(p):
         <joint name="slip_t" type="slide" axis="0 1 0" stiffness="{p['k_slide']:.1f}" frictionloss="{p['f_slide']:.2f}"
                damping="{d_slide:.3f}" range="-0.02 0.02" limited="true"/>
         <joint name="slip_yaw" type="hinge" axis="0 0 1" stiffness="{p['k_yaw']:.3f}" frictionloss="{p['f_yaw']:.3f}"
-               damping="{d_hy:.5f}" range="-0.26 0.26" limited="true"/>
+               damping="{d_hy:.5f}" range="-0.26 0.26" limited="true"/>{pr}
         <inertial pos="0 0 0" mass="0.01" diaginertia="1e-5 1e-5 1e-5"/>
-        <body name="drawer" pos="{dpos[0]:.5f} {dpos[1]:.5f} {dpos[2]:.5f}" quat="{dquat[0]:.6f} 0 0 {dquat[3]:.6f}">
+        <body name="drawer" pos="{dpos[0]:.5f} {dpos[1]:.5f} {dpos[2]:.5f}" quat="{dquat[0]:.6f} {dquat[1]:.6f} {dquat[2]:.6f} {dquat[3]:.6f}">
           <inertial pos="{xc:.5f} 0 {0.35 * H:.5f}" mass="{m:.4f}" diaginertia="{ixx:.6f} {iyy:.6f} {izz:.6f}"/>
           {drawer_geoms(p)}
           <site name="front_l" pos="{-0.5 * p['wall']:.5f} {-0.5 * W:.5f} 0"/>
@@ -110,6 +142,6 @@ def xml(p):
   <actuator>
     <position name="ax" joint="hx" kp="{p['kp_arm']:.1f}" ctrlrange="-1 1"/>
     <position name="ay" joint="hy" kp="{p['kp_arm']:.1f}" ctrlrange="-1 1"/>
-    <position name="ayaw" joint="hyaw" kp="{p['kp_arm_yaw']:.2f}" ctrlrange="-3.2 3.2"/>
+    <position name="ayaw" joint="hyaw" kp="{p['kp_arm_yaw']:.2f}" ctrlrange="-3.2 3.2"/>{az}
   </actuator>
 </mujoco>"""

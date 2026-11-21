@@ -7,10 +7,10 @@ import numpy as np
 
 from . import params as P
 from .baselines import preroll
-from .policy import H_STEPS, STEP_HI, STEP_LO, step_of
+from .policy import H_STEPS, JAM_DN, STEP_HI, STEP_LO, step_of
 from .scene import xml
 
-T_BOUND, YAW_BOUND = 0.03, 12.0    # commanded t (m) and yaw (deg) bounds around the start pose
+T_BOUND, YAW_BOUND, Z_BOUND = 0.03, 12.0, 0.012   # commanded t (m), yaw (deg), z (m, v2) bounds around the start
 N_PAST = 0.02                      # tool may go this far past the believed flush pose (m)
 FLUSH_TOL, F_OK = 0.010, 40.0      # success: front within 1 cm of the front plane, force below 40 N
 F_PEN = 0.05                       # reward per 10 N of a step's peak force above F_OK (run r1: 0.02)
@@ -23,8 +23,9 @@ def rot(a):
 
 
 def action_of(d):
-    """(dn, dt, dyaw) -> policy output in [-1, 1]^3 (inverse of step_of)."""
-    return np.clip(2 * (np.asarray(d, float) - STEP_LO) / (STEP_HI - STEP_LO) - 1, -1, 1)
+    """(dn, dt, dyaw[, dz]) -> policy output in [-1, 1]^k (inverse of step_of)."""
+    d = np.asarray(d, float); k = len(d)
+    return np.clip(2 * (d - STEP_LO[:k]) / (STEP_HI[:k] - STEP_LO[:k]) - 1, -1, 1)
 
 
 class DrawerEnv:
@@ -89,6 +90,8 @@ class DrawerEnv:
         self.d = mujoco.MjData(self.m)
         self.bid = self.m.body("drawer").id
         self.jx, self.jy, self.jyaw = (self.m.joint(n).qposadr[0] for n in ("hx", "hy", "hyaw"))
+        self.v2 = bool(p.get("v2"))
+        self.jz = self.m.joint("hz").qposadr[0] if self.v2 else None
         self.f_bias = self.rng.uniform(*P.RANGES["f_bias"], 3)
         yaw0, t0 = -p["est_yaw"], -p["est_off"]
         x, y, th = self.to_true(0.0, t0, yaw0)
@@ -98,13 +101,14 @@ class DrawerEnv:
         n0 = (-p["back_gap"] - nb_back) / np.cos(d)
         x, y, th = self.to_true(n0, t0, yaw0)
         self.set_hand(x, y, th)
-        self.cmd0 = np.array([n0, t0, yaw0])
+        self.cmd0 = np.array([n0, t0, yaw0] + ([0.0] if self.v2 else []))
         self.cmd = self.cmd0.copy()
         self.n_max = 0.5 * p["wall"] + N_PAST
         self.nsub = int(round(p["dt_dec"] / self.m.opt.timestep))
         for _ in range(30):
             mujoco.mj_step(self.m, self.d)
-        self.k, self.prev, self.f_last, self.f_peak, self.stopped = 0, np.zeros(3), np.zeros(3), 0.0, 0.0
+        self.k, self.prev, self.f_last, self.f_peak, self.stopped = 0, np.zeros(len(self.cmd)), np.zeros(3), 0.0, 0.0
+        self.stops = []
         self.e_t, self.e_yaw = self.drawer_pose()
         self.dep = self.depth()
         self.max_f = 0.0
@@ -112,49 +116,69 @@ class DrawerEnv:
         obs = self.obs()
         if kind is not None:
             for _ in range(k_pre):
-                a = preroll(kind, dict(stopped=[obs["stopped"]], f_peak=[obs["f_peak"]]), self.rng)[0]
+                a = preroll(kind, dict(stopped=[obs["stopped"]], f_peak=[obs["f_peak"]]), self.rng)[0][:len(self.cmd)]
                 obs, _, _, _ = self.step(action_of(a))
-            self.max_f, self.n_stops = 0.0, 0
+            self.max_f, self.n_stops, self.stops = 0.0, 0, []
+            obs = self.obs()
         return obs
 
     def set_hand(self, x, y, th):
         self.d.qpos[[self.jx, self.jy, self.jyaw]] = x, y, th
-        self.d.ctrl[:] = x, y, th
+        self.d.ctrl[:3] = x, y, th
         mujoco.mj_forward(self.m, self.d)
 
+    def ctrl(self, c):
+        """Commanded pose (believed frame, + z offset in v2) -> actuator targets."""
+        self.d.ctrl[:3] = self.to_true(*c[:3])
+        if self.v2:
+            self.d.ctrl[3] = c[3]
+
+    def measured_cmd(self):
+        q = self.d.qpos
+        c = list(self.to_believed(q[self.jx], q[self.jy], q[self.jyaw]))
+        return np.array(c + ([q[self.jz]] if self.v2 else []))
+
     def obs(self):
-        return dict(n=self.cmd[0], t=self.cmd[1], yaw=self.cmd[2], off_est=self.p["est_off"], yaw_est=self.p["est_yaw"],
-                    f=self.f_last.copy(), f_peak=self.f_peak, stopped=self.stopped, prev=self.prev.copy(), k=self.k)
+        o = dict(n=self.cmd[0], t=self.cmd[1], yaw=self.cmd[2], off_est=self.p["est_off"], yaw_est=self.p["est_yaw"],
+                 f=self.f_last.copy(), f_peak=self.f_peak, stopped=self.stopped, prev=self.prev.copy(), k=self.k)
+        if self.v2:
+            o.update(z=self.cmd[3], gap_est=self.p["gap_est"],
+                     jam_rep=float(sum(abs(n - self.cmd[0]) < JAM_DN for n in self.stops)))
+        return o
 
     def step(self, a):
-        """One decision: a in [-1, 1]^3 -> (obs, reward, done, info)."""
+        """One decision: a in [-1, 1]^3 (v2: ^4; a 3-vector means dz = 0) -> (obs, reward, done, info)."""
         step = step_of(a)
+        if len(step) < len(self.cmd):
+            step = np.r_[step, 0.0]
         old = self.cmd.copy()
         new = old + step
         new[0] = np.clip(new[0], self.cmd0[0] - 0.03, self.n_max)
         new[1] = np.clip(new[1], self.cmd0[1] - T_BOUND, self.cmd0[1] + T_BOUND)
         new[2] = np.clip(new[2], self.cmd0[2] - YAW_BOUND, self.cmd0[2] + YAW_BOUND)
+        if self.v2:
+            new[3] = np.clip(new[3], -Z_BOUND, Z_BOUND)
         n_move = max(1, int(0.8 * self.nsub))
         peak, peak_true, stopped, held = 0.0, 0.0, False, None
         f_true = np.zeros(3)
         for i in range(self.nsub):
             if held is None:
-                c = old + (new - old) * min(1.0, (i + 1) / n_move)
-                self.d.ctrl[:] = self.to_true(*c)
+                self.ctrl(old + (new - old) * min(1.0, (i + 1) / n_move))
             mujoco.mj_step(self.m, self.d)
             if (i + 1) % SAMPLE == 0:
                 f_true = self.contact_force()
                 fm = self.measured(f_true)
                 peak, peak_true = max(peak, np.linalg.norm(fm)), max(peak_true, np.linalg.norm(f_true))
                 if held is None and np.linalg.norm(fm) > self.p["f_stop"]:
-                    q = self.d.qpos
-                    held = np.array(self.to_believed(q[self.jx], q[self.jy], q[self.jyaw]))
-                    self.d.ctrl[:] = q[self.jx], q[self.jy], q[self.jyaw]
+                    held = self.measured_cmd()
+                    self.ctrl(held)
                     stopped = True
                 self.f_last = fm
         self.cmd = new if held is None else held
         self.prev, self.f_peak, self.stopped, self.k = step, peak, float(stopped), self.k + 1
         self.n_stops += int(stopped)
+        if stopped:
+            self.stops.append(self.cmd[0])
         self.max_f = max(self.max_f, peak_true)
         err, protr = self.front_err()
         f_end = float(np.linalg.norm(f_true))
@@ -167,5 +191,6 @@ class DrawerEnv:
             r += 1.0 * succ
         info = dict(success=bool(succ), front_err=err, protrusion=protr, f_end=f_end)
         if done:
-            info.update(max_f=self.max_f, n_stops=self.n_stops, e_t=self.e_t, e_yaw=self.e_yaw, depth=dep)
+            info.update(max_f=self.max_f, n_stops=self.n_stops, e_t=self.e_t, e_yaw=self.e_yaw, depth=dep,
+                        h_mode=self.p.get("h_mode", 0.0))
         return self.obs(), r, done, info

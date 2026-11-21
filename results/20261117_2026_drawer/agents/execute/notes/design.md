@@ -216,3 +216,16 @@ action inside the keep-out/kinematic envelope (tools/offline_test.py).
     (RLPJ_EXT_ALL=1 also for carry). obs keys: n, t (slot frame), yaw, force (N,T,z), prev, inhand_t, inhand_yaw, step.
   Offline: both strategies + the scripted external policy complete in the dry flow; the non-dry table_align path
   (look-downs at the slot, three place/re-grasp cycles, insertion, push) passes the model checks.
+- Sim policy integrated (operator: sim/drawer_insert, PPO trained in Newton, 96.6 % carry / 98.4 % aligned in sim):
+  sim_insert() uses sim.drawer_insert.policy.Insertion exactly as its README says: yaw_straight = the square tool
+  yaw (no HAND_YAW), off_est = -(grasp point - footprint centre along the wall) for footprint grasps (0 + yaw_est
+  -HAND_YAW for side-camera grasps), f0 = force at the start; one model-checked slow line per decision at the start
+  height with the force stop lowered to 40 N (README recommendation); f_peak ~ max_force_n + |f_seg_start - f0|; a
+  force stop or a model refusal counts as 'stopped' (measured pose becomes the command); targets clamped to the
+  vertical gripper's keep-out limit INS_NMAX and the insertion ends there ('reached', then release + scripted push),
+  on 'done' (48 decisions) or a tracking abort. Arms (summary insert_arm, strategy): insertion = sim policy on even
+  episodes / own learned steps on odd (RLPJ_INSERT_ARM overrides; test runs use sim); placement = table_align for
+  (ep // 2) even, carry otherwise -> all 4 combinations every 4 episodes. The push now always targets the slot
+  centre line, straight along the normal (the drawer is held by the slot once its back is in). Offline: sim arm x
+  both placements and own arm x carry complete; non-dry table_align + sim passes the model checks.
+- attempt 112 (a6fab25, table_align + sim policy, first real run): table alignment converged (t err 2 mm, yaw 1.8 deg after 2 places), the sim policy inserted to the keep-out limit in 33 decisions (searching up to t +29 mm / yaw +9.8 deg around a jam at ~-0.06), push reached tip -0.005 then stopped on force, the reactive retreat rose 5 cm without dragging (max 15 N), but stopping there (n-OFF -0.011) left no model-checked clear-out -> abort, the session's return path failed (joint jump), arm left at the cabinet. -> the reactive retreat now continues (up while allowed and < 6 cm, else back) until 4 cm in front of the plane, then a model-checked lift; READY/home from there.

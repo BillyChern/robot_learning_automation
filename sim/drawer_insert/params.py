@@ -49,8 +49,39 @@ VARIANTS.update(noisy_force=dict(f_noise=(2.5, 5.0)), high_friction=dict(mu=(0.7
                 low_stop=dict(f_stop=(30.0, 40.0)))
 
 
-def sample(rng, variant="carry"):
-    """One episode's parameters: dict of floats."""
+# v2 (vertical model): measured opening 1.5-9.5 cm above the table (keep-out comment), a front lip on the bottom
+# rail, pitch/roll slip in the grasp and a carry-height error; h_mode shares: good height, too low (back catches the
+# lip), too high (top meets the rail above the slot)
+RANGES_V2 = dict(
+    open_h=(0.076, 0.082),       # slot opening height (m)
+    floor_h=(0.013, 0.017),      # inner slot floor above the table (m)
+    lip_h=(0.0, 0.003),          # front lip above the inner floor (m)
+    lip_d=(0.010, 0.020),        # lip depth along n (m)
+    pitch0=(-1.5, 3.0),          # drawer pitch in the hand at the start (deg, + = back down)
+    roll0=(-1.5, 1.5),           # drawer roll in the hand at the start (deg)
+    k_pitch=(3.0, 15.0),         # in-hand pitch / roll stiffness (N m/rad)
+    f_pitch=(0.15, 0.6),         # in-hand pitch / roll slip torque (N m)
+    gap_sd=(0.001, 0.003),       # sd of the start-gap estimate (m)
+)
+H_MODES = dict(mix=(0.5, 0.25, 0.25), wedge=(0.0, 0.5, 0.5), good=(1.0, 0.0, 0.0))
+
+
+def sample_v2(rng, p, mode="mix"):
+    """Add the v2 vertical parameters to p: geometry, in-hand pitch/roll, carry height (lift = bottom above the lip)."""
+    p.update({k: float(rng.uniform(*v)) for k, v in RANGES_V2.items()})
+    p["v2"] = 1.0
+    p["vgap"] = p["open_h"] - p["H"]
+    room = p["vgap"] - p["lip_h"]                                    # bottom-above-lip range that fits under the rail
+    h = rng.choice(3, p=H_MODES[mode])
+    lo_hi = ((0.002, max(0.003, room - 0.002)), (-0.005, 0.0005), (room - 0.001, room + 0.004))[h]
+    p["lift"] = float(rng.uniform(*lo_hi))
+    p["h_mode"] = float(h)
+    p["gap_est"] = p["lift"] + float(rng.normal(0, p["gap_sd"]))
+    return p
+
+
+def sample(rng, variant="carry", v2=None):
+    """One episode's parameters: dict of floats. v2: None (v1 model) or an H_MODES key."""
     p = {k: float(rng.uniform(*v)) for k, v in RANGES.items()}
     p["stop_extra"] = float(rng.uniform(*STOP_EXTRA[int(rng.random() < P_DEEP_STOP)]))
     for k, v in VARIANTS[variant].items():
@@ -58,7 +89,7 @@ def sample(rng, variant="carry"):
     p["vgap"] = max(p["vgap"], p["lift"] + 0.004)
     p["est_off"] = p["hand_off"] + float(np.clip(rng.normal(0, p["est_sd_off"]), -0.03, 0.03))
     p["est_yaw"] = p["hand_yaw"] + float(np.clip(rng.normal(0, p["est_sd_yaw"]), -10, 10))
-    return p
+    return sample_v2(rng, p, v2) if v2 else p
 
 
 def nominal():

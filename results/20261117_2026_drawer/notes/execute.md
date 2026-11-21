@@ -1,18 +1,15 @@
-Operator note (sim policy ready, please integrate now): /home/r2r/robot_learning_final_pj/sim/drawer_insert/ has a
-trained insertion policy (NVIDIA Newton GPU training, MuJoCo CPU twin for eval). Sim results, 500 randomized episodes
-each (clearance 3-10 mm, in-hand offset +-30 mm / yaw +-10 deg with noisy estimates, slot pose +-10 mm, friction,
-force noise): carry-and-insert like yours: policy 96.6% vs wiggle 64.0% vs straight 36.2%; aligned-on-table start
-(the user's strategy): 98.4%; starting jammed: 96.2%. Read sim/drawer_insert/README.md first (frames, tool point,
-yaw_straight, force sign, how to compute the step peak force).
-API (numpy only, runs in the robot .venv):
-    from sim.drawer_insert.policy import Policy, Insertion
-    pol = Policy(".../sim/drawer_insert/weights/policy.npz")
-    ins = Insertion(pol, normal=N, offset=OFF, t_centre=mean(SLOT_T), yaw_straight=..., off_est=..., yaw_est=...,
-                    tool_xy=T_now[:2, 3], tool_yaw=..., f0=force())
-    loop: xy, yaw = ins.next(force()); run a short model-checked line there (s.executor.force_limit ~40 N, the README
-    recommends 40 N for these steps); peak = result["max_abs_force_n"], stopped = contact stop; done = ins.done(...)
-Known gaps: (1) your gripper cannot reach flush while holding (the keep-out stops a vertical gripper ~3.6 cm in front
-of the face): run the policy until that limit or until the back half is in, then release and use your scripted push;
-(2) it acts in the horizontal plane only (lift over the ~1.5 cm floor lip as you do now); (3) the force estimate has
-pose-dependent bias: use force minus its value at the start of the insertion (f0), as the policy expects.
-Run it as a strategy arm next to your current one (e.g. alternate episodes), log which arm ran, and report results.
+Operator note (sim worker's diagnosis of attempt 112, your first sim-policy run): no sign/frame mismatch: your
+sim_insert matches the sim's conventions (t = (-N1, N0), yaw CCW about +z, force in the base frame, f0 zeroing all OK).
+The drift was the policy's jam-recovery search against a FIXED-DEPTH jam the sim does not contain: steps 0-6 went
+straight in 10 mm/step, the first 40 N stop came at tool n-OFF -48 mm (drawer back ~6-7 cm into the slot), then it
+cycled back/sideways/push and jammed again at -50..-67 mm until it hit its t/yaw bounds. Your episodes have hit this same
+depth since about attempt 44. Most likely cause: a VERTICAL wedge: the tool was 9.4 cm above the table with a
+6.3-6.6 cm drawer and the opening is ~1.5-9.5 cm above the table, so the drawer top was ~1 mm under the rail (and the
+floor lip is ~1.5 cm). Please:
+1. Carry/insert height: drawer top >= 5 mm under the rail, bottom >= 3 mm above the slot floor (check against
+   slot_h and the measured drawer height); log the drawer's top/bottom heights at the insertion.
+2. With the sim arm: right after building Insertion set ins.T_BOUND = 0.008 and ins.YAW_BOUND = 3.0 for the
+   table-aligned start; after two force stops within 5 mm of the same depth, stop calling the policy and hand over;
+   log ins.obs and the step every decision (policy.py now keeps ins.obs; keep all events, not just the last 10).
+3. If the jam stays at the same depth with a good height, look at the wrist/side images at that moment: something at
+   ~6.5 cm depth (the shelf rail, a stop, the floor) may be catching; tell me what you see.

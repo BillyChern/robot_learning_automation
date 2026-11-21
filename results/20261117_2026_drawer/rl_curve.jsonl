@@ -28,3 +28,4 @@
 {"t": "2026-11-20T23:23:46", "kind": "train", "episode": 31, "n": 28, "final": "fail", "reason": "no independent check says success (claim=none, perception=False, vlm=False)", "duration": 116.2, "reward": 1.23, "transitions": 13}
 {"t": "2026-11-21T00:19:21", "kind": "train", "episode": 32, "n": 29, "final": "fail", "reason": "no independent check says success (claim=none, perception=False, vlm=False)", "duration": 179.2, "reward": 0.174, "transitions": 23}
 {"t": "2026-11-21T00:44:25", "kind": "train", "episode": 33, "n": 30, "final": "fail", "reason": "no independent check says success (claim=none, perception=False, vlm=False)", "duration": 92.2, "reward": 0.0, "transitions": 0}
+{"t": "2026-11-21T14:24:36", "kind": "eval", "after": 30, "success": 0, "n": 5, "rate": 0.0}

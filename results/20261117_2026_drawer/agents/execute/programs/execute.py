@@ -472,20 +472,22 @@ class Episode:
             except Abort as e:
                 self.log(f"unload {i}: {str(e)[:100]}")
 
-    def reactive_retreat(self, n, t, h, step=0.003, max_steps=40):
+    def reactive_retreat(self, n, t, h, step=0.003, max_steps=50):
         """Leave the drawer front in small steps without dragging it: per step try up, back (-u), down-back; undo a
         step whose peak force change exceeds RETREAT_F. Done when 4 cm in front of the plane or 5 cm higher."""
         s = self.s
         u = push_dirs()[0]
         h0 = h
         for i in range(max_steps):
-            if n <= OFF - 0.04 or h >= h0 + 0.05:
+            # attempt 112: stopping once 5 cm up left the tool at n-OFF -0.011, where no clear-out chain passed the
+            # model: keep stepping (up while allowed and < 6 cm, else back) until 4 cm in front of the plane
+            if n <= OFF - 0.04:
                 s.summary(retreat=dict(steps=i, n=round(n - OFF, 4), h=round(h, 4)))
                 self._ret = (n, h)
                 return True
             moved = False
             for dn, dh in ((0.0, step), (-step, 0.0), (-step, -0.002)):
-                if h + dh < 0.035:
+                if h + dh < 0.035 or h + dh > h0 + 0.06:
                     continue
                 T = push_T(n + dn, t, h + dh, self.tz)
                 with self.low_force(20):
@@ -501,7 +503,8 @@ class Episode:
             if not moved:
                 break
         s.summary(retreat=dict(steps=i, n=round(n - OFF, 4), h=round(h, 4), stuck=True))
-        return n <= OFF - 0.04 or h >= h0 + 0.05
+        self._ret = (n, h)
+        return n <= OFF - 0.04
 
     def push_retreat(self, n, t, h):
         """Leave the drawer front: back off horizontally to OFF-0.04 (if deeper), then up, then READY; the first
@@ -522,12 +525,11 @@ class Episode:
         # fingers hook the pull tab / label plate. Reactive retreat: 3 mm steps, up first, then back, then down-back;
         # a step that rises above RETREAT_F N is undone and the next direction tried, until clear.
         if not s.dry and self.reactive_retreat(n, t, h):
-            n, h = self._ret                            # clear of the drawer: back to OFF-0.04 and up, model-checked
-            Tc1 = push_T(min(n, OFF - 0.04), t, h, self.tz); Tc2 = Tc1.copy(); Tc2[2, 3] += 0.05
-            if self.chain_ok([Tc1, Tc2]):
-                self.line("retreat_clear_back", Tc1, "slow", tip_margin=TIP_MARGIN_PUSH)
+            n, h = self._ret                            # 4 cm in front of the plane: up, model-checked
+            Tc2 = push_T(n, t, h, self.tz); Tc2[2, 3] += 0.05
+            if self.chain_ok([Tc2]):
                 self.line("retreat_clear_up", Tc2, "normal", tip_margin=TIP_MARGIN_PUSH)
-                return
+            return                                      # clear of the drawer: READY/home plan from here
         # operator 22:35: straight up before any move along -N where the model allows it (no drag on the knob)
         Th = push_T(n, t, h, self.tz); Th[2, 3] += 0.05
         Thb = Th.copy(); Thb[:2, 3] -= max(0.0, n - (OFF - 0.04)) * push_dirs()[0]
@@ -796,6 +798,50 @@ class Episode:
         s.summary(insert=dict(end=end, steps=len(ev), n_minus_off=round(n - OFF, 4), policy="ext"), ext_events=ev[-8:])
         self.snap("insert_end")
         return dict(end=end, n=n, t=t, z=z, yaw=yaw2 + dyaw)
+
+    def sim_insert(self, n0, z0, yaw_sq, off_est, yaw_est):
+        """Insertion by the sim-trained PPO policy (sim/drawer_insert, README 'Calling the policy on the robot'):
+        Insertion bookkeeping in the base frame, one short model-checked slow line per decision at the start height,
+        force stop lowered to 40 N for these steps, f_peak ~ max_force_n + |f_seg_start - f0|; stops when the policy
+        has the tool at the vertical gripper's keep-out limit (INS_NMAX; release + scripted push follow), on 'done'
+        (48 decisions) or on a tracking abort."""
+        s = self.s
+        s.phase("insert_sim")
+        sys.path.insert(0, str(config.ROOT))
+        from sim.drawer_insert.policy import Policy, Insertion
+        pol = Policy(str(config.ROOT / "sim" / "drawer_insert" / "weights" / "policy.npz"))
+        Tn = self.T_now() if not s.dry else tool_down_T(np.r_[xy_of(n0, self.t_line), z0], yaw_sq - yaw_est)
+        f0 = self.force()
+        ins = Insertion(pol, normal=N, offset=OFF, t_centre=0.5 * (SLOT_T[0] + SLOT_T[1]), yaw_straight=yaw_sq,
+                        off_est=off_est, yaw_est=yaw_est, tool_xy=Tn[:2, 3], tool_yaw=ang(Tn[:2, 0]), f0=f0)
+        end, ev, n_lim = "steps", [], INS_NMAX - OFF
+        Tm = Tn
+        for k in range(48):
+            xy, yaw = ins.next(self.force())
+            q = nt(np.asarray(xy, float))
+            if q[0] > INS_NMAX:                           # keep-out limit of the vertical gripper
+                xy = xy_of(INS_NMAX, q[1])
+            f_start = self.force()
+            with self.low_force(40):
+                st, res = self.try_step(f"sim{k:02d}", tool_down_T(np.r_[xy, z0], yaw), 0.008)
+            if st == "abort":
+                end = "abort"; ev.append([k, st]); break
+            stopped = st in ("force", "refused")
+            peak = (float(res.get("max_force_n", 40.0 if st == "force" else 0.0)) + float(np.linalg.norm(f_start - f0)))
+            Tm = self.T_now() if not s.dry else tool_down_T(np.r_[xy, z0], yaw)
+            done = ins.done(peak, stopped, Tm[:2, 3], ang(Tm[:2, 0]))
+            n_now = float(nt(Tm[:2, 3])[0])
+            ev.append([k, st, round(n_now - OFF, 4), round(float(ins.cmd[1]), 4), round(float(ins.cmd[2]), 1), round(peak, 1)])
+            if n_now >= INS_NMAX - 0.003 and peak < 40.0:
+                end = "reached"; break
+            if done:
+                break
+        Tm = self.T_now() if not s.dry else (Tm if ev else Tn)
+        qn = nt(Tm[:2, 3])
+        s.summary(insert=dict(end=end, steps=len(ev), n_minus_off=round(float(qn[0]) - OFF, 4), policy="sim_ppo"),
+                  sim_events=ev[-10:])
+        self.snap("insert_end")
+        return dict(end=end, n=float(qn[0]), t=float(qn[1]), z=z0, yaw=float(ang(Tm[:2, 0])))
 
     def low_force(self, f):
         """Context: lower the session's force stop to f N for the moves inside (operator 00:50: final approaches toward
@@ -1162,7 +1208,12 @@ class Episode:
             s.require(d is not None, "drawer not seen after a missed grasp")
             held = self.grasp(d, refine=False)           # after a refined miss: the unrefined perception point
         s.require(held is not None, "front wall not grasped after two tries")
-        strategy = os.environ.get("RLPJ_STRATEGY") or ("table_align" if (self.ep >= 0 and self.ep % 2 == 0) else "carry")
+        strategy = os.environ.get("RLPJ_STRATEGY") or ("table_align" if (self.ep >= 0 and (self.ep // 2) % 2 == 0) else "carry")
+        ins_arm = os.environ.get("RLPJ_INSERT_ARM") or ("sim" if (self.ep < 0 or self.ep % 2 == 0) else "own")
+        if not (config.ROOT / "sim" / "drawer_insert" / "weights" / "policy.npz").exists():
+            ins_arm = "own"
+        self.ins_arm = ins_arm
+        s.summary(insert_arm=ins_arm)
         if strategy == "table_align" and not held.get("wrist_fp") and not s.dry:
             strategy = "carry"                          # the table alignment needs the wrist footprint
         s.summary(strategy=strategy)
@@ -1171,7 +1222,12 @@ class Episode:
             meas = dict(ok=False, n=0, t_err=0.0, yaw_err=0.0)
             s.summary(held=dict(n0_minus_off=round(n0 - OFF, 4), z0_above_table=round(z0 - self.tz, 4), yaw2=round(yaw2, 1), t_line=round(self.t_line, 4)))
             ext = self.ext_policy()
-            ins = self.ext_insert(n0, z0, yaw2, ext) if ext is not None else self.stage_insert(n0, z0, yaw2, meas)
+            if self.ins_arm == "sim":
+                ins = self.sim_insert(n0, z0, yaw2, -float(held.get("fp_off") or 0.0), 0.0)
+            elif ext is not None:
+                ins = self.ext_insert(n0, z0, yaw2, ext)
+            else:
+                ins = self.stage_insert(n0, z0, yaw2, meas)
             self.after_insert(ins, yaw2, before)
             return
         s.phase("carry")
@@ -1224,7 +1280,15 @@ class Episode:
         s.summary(held=dict(n0_minus_off=round(n0 - OFF, 4), z0_above_table=round(z0 - self.tz, 4), yaw2=round(yaw2, 1), meas=meas, t_line=round(self.t_line, 4)))
         s.decide(f"held drawer: t err {meas['t_err']:+.3f} yaw err {meas['yaw_err']:+.1f} ({meas['n']} pts); insertion from n-OFF {n0 - OFF:+.3f}")
         ext = self.ext_policy() if os.environ.get("RLPJ_EXT_ALL") else None
-        ins = self.ext_insert(n0, z0, yaw2, ext) if ext is not None else self.stage_insert(n0, z0, yaw2, meas)
+        if self.ins_arm == "sim":
+            yaw_sq = wrapd(held["yaw"] + wrapd(ang(N) - ang(held["d0"])))
+            off_est = -float(held.get("fp_off") or 0.0) if held.get("wrist_fp") else 0.0
+            yaw_est = 0.0 if held.get("wrist_fp") else -HAND_YAW
+            ins = self.sim_insert(n0, z0, yaw_sq, off_est, yaw_est)
+        elif ext is not None:
+            ins = self.ext_insert(n0, z0, yaw2, ext)
+        else:
+            ins = self.stage_insert(n0, z0, yaw2, meas)
         self.after_insert(ins, yaw2, before)
 
     def ext_policy(self):
@@ -1279,8 +1343,11 @@ class Episode:
         # turned +5.6..+10 deg; pushes straight along the yaml normal then jammed after 1-2 cm, 4/4)
         # the drawer centre is no longer under the tool once the insertion line was shifted sideways: it sits where the
         # alignment put it (T_C + EDGE_TARGET) plus the learned dt (attempt 72: pushing 2.4 cm off-centre jammed after 1.5 cm)
-        c_t = T_C + EDGE_TARGET + (ins["t"] - self.t_line) if self.t_line != T_C else float(ins["t"])
-        PUSH_FRAME.update(yaw=float(np.clip(ins["yaw"] - yaw2, -10, 10)), n0=face_n, t0=float(c_t))
+        # once the drawer's back is in the slot, the slot holds it: push on the slot centre line, straight along the
+        # normal (the sim arm moves the tool sideways/turns it while searching; following the tool pushed the fingers
+        # into the slot-side keep-out offline)
+        c_t = T_C + EDGE_TARGET
+        PUSH_FRAME.update(yaw=0.0, n0=face_n, t0=float(c_t))
         s.summary(push_frame=dict(PUSH_FRAME, drawer_t=round(c_t, 4)))
         self.stage_push(face_n, min(c_t + PUSH_DT, PUSH_TMAX), ins["end"] == "reached")
         self.finish(before)

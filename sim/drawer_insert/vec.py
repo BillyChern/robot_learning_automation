@@ -4,7 +4,7 @@ import os
 
 import numpy as np
 
-from .policy import OBS_DIM, obs_vector
+from .policy import obs_vector
 
 INFO_KEYS = ("success", "front_err", "f_end", "max_f", "n_stops", "e_t", "e_yaw", "depth")
 
@@ -20,10 +20,11 @@ def worker(conn, seed, m, f_pen):
         cmd, arg = conn.recv()
         if cmd == "reset":
             obs = np.stack([obs_vector(e.reset(s["p"], s.get("kind"), s.get("k_pre", 0))) for e, s in zip(envs, arg)])
+            dim = obs.shape[1]
             done[:] = False
             conn.send(obs)
         elif cmd == "step":
-            obs, rew = np.zeros((m, OBS_DIM), np.float32), np.zeros(m)
+            obs, rew = np.zeros((m, dim), np.float32), np.zeros(m)
             info = {k: np.zeros(m) for k in INFO_KEYS}
             for i, e in enumerate(envs):
                 if done[i]:

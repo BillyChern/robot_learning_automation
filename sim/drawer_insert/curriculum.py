@@ -8,8 +8,8 @@ from .policy import H_STEPS
 
 
 class Curriculum:
-    def __init__(self, size=4096, fresh=0.4, kappa=4.0, eps=0.05, seed=0, variants=None):
-        self.rng = np.random.default_rng(seed)
+    def __init__(self, size=4096, fresh=0.4, kappa=4.0, eps=0.05, seed=0, variants=None, v2=None):
+        self.rng, self.v2 = np.random.default_rng(seed), v2
         self.variants = variants or dict(carry=0.8, aligned=0.2)   # start variants (params.VARIANTS) and shares
         self.size, self.fresh, self.kappa, self.eps = size, fresh, kappa, eps
         self.next_seed = 10**6 * (seed + 1)
@@ -41,7 +41,7 @@ class Curriculum:
         out = []
         for i in idx:
             c = dict(seed=int(self.rng.integers(2**31)), variant=self.variant(), kind=None, k_pre=0) if i < 0 else self.cfg[i]
-            p = P.sample(np.random.default_rng(c["seed"]), c["variant"])
+            p = P.sample(np.random.default_rng(c["seed"]), c["variant"], self.v2)
             out.append(dict(p=p, kind=c["kind"], k_pre=c["k_pre"], idx=int(i)))
         return out
 

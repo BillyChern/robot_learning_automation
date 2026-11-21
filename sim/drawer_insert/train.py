@@ -12,7 +12,7 @@ import torch.nn as nn
 
 from . import params as P
 from .curriculum import Curriculum
-from .policy import OBS_DIM, H_STEPS
+from .policy import OBS_DIM, OBS_DIM2, H_STEPS
 
 RUNS = Path(__file__).resolve().parent / "runs"
 
@@ -22,12 +22,23 @@ def mlp(n_in, n_out, hidden=256):
 
 
 class Agent(nn.Module):
-    def __init__(self):
+    def __init__(self, v2=False):
         super().__init__()
-        self.pi, self.v = mlp(OBS_DIM, 3), mlp(OBS_DIM, 1)
-        self.log_std = nn.Parameter(torch.full((3,), np.log(0.5)))
+        n_in, n_act = (OBS_DIM2, 4) if v2 else (OBS_DIM, 3)
+        self.pi, self.v = mlp(n_in, n_act), mlp(n_in, 1)
+        self.log_std = nn.Parameter(torch.full((n_act,), np.log(0.5)))
         with torch.no_grad():                      # prior: push about 5.5 mm per step, no correction
-            self.pi[-1].weight.mul_(0.1); self.pi[-1].bias.copy_(torch.tensor([np.arctanh(0.4), 0.0, 0.0]))
+            self.pi[-1].weight.mul_(0.1); self.pi[-1].bias.copy_(torch.tensor([np.arctanh(0.4)] + [0.0] * (n_act - 1)))
+
+    def load_padded(self, sd):
+        """Load a state dict, zero-padding v1 (14 inputs, 3 actions) weights to the v2 sizes (new dz starts at 0)."""
+        own = self.state_dict()
+        for k, v in sd.items():
+            if v.shape != own[k].shape:
+                w = torch.zeros_like(own[k]) if k != "log_std" else torch.full_like(own[k], np.log(0.3))
+                w[tuple(slice(0, n) for n in v.shape)] = v
+                sd[k] = w
+        self.load_state_dict(sd)
 
     def dist(self, x):
         return torch.distributions.Normal(torch.tanh(self.pi(x)), self.log_std.exp())
@@ -92,7 +103,7 @@ def gae(b, gamma=0.99, lam=0.95):
 
 def update(agent, opt, b, adv, ret, epochs=4, mb=4096, clip=0.2):
     m = b["mask"].reshape(-1)
-    x, a, lp0 = b["obs"].reshape(-1, OBS_DIM)[m], b["act"].reshape(-1, 3)[m], b["logp"].reshape(-1)[m]
+    x, a, lp0 = b["obs"].flatten(0, 1)[m], b["act"].flatten(0, 1)[m], b["logp"].reshape(-1)[m]
     adv, ret = adv.reshape(-1)[m], ret.reshape(-1)[m]
     adv = (adv - adv.mean()) / (adv.std() + 1e-8)
     out = []
@@ -122,6 +133,7 @@ def main():
     ap.add_argument("--eval_every", type=int, default=10)
     ap.add_argument("--init", default="")
     ap.add_argument("--f_pen", type=float, default=0.05, help="reward per 10 N of peak force above 40 N")
+    ap.add_argument("--v2", default="", help="vertical model + dz action: carry-height mode (params.H_MODES), e.g. mix")
     ap.add_argument("--variants", default="carry:0.8,aligned:0.2", help="start variant shares (params.VARIANTS)")
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
@@ -131,14 +143,15 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     env = make_env(a.engine, a.envs, a.seed, a.f_pen)
-    agent = Agent().to(dev)
+    agent = Agent(a.v2).to(dev)
     if a.init:
-        agent.load_state_dict(torch.load(a.init, map_location=dev))
+        agent.load_padded(torch.load(a.init, map_location=dev))
     opt = torch.optim.Adam(agent.parameters(), lr=a.lr)
     variants = {k: float(v) for k, v in (x.split(":") for x in a.variants.split(","))}
-    cur = Curriculum(size=max(4096, 4 * a.envs), fresh=a.fresh, seed=a.seed, variants=variants)
+    cur = Curriculum(size=max(4096, 4 * a.envs), fresh=a.fresh, seed=a.seed, variants=variants, v2=a.v2 or None)
     rng = np.random.default_rng(12345)
-    eval_starts = [dict(p=P.sample(np.random.default_rng(200000 + i)), kind=None, k_pre=0) for i in range(a.envs)]
+    eval_starts = [dict(p=P.sample(np.random.default_rng(200000 + i), "carry", a.v2 or None), kind=None, k_pre=0)
+                   for i in range(a.envs)]
     log = csv.writer(open(out / "log.csv", "a", newline="", buffering=1))
     log.writerow(["iter", "samples", "fresh_success", "bank_success", "bank_p", "ret", "max_f_med", "std", "pl", "vl",
                   "eval_success", "eval_max_f_med", "sec"])
