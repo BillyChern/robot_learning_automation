@@ -266,6 +266,7 @@ class RobotSession:
         self.planner = Planner(self.kin, oracle=self.robot.fk_oracle, log=self.log)
         self.executor = Executor(self.robot, self.kin, stop_flag=self.stop_flag, on_tick=self._on_tick, heartbeat=self.hb, log=self.log)
         self.executor.force_limit = (self._task_key("rl") or {}).get("force_limit_n")   # contact-force stop (RL tasks)
+        self.executor.force_cap = self.executor.force_limit                                # programs may only lower it
         self.log(f"session {self.program}: attempt {self.A} dry={self.dry} record={self.record_dir}")
 
         # ---- start state

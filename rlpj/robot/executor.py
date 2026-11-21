@@ -18,6 +18,12 @@ class Executor:
         self.last = {}
         self.running = False   # True while run() tracks a segment (the recorder reads last["q_ref"] then)
         self.force_limit = None  # N: stop when the estimated tool force changes by more than this within a segment
+        self.force_cap = None    # N: the task's limit; a program may lower force_limit per move, never raise or clear it
+
+    def limit(self):
+        """Effective force limit: the program's force_limit, capped by the task's force_cap."""
+        lims = [v for v in (self.force_limit, self.force_cap) if v]
+        return min(lims) if lims else None
 
     def halt(self):
         for _ in range(2):
@@ -67,8 +73,9 @@ class Executor:
                         r["max_force_n"] = round(max(r.get("max_force_n", 0.0), df), 1)
                         # change from the segment start AND total size: releasing a preload (retreat after a push)
                         # changes the estimate by the preload but ends near zero, so it does not stop the retreat
-                        if self.force_limit and df > self.force_limit and float(np.linalg.norm(f)) > self.force_limit:
-                            r["reason"] = f"contact force {df:.1f} N > {self.force_limit:.0f} N at t={t:.2f}s"; break
+                        lim = self.limit()
+                        if lim and df > lim and float(np.linalg.norm(f)) > lim:
+                            r["reason"] = f"contact force {df:.1f} N > {lim:.0f} N at t={t:.2f}s"; break
                 if dev > DEV_DEG or dmm > DEV_MM:
                     over += 1
                     if over >= 2:

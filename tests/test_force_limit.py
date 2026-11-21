@@ -63,3 +63,17 @@ def test_release_does_not_stop():
     ex.force_limit = 25
     r = ex.run(Seg())
     assert "contact force" not in r["reason"], r
+
+
+def test_force_cap():
+    """A program may lower the limit per move but never raise or clear the task's cap."""
+    ex = Executor(Robot(force_at=0.5), Kin(), log=lambda *a: None)
+    ex.force_cap = 25
+    for lim in (None, 100, 25):
+        ex.force_limit = lim
+        assert ex.limit() == 25
+    ex.force_limit = 10
+    assert ex.limit() == 10
+    ex.force_limit = 100
+    r = ex.run(Seg())
+    assert "contact force" in r["reason"]
