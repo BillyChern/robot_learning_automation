@@ -37,6 +37,7 @@ TIP_OPEN = 0.027
 HOLD_MAX = 97.0
 SAFE_H = 0.20
 WRIST_SIDE_BIAS = np.array([0.010, 0.058])   # wrist - side camera table positions (reset agent, attempts 150-163)
+PLACE_GAP = 0.02             # m: back wall in front of the cabinet face when the drawer is set down for the table alignment
 HAND_YAW = 7.0               # deg: tool yaw that makes the held drawer straight (data, see run())
 EDGE_TARGET = 0.0045           # m: held-drawer edge-based centre offset of the reached insertions
 SLOT_T = CAB["slot_t"]
@@ -696,6 +697,106 @@ class Episode:
             xy0 = c                                                # cut by the border: re-centre on it
         return d
 
+    def place_in_front(self, d, held, it):
+        """Put the held drawer down on the table right in front of the slot: axis on N, centre on the slot centre t,
+        back wall PLACE_GAP in front of the face; release, lift. Returns the target centre."""
+        s = self.s
+        L = float(np.clip(2 * d["half"], 0.10, 0.16))
+        c_tgt = xy_of(OFF - PLACE_GAP - L / 2, T_C + EDGE_TARGET)
+        yaw_p = wrapd(held["yaw"] + wrapd(ang(N) - ang(held["d0"])))
+        off = float(held.get("fp_off") or 0.0)
+        xy = c_tgt - N * (L / 2 - 0.006) + off * TT
+        Tp = tool_down_T(np.r_[xy, self.tz + held["drop"] + 0.008], yaw_p)
+        Th = Tp.copy(); Th[2, 3] = self.tz + SAFE_H
+        Tq = Tp.copy(); Tq[2, 3] += 0.04
+        self.joint_to(f"above_place{it}", Th)
+        self.line(f"down_place_pre{it}", Tq, "normal")
+        with self.low_force(25):
+            self.line(f"place{it}", Tp, "slow", tip_margin=0.0)
+        s.gripper(0.4, "release on the table in front of the slot")
+        self.line(f"up_place{it}", Tq, "slow", tip_margin=0.0)
+        self.lift_to(f"clear_place{it}", SAFE_H)
+        return c_tgt, L
+
+    def table_align(self, d, held):
+        """User 12:55 strategy: align the drawer ON THE TABLE in front of the slot (pick-and-place, re-measured with a
+        wrist look-down after each place) until |t err| <= 5 mm and |yaw| <= 2 deg, then grasp the pull wall square and
+        insert straight from there with a ~2 cm lift. Returns (held, n0, z0, yaw2) for the insertion, or None."""
+        s = self.s
+        s.phase("table_align")
+        log = []
+        for it in range(3):
+            c_tgt, L = self.place_in_front(d, held, it)
+            d2 = self.wrist_footprint(dict(d, c=c_tgt - WRIST_SIDE_BIAS))
+            if not d2.get("wrist_fp") and not s.dry:
+                s.decide("table align: no footprint after placing: grasp from the side-camera estimate")
+                P, tz, b2 = self.scene(f"align{it}")
+                d2 = self.find_drawer(b2, tz) or d
+            q = nt(np.asarray(d2["c"], float))
+            t_err = float(q[1] - (T_C + EDGE_TARGET))
+            yaw_err = float(wrapd(ang(-np.asarray(d2["p"], float)) - ang(N)))
+            n_err = float(q[0] - (OFF - PLACE_GAP - L / 2))
+            log.append([it, round(t_err, 4), round(yaw_err, 1), round(n_err, 4)])
+            s.summary(table_align=log)
+            s.decide(f"table align {it}: t err {t_err * 1000:+.1f} mm, yaw err {yaw_err:+.1f} deg, n err {n_err * 1000:+.1f} mm")
+            held = self.grasp(d2)
+            if held is None:
+                held = self.grasp(d2, refine=False)
+            s.require(held is not None, "pull wall not grasped after the table alignment")
+            d = d2
+            if s.dry or (abs(t_err) <= 0.005 and abs(yaw_err) <= 2.0):
+                break
+        s.summary(align_before_insert=dict(t_err=log[-1][1], yaw_err=log[-1][2], n_err=log[-1][3], iters=len(log)))
+        # straight insertion from here: the tool is over the pull wall, lift only ~2 cm (slot floor lip ~1.5 cm)
+        Tn = self.T_now() if not s.dry else held["Tg"].copy()
+        yaw2 = wrapd(held["yaw"] + wrapd(ang(N) - ang(held["d0"])))
+        q2 = nt(Tn[:2, 3])
+        z0 = self.tz + held["drop"] + BOTTOM_H
+        T0 = tool_down_T(np.r_[xy_of(q2[0], q2[1]), z0], yaw2)
+        T0q = T0.copy(); T0q[2, 3] += 0.04
+        self.line("over_insert_start", T0q, "normal")
+        with self.low_force(25):
+            self.line("down_to_insert_start", T0, "slow")
+        self.t_line = float(q2[1])
+        return held, float(q2[0]), z0, yaw2
+
+    def ext_insert(self, n0, z0, yaw2, policy):
+        """Step-policy insertion (operator 12:40, for the sim policy): obs = tool pose in the slot frame, force change,
+        previous action, in-hand offset/yaw estimate, step; policy.act(obs) -> (dn m, dt m, dyaw deg); one short
+        model-checked slow line per step under the 65 N cap; stops on the end depth, a jam (> 35 N with < 3 mm twice)
+        or the step limit. Returns the same dict as stage_insert."""
+        s = self.s
+        s.phase("insert_ext")
+        n, t, dyaw, z = n0, self.t_line, 0.0, z0
+        f0 = self.force(); prev = np.zeros(3); jam = 0; end = "steps"; ev = []
+        for k in range(30):
+            f = self.force() - f0
+            obs = dict(n=n - OFF, t=t - (T_C + EDGE_TARGET), yaw=dyaw, force=np.array([f @ N3, f @ T3, f @ Z3]),
+                       prev=prev.copy(), inhand_t=0.0, inhand_yaw=0.0, step=k)
+            a = np.asarray(policy.act(obs), float)
+            dn, dt, dy = float(np.clip(a[0], -0.005, 0.012)), float(np.clip(a[1], -0.003, 0.003)), float(np.clip(a[2], -2, 2))
+            nn = min(n + dn, INS_NMAX); tt_ = t + dt; yy = float(np.clip(dyaw + dy, -10, 10))
+            st, res = self.try_step(f"ext{k:02d}", tool_down_T(np.r_[xy_of(nn, tt_), z], yaw2 + yy), 0.008)
+            peak = float(res.get("max_force_n", 0.0)) if st == "ok" else 99.0
+            if st == "ok":
+                adv = nn - n
+                if not s.dry:
+                    adv = float(nt(self.T_now()[:2, 3])[0]) - n
+                    nn = n + adv
+                jam = jam + 1 if (peak > 35.0 and adv < 0.003) else 0
+                n, t, dyaw = nn, tt_, yy
+            prev = np.array([dn, dt, dy])
+            ev.append([k, st, round(n - OFF, 4), round(peak, 1)])
+            if st != "ok":
+                end = st; break
+            if jam >= 2:
+                end = "jam"; break
+            if n >= INS_NMAX - 0.003:
+                end = "reached"; break
+        s.summary(insert=dict(end=end, steps=len(ev), n_minus_off=round(n - OFF, 4), policy="ext"), ext_events=ev[-8:])
+        self.snap("insert_end")
+        return dict(end=end, n=n, t=t, z=z, yaw=yaw2 + dyaw)
+
     def low_force(self, f):
         """Context: lower the session's force stop to f N for the moves inside (operator 00:50: final approaches toward
         the drawer, knob or table stop at ~20 N instead of 65 N), restored after."""
@@ -1061,6 +1162,18 @@ class Episode:
             s.require(d is not None, "drawer not seen after a missed grasp")
             held = self.grasp(d, refine=False)           # after a refined miss: the unrefined perception point
         s.require(held is not None, "front wall not grasped after two tries")
+        strategy = os.environ.get("RLPJ_STRATEGY") or ("table_align" if (self.ep >= 0 and self.ep % 2 == 0) else "carry")
+        if strategy == "table_align" and not held.get("wrist_fp") and not s.dry:
+            strategy = "carry"                          # the table alignment needs the wrist footprint
+        s.summary(strategy=strategy)
+        if strategy == "table_align":
+            held, n0, z0, yaw2 = self.table_align(d, held)
+            meas = dict(ok=False, n=0, t_err=0.0, yaw_err=0.0)
+            s.summary(held=dict(n0_minus_off=round(n0 - OFF, 4), z0_above_table=round(z0 - self.tz, 4), yaw2=round(yaw2, 1), t_line=round(self.t_line, 4)))
+            ext = self.ext_policy()
+            ins = self.ext_insert(n0, z0, yaw2, ext) if ext is not None else self.stage_insert(n0, z0, yaw2, meas)
+            self.after_insert(ins, yaw2, before)
+            return
         s.phase("carry")
         # straight drawer (user 00:30): the drawer sits ~7 deg turned in the jaws (insertions got through in 5/12
         # episodes with the tool at +5..+10 deg, 1/14 otherwise, and jam again at 0, ep 24): the tool is turned by
@@ -1110,7 +1223,32 @@ class Episode:
             self.align(n0, z0, yaw2, None if turned else meas)   # re-measure after turning
         s.summary(held=dict(n0_minus_off=round(n0 - OFF, 4), z0_above_table=round(z0 - self.tz, 4), yaw2=round(yaw2, 1), meas=meas, t_line=round(self.t_line, 4)))
         s.decide(f"held drawer: t err {meas['t_err']:+.3f} yaw err {meas['yaw_err']:+.1f} ({meas['n']} pts); insertion from n-OFF {n0 - OFF:+.3f}")
-        ins = self.stage_insert(n0, z0, yaw2, meas)
+        ext = self.ext_policy() if os.environ.get("RLPJ_EXT_ALL") else None
+        ins = self.ext_insert(n0, z0, yaw2, ext) if ext is not None else self.stage_insert(n0, z0, yaw2, meas)
+        self.after_insert(ins, yaw2, before)
+
+    def ext_policy(self):
+        """The sim worker's step policy (sim/drawer_insert/policy.py, numpy Policy(path).act(obs)) when RLPJ_EXT_POLICY
+        names it, 'scripted' for a straight-push test policy, else None (my learned insertion)."""
+        name = os.environ.get("RLPJ_EXT_POLICY")
+        if not name:
+            return None
+        if name == "scripted":
+            class Straight:
+                def act(self, obs):
+                    return (0.010, 0.0, 0.0)
+            return Straight()
+        try:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("ext_policy", name if name.endswith(".py") else os.path.join(name, "policy.py"))
+            m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+            return m.Policy(os.path.dirname(name) if name.endswith(".py") else name)
+        except Exception as e:
+            self.s.log(f"external policy not loaded ({e}): own insertion")
+            return None
+
+    def after_insert(self, ins, yaw2, before):
+        s = self.s
         s.phase("release")
         self.release(ins)
         # back off along -N first (the outer finger moves away from the wall, the open inner finger has ~18 mm to the

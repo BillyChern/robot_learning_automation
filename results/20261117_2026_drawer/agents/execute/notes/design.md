@@ -201,3 +201,18 @@ action inside the keep-out/kinematic envelope (tools/offline_test.py).
 - operator 00:50: low force stop for approaches (Episode.low_force context: force_limit lowered, restored after): grasp final approach 20 N (a stop = a miss: back up, next candidate), descent to the insertion start 25 N, push pre-pose approach 20 N, retreat steps 20 N; the insertion and push steps keep the 65 N cap. 01:08: cart_line rotation sampling fixed in the library; the yaw cancel stays (with its fallbacks).
 - operator 01:50/01:55 (eps 35, 36): (1) wrist look-down before the grasp (wrist_footprint, after the reset agent's code): tool down 0.45 m over the side estimate + (0.010, 0.058), wood pixels projected onto the rim plane, the drawer blob's OBB (re-centred while it touches the image border, up to 3 looks) replaces the side-camera outline; the front wall and the grasp point along it come from it, so the drawer sits centred in the hand and the tool-on-slot-centre fallback (t_span too small) is right. (2) push jam rule: a step above 35 N whose measured tip advance is < 3 mm, twice in a row, ends the push ('jam'). Not done: backing the drawer out and re-inserting after a push jam (the pusher cannot pull), wrist view of the slot edges. Offline: flow tests pass; the non-dry path runs the look-down move through the model check (no image offline).
 - operator 04:50 (ep 39: footprint grasp held; side-camera in-hand t err -0.073 unusable, jam) + geometry 05:20 (yaml: front_offset 0.5283, slot_t [-0.096, -0.021]; constants follow). With a wrist-footprint grasp: no side-camera alignment or yaw cancel; the tool goes to t = slot centre + (grasp point - footprint centre along the wall) (summary fp_off, t_line); HAND_YAW is not applied (it came from side-camera grasps whose yaw was off; the footprint grasp is straight). Side-camera paths stay as the fallback when the footprint fails. I have no pinch/knob wrist measurement of my own to check the 05:20 t shift. Offline: footprint path with the new yaml, 2/2 complete, t_line -0.0585 (slot centre).
+- 12:40/12:55 (user + operator): two strategies, compared by episode parity (RLPJ_STRATEGY overrides; summary
+  'strategy'): even episodes 'table_align', odd episodes 'carry' (the current one, also the fallback when the wrist
+  footprint failed).
+  * table_align: after the footprint grasp, set the drawer down right in front of the slot (axis on N, centre on the
+    slot centre t, back wall 2 cm from the face; place under low_force 25), release, wrist look-down there, measure
+    t/yaw/n error (summary table_align, align_before_insert), re-grasp the pull wall square; repeat (max 3) until
+    |t err| <= 5 mm and |yaw| <= 2 deg; then lower to the insertion height (bottom 1.8 cm, over the 1.5 cm lip) at
+    that spot and insert straight (own learned steps), release and push as before. I used pick-and-place instead of
+    dragging with the fingers in the drawer: same aim (pose measured free on the table), and the jaws can turn it.
+  * external step-policy hook for the sim worker: RLPJ_EXT_POLICY = path to sim/drawer_insert (Policy(path).act(obs) ->
+    (dn m, dt m, dyaw deg)) or 'scripted' (straight 10 mm); ext_insert() runs one model-checked slow line per step
+    under the 65 N cap, stops on the end depth, the jam rule or 30 steps; used in table_align episodes when set
+    (RLPJ_EXT_ALL=1 also for carry). obs keys: n, t (slot frame), yaw, force (N,T,z), prev, inhand_t, inhand_yaw, step.
+  Offline: both strategies + the scripted external policy complete in the dry flow; the non-dry table_align path
+  (look-downs at the slot, three place/re-grasp cycles, insertion, push) passes the model checks.
