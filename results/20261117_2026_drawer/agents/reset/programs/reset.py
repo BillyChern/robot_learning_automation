@@ -77,6 +77,9 @@ ORIENT_Q = ("Judge ONLY which way the wooden drawer is turned, not where it is (
             "cabinet slot, or anywhere on the table). The drawer's metal pull - a small grey metal label frame with a "
             "short metal tab below it - is on the outside of the drawer wall that faces the lower left of this image, "
             "toward the robot base.")
+SURVEY_GOAL = ("Survey photo from a camera mounted on the robot gripper (the gripper fingers may show at the image "
+               "edges). Only decide whether the drawer wall nearest the camera carries the metal pull; ignore where the "
+               "drawer is, whether it is held, and the viewing angle.")
 STAGE_XY = (0.34, -0.15)        # 18:39 operator: turn the drawer here (>= 25 cm from the cabinet face), then carry it
 STAGE_GAP = 0.20                # never place/turn closer than this (centre to cabinet face) except at the target
 FACE_GAP_MIN = 0.17           # 16:35 operator: drawer centre >= 17 cm in front of the cabinet face
@@ -735,12 +738,12 @@ class Reset:
             cv2.imwrite(path, img)
         return path if img is not None else None
 
-    def ask(self, path, success, tag):
+    def ask(self, path, success, tag, goal=None):
         try:
             from rlpj import config
             from rlpj.success import vlm_judge
             t = config.load()["task"]
-            r = vlm_judge.judge({"after": path}, dict(goal=t.get("reset", ""), success=success), timeout=120)
+            r = vlm_judge.judge({"after": path}, dict(goal=goal or t.get("reset", ""), success=success), timeout=120)
         except Exception as e:
             r = dict(success=None, reason=f"judge error {e}")
         self.s.log(f"vision judge {tag}: success={r.get('success')} conf={r.get('confidence')} reason={str(r.get('reason'))[:300]}")
@@ -1400,7 +1403,9 @@ class Reset:
             path = self.save(f"wrist_wall_{tag}_{j}", img, w=960) if img is not None else None
             if path is None:
                 continue
-            ans = self.ask(path, Q, f"wall_{tag}_{j}")
+            # attempt 136: with the reset goal as context the judge rejected views that DID show the pull ("fingers in
+            # view", "looks into the drawer"): a neutral survey goal
+            ans = self.ask(path, Q, f"wall_{tag}_{j}", goal=SURVEY_GOAL)
             s.decide(f"wall view {j}: wall facing {ang(d):.0f} deg -> pull {'YES' if ans else 'no' if ans is False else '?'} (conf {self.last_conf:.2f})")
             if ans and (best is None or self.last_conf > best[1]):
                 best = (d, self.last_conf)

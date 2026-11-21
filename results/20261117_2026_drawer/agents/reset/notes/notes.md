@@ -200,3 +200,4 @@
   target turning by exactly the angle that brings that wall to the robot side. A placement made with a close-view
   pull is trusted even if the side judge cannot see the pull afterwards (no loops). Offline: look-down at 4 spots,
   all 4 wall views at the stage for yaw 0/30/-40, stage + target placements OK.
+- attempt 136 SUCCESS (layout ok, 1.8 cm, pull facing the robot, judge 0.88): staging + wrist footprint worked (footprint centre fixed the cabinet-merged outline), grasps 89.1. The close wall views all came back 'no' although two said the pull/label frame were visible (judge used the reset goal: 'still held', 'fingers in view'); the side judge's lower-right answer then gave the right 90 deg turn. Fix: wall views use a neutral SURVEY_GOAL. Run took 824 s (two staging rounds).
