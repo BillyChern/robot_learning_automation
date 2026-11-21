@@ -72,6 +72,7 @@ class Insertion:
         """Decide the next step from the current base-frame force: returns (target xy, target yaw deg)."""
         o = dict(n=self.cmd[0], t=self.cmd[1], yaw=self.cmd[2], off_est=self.est[0], yaw_est=self.est[1],
                  f=self.force(f_base), f_peak=self.f_peak, stopped=self.stopped, prev=self.prev, k=self.k)
+        self.obs = o                                  # log it with the step: the robot's view of the policy input
         self.step = np.array(self.pol.act(o))
         c = self.cmd + self.step
         c[0] = min(max(c[0], self.cmd0[0] - self.N_BACK), self.N_PAST)

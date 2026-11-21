@@ -234,6 +234,26 @@ while not done:                                   # 48 decisions; the tool heigh
   the policy until it commands n > -0.036, then release and use the scripted push for the last ~4 cm; the policy's job
   there is the alignment and jam recovery during the first ~8-9 cm, where the real jams happened.
 
+## First real run (attempt 112, 2026-11-21): diagnosis
+
+- Bookkeeping checked, no sign or frame error: the tool poses rebuilt by FK from the step plans match `ins.cmd`
+  (t +0.3 -> +29 mm, yaw 21.86 -> 32.0 deg = +10.1 about ang(N)); the jaw axis is along +N as in the sim; t = (-N1, N0)
+  in both; the force is in the base frame (push-stage transitions read f.N -50, f.z +45 N; the tool-frame reading
+  would imply a 61 N downward reaction to a horizontal push), so f_n < 0 at a jam as trained.
+- Same start in the sim (aligned, back at the front plane, 40 N stop, 33 decisions): 93 % success, |t| ~2 mm.
+- What differs is the jam: the drawer stopped at tool n-OFF -0.048..-0.068 (back ~6-7 cm in), the fixed-depth
+  stop the real program has hit since attempt 44 ("for every yaw/dz tried"). Nothing in the sim stops a lined-up
+  drawer mid-slot, so the policy runs its learned recovery (back off, follow f_t and its previous lateral step,
+  +1 deg per back-off) up to the bounds. Adding an impassable floor bump at 6.5 cm to the sim reproduces the
+  stop at the same tool depth (0 % success) with a smaller search.
+- Likely cause (not in the sim): a vertical wedge. Tool height was 9.4 cm above the table with a 6.3-6.6 cm drawer and
+  an opening of ~1.5-9.5 cm; the sim holds the drawer level (no pitch, no dz) with 1-4 mm under it.
+- Robot-side changes: log `ins.obs` and `ins.step` every decision (the f vector was not logged); when two force stops
+  happen within 5 mm of the same n, stop the policy and push (lateral search cannot fix a fixed-depth stop); with
+  the table-aligned start, clip the search (`ins.T_BOUND = 0.008; ins.YAW_BOUND = 3.0`); check the drawer height in
+  the opening (top >= 5 mm under the rail).
+- Sim-side next step: pitch compliance in the grasp, vertical play from measurement, and a dz action.
+
 ## Sim-to-real risks
 
 - Contact model: rigid boxes with soft MuJoCo contacts (3 ms), Coulomb friction 0.2-0.7, rounded back edges as a
