@@ -1,15 +1,14 @@
-Operator note (sim worker's diagnosis of attempt 112, your first sim-policy run): no sign/frame mismatch: your
-sim_insert matches the sim's conventions (t = (-N1, N0), yaw CCW about +z, force in the base frame, f0 zeroing all OK).
-The drift was the policy's jam-recovery search against a FIXED-DEPTH jam the sim does not contain: steps 0-6 went
-straight in 10 mm/step, the first 40 N stop came at tool n-OFF -48 mm (drawer back ~6-7 cm into the slot), then it
-cycled back/sideways/push and jammed again at -50..-67 mm until it hit its t/yaw bounds. Your episodes have hit this same
-depth since about attempt 44. Most likely cause: a VERTICAL wedge: the tool was 9.4 cm above the table with a
-6.3-6.6 cm drawer and the opening is ~1.5-9.5 cm above the table, so the drawer top was ~1 mm under the rail (and the
-floor lip is ~1.5 cm). Please:
-1. Carry/insert height: drawer top >= 5 mm under the rail, bottom >= 3 mm above the slot floor (check against
-   slot_h and the measured drawer height); log the drawer's top/bottom heights at the insertion.
-2. With the sim arm: right after building Insertion set ins.T_BOUND = 0.008 and ins.YAW_BOUND = 3.0 for the
-   table-aligned start; after two force stops within 5 mm of the same depth, stop calling the policy and hand over;
-   log ins.obs and the step every decision (policy.py now keeps ins.obs; keep all events, not just the last 10).
-3. If the jam stays at the same depth with a good height, look at the wrist/side images at that moment: something at
-   ~6.5 cm depth (the shelf rail, a stop, the floor) may be catching; tell me what you see.
+Operator note 15:20 (attempt 114, your v2 test): the drawer never entered the slot. push_end_wrist.jpg: the dark slot
+opening is at the upper LEFT of the view, the drawer's right part reaches past the cabinet's right side post (grey
+table visible behind it): the drawer is ~2-3 cm sideways of the real opening although "table align 2: t err +2.4 mm".
+So the slot position you align to (yaml slot_t centre -0.0585 since my 05:20 shift, whose t part came from noisy
+cabinet-outline readings) is probably off by ~2-3 cm. Also push_end_side.jpg shows the whole cabinet leaning back
+under the 65-68 N pushes (it settled back afterwards, side_after.jpg).
+Fix with a direct measurement instead of the yaml:
+1. Before the insertion (drawer held ~4-6 cm in front of the face), take a wrist image that sees the opening, detect
+   the opening's left/right edges (dark interior vs the lighter face/posts), and compare with the yaml edges projected
+   into the image (rlpj.perception.wrist.project_base_to_wrist) -> the slot's t offset in the base frame, no sign
+   guessing. Shift the insertion by it (log it: it tells us the true slot centre).
+2. Also check the drawer's left/right walls against the opening edges in the same image before pushing in.
+3. Pushes: stop at 40 N (not 65) while the drawer is not yet inside the opening; 65 N only once the back wall is in.
+Report the measured slot offset in your next report so I can correct the task yaml.

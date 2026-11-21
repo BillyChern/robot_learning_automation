@@ -44,8 +44,10 @@ SLOT_T = CAB["slot_t"]
 T_C = 0.5 * (SLOT_T[0] + SLOT_T[1]) - 0.0045   # slot-relative (base moved 2026-11-20): the drawer centre target is T_C + EDGE_TARGET = window centre
 BOTTOM_H = 0.018             # drawer bottom above the table while sliding in
 BACK_GAP = 0.03              # drawer back in front of the front plane at the start of the insertion
-INS_NMAX = OFF - 0.036       # vertical tool axis limit (keep-out: body cylinder 45 mm + 1 cm)
-K_INS, K_PUSH = 20, 10
+INS_NMAX = OFF - 0.068       # held-insertion limit: attempt 113's side image at the 'jam' shows the drawer ~6.5 cm out and the arm's
+                             # wrist housing (above the flange, not in the keep-out model) on the 27 cm cabinet face: every
+                             # fixed-depth jam at tool n-OFF -0.057..-0.068 since attempt 44 was the wrist, not the drawer
+K_INS, K_PUSH = 20, 12
 MIN_ADV = 0.004              # m: insertion advance floor unless the last step was hard (peak > F_SOFT)
 F_SOFT = 35.0               # N: force penalty above this (sliding takes 22-28 N; user 01:50: was 20, penalised normal sliding)
 F_STOP = 40.0               # N: only a value for the observation after a stop (no force cap: user, 22:30)
@@ -375,7 +377,7 @@ class Episode:
     def stage_push(self, face_n, t0, ins_ok):
         s = self.s
         s.phase("push_learned")
-        n = max(min(face_n - 0.025, PUSH_NMAX - 0.03), OFF - 0.085); t, h = t0, PUSH_H
+        n = max(min(face_n - 0.015, PUSH_NMAX - 0.03), OFF - 0.095); t, h = t0, PUSH_H
         T_pre = push_T(n, t, h, self.tz)
         T_hi = T_pre.copy(); T_hi[2, 3] += 0.06
         s.gripper(PUSH_GRIP, "fingers apart: they straddle the knob")
@@ -498,7 +500,7 @@ class Episode:
                 if st in ("ok", "force"):         # undo the dragging step
                     try:
                         self.line(f"retreat_undo{i}", push_T(n, t, h, self.tz), "slow", tip_margin=TIP_MARGIN_PUSH)
-                    except Abort as e:
+                    except (Abort, RuntimeError) as e:
                         s.log(f"retreat undo: {str(e)[:80]}")
             if not moved:
                 break
@@ -809,29 +811,58 @@ class Episode:
         s.phase("insert_sim")
         sys.path.insert(0, str(config.ROOT))
         from sim.drawer_insert.policy import Policy, Insertion
-        pol = Policy(str(config.ROOT / "sim" / "drawer_insert" / "weights" / "policy.npz"))
+        wdir = config.ROOT / "sim" / "drawer_insert" / "weights"
+        v2 = (wdir / "policy_v2.npz").exists()
+        pol = Policy(str(wdir / ("policy_v2.npz" if v2 else "policy.npz")))
         Tn = self.T_now() if not s.dry else tool_down_T(np.r_[xy_of(n0, self.t_line), z0], yaw_sq - yaw_est)
         f0 = self.force()
-        ins = Insertion(pol, normal=N, offset=OFF, t_centre=0.5 * (SLOT_T[0] + SLOT_T[1]), yaw_straight=yaw_sq,
-                        off_est=off_est, yaw_est=yaw_est, tool_xy=Tn[:2, 3], tool_yaw=ang(Tn[:2, 0]), f0=f0)
+        kw = dict(normal=N, offset=OFF, t_centre=0.5 * (SLOT_T[0] + SLOT_T[1]), yaw_straight=yaw_sq,
+                  off_est=off_est, yaw_est=yaw_est, tool_xy=Tn[:2, 3], tool_yaw=ang(Tn[:2, 0]), f0=f0)
+        # v2 (height action): drawer bottom above the slot lip = tool z - drop to the bottom - lip top (table + 0.015)
+        gap_est = float(Tn[2, 3] - self.drop_now - (self.tz + 0.015)) if hasattr(self, "drop_now") else 0.003
+        if v2:
+            try:
+                ins = Insertion(pol, tool_z=float(Tn[2, 3]), gap_est=gap_est, **kw)
+            except TypeError as e:
+                s.log(f"policy v2 API mismatch ({e}): v1"); v2 = False
+                pol = Policy(str(wdir / "policy.npz")); ins = Insertion(pol, **kw)
+        else:
+            ins = Insertion(pol, **kw)
+        # operator 12:40/v2: tighter search bounds for the table-aligned start
+        if getattr(self, "aligned_start", False):
+            ins.T_BOUND, ins.YAW_BOUND = 0.008, 3.0
+        s.summary(sim_policy="v2" if v2 else "v1", sim_gap_est=round(gap_est, 4),
+                  drawer_heights=dict(bottom=round(float(Tn[2, 3] - getattr(self, "drop_now", 0.0) - self.tz), 4)))
         end, ev, n_lim = "steps", [], INS_NMAX - OFF
+        jam_depths = []
         Tm = Tn
         for k in range(48):
             xy, yaw = ins.next(self.force())
             q = nt(np.asarray(xy, float))
             if q[0] > INS_NMAX:                           # keep-out limit of the vertical gripper
                 xy = xy_of(INS_NMAX, q[1])
+            z_cmd = float(getattr(ins, "z_target_abs", z0)) if v2 else z0
+            z_cmd = float(np.clip(z_cmd, z0 - 0.012, z0 + 0.012))
             f_start = self.force()
             with self.low_force(40):
-                st, res = self.try_step(f"sim{k:02d}", tool_down_T(np.r_[xy, z0], yaw), 0.008)
+                st, res = self.try_step(f"sim{k:02d}", tool_down_T(np.r_[xy, z_cmd], yaw), 0.008)
             if st == "abort":
                 end = "abort"; ev.append([k, st]); break
             stopped = st in ("force", "refused")
             peak = (float(res.get("max_force_n", 40.0 if st == "force" else 0.0)) + float(np.linalg.norm(f_start - f0)))
-            Tm = self.T_now() if not s.dry else tool_down_T(np.r_[xy, z0], yaw)
-            done = ins.done(peak, stopped, Tm[:2, 3], ang(Tm[:2, 0]))
+            Tm = self.T_now() if not s.dry else tool_down_T(np.r_[xy, z_cmd], yaw)
+            if v2:
+                done = ins.done(peak, stopped, Tm[:2, 3], ang(Tm[:2, 0]), float(Tm[2, 3]))
+            else:
+                done = ins.done(peak, stopped, Tm[:2, 3], ang(Tm[:2, 0]))
             n_now = float(nt(Tm[:2, 3])[0])
-            ev.append([k, st, round(n_now - OFF, 4), round(float(ins.cmd[1]), 4), round(float(ins.cmd[2]), 1), round(peak, 1)])
+            ev.append([k, st, round(n_now - OFF, 4), round(float(ins.cmd[1]), 4), round(float(ins.cmd[2]), 1), round(peak, 1),
+                       round(float(Tm[2, 3] - self.tz), 4), np.round(np.asarray(getattr(ins, "step", [])), 4).tolist()])
+            # operator: hand over after repeated stops at the same depth (+-5 mm)
+            if stopped:
+                jam_depths.append(n_now)
+                if sum(abs(x - n_now) < 0.005 for x in jam_depths) >= 2:
+                    end = "jam"; break
             if n_now >= INS_NMAX - 0.003 and peak < 40.0:
                 end = "reached"; break
             if done:
@@ -839,9 +870,9 @@ class Episode:
         Tm = self.T_now() if not s.dry else (Tm if ev else Tn)
         qn = nt(Tm[:2, 3])
         s.summary(insert=dict(end=end, steps=len(ev), n_minus_off=round(float(qn[0]) - OFF, 4), policy="sim_ppo"),
-                  sim_events=ev[-10:])
+                  sim_events=ev)
         self.snap("insert_end")
-        return dict(end=end, n=float(qn[0]), t=float(qn[1]), z=z0, yaw=float(ang(Tm[:2, 0])))
+        return dict(end=end, n=float(qn[0]), t=float(qn[1]), z=float(Tm[2, 3]), yaw=float(ang(Tm[:2, 0])))
 
     def low_force(self, f):
         """Context: lower the session's force stop to f N for the moves inside (operator 00:50: final approaches toward
@@ -1219,9 +1250,11 @@ class Episode:
         s.summary(strategy=strategy)
         if strategy == "table_align":
             held, n0, z0, yaw2 = self.table_align(d, held)
+            self.aligned_start = True
             meas = dict(ok=False, n=0, t_err=0.0, yaw_err=0.0)
             s.summary(held=dict(n0_minus_off=round(n0 - OFF, 4), z0_above_table=round(z0 - self.tz, 4), yaw2=round(yaw2, 1), t_line=round(self.t_line, 4)))
             ext = self.ext_policy()
+            self.drop_now = held["drop"]
             if self.ins_arm == "sim":
                 ins = self.sim_insert(n0, z0, yaw2, -float(held.get("fp_off") or 0.0), 0.0)
             elif ext is not None:
@@ -1280,6 +1313,7 @@ class Episode:
         s.summary(held=dict(n0_minus_off=round(n0 - OFF, 4), z0_above_table=round(z0 - self.tz, 4), yaw2=round(yaw2, 1), meas=meas, t_line=round(self.t_line, 4)))
         s.decide(f"held drawer: t err {meas['t_err']:+.3f} yaw err {meas['yaw_err']:+.1f} ({meas['n']} pts); insertion from n-OFF {n0 - OFF:+.3f}")
         ext = self.ext_policy() if os.environ.get("RLPJ_EXT_ALL") else None
+        self.drop_now = held["drop"]
         if self.ins_arm == "sim":
             yaw_sq = wrapd(held["yaw"] + wrapd(ang(N) - ang(held["d0"])))
             off_est = -float(held.get("fp_off") or 0.0) if held.get("wrist_fp") else 0.0
@@ -1333,7 +1367,7 @@ class Episode:
             self.finish(before); return
         # ep 26: the insertion stopped on force at n-OFF -0.056 and the drawer ended nearly flush in the side view
         # (flush 0.43, median_d 0.0) but the push was skipped: a jammed insertion still gets the push when reachable
-        if face_n - 0.012 < OFF - 0.088:          # pusher reach (tilt 40: pre-pose checked to n-OFF -0.08 offline)
+        if face_n - 0.015 < OFF - 0.095:          # pusher reach (tilt 35: pre-pose at n-OFF -0.095 has j3 141.7 deg, limit 144.8)
             s.decide(f"drawer front at n-OFF {face_n - OFF:+.3f}: too far out for the tilted push (j3 limit), no push")
             self.finish(before); return
         self.to_ready()
