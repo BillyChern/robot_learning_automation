@@ -21990,3 +21990,406 @@ Structured output provided successfully
 ```
 </details>
 
+**23:53:00 reset agent:** No response requested.
+
+### 23:53:00 orchestrator -> reset agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+Operator note 23:43 (attempts 155, 156): 10 end-wall table picks in a row closed on nothing (reading 100), every one
+after refine_wall shifted the grasp by -0.052..-0.057 or +0.033..+0.040 m (max_shift is 0.06, so all were accepted).
+The drawer sits next to the cabinet (cabinet dist ~0.065): the strongest step in the profile is most likely the cabinet
+edge or the drawer's far wall, not the near end wall. Same failure as attempt 150 (my 23:12 note). Do this now:
+1. After a refined pick misses, the next pick of that wall uses the UNREFINED side-camera point (or the refine with
+   |shift| <= 0.015); never refine-miss twice in a row.
+2. Cap max_shift at ~0.02 and require the step to be on the drawer side (between the side-camera wall estimate and
+   the drawer centre), excluding pixels that project onto the cabinet.
+3. Test offline on attempts 150, 155 and 156's wrist_* images: the shift you pick should put the pads around the wall.
+
+# attempt_157: exit code 2; outcome: fail
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_156/targets.json; what: The drawer is about 2.5 cm proud in the slot. Confirm "in the slot" with the judge and a wrist look-down, then take the tab path: wrist-centred knob pinch, deeper steps, short model-checked pulls, the clamp only if pre-checked. Then extract it, place it at the target with the pull facing the robot, and verify.; commit: 60897d7; duration_s: 544.3; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "60897d72db",
+"command": "programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_156/targets.json",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9584, 0.5613, 90.4589], "gripper": 14.8},
+"fk_check_mm": 0.18,
+"targets": {"drawer": [0.367, -0.022]},
+"measured": {"drawer": [0.4391, 0.055]},
+"vlm_start_inslot": {"success": false, "conf": 0.55, "reason": "The drawer sits on the table directly in front of the cabinet's bottom slot, and its whole box, including the back wall, is visible with no part clearly hidden inside the slot, so it looks like it was"},
+"segments": [["ready", true, 0.088, 0.38, 11.86, 39.9], ["look_down_start_ns", true, 0.093, 0.61, 4.78, 39.5], ["ready", true, 0.066, 0.45, 4.78, 39.7], ["ready", true, 0.003, 0.04, 0.55, 36.4], ["home_for_check", true, 0.096, 0.34, 11.87, 39.8], ["ready", true, 0.112, 0.33, 11.86, 39.8], ["look_dow
+"wrist_footprint_start_ns": {"obb_c": [0.4581, 0.1204], "L": 0.115, "W": 0.063, "yaw": -62.1, "cells": 485},
+"decisions": ["wrist footprint implausible {'obb_c': [0.4581, 0.1204], 'L': 0.115, 'W': 0.063, 'yaw': -62.1, 'cells': 485}: keep the side-camera outline", "near-cabinet drawer: judge in-slot=False (conf 0.55), wrist footprint not found -> on the table", "start state: table", "wrist footprint implaus
+"start_state": "table",
+"start_perception": {"tag": "start", "table_z": -0.0156, "front_top": 0.0691, "face_depth": 0.0081, "slot_med": -0.0261, "blobs": 1, "low_pts": 1193, "near_cabinet": true, "drawer_blobs": [{"xy": [0.4427, 0.0605], "obb_c": [0.4714, 0.0666], "L": 0.123, "W": 0.097, "yaw": -56.4, "h": 0.06696524875590
+"vlm_check0_q1": {"success": true, "conf": 0.85, "reason": "The drawer sits upright and open side up on the table next to the cabinet, the gripper is not holding it, and its metal pull is on the wall facing the lower left of the image, toward the robot base."},
+"err_check0": 0.1114,
+"pull_vs_robot_deg0": 0.0,
+"wrist_footprint_p0": {"obb_c": [0.4473, 0.1505], "L": 0.066, "W": 0.048, "yaw": 0.0, "cells": 239},
+"wall_refine": {"profile": [135.0, 128.0, 127.0, 115.0,
+... (11700 more characters)
+```
+
+**23:53:15 reset agent:** I'm following the operator's three points, plus one more finding. In 157 the wrist look-down did find the drawer (L 0.115, W 0.063, 485 cells), about 5 cm along t from the side-camera outline. My plausibility check rejected it only because its width was under 0.08, which is cut short by the cabinet mask. Changes:
+- Accept wrist footprints of width 0.05 and up.
+- Cap the refinement at 2 cm.
+- After a refined miss, use the unrefined point on the next pick.
+
+**23:53:21 tool Bash:**
+
+```bash
+python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+old='''        if not (0.09 <= L <= 0.17 and 0.08 <= W <= 0.15):'''
+new='''        if not (0.09 <= L <= 0.17 and 0.05 <= W <= 0.15):    # attempt 157: W 0.063 = drawer partly behind the cabinet mask'''
+assert old in s; s=s.replace(old,new,1)
+old='''                sh = self.refine_wall(img, e, d0, h_top, max_shift=0.012 if c.get("wrist_fp") else 0.06)
+                if sh is not None:'''
+new='''                # 23:43 operator: 10 refined picks missed with |shift| 0.033-0.058 (cabinet edge / far wall taken for
+                # the near end wall): cap at 2 cm, and after a refined miss use the unrefined point once
+                sh = None if self.refine_off else self.refine_wall(img, e, d0, h_top, max_shift=0.012 if c.get("wrist_fp")
+... (1094 more characters)
+```
+
+<details><summary>23:53:41 result</summary>
+
+```text
+1429:                sh = None if self.refine_off else self.refine_wall(img, e, d0, h_top, max_shift=0.012 if c.get("wrist_fp") else 0.02)
+1459:    def refine_wall(self, img, e, d_in, h_top, half=0.07, max_shift=0.06):
+1503:            if step < 50 or abs(shift) > max_shift:
+6
+```
+</details>
+
+**23:53:43 reset agent:** Offline suite 6/6. A refinement beyond the cap is rejected outright rather than clipped. Committing and running:
+
+**23:53:45 tool Bash:**
+
+```bash
+echo "- 23:43 operator / attempt 157: judge said 'on the table' (0.55); 5 more refined end-wall picks missed (shift -0.053..-0.058). The wrist footprint found the drawer (L 0.115, W 0.063) ~5 cm along t from the side outline but was rejected (W < 0.08, partly behind the cabinet mask). Fixes: footprint W >= 0.05 accepted; refine_wall max_shift 0.02 (0.012 with a wrist footprint), larger = rejected; after a refined miss the next pick is unrefined." >> notes/notes.md; git add -A && git commit -qm "attempt 158: refine shift capped at 2 cm, unrefined retry after a refined miss; wrist footprint accepted down to W 0.05
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && git log --oneline | head -1
+```
+
+<details><summary>23:53:45 result</summary>
+
+```text
+c75389c attempt 158: refine shift capped at 2 cm, unrefined retry after a refined miss; wrist footprint accepted down to W 0.05
+```
+</details>
+
+**23:53:49 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_156/targets.json",
+ "moves_robot": true,
+ "what": "The drawer is on the table against the cabinet in front of the slot. Pick it by an end wall using the wrist look-down outline (now accepted when partly masked by the cabinet), with the wall refinement capped at 1.2-2 cm and an unrefined retry after a miss. Then place it at the target with the pull facing the robot and verify.",
+ "report": ""
+}
+```
+
+<details><summary>23:53:49 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**00:04:18 reset agent:** No response requested.
+
+### 00:04:18 orchestrator -> reset agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+Operator note 00:00, CORRECTION to my 23:43 cap: in attempt 158 the rejected refines (+0.033, +0.035, step 87-88) were
+RIGHT. wrist_wall_pre0.jpg: the drawer is at the right of the view, the right pad at its corner, the left pad on bare
+table: the side-camera wall point is ~3.5 cm short of the wall. The same ~3-3.5 cm offset showed in the RL program's
+grasps (episodes 29-30). The misses in 150/155/156 came from NEGATIVE shifts (-0.05, away from the drawer centre).
+So the cap is not the rule; closed-loop is:
+1. Accept a refine toward the drawer centre (positive) up to ~0.045 when the step is strong (>= 70); reject negative
+   ones beyond -0.015.
+2. Move to the refined pre-pose, take a second wrist image, refine again, and grasp only when the residual is
+   <= 0.006 (max 3 iterations), as the knob measurement does.
+3. Log the side-camera vs the wrist wall position for each pick, so we can see if the side outline has a fixed bias.
+
+# attempt_158: exit code 0; outcome: success
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_156/targets.json; what: The drawer is on the table against the cabinet in front of the slot. Pick it by an end wall using the wrist look-down outline (now accepted when partly masked by the cabinet), with the wall refinement capped at 1.2-2 cm and an unrefined retry after a miss. Then place it at the target with the pull facing the robot and verify.; commit: c75389c; duration_s: 610.5; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "c75389cc22",
+"command": "programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_156/targets.json",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9573, 0.5615, 90.459], "gripper": 14.8},
+"fk_check_mm": 0.18,
+"targets": {"drawer": [0.367, -0.022]},
+"measured": {"drawer": [0.3476, -0.0611]},
+"vlm_start_inslot": {"success": true, "conf": 0.6, "reason": "The drawer is pulled out but its back edge still lines up with the cabinet's bottom slot, so it seems to be partly inside rather than standing free, though the angle makes this hard to confirm."},
+"segments": [["ready", true, 0.044, 0.23, 11.86, 39.9], ["look_down_start_ns", true, 0.102, 0.5, 4.71, 39.7], ["ready", true, 0.053, 0.21, 4.71, 39.7], ["ready", true, 0.003, 0.02, 0.56, 37.5], ["home_after_pull0", true, 0.117, 0.4, 11.86, 39.9], ["ready", true, 0.072, 0.22, 11.86, 39.9], ["home_for
+"wrist_footprint_start_ns": {"obb_c": [0.4588, 0.139], "L": 0.073, "W": 0.045, "yaw": -30.3, "cells": 216},
+"decisions": ["wrist footprint implausible {'obb_c': [0.4588, 0.139], 'L': 0.073, 'W': 0.045, 'yaw': -30.3, 'cells': 216}: keep the side-camera outline", "near-cabinet drawer: judge in-slot=True (conf 0.60), wrist footprint not found -> IN THE SLOT (tab path)", "start state: slot_near", "drawer face
+"start_state": "slot_near",
+"start_perception": {"tag": "start", "table_z": -0.0153, "front_top": 0.0741, "face_depth": 0.0196, "slot_med": -0.0269, "blobs": 4, "low_pts": 1271, "near_cabinet": true, "drawer_blobs": [{"xy": [0.4547, 0.0536], "obb_c": [0.4749, 0.0533], "L": 0.122, "W": 0.091, "yaw": -59.1, "h": 0.06873787880312
+"vlm_check0_q1": {"success": true, "conf": 0.85, "reason": "The drawer sits upright, partly out of the bottom slot, and the metal pull is on the wall facing the lower left toward the robot base; the gripper is not holding it."},
+"err_check0": 0.1079,
+"pull_vs_robot_deg0": 0.0,
+"wrist_footprint_p0": {"obb_c": [0.4586, 0.1404], "L": 0.076, "W": 0.041, "yaw": -17.4, "cells": 201},
+"wall_refine": {"profile": [191.0, 188.0, 186.0, 184.0, 185.0, 179.0, 
+... (12476 more characters)
+```
+
+**00:04:33 reset agent:** Attempt 158 picked the drawer cleanly, but the orchestrator measured it 6.1 cm off. My own measurement said 4.4 cm, and attempt 151 shows the same pattern: placements land about 4 cm toward −y. Two changes:
+- **Closed-loop wall refinement (operator's 00:00 note):** accept positive shifts toward the drawer centre up to 4.5 cm when the edge is strong, and reject negative shifts beyond −1.5 cm. Re-image at the corrected pose and repeat until the residual is ≤ 6 mm (at most 3 times). Log the side-camera versus final wall position for each pick.
+- **Placement bias:** learn the systematic placement error from each placement, persisted across runs, and subtract it from the aim. Corrections start at 3 cm instead of 4.5 cm, now that picks are more reliable.
+
+**00:04:34 tool Bash:**
+
+```bash
+grep -n "if step < 50 or abs(shift) > max_shift" -B3 -A6 programs/reset.py; sed -n "$(grep -n '                sh = None if self.refine_off' programs/reset.py | cut -d: -f1),+12p" programs/reset.py
+```
+
+<details><summary>00:04:34 result</summary>
+
+```text
+1500-            s.summary(wall_refine=dict(profile=np.round(prof[::4], 0).tolist(), table=round(table, 0), inner=round(inner, 4), step=round(step, 0), shift=round(shift, 4)))
+1501-            s.log(f"refine_wall: inner edge at {inner:+.3f} along d_in, step {step:.0f}, shift {shift:+.3f}")
+1502-            k = 0; grad[k] = step
+1503:            if step < 50 or abs(shift) > max_shift:
+1504-                s.decide(f"wall refinement rejected (step {step:.0f}, shift {shift:+.3f})")
+1505-                return None
+1506-            s.decide(f"wall refined by wrist camera: shift {shift:+.3f} m toward the drawer centre")
+1507-            return float(shift)
+1508-        except Exception as ex:
+1509-            s.log(f"refine_wall failed: {ex}")
+                sh = None if self.refine_off else self.refine_wall(img, e, d0, h_top, max_shift=0.012 if c.get("wrist_fp") else 0.02)
+                if self.refine_off:
+                    s.decide("previous refined grasp missed: this one uses the unrefined outline point")
+                self.refined_last = sh is not None
+                if sh is not None:
+                    e = e + sh * d0
+                    Tg[:2, 3] = e; T_pre[:2, 3] = e
+  
+... (264 more characters)
+```
+</details>
+
+**00:04:44 tool Bash:**
+
+```bash
+python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+# refine_wall: asymmetric acceptance
+old='''            if step < 50 or abs(shift) > max_shift:
+                s.decide(f"wall refinement rejected (step {step:.0f}, shift {shift:+.3f})")
+                return None'''
+new='''            # 00:00 operator: positive shifts (toward the drawer centre) up to 4.5 cm were right when the step is
+            # strong; the misses came from negative ones (away from the centre, onto the cabinet / table)
+            pos_ok = 0.0 <= shift <= max(max_shift, 0.045) and step >= 70
+            neg_ok = -0.015 <= shift < 0.0 and step >= 50
+            if not (pos_ok or neg_ok):
+                s.decide(f"wall refinement rejected (step {step:.0f}, shift {shift:+.3f})")
+                return None'''
+asse
+... (2442 more characters)
+```
+
+<details><summary>00:04:45 result</summary>
+
+```text
+ok
+```
+</details>
+
+**00:04:52 reset agent:** Now the placement-bias learning:
+
+**00:05:00 tool Bash:**
+
+```bash
+python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+s=s.replace("GOOD = 0.045              # correct when the error is above this (attempt 150: 3.8 cm 'corrections' missed 4x and drifted it to 9 cm)",
+            "GOOD = 0.03               # correct when the error is above this (151/158: 4.4 cm by mine = 6.1 cm by the orchestrator)",1)
+s=s.replace("TAB_FILE = os.path.join(","PLACE_BIAS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), \"..\", \"notes\", \"place_bias.json\")\nTAB_FILE = os.path.join(",1)
+s=s.replace("        self.last_conf = 0.0\n",'''        self.last_conf = 0.0
+        self.place_bias = np.zeros(2)       # learned systematic placement error (measured - aimed), persisted
+        self.just_placed = False
+        try:
+            if not s.dry:
+             
+... (2042 more characters)
+```
+
+<details><summary>00:05:00 result</summary>
+
+```text
+1924:            delta = self.place(held, tgt)
+2036:            self.place(held, tgt - self.place_bias)
+ok
+```
+</details>
+
+**00:05:06 tool Bash:**
+
+```bash
+python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+old='''            delta = self.place(held, tgt)'''
+new='''            delta = self.place(held, tgt - self.place_bias)
+            self.just_placed = True'''
+assert old in s; s=s.replace(old,new,1)
+open(p,'w').write(s)
+import json
+json.dump(dict(bias=[-0.015, -0.040], last_err=[-0.019, -0.039], when="2026-11-21 00:10", note="seeded from attempts 151 (-0.0125,-0.044) and 158 (-0.019,-0.039)"), open('notes/place_bias.json','w'))
+E
+timeout 500 /home/r2r/robot_learning_final_pj/.venv/bin/python tools/offline.py 2>&1 | grep -c "#### OK"
+```
+
+<details><summary>00:05:25 result</summary>
+
+```text
+6
+```
+</details>
+
+**00:05:37 tool Bash:**
+
+```bash
+python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+old='''            n_c = float(nt(target + self.bias)[0])'''
+new='''            n_c = float(nt(target + self.bias + self.place_bias)[0])    # where it will really land (learned bias)'''
+assert old in s; s=s.replace(old,new,1)
+old='''            s.summary(cabinet_clearance=round(self.cab_clear(target + self.bias, rot2(N, delta)), 3),
+                      face_gap=round(float(OFF - nt(target + self.bias)[0]), 3))'''
+new='''            s.summary(cabinet_clearance=round(self.cab_clear(target + self.bias, rot2(N, delta)), 3),
+                      face_gap=round(float(OFF - nt(target + self.bias + self.place_bias)[0]), 3))'''
+assert old in s; s=s.replace(old,new,1)
+open(p,'w').write(s)
+E
+timeout 500 /home/r2r/robot_learning_final_pj/.venv
+... (766 more characters)
+```
+
+<details><summary>00:05:56 result</summary>
+
+```text
+6
+fe8b850 attempt 159: closed-loop wall refinement (operator 00:00), learned placement bias, corrections from 3 cm
+```
+</details>
+
+**00:05:59 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_156/targets.json",
+ "moves_robot": true,
+ "what": "The drawer is on the table at about (0.348, -0.061), 4-6 cm from the target. Pick it with the closed-loop wall refinement, place it at the target with the learned placement bias (about -1.5, -4 cm) corrected, correct again if it is more than 3 cm off, and verify.",
+ "report": ""
+}
+```
+
+<details><summary>00:05:59 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**00:15:55 reset agent:** No response requested.
+
+### 00:15:55 orchestrator -> reset agent
+
+```text
+# attempt_159: exit code 0; outcome: success
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_156/targets.json; what: The drawer is on the table at about (0.348, -0.061), 4-6 cm from the target. Pick it with the closed-loop wall refinement, place it at the target with the learned placement bias (about -1.5, -4 cm) corrected, correct again if it is more than 3 cm off, and verify.; commit: fe8b850; duration_s: 578.4; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "fe8b8501c2",
+"command": "programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_156/targets.json",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9577, 0.5608, 90.4586], "gripper": 39.7},
+"fk_check_mm": 0.18,
+"targets": {"drawer": [0.367, -0.022]},
+"measured": {"drawer": [0.375, -0.0229]},
+"start_state": "table",
+"start_perception": {"tag": "start", "table_z": -0.0154, "front_top": null, "face_depth": 0.0244, "slot_med": 0.0244, "blobs": 7, "low_pts": 2363, "near_cabinet": false, "drawer_blobs": [{"xy": [0.3531, -0.0611], "obb_c": [0.3595, -0.06], "L": 0.116, "W": 0.101, "yaw": -13.3, "h": 0.0662, "n": 5597}
+"decisions": ["start state: table", "wrist footprint p0: centre [0.3705, 0.0103] L 0.109 W 0.052 yaw -10 (side camera [0.358, -0.06])", "table drawer obb [0.37, 0.01] L 0.109 W 0.052 yaw -10; grasp end wall at [0.324, 0.018] (cabinet dist 0.206) top 0.068", "wall refined by wrist camera: shift -0.01
+"segments": [["ready", true, 0.138, 0.48, 11.87, 39.9], ["ready", true, 0.003, 0.02, 0.56, 35.7], ["home_for_check", true, 0.078, 0.28, 11.85, 39.8], ["ready", true, 0.077, 0.3, 11.85, 39.9], ["look_down_p0", true, 0.124, 0.64, 3.56, 39.6], ["ready", true, 0.072, 0.34, 3.55, 39.4], ["above_drawer_wa
+"vlm_check0_q1": {"success": true, "conf": 0.85, "reason": "The drawer sits upright on the table, open side up and not held by the gripper, with its metal pull on the wall facing the lower left toward the robot base."},
+"err_check0": 0.0437,
+"pull_vs_robot_deg0": 0.0,
+"wrist_footprint_p0": {"obb_c": [0.3705, 0.0103], "L": 0.109, "W": 0.052, "yaw": -9.8, "cells": 462},
+"wall_refine": {"profile": [167.0, 167.0, 165.0, 166.0, 165.0, 166.0, 165.0, 163.0, 158.0, 143.0, 130.0, 117.0, 104.0, 79.0, 80.0, 72.0, 81.0, 74.0, 85.0, 51.0, 51.0, 47.0, 55.0, 53.0, 57.0, 57.0, 58.0, 58.0, 57.0, 37.0, 24.0, 26.0, 25.0, 26.0, 27.0, 26.0], "table": 166.0, "inner": -0.021, "step": 7
+"wall_side_vs_wrist": [{"side": [0.3237, 0.0184], "wrist": [0.3109, 0.0206], "along_d0": -0.013}, {"side": [0.3726, -0.0463], "wrist": [0.3658, -0.0536], "along_d0": -0.01}, {"side": [0.2935, -0.1879], "wrist": [0.2836, -0.1978], "along_d0": -0.014}, {"side": [0.318, 0.0973], "wrist": [0.318, 0.0973
+"table_grip": 89.1,
+"cabinet_clearance": 0.053,
+"face_gap": 0.173,
+"vlm_check1_q1": {"success": false, "conf": 0.75, "reason": "The drawer is upright on the table, but its metal pull is on the wall facing the lower right instead of the lower left toward the robot base, so it is turned about 90\u00b0 from the required way."},
+"vlm_check1_q2": {"success": true, "conf": 0.7, "reason": "The drawer is out of the slot and sits upright on the table, open side up. Its metal pull is on the outside of the right-hand wall, which faces roughly toward the lower right of the image."},
+"err_check1": 0.0514,
+"pull_vs_robot_deg1": 180.0,
+"wrist_footprint_s1": {"obb_c": [0.4074, -0.009], "L": 0.116, "W": 0.11, "yaw": 47.0, "cells": 1046},
+"wrist_footprint_v1": {"obb_c": [0.333, -0.1485], "L": 0.127, "W": 0.095, "yaw": 45.0, "cells": 1053},
+"vlm_wall_1_0": {"success": false, "conf": 0.75, "reason": "The camera faces the drawer's open interior
+... (11645 more characters)
+```
+
+**00:15:59 tool Bash:**
+
+```bash
+echo "- attempt 159 SUCCESS (layout ok, 0.8 cm, judge 0.9): learned placement bias settled at (-0.004, -0.047); the close wall views found the pull (conf 0.85, neutral survey goal) after a 90 deg mis-turn; closed-loop refine: side-vs-wrist wall offsets -10..-14 mm along d0 this run." >> notes/notes.md; git add -A && git commit -qm "notes: attempt 159 success; placement bias file updated by the run
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && git log --oneline | head -1
+```
+
+<details><summary>00:15:59 result</summary>
+
+```text
+149fba0 notes: attempt 159 success; placement bias file updated by the run
+```
+</details>
+
+**00:16:07 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Reset repaired: attempt 159 placed the drawer 0.8 cm from the target with the pull facing the robot; the orchestrator's layout check passed.",
+ "report": "The reset works again. Attempt 159 put the drawer 0.8 cm from the target with the pull facing the robot (judge 0.9), and the orchestrator's layout check passed. It is committed as fe8b850 (code) and 149fba0 (notes).\n\nWhat failed in 155\u2013158:\n- **In-slot vs table (155/156):** a drawer right against the cabinet was sometimes taken for one still in the slot, and the reverse. It now gets a vision-judge question plus a wrist look-down before picking. The look-down outline is now accepted even when part of the drawer is behind the cabinet mask; one at width 0.063 had 
+... (1374 more characters)
+```
+
+<details><summary>00:16:07 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

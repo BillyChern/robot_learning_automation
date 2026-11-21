@@ -7,3 +7,11 @@ Operator note 23:28 (episode 31, attempt 92): the grasp held (87.8), good. Two f
    drawer came up with the gripper (stop_side.jpg: it hangs in the jaws, tilted, out of the slot; up_from_front 4.6 N =
    the drawer's weight). Open fully (0.0) and wait for the reading before any move; after the first 1 cm up, check that
    the force stays at the empty-gripper level (else stop, open, back off along the jaw axis).
+Operator note 00:08: the side camera's drawer outline on the table reads ~5 cm low in y. The reset logs the
+same drawer from its wrist look-down footprint and from the side camera (attempts 150-158, "wrist footprint pN: centre
+... (side camera ...)"): wrist - side = (+0.010,+0.057) (+0.013,+0.070) (0.000,+0.046) (-0.019,+0.056) (+0.010,+0.052)
+(+0.017,+0.070). The reset's table picks only started to hold once it grasped from the wrist footprint (attempt 158).
+Your grasps in episodes 29-31 missed by ~3 cm the same way, and the in-hand "t err -0.051" of episode 31 may be this
+bias too. Before the front-wall grasp, take a wrist look-down of the drawer and grasp from its outline (copy the
+reset's wrist footprint code: agents/reset/programs/reset.py, "wrist footprint"), and check the in-hand t error with
+the wrist camera on the slot edges before trusting a side-camera t error larger than 2 cm.

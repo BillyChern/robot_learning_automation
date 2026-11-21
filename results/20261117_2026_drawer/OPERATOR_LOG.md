@@ -88,3 +88,12 @@ most 8.5 N over 49 `ready` moves.
   23:18 note to the RL agent: cap the wrist refine shift at 12 mm (the agent did, commit a0263e0). 23:24 correction:
   that cap was wrong; episode 30's pre image shows the perceived wall point ~3 cm outside the wall, the refine's +3.2 cm
   was right and was discarded; asked to raise the cap and find why episode 29's refined grasps still missed.
+- 2026-11-20 23:43-00:00: resets 155-158 missed every table pick (14 in a row). 23:43 note: cap the wrist refine at
+  2 cm. 00:00 correction: attempt 158 shows the rejected +3.3/+3.5 cm refines were right (side-camera wall point
+  ~3.5 cm short, also seen in RL episodes 29-30); the misses came from negative shifts. Asked for a closed-loop refine
+  (re-image, grasp at <= 6 mm residual) and logging of side-vs-wrist wall offsets.
+- 2026-11-21 00:04: reset 158 succeeded after switching its table picks to the wrist look-down footprint.
+  Finding: on the table the side camera's drawer outline reads ~5 cm low in y against the wrist footprint (6 of 7
+  pairs: +0.046..+0.070 m). The slot knob was also found 4.3 cm along t (mostly +y) from the side-camera fixtures.
+  Suspect: the 11-20 15:40 automated side-camera calibration or the drawer outline itself; needs a check with the board.
+  00:08 note to the RL agent: grasp from a wrist look-down, do not trust large side-camera in-hand t errors.

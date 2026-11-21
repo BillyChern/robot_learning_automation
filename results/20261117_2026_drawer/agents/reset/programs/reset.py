@@ -32,6 +32,7 @@ TIP_OPEN = 0.027          # tips below the tool frame, open
 PROTR_GRASP = 0.045       # front-wall grasp needs this much drawer in front of the cabinet
 PULL = 0.065              # first pull with the pin grasp
 PIN_T = scene.SLOT_C - 0.0055   # pin t (wrist triangulation, attempts 9-10: -0.088 with the slot centre at -0.0825)
+PLACE_BIAS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "notes", "place_bias.json")
 TAB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "notes", "tab_position.json")
 try:                              # 15:52 operator: start from the last measured tab position (same slot geometry)
     with open(TAB_FILE) as _f:
@@ -90,7 +91,7 @@ L_DEFAULT = 0.13          # drawer depth until measured
 FIRM_MAX = 94.5           # table grasp: reading below this = a firm grasp of the wall (good ones 86-89.5)
 HOLD_MAX = 97.0           # gripper reading below this = holding something
 TOL = 0.05
-GOOD = 0.045              # correct when the error is above this (attempt 150: 3.8 cm 'corrections' missed 4x and drifted it to 9 cm)
+GOOD = 0.03               # correct when the error is above this (151/158: 4.4 cm by mine = 6.1 cm by the orchestrator)
 TIPPED_H = 0.088          # blob taller than this = drawer lying on a side wall (upright 0.065-0.072, on its side ~0.10)
 TIP_CLOSED = 0.047        # closed fingertips below the tool frame
 SAFE_H = 0.20             # tool height above the table for transfers
@@ -136,6 +137,16 @@ class Reset:
         self.from_recess = False
         self.tab_img = None       # last close wrist view of the drawer front (pinch approach)
         self.last_conf = 0.0
+        self.place_bias = np.zeros(2)       # learned systematic placement error (measured - aimed), persisted
+        self.just_placed = False
+        try:
+            if not s.dry:
+                with open(PLACE_BIAS_FILE) as f:
+                    self.place_bias = np.clip(np.array(json.load(f)["bias"], float), -0.06, 0.06)
+        except Exception:
+            pass
+        self.wall_log = []
+        self.refine_off = self.refined_last = False
         self.pin_deeper = self.pin_higher = 0.0   # 22:34: extra pinch depth along N / height (m)
         self.knob_t = None
         self.survey_pending = self.survey_placed = False
@@ -1423,11 +1434,32 @@ class Reset:
                 self.save(f"wrist_wall_pre{k}", img)
                 # 23:12 operator: refine shifts of 18-24 mm missed 4x in attempt 150; with the wrist footprint the
                 # outline is already good: cap the refinement at 12 mm (attempt 151: -11 mm, held)
-                sh = self.refine_wall(img, e, d0, h_top, max_shift=0.012 if c.get("wrist_fp") else 0.06)
-                if sh is not None:
-                    e = e + sh * d0
-                    Tg[:2, 3] = e; T_pre[:2, 3] = e
-                    self.line("wall_correct", T_pre, "slow")
+                # 23:43 operator: 10 refined picks missed with |shift| 0.033-0.058 (cabinet edge / far wall taken for
+                # the near end wall): cap at 2 cm, and after a refined miss use the unrefined point once
+                # 00:00 operator: closed loop - refine, move, re-image, until the residual is <= 6 mm (max 3)
+                e_side = e.copy()
+                self.refined_last = False
+                if self.refine_off:
+                    s.decide("previous refined grasp missed: this one uses the unrefined outline point")
+                else:
+                    for it_r in range(3):
+                        sh = self.refine_wall(img, e, d0, h_top, max_shift=0.045)
+                        if sh is None:
+                            break
+                        self.refined_last = True
+                        if abs(sh) <= 0.006:
+                            break
+                        e = e + sh * d0
+                        Tg[:2, 3] = e; T_pre[:2, 3] = e
+                        self.line(f"wall_correct{it_r}", T_pre, "slow")
+                        time.sleep(0.4)
+                        img = s.wrist.latest()[0]
+                        self.save(f"wrist_wall_pre{k}_{it_r + 1}", img)
+                wall_log = dict(side=np.round(e_side, 4).tolist(), wrist=np.round(e, 4).tolist(),
+                                along_d0=round(float((e - e_side) @ d0), 4))
+                self.wall_log.append(wall_log)
+                s.summary(wall_side_vs_wrist=self.wall_log)
+                s.decide(f"end wall: side-camera point {wall_log['side']} -> wrist {wall_log['wrist']} ({wall_log['along_d0'] * 1000:+.0f} mm toward the centre)")
                 self.line("down_to_wall", Tg, "slow")
                 break
             except Abort as ex:
@@ -1439,6 +1471,7 @@ class Reset:
         g = s.gripper(1.0, "grasp the end wall")
         s.summary(table_grip=round(g, 1))
         if g >= FIRM_MAX and not s.dry:
+            self.refine_off = self.refined_last and not self.refine_off   # never refine-miss twice in a row
             # attempt 134: 96.5 = a marginal edge grasp; the drawer tilted in the hand and hit the table (58 N) on place
             s.decide(f"end wall grasp reading {g:.1f}: {'nothing held' if g >= HOLD_MAX else 'only a marginal grasp'}")
             s.gripper(TABLE_OPEN, "open, missed")
@@ -1493,7 +1526,11 @@ class Reset:
             s.summary(wall_refine=dict(profile=np.round(prof[::4], 0).tolist(), table=round(table, 0), inner=round(inner, 4), step=round(step, 0), shift=round(shift, 4)))
             s.log(f"refine_wall: inner edge at {inner:+.3f} along d_in, step {step:.0f}, shift {shift:+.3f}")
             k = 0; grad[k] = step
-            if step < 50 or abs(shift) > max_shift:
+            # 00:00 operator: positive shifts (toward the drawer centre) up to 4.5 cm were right when the step is
+            # strong; the misses came from negative ones (away from the centre, onto the cabinet / table)
+            pos_ok = 0.0 <= shift <= max(max_shift, 0.045) and step >= 70
+            neg_ok = -0.015 <= shift < 0.0 and step >= 50
+            if not (pos_ok or neg_ok):
                 s.decide(f"wall refinement rejected (step {step:.0f}, shift {shift:+.3f})")
                 return None
             s.decide(f"wall refined by wrist camera: shift {shift:+.3f} m toward the drawer centre")
@@ -1543,13 +1580,13 @@ class Reset:
                 s.decide(f"placement {clr:.3f} m from the cabinet: aim {np.linalg.norm(away):.3f} m away from it")
                 target = target + away
             # 16:35 operator: keep the drawer centre >= 17 cm in front of the cabinet face (separate depth blob)
-            n_c = float(nt(target + self.bias)[0])
+            n_c = float(nt(target + self.bias + self.place_bias)[0])    # where it will really land (learned bias)
             if OFF - n_c < FACE_GAP_MIN:
                 back = FACE_GAP_MIN - (OFF - n_c)
                 s.decide(f"placement centre {OFF - n_c:.3f} m from the cabinet face: aim {back:.3f} m further out")
                 target = target - N * back
             s.summary(cabinet_clearance=round(self.cab_clear(target + self.bias, rot2(N, delta)), 3),
-                      face_gap=round(float(OFF - nt(target + self.bias)[0]), 3))
+                      face_gap=round(float(OFF - nt(target + self.bias + self.place_bias)[0]), 3))
         a = rot2(N, delta)            # drawer axis from its front (pull) wall toward its back: pull faces the robot
         if held.get("pull") is not None:
             turn = wrapd(ang(-a) - ang(held["pull"]))
@@ -1645,7 +1682,7 @@ class Reset:
         ctr, (L, W), yaw = obb(xy)
         res = dict(obb_c=np.round(ctr, 4).tolist(), L=round(L, 3), W=round(W, 3), yaw=round(yaw, 1), cells=int(len(xy)))
         s.summary(**{f"wrist_footprint_{tag}": res})
-        if not (0.09 <= L <= 0.17 and 0.08 <= W <= 0.15):
+        if not (0.09 <= L <= 0.17 and 0.05 <= W <= 0.15):    # attempt 157: W 0.063 = drawer partly behind the cabinet mask
             s.decide(f"wrist footprint implausible {res}: keep the side-camera outline"); return None
         s.decide(f"wrist footprint {tag}: centre {res['obb_c']} L {L:.3f} W {W:.3f} yaw {yaw:.0f} (side camera {np.round(c['obb_c'], 3).tolist()})")
         return dict(c, obb_c=res["obb_c"], L=res["L"], W=res["W"], yaw=res["yaw"], xy=res["obb_c"], wrist_fp=True)
@@ -1884,7 +1921,8 @@ class Reset:
                 s.require(self.state_of(p) == "out", f"drawer state changed to {self.state_of(p)} after a missed front grasp")
             s.require(held is not None, "front wall not grasped after two tries")
             s.phase("place")
-            delta = self.place(held, tgt)
+            delta = self.place(held, tgt - self.place_bias)
+            self.just_placed = True
         # table: pick and place; then up to two corrections
         tries = 0
         for it in range(6):
@@ -1921,6 +1959,18 @@ class Reset:
             s.require(c["h"] <= TIPPED_H or s.dry, f"drawer still on its side after {k_r} tip pushes (height {c['h']:.3f})")
             self.bias = np.array(c["obb_c"]) - np.array(c["xy"])
             err = float(np.linalg.norm(np.array(c["xy"]) - tgt))
+            if self.just_placed and not s.dry:
+                # 151/158: placements land ~4 cm toward -y every time: learn the systematic error and aim against it
+                ev = np.array(c["xy"], float) - tgt
+                self.place_bias = np.clip(self.place_bias + 0.6 * ev, -0.06, 0.06)
+                try:
+                    with open(PLACE_BIAS_FILE, "w") as f:
+                        json.dump(dict(bias=np.round(self.place_bias, 4).tolist(), last_err=np.round(ev, 4).tolist(),
+                                       when=time.strftime("%Y-%m-%d %H:%M")), f)
+                except Exception:
+                    pass
+                s.decide(f"placement error {np.round(ev, 3).tolist()} -> placement bias now {np.round(self.place_bias, 3).tolist()}")
+                self.just_placed = False
             ok_or, pull = self.vlm_pull(c, f"check{it}")
             if not ok_or and self.survey_placed and not s.dry:
                 # placed with the turn from a close wrist view of the pull wall: the side judge may simply not see it
@@ -1982,7 +2032,10 @@ class Reset:
             if held is None:
                 continue
             s.phase(f"place{it}")
-            self.place(held, tgt)
+            if np.linalg.norm(self.place_bias) > 0.002:
+                s.decide(f"aim corrected by the learned placement bias {np.round(self.place_bias, 3).tolist()}")
+            self.place(held, tgt - self.place_bias)
+            self.just_placed = True
             self.survey_placed = self.survey_pending
             self.survey_pending = False
         # final measurement (arm at home)
