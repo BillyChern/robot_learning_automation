@@ -570,3 +570,17 @@ def test_cart_line_turn_in_place():
     line = pl.cart_line("turn", q0, tool_down_T([0.40, 0.0, 0.15], 12.0), SLOW, exact_goal=False)
     assert np.abs(np.diff(line.q, axis=0)).max() <= 3.0
     assert np.linalg.norm(KIN.fk(line.q[-1])[:3, 3] - [0.40, 0.0, 0.15]) < 1e-3
+
+
+def test_sim_check_low_start_may_rise():
+    """A move that starts below the tip margin (a stop low at the drawer) may rise out, but not go lower."""
+    pl = Planner(KIN)
+    q_low = KIN.ik(tool_down_T([0.45, -0.05, TZ + 0.03], 0.0), Q_HOME)[0]          # closed tips ~2 mm above the table
+    _, rep0 = sim.check([q_low, q_low], KIN, SLOW, gripper_frac=1.0)
+    assert rep0["min_tip_above_table"] < 0.008
+    up = pl.cart_line("up", q_low, tool_down_T([0.45, -0.05, TZ + 0.12], 0.0), SLOW, exact_goal=False)
+    ok, rep = sim.check(up.q, KIN, up.speed, gripper_frac=1.0)
+    assert ok, rep
+    down = pl.cart_line("down", q_low, tool_down_T([0.45, -0.05, TZ + 0.025], 0.0), SLOW, exact_goal=False)
+    ok, rep = sim.check(down.q, KIN, down.speed, gripper_frac=1.0)
+    assert not ok

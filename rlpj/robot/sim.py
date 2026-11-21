@@ -118,6 +118,7 @@ def check(seg_q, kin, speed, dt=0.01, gripper_frac=0.0, table_z=None, tip_margin
         # a keep-out box may be left (start inside, e.g. after a stop at the cabinet) but never entered deeper
         if k == 0:
             dep0, faces0 = box_depths(P, boxes)
+            tip0, body0 = P[:8, 2].min(), P[8:, 2].min()
         dep = box_depths(P, boxes, faces0)[0]
         in_box.update(n for n, d in dep.items() if d > dep0.get(n, 0.0) + 0.001)
         for Tj in F[1:6]:
@@ -129,13 +130,16 @@ def check(seg_q, kin, speed, dt=0.01, gripper_frac=0.0, table_z=None, tip_margin
         # keep the gripper away from the base column
         if np.hypot(*T[:2, 3]) < 0.18 and T[2, 3] < 0.25:
             rep["near_base"] = True
+    # like the keep-out boxes: a move that starts below the table margin (e.g. after a stop low at the drawer) may
+    # rise out of it, but never go lower than it started
     rep["keep_in_violations"] = out_of_cell
     if in_box:
         rep["keep_out_violations"] = sorted(in_box)
     rep.update(min_tip_above_table=float(min_tip - table_z), min_body_above_table=float(min_body - table_z),
                min_link_z=float(min_link), max_lin_speed=float(max_lin), max_radius=float(max_r))
     ok = (rep["joint_limit_violations"] == 0 and rep["joint_speed_ok"] and max_lin <= speed["lin"] * cart_tol
-          and min_tip - table_z > tip_margin and min_body - table_z > 0.03 and min_link - table_z > 0.05
+          and min_tip - table_z > min(tip_margin, tip0 - table_z - 0.001)
+          and min_body - table_z > min(0.03, body0 - table_z - 0.001) and min_link - table_z > 0.05
           and not rep.get("near_base") and max_r < max_radius and out_of_cell == 0 and not in_box)
     rep["ok"] = bool(ok)
     return ok, rep
