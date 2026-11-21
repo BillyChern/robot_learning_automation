@@ -18,8 +18,8 @@
    "unsure": 0
   },
   "resets": {
-   "total": 109,
-   "ok": 55,
+   "total": 110,
+   "ok": 56,
    "fail": 54,
    "manual": 0
   },
@@ -71,8 +71,8 @@
    "model": "claude-opus-5-5",
    "started": "2026-11-17T22:12:06",
    "ended": "2026-11-18T02:06:21",
-   "attempts": 29,
-   "robot_attempts": 21,
+   "attempts": 30,
+   "robot_attempts": 22,
    "turns": 358,
    "cost_usd": 103.3177853,
    "input_tokens": 678,
@@ -327,7 +327,7 @@
   }
  },
  "next_episode": 47,
- "next_reset": 109,
+ "next_reset": 110,
  "vlm": {
   "calls": 47,
   "cost_usd": 2.8324504
