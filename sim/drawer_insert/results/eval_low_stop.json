@@ -1,0 +1,245 @@
+{
+ "straight": {
+  "summary": {
+   "n": 500,
+   "success": 0.32,
+   "max_f_median": 53.57759811923791,
+   "over_65n": 0.256,
+   "first_success_median": 19.0,
+   "stops_mean": 17.354,
+   "by_lateral": [
+    {
+     "bin": "|e_t| mm 0-3",
+     "n": 129,
+     "success": 0.5116279069767442
+    },
+    {
+     "bin": "|e_t| mm 3-6",
+     "n": 102,
+     "success": 0.46078431372549017
+    },
+    {
+     "bin": "|e_t| mm 6-10",
+     "n": 114,
+     "success": 0.2982456140350877
+    },
+    {
+     "bin": "|e_t| mm 10-20",
+     "n": 124,
+     "success": 0.10483870967741936
+    },
+    {
+     "bin": "|e_t| mm 20-60",
+     "n": 31,
+     "success": 0.0
+    }
+   ],
+   "by_yaw": [
+    {
+     "bin": "|e_yaw| deg 0-2",
+     "n": 265,
+     "success": 0.3660377358490566
+    },
+    {
+     "bin": "|e_yaw| deg 2-4",
+     "n": 144,
+     "success": 0.2916666666666667
+    },
+    {
+     "bin": "|e_yaw| deg 4-6",
+     "n": 57,
+     "success": 0.2807017543859649
+    },
+    {
+     "bin": "|e_yaw| deg 6-10",
+     "n": 32,
+     "success": 0.15625
+    },
+    {
+     "bin": "|e_yaw| deg 10-25",
+     "n": 2,
+     "success": 0.0
+    }
+   ],
+   "by_clearance": [
+    {
+     "bin": "clearance mm 3-5",
+     "n": 152,
+     "success": 0.2236842105263158
+    },
+    {
+     "bin": "clearance mm 5-7.5",
+     "n": 180,
+     "success": 0.32222222222222224
+    },
+    {
+     "bin": "clearance mm 7.5-10.01",
+     "n": 168,
+     "success": 0.40476190476190477
+    }
+   ]
+  }
+ },
+ "wiggle": {
+  "summary": {
+   "n": 500,
+   "success": 0.704,
+   "max_f_median": 49.725133921162424,
+   "over_65n": 0.22,
+   "first_success_median": 30.0,
+   "stops_mean": 4.004,
+   "by_lateral": [
+    {
+     "bin": "|e_t| mm 0-3",
+     "n": 129,
+     "success": 0.8604651162790697
+    },
+    {
+     "bin": "|e_t| mm 3-6",
+     "n": 102,
+     "success": 0.7843137254901961
+    },
+    {
+     "bin": "|e_t| mm 6-10",
+     "n": 114,
+     "success": 0.7807017543859649
+    },
+    {
+     "bin": "|e_t| mm 10-20",
+     "n": 124,
+     "success": 0.5725806451612904
+    },
+    {
+     "bin": "|e_t| mm 20-60",
+     "n": 31,
+     "success": 0.03225806451612903
+    }
+   ],
+   "by_yaw": [
+    {
+     "bin": "|e_yaw| deg 0-2",
+     "n": 265,
+     "success": 0.7169811320754716
+    },
+    {
+     "bin": "|e_yaw| deg 2-4",
+     "n": 144,
+     "success": 0.7152777777777778
+    },
+    {
+     "bin": "|e_yaw| deg 4-6",
+     "n": 57,
+     "success": 0.7192982456140351
+    },
+    {
+     "bin": "|e_yaw| deg 6-10",
+     "n": 32,
+     "success": 0.5625
+    },
+    {
+     "bin": "|e_yaw| deg 10-25",
+     "n": 2,
+     "success": 0.0
+    }
+   ],
+   "by_clearance": [
+    {
+     "bin": "clearance mm 3-5",
+     "n": 152,
+     "success": 0.618421052631579
+    },
+    {
+     "bin": "clearance mm 5-7.5",
+     "n": 180,
+     "success": 0.7277777777777777
+    },
+    {
+     "bin": "clearance mm 7.5-10.01",
+     "n": 168,
+     "success": 0.7559523809523809
+    }
+   ]
+  }
+ },
+ "policy": {
+  "summary": {
+   "n": 500,
+   "success": 0.926,
+   "max_f_median": 48.024056557809544,
+   "over_65n": 0.206,
+   "first_success_median": 19.0,
+   "stops_mean": 3.678,
+   "by_lateral": [
+    {
+     "bin": "|e_t| mm 0-3",
+     "n": 129,
+     "success": 0.9844961240310077
+    },
+    {
+     "bin": "|e_t| mm 3-6",
+     "n": 102,
+     "success": 0.9117647058823529
+    },
+    {
+     "bin": "|e_t| mm 6-10",
+     "n": 114,
+     "success": 0.9035087719298246
+    },
+    {
+     "bin": "|e_t| mm 10-20",
+     "n": 124,
+     "success": 0.9112903225806451
+    },
+    {
+     "bin": "|e_t| mm 20-60",
+     "n": 31,
+     "success": 0.8709677419354839
+    }
+   ],
+   "by_yaw": [
+    {
+     "bin": "|e_yaw| deg 0-2",
+     "n": 265,
+     "success": 0.9320754716981132
+    },
+    {
+     "bin": "|e_yaw| deg 2-4",
+     "n": 144,
+     "success": 0.8958333333333334
+    },
+    {
+     "bin": "|e_yaw| deg 4-6",
+     "n": 57,
+     "success": 0.9824561403508771
+    },
+    {
+     "bin": "|e_yaw| deg 6-10",
+     "n": 32,
+     "success": 0.90625
+    },
+    {
+     "bin": "|e_yaw| deg 10-25",
+     "n": 2,
+     "success": 1.0
+    }
+   ],
+   "by_clearance": [
+    {
+     "bin": "clearance mm 3-5",
+     "n": 152,
+     "success": 0.8947368421052632
+    },
+    {
+     "bin": "clearance mm 5-7.5",
+     "n": 180,
+     "success": 0.9444444444444444
+    },
+    {
+     "bin": "clearance mm 7.5-10.01",
+     "n": 168,
+     "success": 0.9345238095238095
+    }
+   ]
+  }
+ }
+}

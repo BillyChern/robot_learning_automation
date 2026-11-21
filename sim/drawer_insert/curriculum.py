@@ -8,9 +8,9 @@ from .policy import H_STEPS
 
 
 class Curriculum:
-    def __init__(self, size=4096, fresh=0.4, kappa=4.0, eps=0.05, seed=0, p_aligned=0.2):
+    def __init__(self, size=4096, fresh=0.4, kappa=4.0, eps=0.05, seed=0, variants=None):
         self.rng = np.random.default_rng(seed)
-        self.p_aligned = p_aligned
+        self.variants = variants or dict(carry=0.8, aligned=0.2)   # start variants (params.VARIANTS) and shares
         self.size, self.fresh, self.kappa, self.eps = size, fresh, kappa, eps
         self.next_seed = 10**6 * (seed + 1)
         self.cfg = [self.new() for _ in range(size)]
@@ -25,7 +25,9 @@ class Curriculum:
                     k_pre=0 if kind is None else int(self.rng.integers(2, H_STEPS // 2)))
 
     def variant(self):
-        return "aligned" if self.rng.random() < self.p_aligned else "carry"
+        names = list(self.variants)
+        w = np.array([self.variants[n] for n in names], float)
+        return names[self.rng.choice(len(names), p=w / w.sum())]
 
     def weights(self):
         w = (self.p + self.eps) ** (0.5 * self.kappa) * (1 - self.p + self.eps) ** (0.5 * self.kappa)

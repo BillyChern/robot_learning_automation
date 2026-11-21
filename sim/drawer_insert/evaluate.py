@@ -65,6 +65,24 @@ def summary(res):
                 by_clearance=table(res, "clearance", (3, 5, 7.5, 10.01), "clearance mm"))
 
 
+def report(folder):
+    """Markdown tables from the eval_*.json files in folder."""
+    rows, bins = [], []
+    for f in sorted(Path(folder).glob("eval_*.json")):
+        for name, v in json.loads(f.read_text()).items():
+            sm, tag = v["summary"], f.stem[5:]
+            rows.append(f"| {tag} | {name} | {sm['success']:.3f} | {sm['max_f_median']:.0f} | {sm['over_65n']:.2f} | "
+                        f"{sm['stops_mean']:.1f} | {sm['first_success_median']} |")
+            if tag == "carry":
+                cells = [f"{r['success']:.2f} ({r['n']})" if r["n"] else "-" for r in sm["by_lateral"] + sm["by_yaw"] + sm["by_clearance"]]
+                bins.append(f"| {name} | " + " | ".join(cells) + " |")
+    head = "| start | controller | success | median max F (N) | share > 65 N | force stops/ep | steps to success |\n|---|---|---|---|---|---|---|"
+    labels = [f"{a}-{b} mm" for a, b in zip(T_BINS[:-1], T_BINS[1:])] + [f"{a}-{b} deg" for a, b in zip(Y_BINS[:-1], Y_BINS[1:])] + \
+             ["clr 3-5", "clr 5-7.5", "clr 7.5-10"]
+    print(head + "\n" + "\n".join(rows))
+    print("\n| carry | " + " | ".join(labels) + " |\n" + "|---" * (len(labels) + 1) + "|\n" + "\n".join(bins))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--policy", default=None)
@@ -75,7 +93,11 @@ def main():
     ap.add_argument("--variant", default="carry", help="start variant: carry | aligned (params.VARIANTS)")
     ap.add_argument("--preroll", default="", help="start from a scripted pre-roll, e.g. push:12 or drift:16 (jammed / partly in)")
     ap.add_argument("--out", default="")
+    ap.add_argument("--episodes", action="store_true", help="also save per-episode results")
+    ap.add_argument("--report", default="", help="print markdown tables of the eval_*.json in this folder and exit")
     a = ap.parse_args()
+    if a.report:
+        return report(a.report)
     kind, k_pre = (a.preroll.split(":")[0], int(a.preroll.split(":")[1])) if a.preroll else (None, 0)
     names = [n for n in ("straight", "wiggle", "policy") if (not a.only or n in a.only.split(","))]
     if not a.policy:
@@ -93,7 +115,8 @@ def main():
     if a.out:
         Path(a.out).mkdir(parents=True, exist_ok=True)
         tag = a.variant + (f"_{kind}{k_pre}" if kind else "")
-        Path(a.out, f"eval_{tag}.json").write_text(json.dumps(out, default=float, indent=1))
+        keep = out if a.episodes else {k: dict(summary=v["summary"]) for k, v in out.items()}
+        Path(a.out, f"eval_{tag}.json").write_text(json.dumps(keep, default=float, indent=1))
 
 
 if __name__ == "__main__":

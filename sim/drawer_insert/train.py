@@ -122,6 +122,7 @@ def main():
     ap.add_argument("--eval_every", type=int, default=10)
     ap.add_argument("--init", default="")
     ap.add_argument("--f_pen", type=float, default=0.05, help="reward per 10 N of peak force above 40 N")
+    ap.add_argument("--variants", default="carry:0.8,aligned:0.2", help="start variant shares (params.VARIANTS)")
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
     torch.set_num_threads(4)
@@ -134,7 +135,8 @@ def main():
     if a.init:
         agent.load_state_dict(torch.load(a.init, map_location=dev))
     opt = torch.optim.Adam(agent.parameters(), lr=a.lr)
-    cur = Curriculum(size=max(4096, 4 * a.envs), fresh=a.fresh, seed=a.seed)
+    variants = {k: float(v) for k, v in (x.split(":") for x in a.variants.split(","))}
+    cur = Curriculum(size=max(4096, 4 * a.envs), fresh=a.fresh, seed=a.seed, variants=variants)
     rng = np.random.default_rng(12345)
     eval_starts = [dict(p=P.sample(np.random.default_rng(200000 + i)), kind=None, k_pre=0) for i in range(a.envs)]
     log = csv.writer(open(out / "log.csv", "a", newline="", buffering=1))
