@@ -67,7 +67,7 @@ rl:
   learner_timeout_s: 300           # programs/learner.py between episodes (CPU on the robot machine)
   episode_timeout_s: 300
   reset_repairs: 10                # reset-agent repairs per failing reset before the run stops (default 2; 5 -> 10 at 21:30: user "the robot can, keep trying")
-  force_limit_n: 50                # contact-force stop (N; user 23:10). 25 N stopped drawer pulls (22-28 N); with none,
-                                   # a snag reached 99.6 N and moved the cabinet 6 cm (RL attempt 5)
+  force_limit_n: 65                # contact-force stop (N). 50 (user 11-17) stopped every insertion/push at the drawer's
+                                   # static friction (51-57 N, then it slides at 2-6 N); 65 N on 2026-11-20 (user: raise the force cap to 65 N)
 
 reuse: []
