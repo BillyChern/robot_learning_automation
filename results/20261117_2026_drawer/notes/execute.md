@@ -16,3 +16,15 @@ SLOT SHIFTED +36 mm ALONG t (21:30), from the reset's own wrist evidence: attemp
 finger gap; attempt 141 (after a wrong -35 mm shift) further away; attempt 142 the judge said "left" (= +t) and the
 +12 mm correction was refused by the OLD keep-out. task yaml now: slot_t [-0.130, -0.055] (centre -0.0925), keep-out
 boxes moved by (-13.4, +33.4) mm. Re-read the yaml; discard saved knob poses from before 21:30.
+
+SLOT SHIFTED ANOTHER +43 mm (21:45), from the reset's own wrist measurement in attempt 143 ("tab +43.3 mm along t from
+the aim", knob left of the left finger in the image, keep-out refused the measured position). task yaml now: slot_t
+[-0.087, -0.012], centre -0.0495 (knob ~ -0.055). Re-read; discard saved poses from before 21:45.
+
+CORRECTION 2 (21:58): IGNORE THE 21:45 "+43 mm" NOTE; it is reverted. The task yaml is back to slot_t [-0.130, -0.055]
+(centre -0.0925), which matches the knob position the reset measured directly at 21:29 (t ~ -0.098).
+
+FINAL ON THE SLOT (22:12): the reset measured the knob at t ~ -0.055 in four runs (attempts 140, 143, 144, 145; the
+earlier -0.098 came from a dry run that wrote the tab file). The task yaml is RESTORED to the 21:45 geometry: slot_t
+[-0.087, -0.012], centre -0.0495, keep-out boxes moved accordingly. This replaces both corrections; no more slot
+changes unless your own wrist measurements say otherwise.

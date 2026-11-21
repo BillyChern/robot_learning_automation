@@ -136,6 +136,7 @@ class Reset:
         self.from_recess = False
         self.tab_img = None       # last close wrist view of the drawer front (pinch approach)
         self.last_conf = 0.0
+        self.knob_t = None
         self.survey_pending = self.survey_placed = False
         self.or_stage = 0         # judge guess sequence for an unseen pull (attempt 124)
         self.tab_dt = TAB_DT0     # tab t offset from PIN_T: saved from the last hold, updated by the wrist measurement
@@ -455,6 +456,27 @@ class Reset:
         s.decide(f"wrist tab measurement {tag}: " + (f"tab {dt * 1000:+.1f} mm along t from the aim" if dt is not None else f"not found {res}"))
         return dt
 
+    def explain_refusal(self, T, gf, tag):
+        """21:58 operator: log which keep-out box and which gripper point a refused pose enters (model gripper at gf)."""
+        try:
+            from rlpj.robot import sim
+            G = sim.gripper_points(0.085 * (1 - gf), gf)
+            P = G @ T[:3, :3].T + T[:3, 3]
+            names = ["tip L-", "tip L-hi", "tip L+", "tip L+hi", "tip R-", "tip R-hi", "tip R+", "tip R+hi"] + \
+                [f"body z{z:+.2f} a{a:.0f}" for z in (-0.12, -0.08, -0.04) for a in np.linspace(0, 315, 8)]
+            hits = []
+            for name, c, half, yaw in sim.cell_keep_out():
+                ca, sa = np.cos(yaw), np.sin(yaw)
+                L = (P - c) @ np.array([[ca, -sa, 0], [sa, ca, 0], [0, 0, 1]])
+                inside = np.all(np.abs(L) < half, axis=1)
+                for i in np.where(inside)[0]:
+                    q = nt(P[i, :2])
+                    hits.append(f"{names[i]} in {name} (t {q[1]:.3f}, n-OFF {q[0] - OFF:+.3f}, h {P[i, 2] - self.tz:.3f})")
+            self.s.summary(**{f"refusal_{tag}": hits[:12]})
+            self.s.decide(f"refused pose {tag}: " + ("; ".join(hits[:4]) if hits else "no keep-out point at the end pose (path/limits)"))
+        except Exception as e:
+            self.s.log(f"explain_refusal failed: {e}")
+
     def judge_tab_side(self, tag):
         """20:55 operator: when the grey-run detector finds nothing, ask the vision judge on the close wrist image
         whether the knob is left or right of the gap between the finger pads; step 12 mm that way (image left = +t)."""
@@ -475,6 +497,8 @@ class Reset:
 
     def save_tab(self):
         """Persist the tab position that held (slot-centre relative) for later resets (15:52 operator)."""
+        if self.s.dry:                       # 21:29: a dry run 'held' the tab and wrote a meaningless position
+            return
         try:
             extra = (self.deep_cfg.get("dt", 0.0) - 0.012) if self.deep_cfg is not None else 0.0   # variant spread
             d = dict(slot_c=scene.SLOT_C, t_from_slot=round(float(self.pin_t + self.pin_dt - extra - scene.SLOT_C), 4),
@@ -512,7 +536,8 @@ class Reset:
         z = T0[:3, 2]
         phi_now = PIN_PHI; PIN_PHI = PIN_PHI0          # the high pose keeps the 20 deg roll (roll 0 there hits joint limits)
         d_now = self.depth; self.depth = max(self.depth, 0.0)    # and stays at the flush position (protruding: j3 folds)
-        T0h = self.pin_T(PIN_OUT); PIN_PHI = phi_now; self.depth = d_now
+        dt_now = self.pin_dt; self.pin_dt = float(np.clip(dt_now, -0.012, 0.012))   # (a far knob offset: joint limits)
+        T0h = self.pin_T(PIN_OUT); PIN_PHI = phi_now; self.depth = d_now; self.pin_dt = dt_now
         T_hi = T0h.copy(); T_hi[:3, 3] -= 0.05 * T0h[:3, 2]; T_hi[2, 3] = self.tz + PIN_HI; T_hi[:2, 3] -= 0.04 * N
         if np.abs(wrap180(self.q_now() - self.ik(tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0), [SEED_DOWN]))).max() > 3:
             self.to_ready()
@@ -525,7 +550,7 @@ class Reset:
             self.pin_dy, self.pin_dz = dy, dz
             Tg = self.pin_T(PIN_OUT)
             T_pre = Tg.copy(); T_pre[:3, 3] -= 0.05 * z
-            s.decide(f"pin try {k}.{i}: offset dy {dy:+.3f} dz {dz:+.3f} (tool frame)")
+            s.decide(f"pin try {k}.{i}: offset dy {dy:+.3f} dz {dz:+.3f} (tool frame), aim t {self.pin_t + self.pin_dt:.4f}")
             try:
                 self.line(f"to_pin_pre{i}", T_pre, "normal" if i == 0 else "slow", tip_margin=PIN_MARGIN)
                 self.line(f"approach_pin{i}", Tg, "slow", tip_margin=PIN_MARGIN)
@@ -542,6 +567,9 @@ class Reset:
                 for it_m in range(3):
                     time.sleep(0.4)
                     dt_m = self.measure_tab(f"{k}_{it_m}")
+                    if dt_m is not None:
+                        self.knob_t = float(self.pin_t + self.pin_dt + dt_m)   # measured knob t (for the press-drag)
+                        s.summary(knob_t_measured=round(self.knob_t, 4))
                     if dt_m is None:
                         dt_m = self.judge_tab_side(f"{k}_{it_m}")     # 20:55 operator: ask the judge where the knob is
                     if dt_m is None:
@@ -555,12 +583,15 @@ class Reset:
                     self.tab_dt = self.pin_dt - extra         # later variants keep their spread around it
                     Tg = self.pin_T(PIN_OUT)
                     T_pre = Tg.copy(); T_pre[:3, 3] -= 0.05 * z
+                    aim_t = float(self.pin_t + self.pin_dt)
+                    s.decide(f"commanded pinch aim t {aim_t:.4f} (yaml slot centre {scene.SLOT_C:.4f}, PIN_T {PIN_T:.4f}, step {dt_m * 1000:+.1f} mm)")
                     try:
                         self.line(f"to_tab_pre{it_m}", T_pre, "slow", tip_margin=PIN_MARGIN)
                         self.line(f"approach_tab{it_m}", Tg, "slow", tip_margin=PIN_MARGIN)
                     except Abort as e:
                         if "check failed" not in str(e):
                             raise
+                        self.explain_refusal(Tg, PRECLOSE, f"tab{it_m}")
                         s.decide(f"measured tab position refused by the model ({str(e)[:90]}); back to the previous aim")
                         self.pin_dt -= dt_m; self.tab_dt = tab_old
                         Tg = self.pin_T(PIN_OUT); T_pre = Tg.copy(); T_pre[:3, 3] -= 0.05 * z
@@ -598,7 +629,9 @@ class Reset:
             T_up = T_out.copy(); T_up[2, 3] += 0.12
             T_b = T_out.copy(); T_b[:3, 3] -= 0.04 * T_out[:3, 2]; T_b[2, 3] += 0.10
             T_u8 = T_out.copy(); T_u8[2, 3] += 0.08
-            self.lift_any("up_from_pin", [T_up, T_b, T_u8], "slow")    # (not toward the cabinet: the drawer sticks out)
+            T_d = T_out.copy(); T_d[:3, 3] += np.r_[-0.05 * N, 0.04]          # diagonal: away from the cabinet and up
+            T_u4 = T_out.copy(); T_u4[2, 3] += 0.04
+            self.lift_any("up_from_pin", [T_up, T_b, T_u8, T_d, T_u4], "slow")    # (not toward the cabinet: the drawer sticks out)
         else:
             T_hi2 = T_pre.copy(); T_hi2[2, 3] = self.tz + PIN_HI; T_hi2[:2, 3] -= 0.04 * N
             T_st = T_pre.copy(); T_st[2, 3] += 0.10
@@ -616,6 +649,8 @@ class Reset:
         PIN_PHI, PIN_OUT, PIN_H = 0.0, PIN_BASE[0], 0.031 + 0.004 * k      # tip end ~on the tab top (h ~0.03)
         self.pin_t, self.pin_dy, self.pin_dz = PIN_T, 0.0, 0.0
         self.pin_dt = 0.012                                                  # attempt 92: tab ~1.2 cm toward +t (image left = +t: camera x = -tool x)
+        if self.knob_t is not None:          # attempt 143: the pinch at the measured knob was refused; drag there instead
+            self.pin_dt = self.knob_t - PIN_T
         self.deep_cfg = dict(margin=-0.002)                                  # 2 mm deeper than the tab end
         Tg = self.pin_T(PIN_OUT)
         z = Tg[:3, 2]
@@ -1508,7 +1543,10 @@ class Reset:
             # forward finger points sit ~7 mm ahead of the fingertip (offline sweep: 2.5 cm needs the tab 5 mm beyond the tips)
             if self.depth > DEEP_MAX:
                 s.phase("recessed")
-                tries = [("pinch", v) for v in DEEP_VARIANTS] + [("drag", 0), ("drag", 1)]
+                # attempt 143: the pinch at the measured knob was refused by the keep-out every time; the press-drag
+                # at the measured knob t stays outside it: interleave the drags early
+                V = DEEP_VARIANTS
+                tries = [("pinch", V[0]), ("drag", 0), ("pinch", V[1]), ("drag", 1)] + [("pinch", v) for v in V[2:]]
                 for kind, v in tries:
                     s.decide(f"drawer recessed {self.depth:.3f} m: try {kind} {v['name'] if kind == 'pinch' else v}")
                     try:

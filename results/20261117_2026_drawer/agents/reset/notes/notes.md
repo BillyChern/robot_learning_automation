@@ -216,3 +216,21 @@
   ~+3 cm along t from the yaml slot (operator 21:00 also saw the face centred 2.9 cm 'further' but shifted the yaml
   the wrong way); the slot window and the opening's keep-out boxes need ~+3 cm in t before the reset can reach it.
 - 21:30 operator: yaml slot_t [-0.130,-0.055] (centre -0.0925), keep-out moved (-13.4,+33.4) mm. A pinch at PIN_T held at 21:29 with the new yaml (tab_position.json slot_c -0.0925, t_from_slot -0.0055, depth 0.022): kept. Offline 6/6, deep 8/8 with the new boxes.
+- attempt 143 (new yaml, slot centre -0.0925): wrist measurement again +35..+43 mm from the aim (aim -0.098 -> knob
+  ~ -0.06), every pinch at the measured knob refused by the cabinet_front keep-out (t > -0.055 now). NOTE: the knob
+  appears ~+36 mm from the aim both before (140) and after (143) the yaml +36 mm shift, while the side depth shows the
+  cabinet body unchanged (-0.21..-0.05): either the cabinet keeps creeping or something is biased - unresolved.
+  tab_position.json of 21:29 was written by a DRY run (held = True when dry): deleted; save_tab now skips dry runs.
+  New: knob_t (measured) is used by the press-drag (feasible in the model up to +35 mm from PIN_T); drags interleaved
+  after the first pinch variant; high pose ignores large tab offsets (joint limits); more lift options after a hold.
+- 21:58 operator asked why the aim did not move. FK of the executed plans: approach_pin0 tip t = -0.1323 (140, 142),
+  -0.0971 (143), -0.0855 (144: the yaml was -0.0925 at its start). The knob's image position moved accordingly
+  (140: u ~60 px = ~7.7 cm off, beyond the 60 mm cap; 143: +35 mm; 144: +33 mm) -> the knob is FIXED at
+  t ~ -0.055 +- 0.005 (aim + offset in all three). The 21:45 yaml (centre -0.0495) matched it; the 21:29 'direct
+  measurement' at -0.098 was the dry-run tab file (bug, fixed). Under the -0.0925 yaml every step toward -0.055 is
+  refused: e.g. aim -0.051 -> 'tip R+ in cabinet_front (t -0.031, n-OFF +0.022, h 0.034)'. New logging: commanded aim
+  t on every try, and explain_refusal (box + gripper point) on refused tab steps.
+- attempt 145: 4th measurement: knob at t -0.0547 (aim -0.086 + 31 mm); refusal 'tip R+ in cabinet_front (t -0.034,
+  n-OFF +0.023, h 0.034)'. Offline sweep: wall-edge clamp of a 2 cm recessed drawer (tilt 10-70 deg, T_C -0.12..-0.068,
+  top 0.065-0.075) never passes the current keep-out (gripper body into cabinet_front at the opening's top rail).
+  No pinch / press-drag / clamp reaches the drawer under the -0.0925 yaml. GAVE UP this reset with the evidence.
