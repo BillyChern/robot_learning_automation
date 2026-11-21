@@ -20278,3 +20278,634 @@ Structured output provided successfully
 ```
 </details>
 
+**22:13:14 reset agent:** No response requested.
+
+### 22:13:14 orchestrator -> reset agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+FINAL ON THE SLOT (22:12): the reset measured the knob at t ~ -0.055 in four runs (attempts 140, 143, 144, 145; the
+earlier -0.098 came from a dry run that wrote the tab file). The task yaml is RESTORED to the 21:45 geometry: slot_t
+[-0.087, -0.012], centre -0.0495, keep-out boxes moved accordingly. This replaces both corrections; no more slot
+changes unless your own wrist measurements say otherwise.
+
+# attempt_146: exit code 2; outcome: fail
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_141/targets.json; what: Reset from the current scene: perceive the drawer's state, pull it out if it is in the slot (wrist-guided pinch, aim and refusals logged) or pick it from the table, place it at the target with the pull facing the robot, and verify.; commit: 5bb54d7; duration_s: 193.3; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "5bb54d7624",
+"command": "programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_141/targets.json",
+"step": "recessed",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9572, 0.562, 90.4591], "gripper": 70.3},
+"fk_check_mm": 0.18,
+"targets": {"drawer": [0.369, -0.02]},
+"measured": null,
+"start_state": "slot_deep",
+"start_perception": {"tag": "start", "table_z": -0.0155, "front_top": null, "face_depth": 0.0232, "slot_med": 0.0229, "blobs": 1, "low_pts": 1427, "near_cabinet": false, "drawer_blobs": [], "protr": 0.0, "front_pts": 0, "face_pts": 0, "inside_pts": 118, "out": null},
+"decisions": ["start state: slot_deep", "drawer recessed 0.023 m: try pinch level_dt+0.012", "pinch refused by the model: model check failed for 02_above_pin: {'joint_limit_violations': 191, 'max_joint_speed': 18.354326008", "drawer recessed 0.024 m: try drag 0", "press-drag try 0: closed tips onto 
+"segments": [["ready", true, 0.056, 0.24, 11.86, 39.9], ["ready", true, 0.003, 0.02, 0.56, 37.5], ["ready", true, 0.001, 0.01, 0.57, 36.8], ["home_after_try", true, 0.071, 0.23, 11.86, 39.9], ["ready", true, 0.094, 0.26, 11.86, 39.9], ["ready", true, 0.003, 0.02, 0.57, 36.8], ["ready", true, 0.003, 
+"recessed_after_pinch_level_dt+0.012": {"state": "slot_deep", "depth": 0.0237, "protr": 0.0},
+"recessed_after_drag_0": {"state": "slot_deep", "depth": 0.0243, "protr": 0.0},
+"recessed_after_pinch_level_dt+0.006": {"state": "slot_deep", "depth": 0.023, "protr": 0.0},
+"recessed_after_drag_1": {"state": "slot_deep", "depth": 0.0242, "protr": 0.0},
+"recessed_after_pinch_level_dt+0.018": {"state": "slot_deep", "depth": 0.0234, "protr": 0.0},
+"recessed_after_pinch_rolled_dt+0.012": {"state": "slot_deep", "depth": 0.0227, "protr": 0.0},
+"stop": {"kind": "failed check", "why": "drawer still recessed 0.023 m after all variants; a person must pull it out to about flush", "step": "recessed", "segment": "home_after_try", "progress": 1.0, "t": 11.82, "q_meas": [-0.0, 15.0, -130.0, -0.0, 55.01, 90.01], "q_plan": [0.0, 15.0, -130.0, 0.0, 5
+"first_failed_check": "drawer still recessed 0.023 m after all variants; a person must pull it out to about flush",
+"return_home": "already at default pose",
+"exit_code": 2,
+"gripper_final": {"cmd": 0.706, "reading": 70.30567932128906},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.3]
+}
+
+log.txt: 95 lines; last 40:
+[22:11:40] gripper -> 1.00 (close for press-drag)
+[22:11:41] gripper reading 99.1
+[22:11:43] plan 17_above_tab_drag: T=11.8s check ok=False tip>0.067 vmax=18.3deg/s lin=0.062m/s
+[22:11:43] DECISION: drag refused by the model: model check failed for 17_above_tab_drag: {'joint_limit_violations': 103, 'max_joint_speed': 18.3138
+[22:11:43] plan 18_ready: T=0.5s 
+... (7551 more characters)
+```
+
+**22:13:19 reset agent:** The yaml is now at the 21:45 geometry (slot centre −0.0495). Attempt 146 failed differently: the joint move to the high pose above the pinch (`above_pin`) is refused for joint limits at the new, farther position. The same happens for the press-drag's high pose. Reproducing offline:
+
+**22:13:20 tool Bash:**
+
+```bash
+grep -n "slot_t" /home/r2r/robot_learning_final_pj/config/tasks/drawer_rl.yaml; cd /home/r2r/robot_learning_final_pj && .venv/bin/python runs/20261117_2026_drawer/agents/reset/tools/test_deep.py 2>&1 | grep "####" | cut -c1-200
+```
+
+<details><summary>22:13:23 result</summary>
+
+```text
+36:    slot_t: [-0.087, -0.012]       # window along the front (t = -n_y x + n_x y, m); the front spans -0.135..-0.026
+#### FAIL level_dt+0.012 True check failed above_pin: {'joint_limit_violations': 129, 'max_joint_speed': 18.288370797504648, 'joint_speed_ok': True, 'keep_in_violations': 0, 'min_t
+#### FAIL level_dt+0.012 False check failed above_pin: {'joint_limit_violations': 129, 'max_joint_speed': 18.288370797504648, 'joint_speed_ok': True, 'keep_in_violations': 0, 'min_t
+#### FAIL level_dt+0.006 True line up_from_pin_alt1: joint jump 3.5 deg between samples
+#### FAIL level_dt+0.006 False line up_from_pin_alt1: joint jump 3.5 deg between samples
+#### FAIL level_dt+0.018 True check failed above_pin: {'joint_limit_violations': 129, 'max_joint_speed': 18.288370797504648, 'joint_speed_ok': True, 'keep_in_violations': 0, 'min_t
+#### FAIL level_dt+0.018 False check failed above_pin: {'joint_limit_violations': 129, 'max_joint_speed': 18.288370797504648, 'joint_speed_ok': True, 'keep_in_violations': 0, 'min_t
+#### FAIL rolled_dt+0.012 True check failed above_pin: {'joint_limit_violations': 102, 'max_joint_speed': 18.32758849542606, 'joint_speed_ok': True, 'keep_in_violations': 0, 'min
+... (216 more characters)
+```
+</details>
+
+**22:13:30 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && sed -n "$(grep -n '        T0h = self.pin_T(PIN_OUT); PIN_PHI = phi_now' programs/reset.py | cut -d: -f1),+10p" programs/reset.py
+```
+
+<details><summary>22:13:30 result</summary>
+
+```text
+T0h = self.pin_T(PIN_OUT); PIN_PHI = phi_now; self.depth = d_now; self.pin_dt = dt_now
+        T_hi = T0h.copy(); T_hi[:3, 3] -= 0.05 * T0h[:3, 2]; T_hi[2, 3] = self.tz + PIN_HI; T_hi[:2, 3] -= 0.04 * N
+        if np.abs(wrap180(self.q_now() - self.ik(tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0), [SEED_DOWN]))).max() > 3:
+            self.to_ready()
+        s.gripper(PRECLOSE, "pre-close to ~25 mm for the pull tab")
+        q = self.ik(T_hi, [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (20.0, 40.0, 60.0) for j6 in (-90.0, 90.0)])
+        s.require(wrap180(q[4]) > 15, f"pin pose IK gave a wrist near the singularity or flipped {np.round(q, 0).tolist()}")
+        s.move_joint("above_pin", q, "normal")
+        held, tries = False, []
+        for i, (dy, dz) in enumerate(sweep):
+            self.pin_dy, self.pin_dz = dy, dz
+```
+</details>
+
+**22:13:49 tool Bash:**
+
+```bash
+python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+old='''        T0h = self.pin_T(PIN_OUT); PIN_PHI = phi_now; self.depth = d_now; self.pin_dt = dt_now
+        T_hi = T0h.copy(); T_hi[:3, 3] -= 0.05 * T0h[:3, 2]; T_hi[2, 3] = self.tz + PIN_HI; T_hi[:2, 3] -= 0.04 * N
+        if np.abs(wrap180(self.q_now() - self.ik(tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0), [SEED_DOWN]))).max() > 3:
+            self.to_ready()
+        s.gripper(PRECLOSE, "pre-close to ~25 mm for the pull tab")
+        q = self.ik(T_hi, [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (20.0, 40.0, 60.0) for j6 in (-90.0, 90.0)])
+        s.require(wrap180(q[4]) > 15, f"pin pose IK gave a wrist near the singularity or flipped {np.round(q, 0).tolist()}")
+        s.move_joint("above_pin", q, "norm
+... (3751 more characters)
+```
+
+<details><summary>22:14:06 result</summary>
+
+```text
+#### FAIL level_dt+0.012 True check failed ready: {'joint_limit_violations': 0, 'max_joint_speed': 15.59266477304817, 'joint_speed_ok': True, 'keep_in_violations': 0, 'keep_out_vio
+#### FAIL level_dt+0.012 False check failed ready: {'joint_limit_violations': 0, 'max_joint_speed': 15.74118660966235, 'joint_speed_ok': True, 'keep_in_violations': 0, 'keep_out_vio
+#### FAIL level_dt+0.006 True check failed ready: {'joint_limit_violations': 0, 'max_joint_speed': 15.724039847118831, 'joint_speed_ok': True, 'keep_in_violations': 0, 'keep_out_vi
+#### FAIL level_dt+0.006 False check failed ready: {'joint_limit_violations': 0, 'max_joint_speed': 15.881002469613748, 'joint_speed_ok': True, 'keep_in_violations': 0, 'keep_out_vi
+#### FAIL level_dt+0.018 True check failed ready: {'joint_limit_violations': 0, 'max_joint_speed': 15.486536740267809, 'joint_speed_ok': True, 'keep_in_violations': 0, 'keep_out_vi
+#### FAIL level_dt+0.018 False check failed ready: {'joint_limit_violations': 0, 'max_joint_speed': 15.633877365969795, 'joint_speed_ok': True, 'keep_in_violations': 0, 'keep_out_vi
+#### rolled_dt+0.012 True True refused 0
+#### rolled_dt+0.012 False False refused 0
+#### drag 0 OK
+#### drag 1 
+... (2 more characters)
+```
+</details>
+
+**22:14:09 reset agent:** The pinch and pull now pass. Only the final joint move back to the ready pose is refused, by a keep-out box. I'm adding a straight-line retreat away from the cabinet and up before that move.
+
+**22:14:14 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+old='''            self.lift_any("up_from_pin", cands, "normal")
+        self.to_ready()
+        return held'''
+new='''            self.lift_any("up_from_pin", cands, "normal")
+        # 22:12 geometry: the joint move to READY from beside the cabinet can sweep through its keep-out: back off
+        # straight away from the cabinet and up first
+        Tn = self.T_now()
+        T_r1 = Tn.copy(); T_r1[:3, 3] += np.r_[-0.10 * N, 0.0]; T_r1[2, 3] = max(Tn[2, 3], self.tz + 0.16)
+        T_r2 = Tn.copy(); T_r2[:3, 3] += np.r_[-0.06 * N, 0.0]; T_r2[2, 3] = max(Tn[2, 3], self.tz + 0.12)
+        try:
+            self.lift_any("retreat_from_cabinet", [T_r1, T_r2], "n
+... (510 more characters)
+```
+
+<details><summary>22:14:31 result</summary>
+
+```text
+#### FAIL level_dt+0.012 True check failed ready: {'joint_limit_violations': 0, 'max_joint_speed': 15.59266477304817, 'joint_speed_ok': True, 'keep_in_violations': 0, 'keep_out_vio
+#### FAIL level_dt+0.012 False check failed ready: {'joint_limit_violations': 0, 'max_joint_speed': 15.74118660966235, 'joint_speed_ok': True, 'keep_in_violations': 0, 'keep_out_vio
+#### FAIL level_dt+0.006 True check failed ready: {'joint_limit_violations': 0, 'max_joint_speed': 15.724039847118831, 'joint_speed_ok': True, 'keep_in_violations': 0, 'keep_out_vi
+#### FAIL level_dt+0.006 False check failed ready: {'joint_limit_violations': 0, 'max_joint_speed': 15.881002469613748, 'joint_speed_ok': True, 'keep_in_violations': 0, 'keep_out_vi
+#### FAIL level_dt+0.018 True check failed ready: {'joint_limit_violations': 0, 'max_joint_speed': 15.486536740267809, 'joint_speed_ok': True, 'keep_in_violations': 0, 'keep_out_vi
+#### FAIL level_dt+0.018 False check failed ready: {'joint_limit_violations': 0, 'max_joint_speed': 15.633877365969795, 'joint_speed_ok': True, 'keep_in_violations': 0, 'keep_out_vi
+#### rolled_dt+0.012 True True refused 2
+#### rolled_dt+0.012 False False refused 2
+#### drag 0 OK
+#### drag 1 
+... (2 more characters)
+```
+</details>
+
+**22:14:35 tool Bash:**
+
+```bash
+.venv/bin/python - 2>&1 <<'E' | grep -E "ok=|####|retreat|high pose" | tail -25
+import sys; sys.argv=['x']
+__file__='runs/20261117_2026_drawer/agents/reset/tools/offline.py'; exec(open(__file__).read().split('def run(')[0])
+s=FS(); s.dry=False; r=R.Reset(s,{}); r.tz=calib.table_z(); r.to_ready(); r.depth=0.023; r.deep_cfg=R.DEEP_VARIANTS[0]
+r.measure_tab=lambda t: None; r.judge_tab_side=lambda t: None; r.save_tab=lambda: None
+s.decide=lambda m: print('  ', m)
+def gr(x,w="",s=s): s.gf=x; return 87.0 if x>=0.89 else 100*x
+s.gripper=gr
+try: print('####', r.pull_pin(0))
+except Exception as e: print('#### FAIL', str(e)[:600])
+E
+```
+
+<details><summary>22:14:37 result</summary>
+
+```text
+ready: ok=True T=11.9 tip=0.200 body=0.263 ko=None r=0.59 q1=[14.0, 19.0, -99.0, -0.0, -61.0, 14.0]
+   high pose above the tab: roll 20 h 0.14 back 0.00
+   above_pin: ok=True T=15.6 tip=0.100 body=0.130 ko=None r=0.48 q1=[6.0, 37.0, -139.0, -134.0, -50.0, -119.0]
+   to_pin_pre0: ok=True T=4.6 tip=0.050 body=0.076 ko=None r=0.46 q1=[-12.0, 47.0, -143.0, -171.0, -60.0, -88.0]
+   approach_pin0: ok=True T=5.1 tip=0.017 body=0.044 ko=None r=0.50 q1=[-13.0, 53.0, -135.0, -172.0, -58.0, -88.0]
+   pull_drawer: ok=True T=4.6 tip=0.015 body=0.044 ko=None r=0.50 q1=[-12.0, 55.0, -143.0, -172.0, -67.0, -86.0]
+   up_from_pin: ok=True T=26.5 tip=0.018 body=0.044 ko=None r=0.46 q1=[-12.0, 27.0, -143.0, -169.0, -40.0, -92.0]
+   retreat_from_cabinet: ok=False T=2.4 tip=0.138 body=0.164 ko=None r=0.46 q1=[-5.0, 26.0, -161.0, -166.0, -57.0, -87.0]
+   retreat_from_cabinet option 0 refused by the model (check failed retreat_from_cabinet: {'joint_limit_violations': 185, 'max_joint_sp); next option
+   retreat_from_cabinet_alt1: ok=False T=1.9 tip=0.138 body=0.164 ko=None r=0.46 q1=[-9.0, 25.0, -154.0, -168.0, -49.0, -90.0]
+   retreat line refused (check failed retreat_from_cabinet_alt1: {'joint_limit_vio
+... (591 more characters)
+```
+</details>
+
+**22:14:46 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+old='''        for T, label in cands:
+            tried = []
+            for sd in seeds:
+                try:
+                    q, _, _ = pl.ik_exact(T, sd)
+                except Exception:
+                    continue
+                if any(np.abs(wrap180(q - t)).max() < 2 for t in tried):
+                    continue
+                tried.append(q)
+                try:'''
+new='''        q_ready = self.ik(tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0), [SEED_DOWN])
+        for T, label in cands:
+            sols = []
+            for sd in seeds:
+                try:
+                    q, _, _ = pl.ik_exact(T, sd)
+                except
+... (820 more characters)
+```
+
+<details><summary>22:15:04 result</summary>
+
+```text
+#### level_dt+0.012 True True refused 2
+#### level_dt+0.012 False False refused 2
+#### level_dt+0.006 True True refused 2
+#### level_dt+0.006 False False refused 2
+#### level_dt+0.018 True True refused 2
+#### level_dt+0.018 False False refused 2
+#### rolled_dt+0.012 True True refused 2
+#### rolled_dt+0.012 False False refused 2
+#### drag 0 OK
+#### drag 1 OK
+```
+</details>
+
+**22:15:07 reset agent:** All recessed variants and both drags now pass (the "refused 2" are retreat options the program skips before one passes). Checking one run in detail, then the other paths:
+
+**22:15:11 tool Bash:**
+
+```bash
+.venv/bin/python - 2>&1 <<'E' | grep -E "ok=|####|high pose|refused" | cut -c1-150 | tail -14
+import sys; sys.argv=['x']
+__file__='runs/20261117_2026_drawer/agents/reset/tools/offline.py'; exec(open(__file__).read().split('def run(')[0])
+s=FS(); s.dry=False; r=R.Reset(s,{}); r.tz=calib.table_z(); r.to_ready(); r.depth=0.023; r.deep_cfg=R.DEEP_VARIANTS[0]
+r.measure_tab=lambda t: None; r.judge_tab_side=lambda t: None; r.save_tab=lambda: None
+s.decide=lambda m: print('  ', m)
+def gr(x,w="",s=s): s.gf=x; return 87.0 if x>=0.89 else 100*x
+s.gripper=gr
+try: print('####', r.pull_pin(0))
+except Exception as e: print('#### FAIL', str(e)[:300])
+E
+cd runs/20261117_2026_drawer/agents/reset && for t in offline test_tabout test_survey test_neartab test_hook; do echo "== $t"; /home/r2r/robot_learning_fin
+... (105 more characters)
+```
+
+<details><summary>22:17:11 result</summary>
+
+```text
+ready: ok=True T=11.9 tip=0.200 body=0.263 ko=None r=0.59 q1=[14.0, 19.0, -99.0, -0.0, -61.0, 14.0]
+   high pose above the tab: roll 20 h 0.14 back 0.00
+   above_pin: ok=True T=11.7 tip=0.079 body=0.124 ko=None r=0.50 q1=[6.0, 37.0, -139.0, 46.0, 50.0, 61.0]
+   to_pin_pre0: ok=True T=4.7 tip=0.050 body=0.076 ko=None r=0.46 q1=[-12.0, 47.0, -143.0, 9.0, 60.0, 92.0]
+   approach_pin0: ok=True T=5.1 tip=0.017 body=0.044 ko=None r=0.50 q1=[-13.0, 53.0, -135.0, 8.0, 58.0, 92.0]
+   pull_drawer: ok=True T=4.6 tip=0.015 body=0.044 ko=None r=0.50 q1=[-11.0, 55.0, -143.0, 8.0, 67.0, 94.0]
+   up_from_pin: ok=True T=26.9 tip=0.018 body=0.044 ko=None r=0.46 q1=[-12.0, 27.0, -143.0, 11.0, 40.0, 88.0]
+   retreat_from_cabinet: ok=False T=2.4 tip=0.138 body=0.164 ko=None r=0.46 q1=[-5.0, 26.0, -161.0, 15.0, 57.0, 93.0]
+   retreat_from_cabinet option 0 refused by the model (check failed retreat_from_cabinet: {'joint_limit_violations': 185, 'max_joint_sp); next option
+   retreat_from_cabinet_alt1: ok=False T=1.9 tip=0.138 body=0.164 ko=None r=0.46 q1=[-9.0, 25.0, -154.0, 13.0, 49.0, 90.0]
+   retreat line refused (check failed retreat_from_cabinet_alt1: {'joint_limit_violations': 133, 'max_joi); joint 
+... (884 more characters)
+```
+</details>
+
+**22:17:15 tool Bash:**
+
+```bash
+sleep 100; cat /tmp/claude-1002/-home-r2r-robot-learning-final-pj-runs-20261117-2026-drawer-agents-reset/28a976d6-48ea-4fad-b363-10f157ffb977/tasks/bwlj141kg.output | tail -12
+```
+
+<details><summary>22:17:15 result (error)</summary>
+
+```text
+<tool_use_error>Blocked: sleep 100 followed by: cat /tmp/claude-1002/-home-r2r-robot-learning-final-pj-runs-20261117-2026-drawer-agents-reset/28a976d6-48ea-4fad-b363-10f157ffb977/tasks/bwlj141kg.output tail -12. To wait for a condition, use Monitor with an until-loop (e.g. `until <check>; do sleep 2; done`). To wait for a command you started, use run_in_background: true. Do not chain shorter sleeps to work around this block.</tool_use_error>
+```
+</details>
+
+**22:17:17 tool Read:** `/tmp/claude-1002/-home-r2r-robot-learning-final-pj-runs-20261117-2026-drawer-agents-reset/28a976d6-48ea-4fad-b363-10f157ffb977/tasks/bwlj141kg.output`
+
+<details><summary>22:17:17 result</summary>
+
+```text
+1	   ready: ok=True T=11.9 tip=0.200 body=0.263 ko=None r=0.59 q1=[14.0, 19.0, -99.0, -0.0, -61.0, 14.0]
+2	   high pose above the tab: roll 20 h 0.14 back 0.00
+3	   above_pin: ok=True T=11.7 tip=0.079 body=0.124 ko=None r=0.50 q1=[6.0, 37.0, -139.0, 46.0, 50.0, 61.0]
+4	   to_pin_pre0: ok=True T=4.7 tip=0.050 body=0.076 ko=None r=0.46 q1=[-12.0, 47.0, -143.0, 9.0, 60.0, 92.0]
+5	   approach_pin0: ok=True T=5.1 tip=0.017 body=0.044 ko=None r=0.50 q1=[-13.0, 53.0, -135.0, 8.0, 58.0, 92.0]
+6	   pull_drawer: ok=True T=4.6 tip=0.015 body=0.044 ko=None r=0.50 q1=[-11.0, 55.0, -143.0, 8.0, 67.0, 94.0]
+7	   up_from_pin: ok=True T=26.9 tip=0.018 body=0.044 ko=None r=0.46 q1=[-12.0, 27.0, -143.0, 11.0, 40.0, 88.0]
+8	   retreat_from_cabinet: ok=False T=2.4 tip=0.138 body=0.164 ko=None r=0.46 q1=[-5.0, 26.0, -161.0, 15.0, 57.0, 93.0]
+9	   retreat_from_cabinet option 0 refused by the model (check failed retreat_from_cabinet: {'joint_limit_violations': 185, 'max_joint_sp); next option
+10	   retreat_from_cabinet_alt1: ok=False T=1.9 tip=0.138 body=0.164 ko=None r=0.46 q1=[-9.0, 25.0, -154.0, 13.0, 49.0, 90.0]
+11	   retreat line refused (check failed retreat_from_cabinet_alt1: {'joint_limit_violatio
+... (208 more characters)
+```
+</details>
+
+**22:17:19 reset agent:** While that finishes, checking the steps that follow a successful recessed pull at the new slot position: the wall-edge clamp, and the extraction plus placing at the target.
+
+**22:17:23 tool Bash:**
+
+```bash
+timeout 300 .venv/bin/python - 2>&1 <<'E' | grep "####"
+import sys; sys.argv=['x']
+__file__='runs/20261117_2026_drawer/agents/reset/tools/offline.py'; exec(open(__file__).read().split('def run(')[0])
+import io, contextlib
+for pr in (0.012, 0.02, 0.03):
+    s=FS(); s.dry=False; r=R.Reset(s,{}); r.tz=calib.table_z(); r.to_ready()
+    def gr(v,w="",s=s): s.gf=v; return 82.0 if v>=0.99 else 100*v
+    s.gripper=gr
+    try:
+        with contextlib.redirect_stdout(io.StringIO()): res=r.pull_back(dict(protr=pr, front_top=0.07))
+        print('#### clamp', pr, res)
+    except Exception as e: print('#### clamp FAIL', pr, str(e)[:200])
+# extract from 'out' + place at target
+for pr in (0.05, 0.065):
+    s=FS(); r=R.Reset(s,{"drawer":[0.369,-0.02]}); r.tz=calib.table_z(); r.to_ready()
+    p=dict(out=di
+... (326 more characters)
+```
+
+<details><summary>22:17:26 result</summary>
+
+```text
+#### clamp 0.012 True
+#### clamp FAIL 0.02 check failed pull_back_drawer: {'joint_limit_violations': 147, 'max_joint_speed': 3.27720268747953, 'joint_speed_ok': True, 'keep_in_violations': 0, 'min_tip_above_table': 0.04356557590185429, 'min_bo
+#### clamp FAIL 0.03 check failed pull_back_drawer: {'joint_limit_violations': 133, 'max_joint_speed': 3.2751450709611163, 'joint_speed_ok': True, 'keep_in_violations': 0, 'min_tip_above_table': 0.04356322300457177, 'min_
+#### extract+place 0.05 OK
+#### extract+place 0.065 OK
+```
+</details>
+
+**22:17:40 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+old='''                T_out = Tg.copy(); T_out[:3, 3] -= np.r_[pull_d * N, 0.0]
+                try:
+                    self.line("pull_drawer", T_out, "slow", tip_margin=PIN_MARGIN)
+                    break
+                except Abort as e:
+                    s.decide(f"pull refused by the model at offset {i}: {str(e)[:120]}; release and try the next offset")
+                    held = False'''
+new='''                # 22:12 geometry: the wall-edge clamp at ~2 cm proud is out of joint limits: pull by the tab as far as
+                # the model allows (to ~6.5 cm out -> front-wall extraction), else the old shorter pulls
+                pulled = False
+... (1867 more characters)
+```
+
+<details><summary>22:17:50 result</summary>
+
+```text
+#### 0.023 level_dt+0.012 True ["pull of 0.088 m refused by the model (check failed pull_drawer: {'joint_limit_violations': 620, 'max_joint_speed': 2.8)", "pull of 0.068 m refused by the model (check failed pull_drawer: {'joint_limit_violations': 296, 'max_joint_speed': 3.3)", 'pulled the tab 0.043 m out']
+#### 0.023 level_dt+0.006 True ["pull of 0.088 m refused by the model (check failed pull_drawer: {'joint_limit_violations': 637, 'max_joint_speed': 2.6)", "pull of 0.068 m refused by the model (check failed pull_drawer: {'joint_limit_violations': 293, 'max_joint_speed': 3.1)", 'pulled the tab 0.043 m out']
+#### 0.015 level_dt+0.012 True ["pull of 0.080 m refused by the model (check failed pull_drawer: {'joint_limit_violations': 591, 'max_joint_speed': 2.9)", "pull of 0.060 m refused by the model (check failed pull_drawer: {'joint_limit_violations': 270, 'max_joint_speed': 3.4)", 'pulled the tab 0.035 m out']
+#### 0.015 level_dt+0.006 True ["pull of 0.080 m refused by the model (check failed pull_drawer: {'joint_limit_violations': 606, 'max_joint_speed': 2.7)", "pull of 0.060 m refused by the model (check failed pull_drawer: {'joint_limit_violations': 266, 'max_joint_speed': 3.2)"
+... (31 more characters)
+```
+</details>
+
+**22:17:55 tool Read:** `/tmp/claude-1002/-home-r2r-robot-learning-final-pj-runs-20261117-2026-drawer-agents-reset/28a976d6-48ea-4fad-b363-10f157ffb977/tasks/bwlj141kg.output`
+
+<details><summary>22:17:55 result</summary>
+
+```text
+16	== test_tabout
+17	0
+18	== test_survey
+19	3
+20	== test_neartab
+21	3
+22	== test_hook
+23	3
+24	
+25	[exited with code 0]
+26
+```
+</details>
+
+**22:18:02 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+old='''        if st == "slot_back" and not self.from_recess:'''
+new='''        if st == "slot_back":     # 22:12 geometry: also after a recessed pull (the ~2 cm-proud clamp is out of joint limits)'''
+assert old in s; s=s.replace(old,new,1)
+open(p,'w').write(s)
+E
+grep -n 'if st == "slot_back"' programs/reset.py; sed -n "$(grep -n 'if st == "slot_back":     # 22:12' programs/reset.py | cut -d: -f1),+14p" programs/reset.py
+```
+
+<details><summary>22:18:02 result</summary>
+
+```text
+1654:        if st == "slot_back":     # 22:12 geometry: also after a recessed pull (the ~2 cm-proud clamp is out of joint limits)
+1660:        if st == "slot_back":
+        if st == "slot_back":     # 22:12 geometry: also after a recessed pull (the ~2 cm-proud clamp is out of joint limits)
+            # 18:14 operator: 'no pull seen' from the moved side camera does not mean backwards: knob pinch first
+            sm = p.get("slot_med")
+            self.depth = float(sm) if sm is not None and sm < 0 else -float(p["protr"])
+            s.decide(f"drawer sticking out ({-self.depth:.3f} m by the face median): tab pinch-and-pull (right way round by default)")
+            st = "slot"
+        if st == "slot_back":
+            s.phase("pull_back")
+            self.backwards = False
+            self.pull_back(p)
+            self.go_home("home_after_back")
+            p = self.perceive("after_back")
+            st = self.state_of(p)
+            s.require(st in ("out", "table") or s.dry, f"backwards drawer not pulled out (state {st}, protrusion {p['protr']:.3f})")
+            if s.dry and st != "out":
+```
+</details>
+
+**22:18:06 reset agent:** After the recessed loop the state can come back as `slot_near`, but the `slot_near` handling runs earlier in `run()`. I'm adding the same routing after the loop:
+
+**22:18:13 tool Bash:**
+
+```bash
+python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+old='''        if st == "slot_back":     # 22:12 geometry: also after a recessed pull (the ~2 cm-proud clamp is out of joint limits)'''
+new='''        if st == "slot_near":     # (after a recessed pull) median face < 4 cm out: the tab pinch-and-pull again
+            self.depth = float(p["slot_med"])
+            s.decide(f"drawer face median {-self.depth:.3f} m out after the recessed pull: tab pinch-and-pull")
+            st = "slot"
+        if st == "slot_back":     # 22:12 geometry: also after a recessed pull (the ~2 cm-proud clamp is out of joint limits)'''
+assert s.count(old)==1; s=s.replace(old,new,1)
+open(p,'w').write(s)
+E
+/home/r2r/robot_learning_final_pj/.venv/bin/python -c "import ast;ast.parse(open('programs/reset.py').read(
+... (1028 more characters)
+```
+
+<details><summary>22:18:13 result</summary>
+
+```text
+ok
+b3b05a1 attempt 147: 22:12 slot geometry - model-checked choice of the pinch high pose (roll/height/IK branch), longer tab pulls when feasible, second tab pinch after a recessed pull
+```
+</details>
+
+**22:18:16 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_141/targets.json",
+ "moves_robot": true,
+ "what": "Drawer recessed about 2.3 cm at the restored slot (centre -0.0495). Pinch the knob from a model-checked high pose with wrist steering, pull it to about 2 cm proud, pinch the tab again to pull it about 7 cm out, then extract it, place it at the target with the pull facing the robot, and verify.",
+ "report": ""
+}
+```
+
+<details><summary>22:18:16 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**22:26:43 reset agent:** No response requested.
+
+### 22:26:43 orchestrator -> reset agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+Operator note 22:27 (attempt 147, measured from your own logs and images):
+
+The slot geometry is right; your measure_tab was wrong in attempt 147. In wrist_tab_0_0.jpg (first pinch, aim t ~ -0.043)
+the knob sits between the pads, about 85 px (full res) right of u_pad 615 = ~-11 mm, so the knob is at t ~ -0.054
+(matches attempts 140-145: -0.055). measure_tab returned u_tab 1239 (13 rows, cents 1224-1260): the grey table beyond
+the cabinet's right edge, a run touching the image edge, accepted by the `x > len(g) - 25` flank exception, then
+clipped to -0.060. That set knob_t = -0.103, so the -60 mm step was refused, the pins aimed at -0.097..-0.109, and the
+press-drag aimed at t ~ -0.10 to -0.11, inside the left cabinet_front box (t < -0.087) -> refused.
+
+Fix now (small, in measure_tab):
+1. Drop runs that touch the image edge (x0 < 5 or x > len(g) - 5); a knob cut by the edge gives a wrong centre anyway.
+2. Treat a saturated or implausible result as not found: |dt| > 0.035 -> return None (fall back to the judge).
+3. Never store knob_t outside the slot window (scene.SLOT_T, 1 cm inside each end); clip, or ignore it.
+4. With the knob between the pads, |dt| <= ~12 mm: pinch at that aim, then pull.
+
+# attempt_147: exit code 2; outcome: fail
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_141/targets.json; what: Drawer recessed about 2.3 cm at the restored slot (centre -0.0495). Pinch the knob from a model-checked high pose with wrist steering, pull it to about 2 cm proud, pinch the tab again to pull it about 7 cm out, then extract it, place it at the target with the pull facing the robot, and verify.; commit: b3b05a1; duration_s: 488.3; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "b3b05a1bfd",
+"command": "programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_141/targets.json",
+"step": "recessed",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9601, 0.5611, 90.4592], "gripper": 70.3},
+"fk_check_mm": 0.18,
+"targets": {"drawer": [0.369, -0.02]},
+"measured": null,
+"start_state": "slot_deep",
+"start_perception": {"tag": "start", "table_z": -0.0154, "front_top": null, "face_depth": 0.0229, "slot_med": 0.0226, "blobs": 3, "low_pts": 996, "near_cabinet": false, "drawer_blobs": [], "protr": 0.0, "front_pts": 0, "face_pts": 0, "inside_pts": 99, "out": null},
+"decisions": ["start state: slot_deep", "drawer recessed 0.023 m: try pinch level_dt+0.012", "high pose above the tab: roll 20 h 0.14 back 0.00", "pin try 0.0: offset dy +0.002 dz +0.002 (tool frame), aim t -0.0430", "wrist tab measurement 0_0: tab -60.0 mm along t from the aim", "commanded pinch ai
+"segments": [["ready", true, 0.074, 0.32, 11.86, 39.9], ["above_pin", true, 0.128, 0.32, 11.77, 39.8], ["to_pin_pre0", true, 0.056, 0.18, 5.25, 39.6], ["approach_pin0", true, 0.008, 0.07, 5.18, 39.6], ["back_for_tab0", true, 0.01, 0.08, 5.18, 39.6], ["to_tab_pre0", true, 0.017, 0.08, 17.66, 39.9], [
+"tab_measure_0_0": {"rows": 13, "u_pad": 614.8, "px_per_m": 7687, "cents": [1224, 1226, 1228, 1231, 1232, 1235, 1239, 1242, 1242, 1254, 1256, 1258, 1260], "u_tab": 1239.0, "spread": 10.5, "dt": -0.06},
+"knob_t_measured": -0.103,
+"tab_measure_0_1": {"rows": 2, "u_pad": 614.8, "px_per_m": 7687, "cents": [240, 256]},
+"vlm_tab_side_0_1_left": {"success": true, "conf": 0.88, "reason": "In the after image, the grey metal knob is at about x\u2248120 px, well to the left of the gap between the finger pads (about x\u2248245\u2013380 px), so it is clearly off to the left and not between them."},
+"refusal_tab1": ["tip L+ in cabinet_front (t -0.112, n
+... (11290 more characters)
+```
+
+**22:26:49 reset agent:** The operator's diagnosis checks out against the log: `u_tab` 1239 is a run touching the right image edge, the result was clipped to −60 mm, and `knob_t` −0.103 then sent every later try into the left keep-out box. Applying the four fixes in `measure_tab` and the steering loop:
+
+**22:27:00 tool Bash:**
+
+```bash
+python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+old='''                    flank = (x0 < 25 or near_wood[x0 - 25]) and (x > len(g) - 25 or near_wood[x + 24])   # wood on both sides (or the image edge)
+                    if 40 <= w <= 200 and flank and (best is None or w > best[1]):'''
+new='''                    # 22:27 operator: a run touching the image edge (the grey table beyond the cabinet in 147) is not
+                    # the knob, and a knob cut by the edge gives a wrong centre anyway
+                    edge = x0 < 5 or x > len(g) - 5
+                    flank = (not edge) and near_wood[max(x0 - 25, 0)] and near_wood[min(x + 24, len(g) - 1)]   # wood on both sides
+                    if 40 <= w <= 200 and flank and (best is None or w > best[1]):'''
+assert old in s; s=s.re
+... (3106 more characters)
+```
+
+<details><summary>22:27:01 result</summary>
+
+```text
+#### attempt_122/wrist_pin_closed0_0.jpg 11.3 mm [514, 517, 517, 518, 520, 522, 530]
+#### attempt_122/wrist_pin_closed0_3.jpg 11.1 mm [516, 516, 520, 520, 522, 531]
+#### attempt_93/wrist_pin_closed0_0.jpg None mm [636, 636]
+#### attempt_132/wrist_tab_0.jpg 27.4 mm [354, 362, 366, 370]
+#### attempt_132/wrist_tab_0_check.jpg 9.4 mm [534, 536, 540]
+#### attempt_132/wrist_pin_closed0_0.jpg 9.3 mm [532, 536, 538]
+#### attempt_140/wrist_tab_0_0.jpg None mm [64, 79, 84]
+#### attempt_141/wrist_tab_0_0.jpg None mm []
+#### attempt_133/wrist_tab_0_0.jpg 27.2 mm [364, 365, 368, 372]
+#### attempt_133/wrist_tab_0_2.jpg 3.6 mm [584, 590, 591, 596]
+#### attempt_147/wrist_tab_0_0.jpg -8.8 mm [707, 707, 708, 708, 709, 709, 709] -0.0088
+#### attempt_147/wrist_tab_0_1.jpg None mm [231, 236, 242, 242, 242, 246, 258] 0.0403
+#### attempt_145/wrist_tab_0_0.jpg 21.4 mm [412, 414, 417, 420, 421, 422, 422, 422, 424, 426] 0.0214
+```
+</details>
+
+**22:27:05 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj && timeout 500 .venv/bin/python runs/20261117_2026_drawer/agents/reset/tools/test_deep.py 2>&1 | grep "####" | cut -c1-120
+```
+
+<details><summary>22:27:23 result</summary>
+
+```text
+#### level_dt+0.012 True True refused 4
+#### level_dt+0.012 False False refused 2
+#### level_dt+0.006 True True refused 4
+#### level_dt+0.006 False False refused 2
+#### level_dt+0.018 True True refused 4
+#### level_dt+0.018 False False refused 2
+#### rolled_dt+0.012 True True refused 3
+#### rolled_dt+0.012 False False refused 2
+#### drag 0 OK
+#### drag 1 OK
+```
+</details>
+
+**22:27:27 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && echo "- 22:27 operator / attempt 147: measure_tab took the grey table beyond the cabinet edge (run touching the image edge, accepted by the edge-flank exception) -> -60 mm (clipped) -> knob_t -0.103, all later tries aimed into the left cabinet_front box. Fix: runs touching the image edge are dropped (wood needed on both sides), |dt| > 35 mm = not found (-> judge), knob_t and judge steps must stay inside the slot window (1 cm margin). 147's first image now -> -8.8 mm offline scale (~ -11 mm robot) = knob t ~ -0.054." >> notes/notes.md; git add -A && git commit -qm "attempt 148: measure_tab drops image-edge runs and saturated offsets; knob position and steps kept inside the slot window
+
+Co-Authored-By: Claude Opus
+... (60 more characters)
+```
+
+<details><summary>22:27:28 result</summary>
+
+```text
+241689b attempt 148: measure_tab drops image-edge runs and saturated offsets; knob position and steps kept inside the slot window
+```
+</details>
+
+**22:27:31 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_141/targets.json",
+ "moves_robot": true,
+ "what": "Drawer recessed about 2.3 cm, knob near t -0.054. Pinch at the wrist-measured knob position (about 11 mm from the first aim; edge runs and out-of-window values now rejected), pull it to about 2 cm proud, pinch the tab again to pull it out, then extract it, place it at the target with the pull facing the robot, and verify.",
+ "report": ""
+}
+```
+
+<details><summary>22:27:31 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

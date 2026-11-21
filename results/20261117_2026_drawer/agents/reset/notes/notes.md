@@ -234,3 +234,10 @@
   n-OFF +0.023, h 0.034)'. Offline sweep: wall-edge clamp of a 2 cm recessed drawer (tilt 10-70 deg, T_C -0.12..-0.068,
   top 0.065-0.075) never passes the current keep-out (gripper body into cabinet_front at the opening's top rail).
   No pinch / press-drag / clamp reaches the drawer under the -0.0925 yaml. GAVE UP this reset with the evidence.
+- 22:12 operator: yaml restored to slot_t [-0.087,-0.012] (centre -0.0495). Attempt 146 (that yaml): the fixed pinch
+  high pose (roll 20, 14 cm) -> joint limits -> every pinch/drag refused. Fixes (offline, new yaml): pick_high tries
+  rolls 20/0/35/-15, heights, back-offs, IK branches (unflipped wrist first) and pre-checks the joint move, the line
+  down AND the way back to READY; retreat-from-cabinet line before READY; held tab pull tries 6.5/4.5 cm + depth
+  first (only depth+2 cm passes here); a drawer 2 cm proud after the recessed pull -> tab pinch again (protruding tab
+  pulls 1-6 cm all feasible), clamp only as fallback. Offline: deep variants 8/8 + drags, extract+place OK.
+- 22:27 operator / attempt 147: measure_tab took the grey table beyond the cabinet edge (run touching the image edge, accepted by the edge-flank exception) -> -60 mm (clipped) -> knob_t -0.103, all later tries aimed into the left cabinet_front box. Fix: runs touching the image edge are dropped (wood needed on both sides), |dt| > 35 mm = not found (-> judge), knob_t and judge steps must stay inside the slot window (1 cm margin). 147's first image now -> -8.8 mm offline scale (~ -11 mm robot) = knob t ~ -0.054.

@@ -70,3 +70,9 @@ Interventions, stops and mid-run changes by the operator (the user, or Claude Co
 Force stops so far (25 N limit) were all real contacts: finger dragging on the pulled-out drawer (30.8 N), drawer meeting the
 table while placing (27.3 N), lifting while still gripping (26.6 N), drawer edge meeting the slot (25.4 N). Free moves: at
 most 8.5 N over 49 `ready` moves.
+
+- 2026-11-20 22:25: attempt 147 (geometry restored, slot centre -0.0495): the first pinch had the knob between the pads
+  (wrist_tab_0_0), but the wrist tab measurement took the grey table at the image's right edge for the knob (-60 mm,
+  clipped), stored knob_t -0.103 and moved every later pinch and the press-drag into the left cabinet_front box
+  (refused). Note to the reset agent: reject edge-touching runs, treat |dt| > 35 mm as not found, keep knob_t inside the
+  slot window.

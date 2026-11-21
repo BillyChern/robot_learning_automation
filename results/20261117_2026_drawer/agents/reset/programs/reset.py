@@ -377,14 +377,51 @@ class Reset:
         self.s.decide(f"close wrist view: metal pull {'NOT visible -> treat as backwards' if back else 'visible (or unsure) -> right way round'}")
         return back
 
+    def pick_high(self, cands, T_next, gf):
+        """First (T, q, label) among cands whose joint move from now and line to T_next pass the model (no motion)."""
+        from rlpj.robot import sim
+        from rlpj.robot.plan import NORMAL, SLOW
+        pl, kin = self.s.planner, self.s.kin
+        q0 = self.q_now()
+        seeds = [q0, SEED_DOWN] + [np.array([j1, 40, -120, 0, j5, j6], float) for j1 in (0.0, 30.0) for j5 in (20.0, 40.0, 60.0, -40.0) for j6 in (-90.0, 90.0)]
+        q_ready = self.ik(tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0), [SEED_DOWN])
+        for T, label in cands:
+            sols = []
+            for sd in seeds:
+                try:
+                    q, _, _ = pl.ik_exact(T, sd)
+                except Exception:
+                    continue
+                if any(np.abs(wrap180(q - t)).max() < 2 for t in sols):
+                    continue
+                sols.append(q)
+            # unflipped wrist first (22:12: a j4 ~ -170 branch could not get back out past the cabinet)
+            for q in sorted(sols, key=lambda v: abs(wrap180(v[3]))):
+                try:
+                    segb = pl.joint_move("chk_back", q, q_ready, NORMAL)
+                    okb, _ = sim.check(segb.q, kin, NORMAL, gripper_frac=gf, table_z=calib.table_z())
+                    if not okb:
+                        continue
+                    seg = pl.joint_move("chk", q0, q, NORMAL)
+                    ok, _ = sim.check(seg.q, kin, NORMAL, gripper_frac=gf, table_z=calib.table_z())
+                    if not ok:
+                        continue
+                    seg2 = pl.cart_line("chk2", q, T_next, SLOW)
+                    ok2, _ = sim.check(seg2.q, kin, SLOW, gripper_frac=gf, table_z=calib.table_z(), tip_margin=PIN_MARGIN)
+                    if ok2:
+                        return T, q, label
+                except Exception:
+                    continue
+        return None
+
     def lift_any(self, name, cands, speed):
         """First model-feasible line among cands (a refused plan does not move the arm)."""
         for j, T in enumerate(cands):
             try:
                 self.line(name if j == 0 else f"{name}_alt{j}", T, speed, tip_margin=PIN_MARGIN)
                 return
-            except Abort as e:
-                if "check failed" not in str(e) or j == len(cands) - 1:
+            except (Abort, RuntimeError, ValueError) as e:
+                if ("check failed" not in str(e) and "joint jump" not in str(e)) or j == len(cands) - 1:
                     raise
                 self.s.decide(f"{name} option {j} refused by the model ({str(e)[:80]}); next option")
 
@@ -428,7 +465,10 @@ class Reset:
                     while x < len(g) and g[x]:
                         x += 1
                     w = x - x0; c = (x0 + x) / 2
-                    flank = (x0 < 25 or near_wood[x0 - 25]) and (x > len(g) - 25 or near_wood[x + 24])   # wood on both sides (or the image edge)
+                    # 22:27 operator: a run touching the image edge (the grey table beyond the cabinet in 147) is not
+                    # the knob, and a knob cut by the edge gives a wrong centre anyway
+                    edge = x0 < 5 or x > len(g) - 5
+                    flank = (not edge) and near_wood[max(x0 - 25, 0)] and near_wood[min(x + 24, len(g) - 1)]   # wood on both sides
                     if 40 <= w <= 200 and flank and (best is None or w > best[1]):
                         best = (c, w)          # the knob is the widest metal run (frame bars are thin)
                 x += 1
@@ -449,8 +489,11 @@ class Reset:
             c = float(np.median(cents)); spread = float(np.median(np.abs(np.array(cents) - c)))
             res.update(u_tab=round(c, 1), spread=round(spread, 1))
             if spread < 25:
-                dt = float(np.clip((c - u_pad) / px_per_m * sgn, -0.06, 0.06))
-                res["dt"] = round(dt, 4)
+                dt_raw = float((c - u_pad) / px_per_m * sgn)
+                res["dt_raw"] = round(dt_raw, 4)
+                if abs(dt_raw) <= 0.035:          # 22:27: a saturated/implausible offset counts as not found (-> judge)
+                    dt = dt_raw
+                    res["dt"] = round(dt, 4)
         s.summary(**{f"tab_measure_{tag}": res})
         self.tab_img = self.save(f"wrist_tab_{tag}", img) or self.tab_img
         s.decide(f"wrist tab measurement {tag}: " + (f"tab {dt * 1000:+.1f} mm along t from the aim" if dt is not None else f"not found {res}"))
@@ -537,13 +580,26 @@ class Reset:
         phi_now = PIN_PHI; PIN_PHI = PIN_PHI0          # the high pose keeps the 20 deg roll (roll 0 there hits joint limits)
         d_now = self.depth; self.depth = max(self.depth, 0.0)    # and stays at the flush position (protruding: j3 folds)
         dt_now = self.pin_dt; self.pin_dt = float(np.clip(dt_now, -0.012, 0.012))   # (a far knob offset: joint limits)
-        T0h = self.pin_T(PIN_OUT); PIN_PHI = phi_now; self.depth = d_now; self.pin_dt = dt_now
-        T_hi = T0h.copy(); T_hi[:3, 3] -= 0.05 * T0h[:3, 2]; T_hi[2, 3] = self.tz + PIN_HI; T_hi[:2, 3] -= 0.04 * N
+        # 22:12 (slot centre -0.0495): the fixed high pose (roll 20, 14 cm) is out of joint limits there: pick the
+        # first (roll, height, back-off, IK branch) whose joint move AND line down to the first pre-pose pass the model
+        hi_cands = []
+        for phi_h in (PIN_PHI0, 0.0, 35.0, -15.0):
+            PIN_PHI = phi_h
+            Th0 = self.pin_T(PIN_OUT)
+            for hh, back in ((PIN_HI, 0.04), (0.12, 0.04), (0.17, 0.06), (PIN_HI, 0.0), (0.12, 0.08)):
+                T_c = Th0.copy(); T_c[:3, 3] -= 0.05 * Th0[:3, 2]; T_c[2, 3] = self.tz + hh; T_c[:2, 3] -= back * N
+                hi_cands.append((T_c, f"roll {phi_h:.0f} h {hh:.2f} back {back:.2f}"))
+        PIN_PHI = phi_now; self.depth = d_now; self.pin_dt = dt_now
         if np.abs(wrap180(self.q_now() - self.ik(tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0), [SEED_DOWN]))).max() > 3:
             self.to_ready()
+        self.pin_dy, self.pin_dz = sweep[0]
+        Tg0 = self.pin_T(PIN_OUT); T_pre0 = Tg0.copy(); T_pre0[:3, 3] -= 0.05 * Tg0[:3, 2]
+        self.pin_dy = self.pin_dz = 0.0
+        pick = self.pick_high(hi_cands, T_pre0, PRECLOSE)
+        s.require(pick is not None, "no model-feasible high pose above the pull tab")
+        T_hi, q, why = pick
+        s.decide(f"high pose above the tab: {why}")
         s.gripper(PRECLOSE, "pre-close to ~25 mm for the pull tab")
-        q = self.ik(T_hi, [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (20.0, 40.0, 60.0) for j6 in (-90.0, 90.0)])
-        s.require(wrap180(q[4]) > 15, f"pin pose IK gave a wrist near the singularity or flipped {np.round(q, 0).tolist()}")
         s.move_joint("above_pin", q, "normal")
         held, tries = False, []
         for i, (dy, dz) in enumerate(sweep):
@@ -567,11 +623,20 @@ class Reset:
                 for it_m in range(3):
                     time.sleep(0.4)
                     dt_m = self.measure_tab(f"{k}_{it_m}")
+                    lo_t, hi_t = scene.SLOT_T[0] + 0.01, scene.SLOT_T[1] - 0.01
                     if dt_m is not None:
-                        self.knob_t = float(self.pin_t + self.pin_dt + dt_m)   # measured knob t (for the press-drag)
-                        s.summary(knob_t_measured=round(self.knob_t, 4))
+                        kt = float(self.pin_t + self.pin_dt + dt_m)
+                        if lo_t <= kt <= hi_t:            # 22:27: never keep a knob position outside the slot window
+                            self.knob_t = kt
+                            s.summary(knob_t_measured=round(kt, 4))
+                        else:
+                            s.decide(f"measured knob t {kt:.4f} is outside the slot window [{lo_t:.3f}, {hi_t:.3f}]: ignored")
+                            dt_m = None
                     if dt_m is None:
                         dt_m = self.judge_tab_side(f"{k}_{it_m}")     # 20:55 operator: ask the judge where the knob is
+                        if dt_m is not None and not (lo_t <= self.pin_t + self.pin_dt + dt_m <= hi_t):
+                            s.decide("judge step would leave the slot window: not taken")
+                            dt_m = None
                     if dt_m is None:
                         break
                     if abs(dt_m) <= 0.0025:
@@ -613,13 +678,24 @@ class Reset:
                 pull_d = (self.depth + 0.02) if (self.depth > DEEP_LEVEL or self.deep_cfg is not None) else PULL
                 if self.depth < 0:      # already protruding (18:14: 1-7 cm out): pull only to ~7 cm out (j3/j5 limits)
                     pull_d = float(np.clip(0.07 + self.depth, 0.025, PULL))
-                T_out = Tg.copy(); T_out[:3, 3] -= np.r_[pull_d * N, 0.0]
-                try:
-                    self.line("pull_drawer", T_out, "slow", tip_margin=PIN_MARGIN)
+                # 22:12 geometry: the wall-edge clamp at ~2 cm proud is out of joint limits: pull by the tab as far as
+                # the model allows (to ~6.5 cm out -> front-wall extraction), else the old shorter pulls
+                pulled = False
+                for pd in sorted({round(max(self.depth, 0.0) + 0.065, 3), round(max(self.depth, 0.0) + 0.045, 3), round(pull_d, 3)}, reverse=True):
+                    T_out = Tg.copy(); T_out[:3, 3] -= np.r_[pd * N, 0.0]
+                    try:
+                        self.line("pull_drawer", T_out, "slow", tip_margin=PIN_MARGIN)
+                        s.decide(f"pulled the tab {pd:.3f} m out")
+                        pulled = True
+                        break
+                    except Abort as e:
+                        if "check failed" not in str(e):
+                            raise
+                        s.decide(f"pull of {pd:.3f} m refused by the model ({str(e)[:80]})")
+                if pulled:
                     break
-                except Abort as e:
-                    s.decide(f"pull refused by the model at offset {i}: {str(e)[:120]}; release and try the next offset")
-                    held = False
+                s.decide(f"no pull distance passed the model at offset {i}; release and try the next offset")
+                held = False
             s.gripper(PRECLOSE, "open, missed")
             self.line(f"back_pin{i}", T_pre, "slow", tip_margin=PIN_MARGIN)
         if held:
@@ -638,6 +714,17 @@ class Reset:
             # attempts 85/122 (model): rolled high pose hits joint limits for recessed: lift straight up first
             cands = [T_st, T_hi2, T_hi] if (self.depth > DEEP_LEVEL or self.deep_cfg is not None) else [T_hi2, T_st, T_hi]
             self.lift_any("up_from_pin", cands, "normal")
+        # 22:12 geometry: the joint move to READY from beside the cabinet can sweep through its keep-out: back off
+        # straight away from the cabinet and up first
+        Tn = self.T_now()
+        T_r1 = Tn.copy(); T_r1[:3, 3] += np.r_[-0.10 * N, 0.0]; T_r1[2, 3] = max(Tn[2, 3], self.tz + 0.16)
+        T_r2 = Tn.copy(); T_r2[:3, 3] += np.r_[-0.06 * N, 0.0]; T_r2[2, 3] = max(Tn[2, 3], self.tz + 0.12)
+        try:
+            self.lift_any("retreat_from_cabinet", [T_r1, T_r2], "normal")
+        except (Abort, RuntimeError, ValueError) as e:
+            if "check failed" not in str(e) and "joint jump" not in str(e):
+                raise
+            s.decide(f"retreat line refused ({str(e)[:80]}); joint move to READY directly")
         self.to_ready()
         return held
 
@@ -1579,7 +1666,11 @@ class Reset:
             elif st == "slot":
                 self.depth = 0.0
             self.from_recess = st in ("slot_back", "out", "table")   # pulled out by its tab: the right way round
-        if st == "slot_back" and not self.from_recess:
+        if st == "slot_near":     # (after a recessed pull) median face < 4 cm out: the tab pinch-and-pull again
+            self.depth = float(p["slot_med"])
+            s.decide(f"drawer face median {-self.depth:.3f} m out after the recessed pull: tab pinch-and-pull")
+            st = "slot"
+        if st == "slot_back":     # 22:12 geometry: also after a recessed pull (the ~2 cm-proud clamp is out of joint limits)
             # 18:14 operator: 'no pull seen' from the moved side camera does not mean backwards: knob pinch first
             sm = p.get("slot_med")
             self.depth = float(sm) if sm is not None and sm < 0 else -float(p["protr"])

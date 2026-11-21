@@ -28,3 +28,11 @@ FINAL ON THE SLOT (22:12): the reset measured the knob at t ~ -0.055 in four run
 earlier -0.098 came from a dry run that wrote the tab file). The task yaml is RESTORED to the 21:45 geometry: slot_t
 [-0.087, -0.012], centre -0.0495, keep-out boxes moved accordingly. This replaces both corrections; no more slot
 changes unless your own wrist measurements say otherwise.
+Operator note 22:35 (from rl_curve.jsonl): 25 training episodes, 0 successes, return mean -2.7 with no upward trend.
+1. Episodes 25, 27 and 28 reached full insertion and lost it on the retreat. Make the retreat unable to drag the drawer:
+   open the gripper fully and wait for it to open, move straight up (or back along the jaw axis) before any move along -N,
+   and if the force rises during the retreat, stop and re-open. Then re-check that the front is flush before you claim success.
+2. Use a dense, monotone shaping term for insertion depth and orientation (straight, pull facing out), plus a large
+   success bonus; log depth, yaw error and success per episode next to the return, so progress is visible before the
+   first success.
+3. Run episodes as fast as possible now: resets have blocked training since 18:09.
