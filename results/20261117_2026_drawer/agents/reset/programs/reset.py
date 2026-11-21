@@ -90,7 +90,7 @@ L_DEFAULT = 0.13          # drawer depth until measured
 FIRM_MAX = 94.5           # table grasp: reading below this = a firm grasp of the wall (good ones 86-89.5)
 HOLD_MAX = 97.0           # gripper reading below this = holding something
 TOL = 0.05
-GOOD = 0.035              # correct when the error is above this
+GOOD = 0.045              # correct when the error is above this (attempt 150: 3.8 cm 'corrections' missed 4x and drifted it to 9 cm)
 TIPPED_H = 0.088          # blob taller than this = drawer lying on a side wall (upright 0.065-0.072, on its side ~0.10)
 TIP_CLOSED = 0.047        # closed fingertips below the tool frame
 SAFE_H = 0.20             # tool height above the table for transfers
@@ -136,6 +136,7 @@ class Reset:
         self.from_recess = False
         self.tab_img = None       # last close wrist view of the drawer front (pinch approach)
         self.last_conf = 0.0
+        self.pin_deeper = self.pin_higher = 0.0   # 22:34: extra pinch depth along N / height (m)
         self.knob_t = None
         self.survey_pending = self.survey_placed = False
         self.or_stage = 0         # judge guess sequence for an unseen pull (attempt 124)
@@ -361,7 +362,7 @@ class Reset:
         Rm = rot_axis(np.r_[N, 0.0], PIN_PHI) @ np.stack([x, np.cross(z, x), z], 1)
         margin = self.deep_cfg["margin"] if self.deep_cfg is not None else 0.002
         dshift = max(self.depth - margin, 0.0) if self.depth >= 0 else self.depth   # protruding: shift outward fully
-        tip = np.r_[xy_of(OFF - out_m + dshift, self.pin_t + self.pin_dt), self.tz + PIN_H]
+        tip = np.r_[xy_of(OFF - out_m + dshift + self.pin_deeper, self.pin_t + self.pin_dt), self.tz + PIN_H + self.pin_higher]
         T = np.eye(4); T[:3, :3] = Rm; T[:3, 3] = tip - PIN_ZT * Rm[:, 2] + Rm @ np.r_[0.0, self.pin_dy, self.pin_dz]
         return T
 
@@ -413,6 +414,76 @@ class Reset:
                 except Exception:
                     continue
         return None
+
+    def lift_cands(self, T_out):
+        T_up = T_out.copy(); T_up[2, 3] += 0.12
+        T_b = T_out.copy(); T_b[:3, 3] -= 0.04 * T_out[:3, 2]; T_b[2, 3] += 0.10
+        T_u8 = T_out.copy(); T_u8[2, 3] += 0.08
+        T_d = T_out.copy(); T_d[:3, 3] += np.r_[-0.05 * N, 0.04]
+        T_u4 = T_out.copy(); T_u4[2, 3] += 0.04
+        return [T_up, T_b, T_u8, T_d, T_u4]
+
+    def feasible_pull(self, Tg, pds, gf):
+        """Longest pd (m) whose straight pull from Tg along -N and a lift after it pass the model, else None."""
+        from rlpj.robot import sim
+        from rlpj.robot.plan import SLOW
+        pl, kin = self.s.planner, self.s.kin
+        try:
+            qg = self.ik(Tg)
+        except Exception:
+            return None
+        for pd in pds:
+            T_out = Tg.copy(); T_out[:3, 3] -= np.r_[pd * N, 0.0]
+            try:
+                seg = pl.cart_line("chk_pull", qg, T_out, SLOW)
+                ok, _ = sim.check(seg.q, kin, SLOW, gripper_frac=gf, table_z=calib.table_z(), tip_margin=PIN_MARGIN)
+                if not ok:
+                    continue
+                for T_l in self.lift_cands(T_out):
+                    seg2 = pl.cart_line("chk_lift", seg.q[-1], T_l, SLOW)
+                    if sim.check(seg2.q, kin, SLOW, gripper_frac=0.45, table_z=calib.table_z(), tip_margin=PIN_MARGIN)[0]:
+                        return pd
+            except Exception:
+                continue
+        return None
+
+    def pull_held(self, Tg, pull_d):
+        """Pull the held tab along -N by the longest distance whose pull AND a lift afterwards pass the model
+        (attempt 149 offline: a 6.5 cm flush pull passed but every lift after it hit joint limits)."""
+        s = self.s
+        from rlpj.robot import sim
+        from rlpj.robot.plan import SLOW
+        pl, kin = s.planner, s.kin
+        gf = 0.9
+        q0 = self.q_now()
+        cands = {round(max(self.depth, 0.0) + 0.065, 3), round(max(self.depth, 0.0) + 0.045, 3), round(pull_d, 3),
+                 0.035, 0.03, 0.025, 0.02}      # attempt 149: from 2 cm proud only short pulls fit (then pull again)
+        for pd in sorted(cands, reverse=True):
+            T_out = Tg.copy(); T_out[:3, 3] -= np.r_[pd * N, 0.0]
+            try:
+                seg = pl.cart_line("chk_pull", q0, T_out, SLOW)
+                ok, _ = sim.check(seg.q, kin, SLOW, gripper_frac=gf, table_z=calib.table_z(), tip_margin=PIN_MARGIN)
+                if not ok:
+                    s.decide(f"pull of {pd:.3f} m refused by the model"); continue
+                q1 = seg.q[-1]
+                lift_ok = False
+                for T_l in self.lift_cands(T_out):
+                    try:
+                        seg2 = pl.cart_line("chk_lift", q1, T_l, SLOW)
+                        ok2, _ = sim.check(seg2.q, kin, SLOW, gripper_frac=0.65, table_z=calib.table_z(), tip_margin=PIN_MARGIN)
+                    except Exception:
+                        ok2 = False
+                    if ok2:
+                        lift_ok = True
+                        break
+                if not lift_ok:
+                    s.decide(f"pull of {pd:.3f} m: no lift afterwards passes the model"); continue
+            except Exception as e:
+                s.decide(f"pull of {pd:.3f} m not plannable ({str(e)[:60]})"); continue
+            self.line("pull_drawer", T_out, "slow", tip_margin=PIN_MARGIN)
+            s.decide(f"pulled the tab {pd:.3f} m out")
+            return True, T_out
+        return False, None
 
     def lift_any(self, name, cands, speed):
         """First model-feasible line among cands (a refused plan does not move the arm)."""
@@ -583,12 +654,14 @@ class Reset:
         # 22:12 (slot centre -0.0495): the fixed high pose (roll 20, 14 cm) is out of joint limits there: pick the
         # first (roll, height, back-off, IK branch) whose joint move AND line down to the first pre-pose pass the model
         hi_cands = []
-        for phi_h in (PIN_PHI0, 0.0, 35.0, -15.0):
-            PIN_PHI = phi_h
-            Th0 = self.pin_T(PIN_OUT)
-            for hh, back in ((PIN_HI, 0.04), (0.12, 0.04), (0.17, 0.06), (PIN_HI, 0.0), (0.12, 0.08)):
-                T_c = Th0.copy(); T_c[:3, 3] -= 0.05 * Th0[:3, 2]; T_c[2, 3] = self.tz + hh; T_c[:2, 3] -= back * N
-                hi_cands.append((T_c, f"roll {phi_h:.0f} h {hh:.2f} back {back:.2f}"))
+        for d_h in sorted({self.depth, d_now}, reverse=True):     # flush position first, then the real protrusion
+            self.depth = d_h
+            for phi_h in (PIN_PHI0, 0.0, 35.0, -15.0):
+                PIN_PHI = phi_h
+                Th0 = self.pin_T(PIN_OUT)
+                for hh, back in ((PIN_HI, 0.04), (0.12, 0.04), (0.17, 0.06), (PIN_HI, 0.0), (0.12, 0.08)):
+                    T_c = Th0.copy(); T_c[:3, 3] -= 0.05 * Th0[:3, 2]; T_c[2, 3] = self.tz + hh; T_c[:2, 3] -= back * N
+                    hi_cands.append((T_c, f"roll {phi_h:.0f} h {hh:.2f} back {back:.2f} depth {d_h:+.3f}"))
         PIN_PHI = phi_now; self.depth = d_now; self.pin_dt = dt_now
         if np.abs(wrap180(self.q_now() - self.ik(tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0), [SEED_DOWN]))).max() > 3:
             self.to_ready()
@@ -596,6 +669,9 @@ class Reset:
         Tg0 = self.pin_T(PIN_OUT); T_pre0 = Tg0.copy(); T_pre0[:3, 3] -= 0.05 * Tg0[:3, 2]
         self.pin_dy = self.pin_dz = 0.0
         pick = self.pick_high(hi_cands, T_pre0, PRECLOSE)
+        if pick is None and not s.dry:
+            s.decide("no model-feasible high pose above the pull tab: skip this pinch")
+            return False
         s.require(pick is not None, "no model-feasible high pose above the pull tab")
         T_hi, q, why = pick
         s.decide(f"high pose above the tab: {why}")
@@ -678,36 +754,55 @@ class Reset:
                 pull_d = (self.depth + 0.02) if (self.depth > DEEP_LEVEL or self.deep_cfg is not None) else PULL
                 if self.depth < 0:      # already protruding (18:14: 1-7 cm out): pull only to ~7 cm out (j3/j5 limits)
                     pull_d = float(np.clip(0.07 + self.depth, 0.025, PULL))
-                # 22:12 geometry: the wall-edge clamp at ~2 cm proud is out of joint limits: pull by the tab as far as
-                # the model allows (to ~6.5 cm out -> front-wall extraction), else the old shorter pulls
-                pulled = False
-                for pd in sorted({round(max(self.depth, 0.0) + 0.065, 3), round(max(self.depth, 0.0) + 0.045, 3), round(pull_d, 3)}, reverse=True):
-                    T_out = Tg.copy(); T_out[:3, 3] -= np.r_[pd * N, 0.0]
-                    try:
-                        self.line("pull_drawer", T_out, "slow", tip_margin=PIN_MARGIN)
-                        s.decide(f"pulled the tab {pd:.3f} m out")
-                        pulled = True
-                        break
-                    except Abort as e:
-                        if "check failed" not in str(e):
-                            raise
-                        s.decide(f"pull of {pd:.3f} m refused by the model ({str(e)[:80]})")
+                # 22:12 geometry: pull by the tab as far as the model allows INCLUDING a lift afterwards
+                pulled, T_out = self.pull_held(Tg, pull_d)
                 if pulled:
                     break
                 s.decide(f"no pull distance passed the model at offset {i}; release and try the next offset")
                 held = False
             s.gripper(PRECLOSE, "open, missed")
+            if i == 0 and not s.dry and not held:
+                # 22:34 operator: centred along t but the pads closed in front of the knob's end: step deeper along N
+                # (and a few mm higher) until the pinch holds; the reset may reach 4 cm into the slot opening
+                for deeper, higher in ((0.004, 0.0), (0.008, 0.0), (0.008, 0.003), (0.012, 0.0), (0.012, 0.003)):
+                    self.pin_deeper, self.pin_higher = deeper, higher
+                    Tgd = self.pin_T(PIN_OUT)
+                    s.decide(f"pinch {deeper * 1000:.0f} mm deeper, {higher * 1000:.0f} mm higher (aim t {self.pin_t + self.pin_dt:.4f})")
+                    try:
+                        self.line(f"deeper_pin_{int(deeper * 1000)}_{int(higher * 1000)}", Tgd, "slow", tip_margin=PIN_MARGIN)
+                    except Abort as e:
+                        if "check failed" not in str(e):
+                            raise
+                        s.decide(f"deeper pinch refused by the model ({str(e)[:80]})")
+                        continue
+                    g = s.gripper(PINCH, "pinch the tab (deeper)")
+                    img = s.wrist.latest()[0]
+                    if img is not None:
+                        cv2.imwrite(os.path.join(s.A, f"wrist_pin_deep{k}_{int(deeper * 1000)}_{int(higher * 1000)}.jpg"), img[360:720, 320:960])
+                    tries.append([dy, dz, deeper, higher, round(g, 1)])
+                    s.summary(**{f"pin_sweep{k}": tries})
+                    if g < PINCH * 100 - 2.5:
+                        held = True
+                        Tg = Tgd
+                        s.decide(f"tab held {deeper * 1000:.0f} mm deeper (reading {g:.1f})")
+                        break
+                    s.gripper(PRECLOSE, "open, missed (deeper)")
+                if held:
+                    self.save_tab()
+                    s.gripper(min(g / 100 + 0.008, 0.90), "keep squeezing (sets the model gripper close to the real one)")
+                    pull_d = (self.depth + 0.02) if (self.depth > DEEP_LEVEL or self.deep_cfg is not None) else PULL
+                    pulled, T_out = self.pull_held(Tg, pull_d)
+                    if pulled:
+                        break
+                    held = False
+                    s.gripper(PRECLOSE, "release, pull refused")
+                self.pin_deeper = self.pin_higher = 0.0
             self.line(f"back_pin{i}", T_pre, "slow", tip_margin=PIN_MARGIN)
         if held:
             s.gripper(0.65, "release the tab (partly, keeps the lower finger off the table)")
             # the drawer now sticks out (the model does not know it): lift 12 cm straight up so the joint move to
             # READY passes above it (attempt 17 hit the drawer after a 6 cm lift)
-            T_up = T_out.copy(); T_up[2, 3] += 0.12
-            T_b = T_out.copy(); T_b[:3, 3] -= 0.04 * T_out[:3, 2]; T_b[2, 3] += 0.10
-            T_u8 = T_out.copy(); T_u8[2, 3] += 0.08
-            T_d = T_out.copy(); T_d[:3, 3] += np.r_[-0.05 * N, 0.04]          # diagonal: away from the cabinet and up
-            T_u4 = T_out.copy(); T_u4[2, 3] += 0.04
-            self.lift_any("up_from_pin", [T_up, T_b, T_u8, T_d, T_u4], "slow")    # (not toward the cabinet: the drawer sticks out)
+            self.lift_any("up_from_pin", self.lift_cands(T_out), "slow")    # (not toward the cabinet: the drawer sticks out)
         else:
             T_hi2 = T_pre.copy(); T_hi2[2, 3] = self.tz + PIN_HI; T_hi2[:2, 3] -= 0.04 * N
             T_st = T_pre.copy(); T_st[2, 3] += 0.10
@@ -753,8 +848,25 @@ class Reset:
         s.move_joint("above_tab_drag", q, "normal")
         self.line("to_tab_drag_pre", T_pre, "slow", tip_margin=PIN_MARGIN)
         self.line("touch_tab", Tg, "slow", tip_margin=PIN_MARGIN)
-        T_press = Tg.copy(); T_press[2, 3] -= 0.003
-        self.line("press_tab", T_press, "slow", tip_margin=PIN_MARGIN)
+        # 22:34 operator: a fixed 3 mm press never loaded the tab (1.5 N): press in 1 mm steps until the force rises
+        # by ~6 N (or 6 mm)
+        T_press = Tg.copy()
+        f0 = None
+        from rlpj.robot.plan import SLOW
+        for mm in range(1, 7):
+            T_n = T_press.copy(); T_n[2, 3] -= 0.001
+            try:
+                r_ = s.run_segment(s.planner.cart_line(f"press_tab_{mm}", self.q_now(), T_n, SLOW), tip_margin=PIN_MARGIN)
+            except Abort as e:
+                if "check failed" not in str(e):
+                    raise
+                s.decide(f"press step {mm} refused by the model ({str(e)[:80]})"); break
+            T_press = T_n
+            f = float((r_ or {}).get("max_force_n") or 0.0)
+            f0 = f if f0 is None else min(f0, f)
+            s.log(f"press {mm} mm: max force {f:.1f} N")
+            if not s.dry and f - f0 >= 6.0:
+                s.decide(f"tab loaded after {mm} mm press ({f:.1f} N)"); break
         img = s.wrist.latest()[0]
         if img is not None:
             cv2.imwrite(os.path.join(s.A, f"wrist_press{k}.jpg"), img[360:720, 320:960])
@@ -792,6 +904,13 @@ class Reset:
             q = self.ik(T_hi, [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (20.0, 40.0, 60.0) for j6 in (-90.0, 90.0)])
             s.move_joint("above_back_wall", q, "normal")
             self.line("to_back_pre", T_pre, "normal")
+            # attempt 149: the clamp held (83.4) and THEN its pull was refused -> stuck on the wall. Plan first.
+            pull_d0 = float(np.clip(0.085 - protr, 0.03, PULL))
+            pd_ok = self.feasible_pull(Tg, sorted({pull_d0, 0.04, 0.03, 0.02}, reverse=True), 0.95)
+            if pd_ok is None and not s.dry:
+                s.decide("wall-edge clamp: no pull distance passes the model from here: skip the clamp")
+                self.line("up_from_wall_edge", T_hi, "normal")
+                break
             self.line("approach_back_wall", Tg, "slow", tip_margin=PIN_MARGIN)
             g = s.gripper(1.0, "clamp the wall edge")
             img = s.wrist.latest()[0]
@@ -801,12 +920,12 @@ class Reset:
             held = g < HOLD_MAX or s.dry
             if held:
                 s.gripper(min(g / 100 + 0.01, 0.95), "keep squeezing (model gripper close to the real one)")
-                pull_d = float(np.clip(0.085 - protr, 0.03, PULL))   # leave it ~8.5 cm out (a longer pull folds j3)
+                pull_d = pd_ok if pd_ok is not None else float(np.clip(0.085 - protr, 0.03, PULL))   # model-checked above
                 T_out = Tg.copy(); T_out[:3, 3] -= np.r_[pull_d * N, 0.0]
                 self.line("pull_back_drawer", T_out, "slow", tip_margin=PIN_MARGIN)
                 s.gripper(BACK_OPEN, "release the wall")
                 T_up = T_out.copy(); T_up[2, 3] += 0.10 if protr < 0.025 else 0.05   # 10 cm: wrist singularity from 3-4 cm out
-                self.line("up_from_back", T_up, "slow", tip_margin=PIN_MARGIN)
+                self.lift_any("up_from_back", [T_up] + self.lift_cands(T_out), "slow")
                 break
             s.decide(f"wall edge not held (reading {g:.1f})")
             s.gripper(BACK_OPEN, "open, missed")
@@ -1688,11 +1807,17 @@ class Reset:
                 p = dict(p, out=dict(t=T_C, h_top=0.075, h_bot=0.03, n=0), protr=PULL + 0.012); st = "out"
         if st == "slot":
             s.phase("pull_out")
-            for k in range(1):
+            for k in range(3):
                 ok = self.pull_pin(k)
                 self.go_home(f"home_after_pull{k}")
                 p = self.perceive(f"after_pull{k}")
                 st = self.state_of(p)
+                if st in ("slot_near", "slot_back") and ok:
+                    # attempt 149: from ~2 cm proud only short pulls fit: pinch the tab again and pull further
+                    sm = p.get("slot_med")
+                    self.depth = float(sm) if sm is not None and sm < 0 else -float(p["protr"])
+                    s.decide(f"pulled, still {-self.depth:.3f} m out by the face: pinch the tab again")
+                    continue
                 if st != "slot":
                     break
                 s.decide(f"drawer still in the slot after pull {k} (protrusion {p['protr']:.3f})")
@@ -1809,6 +1934,10 @@ class Reset:
                 else:
                     s.decide("close views did not find the pull: fall back to the side-judge guess")
             s.phase(f"pick{it}")
+            if not s.dry:
+                # attempt 150: 4 end-wall misses in a row from the side-camera outline; the wrist look-down footprint
+                # (attempt 136) got the grasps right
+                c = self.wrist_footprint(c, f"p{it}") or c
             try:
                 held = self.pick_table(c, pull)
             except Abort as e:

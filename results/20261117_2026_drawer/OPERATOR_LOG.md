@@ -76,3 +76,11 @@ most 8.5 N over 49 `ready` moves.
   clipped), stored knob_t -0.103 and moved every later pinch and the press-drag into the left cabinet_front box
   (refused). Note to the reset agent: reject edge-touching runs, treat |dt| > 35 mm as not found, keep knob_t inside the
   slot window.
+- 2026-11-20 22:34: attempt 148: aim along t now right (-0.1 mm), but every pinch closed on air in front of the knob
+  (gripper 90) and the press-drag never loaded the tab (1.5 N / 5.6 N). Note to the reset agent: step the pinch
+  4-12 mm deeper until it holds; press until the force rises.
+- 2026-11-20 22:51: attempt 149: pinch held 8 mm deeper (reading 86.5), pulled 4.2 cm; the drawer is out of the
+  recessed state (2.2 cm proud) for the first time since ~20:50, with no person involved.
+- 2026-11-20 23:02-23:15: attempt 150 extracted the drawer (wall clamp) and placed it upright, pull toward the robot,
+  9.2 cm off the target (table corrections missed: refine_wall shift); attempt 151 placed it at the target: reset
+  success at 23:15, the first since ~20:50, with no person involved.
