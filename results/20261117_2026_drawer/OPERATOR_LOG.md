@@ -151,3 +151,8 @@ most 8.5 N over 49 `ready` moves.
 - 2026-11-21 04:03: attempt 195 escaped (gripper part-closed) but misperceived the scene and its joint move to a pinch high pose hit something at 66.5 N (stop fired). The drawer now lies on the table at the cabinet's front-right corner, pull frame facing up. Note sent with the actual state.
 - 2026-11-21 04:09: attempt 196 dragged the standing drawer clear of the cabinet (open space ~[0.32, -0.18]); its drift rule stopped it before laying it down. Note: tip it over by its top edge (user's instruction, step 2).
 - 2026-11-21 04:16: attempts 197-198 could not lay the standing drawer down (landing out of the side camera's view; hook contact at 34.4 N; 2 cm drift rule). Note: slide toward +y into view first, then tip.
+- 2026-11-21 04:23: attempt 199's tip push slid the drawer 11.6 cm toward the robot instead of tipping it (8.9 N). Note: pinch the top wall edge and tip it on an arc about its bottom edge.
+- 2026-11-21 04:45: reset 201 succeeded: the robot righted the tipped drawer and placed it at the target, pull facing
+  the robot, with no person involved (tipped at 02:44 by reset 181; ~2 h, attempts 182-201; the user's instruction
+  "push it to the side and lie it down" at 03:22 set the approach).
+- 2026-11-21 04:47: the total-force stop (commit 1c2c064) fired for the first time on the robot: episode 39 ins10 at 66.5 N total (change 25.4 N). RL agent now grasps from a wrist footprint; insertion still jams sideways. Note: use the grasp-time wrist footprint for the in-hand offset.

@@ -144,6 +144,7 @@ class Reset:
         self.dragged_across = False
         self.drag_end = None
         self.n_push = 0
+        self.roll_checks = 0
         self.shifted_y = False
         self.push_blocked = False
         self.dragged_away = False
@@ -1431,17 +1432,152 @@ class Reset:
         Q = ("This photo is from a camera on the robot gripper, looking at one side of a wooden drawer that is tipped "
              "over on a table. The side of the drawer facing the camera (in the middle of the image) is its OPEN side: "
              "you can see into the drawer (its inner walls and the inside of its bottom panel), not a flat closed panel.")
-        d = self.wall_views(c, f"open{tag}", Q=Q, dirs=[v, -v], stop_conf=0.8,
+        d = self.wall_views(c, f"open{tag}", Q=Q, dirs=[v, -v], stop_conf=1.1,
                             goal="Find which side of the tipped-over drawer is open.")
-        ans = {round(ang(a_), 0): (b_, cf) for a_, b_, cf in getattr(self, "last_wall_answers", [])}
-        self.s.summary(**{f"wrist_open_side_{tag}": {str(k): [bool(b_) if b_ is not None else None, round(cf, 2)] for k, (b_, cf) in ans.items()}})
+        A = getattr(self, "last_wall_answers", [])
+        # 199: the judge said 'open' for both views (0.75 / 0.82); the open side shows the shadowed interior: the
+        # central wood of that view is far darker (V median 21 vs 139 for the bottom panel)
+        dark = {}
+        for a_, b_, cf, path_ in A:
+            im = cv2.imread(path_) if path_ else None
+            if im is None:
+                continue
+            H_, W_ = im.shape[:2]
+            hv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)[int(.62 * H_):int(.82 * H_), int(.40 * W_):int(.60 * W_)]
+            m_ = (hv[..., 0] <= 25) & (hv[..., 1] > 60)
+            if m_.mean() > 0.5:
+                dark[round(ang(a_), 0)] = (a_, float(np.median(hv[..., 2][m_])))
+        self.s.summary(**{f"wrist_open_side_{tag}": dict(judge={str(round(ang(a_), 0)): [b_, round(cf, 2)] for a_, b_, cf, _ in A},
+                                                          v_median={str(k): round(v_[1]) for k, v_ in dark.items()})})
+        if len(dark) == 2:
+            (a1, v1), (a2, v2) = sorted(dark.values(), key=lambda t: t[1])
+            if v1 < 0.6 * v2:
+                self.s.decide(f"wrist open side: the view toward {ang(a1):.0f} deg is dark inside (V {v1:.0f} vs {v2:.0f}): open side")
+                return a1, c
+        elif len(dark) == 1:
+            # one face reachable (200: the robot-side view is near the base column): dark = open, bright = bottom panel
+            (a1, v1), = dark.values()
+            if v1 < 60:
+                self.s.decide(f"wrist open side: the only view (toward {ang(a1):.0f} deg) is dark inside (V {v1:.0f}): open side")
+                return a1, c
+            if v1 > 100:
+                self.s.decide(f"wrist open side: the only view (toward {ang(a1):.0f} deg) is a bright panel (V {v1:.0f}): open side opposite")
+                return -a1, c
         if d is None:
             return None, c                                   # both 'no'
-        yes = [(a_, cf) for a_, b_, cf in self.last_wall_answers if b_]
+        yes = [(a_, cf) for a_, b_, cf, _ in A if b_]
         if len(yes) == 2 and abs(yes[0][1] - yes[1][1]) < 0.15:
             self.s.decide("wrist open side: both faces judged open: undecided")
             return None, c
         return d, c
+
+    def pinch_roll(self, c, o, ctr, D, tag, ctr2=None, turn=False):
+        """Attempt 199: pushing the top edge only slid the drawer ~10 cm on the slippery table (1-3 N). Pinch it across
+        its narrow axis (jaws along o; the open-side finger ends inside on the bottom panel or on the rim), roll it
+        about the bottom panel's lower outer edge toward its bottom side by ~50 deg (past its balance angle ~32 deg),
+        let go: it falls onto its bottom. Returns True if the roll ran."""
+        s = self.s
+        h_top = float(c["h"])
+        yaw0 = ang(o); yaw0 = yaw0 - 180 if yaw0 > 90 else yaw0 + 180 if yaw0 < -90 else yaw0
+        # ctr2: carry it there first (lift 4 cm, move, set down under 20 N) so that its landing is safe
+        # turn: also turn it 180 deg about vertical while carried (199: rolling toward the robot is out of joint limits)
+        ctr2 = np.asarray(ctr if ctr2 is None else ctr2, float)
+        carry = float(np.linalg.norm(ctr2 - ctr)) > 0.01 or turn
+        o_r = -o if turn else o
+        P = np.r_[ctr2 - o_r * (D / 2), self.tz]
+        ax = np.cross(np.r_[o_r, 0.0], [0.0, 0.0, 1.0])
+        T_rdy = tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0)
+        plan = None
+        for h_g in (h_top - 0.03, h_top - 0.045):
+            for dyaw in (0.0, 180.0, 10.0, -10.0):                      # 199: the roll toward the robot jumped IK branches
+                for arc, mode in ((55.0, "line"), (55.0, "joint"), (45.0, "joint")):
+                    if self.roll_checks >= 90:
+                        break
+                    Tg = tool_down_T(np.r_[ctr, self.tz + h_g + TIP_OPEN], 0.0)
+                    yr = np.radians(yaw0 + dyaw)
+                    Tg[:3, :3] = np.array([[np.cos(yr), -np.sin(yr), 0], [np.sin(yr), np.cos(yr), 0], [0, 0, 1.0]]) @ tool_down_T(np.zeros(3), 0.0)[:3, :3]
+                    T_hi = Tg.copy(); T_hi[2, 3] = self.tz + SAFE_H
+                    Tg2 = Tg.copy(); Tg2[:2, 3] = ctr2
+                    if turn:
+                        Tg2[:3, :3] = rot_axis(np.array([0.0, 0.0, 1.0]), 180.0) @ Tg[:3, :3]
+                    carry_seq = []
+                    if carry:
+                        T_lift = Tg.copy(); T_lift[2, 3] += 0.04
+                        T_over = Tg2.copy(); T_over[2, 3] += 0.04
+                        carry_seq = [("line", "chk_roll_lift", T_lift, "slow", 0.2),
+                                     ("joint" if turn else "line", "chk_roll_carry", T_over, "slow", 0.2),
+                                     ("line", "chk_roll_set", Tg2, "slow", 0.2)]
+                    arcs = []
+                    # 199: the roll toward the robot jumps IK branches on Cartesian lines: small joint moves instead
+                    for th in ((arc / 3, 2 * arc / 3, arc) if mode == "line" else tuple(arc * k / 6 for k in range(1, 7))):
+                        Rr = rot_axis(ax, th)
+                        T = Tg2.copy(); T[:3, :3] = Rr @ Tg2[:3, :3]; T[:3, 3] = P + Rr @ (Tg2[:3, 3] - P)
+                        arcs.append(T)
+                    Tb = arcs[-1].copy(); Tb[:3, 3] -= 0.06 * arcs[-1][:3, 2]
+                    Tu = Tb.copy(); Tu[2, 3] = max(Tu[2, 3], self.tz + 0.15)
+                    seq = [("grip", "", None, None, 0.0), ("joint", "chk_roll_hi", T_hi, "normal", 0.0),
+                           ("line", "chk_roll_down", Tg, "slow", 0.0), ("grip", "", None, None, 0.2)] + carry_seq
+                    seq += [(mode, f"chk_roll_{k}", T, "slow", 0.2) for k, T in enumerate(arcs)]
+                    seq += [("grip", "", None, None, 0.0), ("line", "chk_roll_out", Tb, "slow", 0.0),
+                            ("line", "chk_roll_up", Tu, "slow", 0.0), ("joint", "chk_roll_ready", T_rdy, "normal", 0.0)]
+                    self.roll_checks += 1
+                    ok, why = self.seq_ok(seq)
+                    if ok:
+                        plan = (Tg, T_hi, arcs, h_g, arc, yaw0 + dyaw, carry_seq, mode)
+                        break
+                if plan:
+                    break
+            if plan:
+                break
+        if plan is None:
+            s.decide(f"pinch-roll{' (carried' + (', turned' if turn else '') + ')' if carry else ''}: no model-feasible roll ({why[:80]})"); return False
+        Tg, T_hi, arcs, h_g, arc, yaw, carry_seq, mode = plan
+        s.decide(f"pinch-roll {tag}: pinch across at {np.round(ctr, 3).tolist()} {h_g:.3f} m up (jaws {yaw:.0f} deg), "
+                 + (f"carry it to {np.round(ctr2, 3).tolist()}{' turning it 180 deg' if turn else ''}, " if carry else "")
+                 + f"roll {arc:.0f} deg toward {ang(-o_r):.0f} deg about the bottom panel's lower edge, let go")
+        s.gripper(0.0, "open fully")
+        self.to_ready()
+        self.joint_to(f"above_roll_{tag}", T_hi)
+        if not self.contact_line(f"down_to_roll_{tag}", Tg, "slow", limit=20.0):
+            s.decide("pinch-roll: contact coming down (on the drawer's top?)")
+            self.lift_to(f"up_from_roll_{tag}", SAFE_H, "slow"); self.to_ready(); return False
+        g = float(s.gripper(1.0, "pinch the drawer across"))
+        if g >= 96.5 and not s.dry:
+            s.decide(f"pinch-roll: nothing held (reading {g:.1f})")
+            s.gripper(0.0, "open"); self.lift_to(f"up_from_roll_{tag}", SAFE_H, "slow"); self.to_ready(); return False
+        if carry_seq:
+            self.line(f"roll_lift_{tag}", carry_seq[0][2], "slow")
+            if turn:
+                self.joint_to(f"roll_turn_{tag}", carry_seq[1][2], "slow")
+            else:
+                self.line(f"roll_carry_{tag}", carry_seq[1][2], "slow")
+            if self.contact_line(f"roll_set_{tag}", carry_seq[2][2], "slow", limit=20.0) is False:
+                s.decide("pinch-roll: set down early (touched the table)")
+        for k, T in enumerate(arcs):
+            if mode == "joint":
+                try:
+                    with self.low_force(30.0):
+                        self.s.move_joint(f"roll_{tag}_{k}", self.ik(T), "slow")
+                    continue
+                except Abort as ex:
+                    if "contact force" not in str(ex):
+                        raise
+                s.decide(f"pinch-roll: step {k} stopped at 30 N")
+                break
+            if not self.contact_line(f"roll_{tag}_{k}", T, "slow", limit=30.0):
+                s.decide(f"pinch-roll: step {k} stopped at 30 N")
+                break
+        s.gripper(0.0, "let go: it falls onto its bottom")
+        Tb = self.T_now(); Tb[:3, 3] -= 0.06 * Tb[:3, 2]
+        try:
+            self.line(f"roll_out_{tag}", Tb, "slow", tip_margin=0.001)
+        except Abort as ex:
+            if "check failed" not in str(ex):
+                raise
+        self.lift_to(f"up_from_roll_{tag}", 0.15, "slow")
+        self.to_ready()
+        s.summary(**{f"pinch_roll_{tag}": dict(grip=round(g, 1), arc=arc, h_g=round(h_g, 3))})
+        return True
 
     def tip_over(self, c, o, ctr, D, tag):
         """04:09 operator: lay the drawer standing on a side wall down onto its bottom: closed fingers ~1 cm below its
@@ -1456,29 +1592,62 @@ class Reset:
         def land_safe(l_):
             Ll = np.array([l_ + a * 0.06 * o + b * 0.06 * np.array([-o[1], o[0]]) for a in (-1, 1) for b in (-1, 1)])
             return self.landing_ok(l_) and float(Ll[:, 1].max()) <= 0.20 and float(Ll[:, 1].min()) >= -0.25
-        if not land_safe(land):
-            # 198: open side toward +x -> it would land at x 0.24 (too close to the robot): slide it along o first
-            # (push its bottom-panel face low), up to 8 cm (04:13 operator), never toward a table edge
-            need = next((k * 0.02 for k in range(1, 5) if land_safe(land + o * k * 0.02)), None)
-            if need is None or not self.slide_ok(ctr, o, need) or tag.endswith("_pre"):
-                s.decide(f"tip-over: landing at {np.round(land, 3).tolist()} not safe (edge / camera view) and no slide fixes it: no tip push")
-                return False
-            if self.slide(ctr - o * (D / 2), o, need, "tip-over: room to land") is False:
-                return False
-            self.right_shift = self.right_shift + o * need
-            self.go_home(f"home_after_tipslide_{tag}")
-            e_ = (ctr + o * need).tolist()
-            fp = self.wrist_footprint(dict(c, xy=e_, obb_c=e_, wrist_fp=True), f"tipslide{tag}")
+        # 199: pinch it; roll it in place if it lands safely, else carry it (and turn it 180 deg if the roll would go
+        # toward the robot: out of joint limits) so that it lands at the target area, then roll it there
+        self.roll_checks = 0
+        l_goal = np.asarray(self.targets["drawer"], float) + [0.03, 0.0]
+        tries = [(False, None)] if land_safe(land) else []
+        tries += [(t_, l_) for t_ in ((True, False) if float(o @ unit(-N)) < 0 else (False, True))
+                  for l_ in (l_goal, l_goal + [0.03, -0.03], l_goal + [0.0, -0.05])]
+        for turn_, l_try in tries:
+            if l_try is None:
+                if self.pinch_roll(c, o, ctr, D, tag):
+                    return True
+                continue
+            o_r = -o if turn_ else o
+            if not land_safe(l_try):
+                continue
+            c2 = l_try + o_r * (D / 2 + h_top / 2)
+            if OFF - float(nt(c2)[0]) < FACE_GAP_MIN:
+                continue
+            if self.pinch_roll(c, o, ctr, D, tag, ctr2=c2, turn=turn_):
+                return True
+            if self.roll_checks >= 90:
+                break
+        moved = 0.0
+        for chunk_i in range(3):
+            if land_safe(land):
+                break
+            # 198/199: open side toward +x -> it would land too close to the robot / below the camera view: slide it
+            # along o first (push its bottom-panel face low) in chunks <= 8 cm, re-measuring from above each time;
+            # never toward a table edge (slide_ok), 14 cm in all at most
+            need = next((k * 0.02 for k in range(1, 8) if land_safe(land + o * k * 0.02)), 0.14)
+            chunk = min(need, 0.08, 0.14 - moved)
+            if chunk < 0.015 or not self.slide_ok(ctr, o, chunk):
+                break
+            try:
+                if self.slide(ctr - o * (D / 2), o, chunk, "tip-over: room to land") is False:
+                    return False
+            except Abort as ex:
+                if "check failed" not in str(ex):
+                    raise
+                s.decide(f"tip-over: slide refused by the model ({str(ex)[:60]})"); self.to_ready(); return False
+            moved += chunk
+            self.right_shift = self.right_shift + o * chunk
+            self.go_home(f"home_after_tipslide_{tag}_{chunk_i}")
+            e_ = (ctr + o * chunk).tolist()
+            fp = self.wrist_footprint(dict(c, xy=e_, obb_c=e_, wrist_fp=True), f"tipslide{tag}_{chunk_i}")
             if fp is not None:
                 c = dict(fp, h=c["h"]); ctr = np.array(fp["obb_c"], float)
-                # the open side keeps its direction: the narrow axis of the new outline closest to o
+                # the open side keeps its direction: the outline axis closest to o
                 ctr_n, walls_n = self.walls_of(c)
                 o = max((w[0] for w in walls_n), key=lambda w: float(w @ o))
             else:
-                ctr = ctr + o * need
+                ctr = ctr + o * chunk
             land = ctr - o * (D / 2 + h_top / 2)
-            if not land_safe(land):
-                s.decide(f"tip-over: still no safe landing after the slide ({np.round(land, 3).tolist()})"); return False
+        if not land_safe(land):
+            s.decide(f"tip-over: landing at {np.round(land, 3).tolist()} not safe (edge / camera view) after {moved:.2f} m of slides: no tip")
+            return False
         p_c = ctr + o * (D / 2)                                 # open face plane, top edge
         z = self.tz + h_top - 0.012 + TIP_CLOSED
         T_rdy = tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0)
@@ -2238,7 +2407,7 @@ class Reset:
             # attempt 136: with the reset goal as context the judge rejected views that DID show the pull ("fingers in
             # view", "looks into the drawer"): a neutral survey goal
             ans = self.ask(path, Q, f"wall_{tag}_{j}", goal=goal or SURVEY_GOAL)
-            answers.append((d, ans, self.last_conf))
+            answers.append((d, ans, self.last_conf, path))
             s.decide(f"wall view {j}: wall facing {ang(d):.0f} deg -> {'YES' if ans else 'no' if ans is False else '?'} (conf {self.last_conf:.2f})")
             if ans and (best is None or self.last_conf > best[1]):
                 best = (d, self.last_conf)
@@ -2981,16 +3150,19 @@ class Reset:
                 self.right_shift = np.zeros(2)
                 moved_on_purpose = False
                 # 191: a wrist outline carries no (or the side camera's mislocated) points: the depth test cannot run
-                o_ov = self.judge_open_dir(c, f"r{it}_{k_r}") if ((c["L"] < 0.095 and c["h"] > 0.10) or c.get("wrist_fp")) else None
+                # 200: the close wrist views first (they decide by the dark interior); the side-image judge only if
+                # they cannot, and the side depth test only for a side-camera outline
+                o_ov, c_w = self.wrist_open_side(c, f"{it}_{k_r}")
+                if o_ov is not None:
+                    c = c_w
+                    s.decide(f"wrist views: open side toward {ang(o_ov):.0f} deg (outline {np.round(c['obb_c'], 3).tolist()})")
+                elif (c["L"] < 0.095 and c["h"] > 0.10) or c.get("wrist_fp"):
+                    o_ov = self.judge_open_dir(c, f"r{it}_{k_r}")
                 s.require(o_ov is not None or (c.get("pts") is not None and not c.get("wrist_fp")),
-                          "tipped drawer located from above only and the judge did not say which side is open")
+                          "tipped drawer located from above only and neither the wrist views nor the judge said which side is open")
                 try:
                     # 04:09 operator: lay it down by tipping it (push its top edge from the open side); the hook roll
                     # (197: the hook did not catch, 3 cm drift) only if no tip push is safe
-                    o_w, c_w = self.wrist_open_side(c, f"{it}_{k_r}")
-                    if o_w is not None:
-                        o_ov = o_w; c = c_w
-                        s.decide(f"wrist views: open side toward {ang(o_w):.0f} deg (outline {np.round(c['obb_c'], 3).tolist()})")
                     if o_ov is not None:
                         o_t, ctr_t, D_t = unit(o_ov), np.array(c["obb_c"], float), 0.07
                     else:
