@@ -120,3 +120,8 @@ most 8.5 N over 49 `ready` moves.
   off). Side image at ~01:12: cabinet on its tape, unmoved; drawer half out of the slot, pull toward the robot. Guard
   changed: the tall blob nearest the reference, merged blobs (> 0.30 m) skipped, and a pause only after two valid
   far readings in a row. Pipeline relaunched ~01:14.
+- 2026-11-21 01:20: guard read 38.8 mm after reset 170 with the arm again low in the scene (blobs identical to the
+  01:08 false alarm, cabinet unmoved then). Guard now skips any reading while a second tall blob (the arm) is in the
+  scene; restarted. Reset 170's knob centring walked 2 cm (+7, +7, +6 mm measured each step) and dragged the knob on
+  every back-off (73-89 N force change, total under the 65 N stop); note sent: open before backing off, stop stepping
+  when the offset does not shrink.

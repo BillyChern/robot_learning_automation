@@ -541,6 +541,21 @@ class Reset:
             self.s.decide(f"{name}: contact at the {limit:.0f} N stop ({str(e)[:60]})")
             return False
 
+    def back_off_open(self, name, T_back, limit=25.0):
+        """01:17 operator: the pre-closed pads around the knob dragged it on every back-off (73-89 N): open to 0.4,
+        then back off under a low force stop (a contact here is tolerated: re-open and try once more)."""
+        s = self.s
+        s.gripper(0.4, "open before backing off the knob")
+        try:
+            with self.low_force(limit):
+                self.line(name, T_back, "slow", tip_margin=PIN_MARGIN)
+        except Abort as e:
+            if "contact force" not in str(e):
+                raise
+            s.decide(f"{name}: contact while backing off: open fully and retry")
+            s.gripper(0.0, "open fully")
+            self.line(name + "_2", T_back, "slow", tip_margin=PIN_MARGIN)
+
     def guarded_line(self, name, T_goal, fmax=25.0, last=0.02, step=0.005):
         """00:26 operator: approach the last `last` m to T_goal (along its tool z) in `step` increments, stopping at a
         contact force above fmax (the session's own stop is 65 N). Returns True if T_goal was reached; on contact it
@@ -781,6 +796,8 @@ class Reset:
             T_pre = Tg.copy(); T_pre[:3, 3] -= 0.05 * z
             s.decide(f"pin try {k}.{i}: offset dy {dy:+.3f} dz {dz:+.3f} (tool frame), aim t {self.pin_t + self.pin_dt:.4f}")
             try:
+                if i > 0:
+                    s.gripper(PRECLOSE, "pre-close again for the next offset")
                 self.line(f"to_pin_pre{i}", T_pre, "normal" if i == 0 else "slow", tip_margin=PIN_MARGIN)
                 reached = self.guarded_line(f"approach_pin{i}", Tg)
             except Abort as e:
@@ -791,7 +808,7 @@ class Reset:
                 continue
             if not reached:
                 tries.append([dy, dz, "contact"])
-                self.line(f"back_pin_c{i}", T_pre, "slow", tip_margin=PIN_MARGIN)
+                self.back_off_open(f"back_pin_c{i}", T_pre)
                 if i == 0 and not s.dry:          # re-measure the knob from the pre-pose view before the next offset
                     time.sleep(0.4)
                     dtm = self.measure_tab(f"{k}_contact")
@@ -805,9 +822,29 @@ class Reset:
                 # 15:52 operator: the knob needs ~2 mm; locate it in the close wrist view and centre it between the pads.
                 # attempt 132: 34 mm off (capped at 25), the check saw the 9.7 mm rest but it was not applied: iterate
                 extra = (self.deep_cfg.get("dt", 0.0) - 0.012) if self.deep_cfg is not None else 0.0
+                aim0 = float(self.pin_t + self.pin_dt); prev_abs = None; best_dt = self.pin_dt
                 for it_m in range(3):
                     time.sleep(0.4)
                     dt_m = self.measure_tab(f"{k}_{it_m}")
+                    # 01:17 operator: +7.5, +6.8, +5.7 mm -> the aim walked 2 cm (the knob moved with the pads): a step
+                    # must halve the offset, and the total walk stays within 12 mm of the first aim
+                    if dt_m is not None and prev_abs is not None and abs(dt_m) > 0.5 * prev_abs:
+                        s.decide(f"knob offset {dt_m * 1000:+.1f} mm did not halve ({prev_abs * 1000:.1f} mm before): stop stepping, pinch at the best aim")
+                        if abs(self.pin_dt - best_dt) > 1e-4:
+                            self.back_off_open(f"back_to_best{it_m}", T_pre)
+                            self.pin_dt = best_dt
+                            Tg = self.pin_T(PIN_OUT); T_pre = Tg.copy(); T_pre[:3, 3] -= 0.05 * z
+                            s.gripper(PRECLOSE, "pre-close again")
+                            self.line(f"to_best_pre{it_m}", T_pre, "slow", tip_margin=PIN_MARGIN)
+                            if not self.guarded_line(f"approach_best{it_m}", Tg):
+                                self.back_off_open(f"back_best_c{it_m}", T_pre)
+                        break
+                    if dt_m is not None:
+                        cap = 0.012 - abs(self.pin_t + self.pin_dt - aim0)
+                        if cap <= 0.0005:
+                            s.decide("knob centring: 12 mm total walk reached: pinch here"); break
+                        dt_m = float(np.clip(dt_m, -cap, cap))
+                        prev_abs = abs(dt_m); best_dt = self.pin_dt + dt_m
                     lo_t, hi_t = scene.SLOT_T[0] + 0.01, scene.SLOT_T[1] - 0.01
                     if dt_m is not None:
                         kt = float(self.pin_t + self.pin_dt + dt_m)
@@ -828,7 +865,7 @@ class Reset:
                         self.tab_dt = self.pin_dt - extra
                         break
                     tab_old = self.tab_dt
-                    self.line(f"back_for_tab{it_m}", T_pre, "slow", tip_margin=PIN_MARGIN)
+                    self.back_off_open(f"back_for_tab{it_m}", T_pre)
                     self.pin_dt += dt_m                       # aim at the measured tab itself
                     self.tab_dt = self.pin_dt - extra         # later variants keep their spread around it
                     Tg = self.pin_T(PIN_OUT)
@@ -836,9 +873,11 @@ class Reset:
                     aim_t = float(self.pin_t + self.pin_dt)
                     s.decide(f"commanded pinch aim t {aim_t:.4f} (yaml slot centre {scene.SLOT_C:.4f}, PIN_T {PIN_T:.4f}, step {dt_m * 1000:+.1f} mm)")
                     try:
+                        s.gripper(PRECLOSE, "pre-close again for the approach")
                         self.line(f"to_tab_pre{it_m}", T_pre, "slow", tip_margin=PIN_MARGIN)
                         if not self.guarded_line(f"approach_tab{it_m}", Tg):
-                            self.line(f"back_tab_c{it_m}", T_pre, "slow", tip_margin=PIN_MARGIN)
+                            self.back_off_open(f"back_tab_c{it_m}", T_pre)
+                            s.gripper(PRECLOSE, "pre-close again")
                             break
                     except Abort as e:
                         if "check failed" not in str(e):
@@ -871,7 +910,7 @@ class Reset:
                     break
                 s.decide(f"no pull distance passed the model at offset {i}; release and try the next offset")
                 held = False
-            s.gripper(PRECLOSE, "open, missed")
+            s.gripper(0.4, "open, missed (wide: do not drag the knob)")
             if i == 0 and not s.dry and not held:
                 # 22:34 operator: centred along t but the pads closed in front of the knob's end: step deeper along N
                 # (and a few mm higher) until the pinch holds; the reset may reach 4 cm into the slot opening
@@ -881,7 +920,8 @@ class Reset:
                     # 01:10 operator: back out to this target's pre-pose first, never shove the pads sideways
                     T_pre_d = Tgd.copy(); T_pre_d[:3, 3] -= 0.05 * Tgd[:3, 2]
                     try:
-                        self.line(f"deeper_pre_{int(deeper * 1000)}_{int(higher * 1000)}", T_pre_d, "slow", tip_margin=PIN_MARGIN)
+                        self.back_off_open(f"deeper_pre_{int(deeper * 1000)}_{int(higher * 1000)}", T_pre_d)
+                        s.gripper(PRECLOSE, "pre-close for the deeper pinch")
                     except Abort as e:
                         if "check failed" not in str(e):
                             raise
@@ -907,7 +947,7 @@ class Reset:
                         Tg = Tgd
                         s.decide(f"tab held {deeper * 1000:.0f} mm deeper (reading {g:.1f})")
                         break
-                    s.gripper(PRECLOSE, "open, missed (deeper)")
+                    s.gripper(0.4, "open, missed (deeper)")
                 if held:
                     self.save_tab()
                     s.gripper(min(g / 100 + 0.008, 0.90), "keep squeezing (sets the model gripper close to the real one)")
@@ -918,7 +958,7 @@ class Reset:
                     held = False
                     s.gripper(PRECLOSE, "release, pull refused")
                 self.pin_deeper = self.pin_higher = 0.0
-            self.line(f"back_pin{i}", T_pre, "slow", tip_margin=PIN_MARGIN)
+            self.back_off_open(f"back_pin{i}", T_pre)
         if held:
             s.gripper(0.65, "release the tab (partly, keeps the lower finger off the table)")
             # the drawer now sticks out (the model does not know it): lift 12 cm straight up so the joint move to
@@ -1024,9 +1064,15 @@ class Reset:
             s.decide(f"backwards drawer: oblique pinch of the outer wall top (protr {protr:.3f}, top {top:.3f}, dn {dn:+.3f})")
             self.to_ready()
             s.gripper(BACK_OPEN, "open for the wall edge")
-            q = self.ik(T_hi, [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (20.0, 40.0, 60.0) for j6 in (-90.0, 90.0)])
-            s.move_joint("above_back_wall", q, "normal")
-            self.line("to_back_pre", T_pre, "normal")
+            try:
+                q = self.ik(T_hi, [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (20.0, 40.0, 60.0) for j6 in (-90.0, 90.0)])
+                s.move_joint("above_back_wall", q, "normal")
+                self.line("to_back_pre", T_pre, "normal")
+            except Abort as e:
+                if "check failed" not in str(e) and "no IK" not in str(e):
+                    raise
+                s.decide(f"wall-edge clamp approach refused by the model ({str(e)[:80]}): skip the clamp")
+                break
             # attempt 149: the clamp held (83.4) and THEN its pull was refused -> stuck on the wall. Plan first.
             pull_d0 = float(np.clip(0.085 - protr, 0.03, PULL))
             pd_ok = self.feasible_pull(Tg, sorted({pull_d0, 0.04, 0.03, 0.02}, reverse=True), 0.95)

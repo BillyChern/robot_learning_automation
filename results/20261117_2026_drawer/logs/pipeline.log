@@ -25104,3 +25104,34 @@ LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.11
 [01:16:53] STOP RECORD: {'kind': 'failed check', 'why': "model check failed for 85_to_back_pre: {'joint_limit_violations': 142, 'max_joint_speed': 13.870409476886536, 'joint_speed_ok': True, 'keep_in_violations': 0, 'min_tip_above_table': 0.07619859901166287, 'min_body_above_table': 0.12567663076608693, 'min_link_z': 0.24612223228297392, 'max_lin_speed': ", 'step': 'pull_out', 'segment': 'above_back_wall', 'progress': 1.0, 't': 8.47, 'q_meas': [-7.93, 17.08, -144.46, 24.56, 22.29, -13.01], 'q_plan': [-7.93, 17.09, -144.46, 24.55, 22.27, -13.01], 'tool_meas': [0.3951, 0.1003, 0.1593, -179.8553, -39.8216, 21.8194], 'tool_plan_xyz': [0.3955, 0.1004, 0.158], 'dev_deg': 0.02, 'dev_mm': 0.1, 'q_now': [352.07, 17.08, 215.54, 24.56, 22.29, 346.99], 'gripper': 45.0}
 [01:16:53] == phase: return_home
 [01:16:53] return plan ok=False: [('return_lift', True), ('return_home', False)]
+summary: /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_170/summary.json outcome: fail exit 2
+== attempt_170 finished: exit 2, outcome fail, 308 s
+== reset failed (1 in a row): drawer: not found
+== reset program failed 1 times in a row; asking the agent to repair it
+== operator note delivered to the reset agent
+== ROBOT: The drawer is in the slot (about 1 cm in by the median, partly proud). Pinch the knob: open the pads before every back-off, at most 12 mm of convergent centring, deeper steps from their own pre-poses, all under low force stops. Pull it out, then extract it, place it at the target with the pull facing the robot, and verify.
+   $ /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_170/targets.json
+   starting in 5 s (Enter=now, n=refuse, s=skip)    starting in 4 s (Enter=now, n=refuse, s=skip)    starting in 3 s (Enter=now, n=refuse, s=skip)    starting in 2 s (Enter=now, n=refuse, s=skip)    starting in 1 s (Enter=now, n=refuse, s=skip)    go                                            
+== attempt_171 [ROBOT] $ /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_170/targets.json
+COMMIT d66f21b749926cc20e0029b16933ac6e07d2f1ec
+LIVE VIEW: http://localhost:8090  http://192.168.1.49:8090  http://100.99.148.110:8090
+[01:18:51] session reset: attempt /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_171 dry=False record=None
+[01:18:51] arm state ARMSTATE_SERVOING_READY, joints [352.07, 17.09, 215.54, 24.56, 22.29, 346.99], gripper 45.0
+[01:18:51] model FK vs measured tool_pose at start: 1.3 mm
+[01:18:52] == phase: perceive
+[01:18:53] plan 01_ready: T=8.5s check ok=True tip>0.119 vmax=18.4deg/s lin=0.058m/s
+[01:19:02] exec 01_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 8.47, 'max_dev_deg': 0.081, 'max_dev_mm': 0.31, 'n': 339, 'max_force_n': 7.0, 'max_abs_force_n': 6.2, 't_exec': 8.52, 'rate_hz': 39.8, 'final_err_deg': 0.023}
+[01:19:03] plan 02_home_start: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[01:19:15] exec 02_home_start: {'segment': 'home_start', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.138, 'max_dev_mm': 0.44, 'n': 473, 'max_force_n': 8.4, 'max_abs_force_n': 9.0, 't_exec': 11.87, 'rate_hz': 39.8, 'final_err_deg': 0.013}
+[01:19:15] session home set to HOME_Q
+[01:19:15] near-cabinet blob too thin (W 0.041): not a drawer on the table
+[01:19:15] perceive start: {'tag': 'start', 'table_z': -0.0155, 'front_top': 0.0687, 'face_depth': 0.02, 'slot_med': 0.0095, 'blobs': 1, 'low_pts': 1205, 'near_cabinet': False, 'drawer_blobs': [], 'protr': 0.0605, 'front_pts': 635, 'face_pts': 302, 'inside_pts': 378, 'out': {'t': -0.0822, 'h_top': 0.0687, 'h_bot': 0.0274, 'n': 193}}
+[01:19:15] DECISION: start state: slot_near
+[01:19:17] plan 03_ready: T=11.8s check ok=True tip>0.200 vmax=18.4deg/s lin=0.053m/s
+[01:19:29] exec 03_ready: {'segment': 'ready', 'ok': True, 'reason': '', 'T_plan': 11.8, 'max_dev_deg': 0.125, 'max_dev_mm': 0.46, 'n': 473, 'max_force_n': 5.7, 'max_abs_force_n': 5.1, 't_exec': 11.87, 'rate_hz': 39.8, 'final_err_deg': 0.014}
+[01:19:29] DECISION: drawer face median -0.009 m out: tab pinch-and-pull (right way round by default)
+[01:19:29] == phase: pull_out
+[01:19:33] DECISION: high pose above the tab: roll 20 h 0.14 back 0.00 depth +0.009
+[01:19:33] gripper -> 0.71 (pre-close to ~25 mm for the pull tab)
+[01:19:33] gripper reading 70.3
+[01:19:35] plan 04_above_pin: T=11.9s check ok=True tip>0.077 vmax=17.8deg/s lin=0.061m/s
