@@ -147,3 +147,4 @@ most 8.5 N over 49 `ready` moves.
   every option is refused by the cabinet keep-out boxes there. The reset agent gave up at 03:07 ("a person must move
   the drawer ~10 cm from the cabinet, upright"); the orchestrator restarted a repair cycle. Notified the user at 03:09.
   Keep-out boxes were not loosened.
+- 2026-11-21 03:22: user instruction relayed to the reset agent: push the tipped drawer sideways away from the cabinet and lay it down, without pushing it off the table edge (curtain side ~y +0.30); short pushes, 25 N stops, re-measure after each.

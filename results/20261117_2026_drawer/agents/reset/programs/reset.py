@@ -141,6 +141,7 @@ class Reset:
         self.fp_best = None
         self.fp_tall = False
         self.dragged_across = False
+        self.drag_end = None
         self.dragged_away = False
         self.pick_refused = False
         self.forced_cand = None
@@ -1368,8 +1369,8 @@ class Reset:
         best = None
         for d, _ in walls:
             lab = self.image_label(ctr, d)
-            q = (f"The wooden drawer stands upright on one of its short end walls. Its open side - the face through which "
-                 f"you can see into the drawer - faces the {lab} of this image.")
+            q = (f"The wooden drawer is tipped over and stands on one of its walls (not on its bottom). Its open side - the "
+                 f"face through which you can see into the drawer - faces the {lab} of this image.")
             if self.ask(path, q, f"{tag}_opendir_{lab.replace(' ', '_')}",
                         goal="Find which side of the tipped drawer is open.") and (best is None or self.last_conf > best[1]):
                 best = (d, self.last_conf)
@@ -1897,6 +1898,10 @@ class Reset:
             p["slot_med"] = float(min(sm if sm is not None else -float(p["protr"]), -0.01))
             p["cand"] = []
             return "slot_near"
+        if fp is not None:
+            # 189: the side outline was 11 cm off near the cabinet; the wrist outline is the one to act on
+            p["cand"][0] = fp
+            self.forced_cand = dict(fp)
         return "table"
 
     def side_biased(self, c):
@@ -1991,6 +1996,32 @@ class Reset:
         occ = np.zeros(X.size, np.uint8)
         occ[ok] = mask[uv[ok, 1].astype(int), uv[ok, 0].astype(int)]
         q = nt(G[:, :2])
+        ne = near_edge.reshape(X.shape)
+        # attempts 189-191: the drawer stood beside the cabinet's corner; the exclusion zone (3 cm past the cabinet's
+        # side) cut a third of it away -> every outline 'implausible'. Unmasked, the drawer is its own blob (the
+        # cabinet's top projects ~8 cm behind the face): take the drawer-sized blob nearest the look centre whose
+        # centre is not inside the cabinet body; the masked labelling below stays the fallback
+        occ_all = cv2.morphologyEx(occ.reshape(X.shape), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))   # grain gaps
+        occ_all = cv2.morphologyEx(occ_all, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+        n0, lab0, st0, _ = cv2.connectedComponentsWithStats(occ_all, connectivity=8)
+        best0 = None
+        for kk in range(1, n0):
+            if st0[kk, cv2.CC_STAT_AREA] < 100:
+                continue
+            cc = np.argwhere(lab0 == kk)
+            xy_k = np.stack([X[cc[:, 0], cc[:, 1]], Y[cc[:, 0], cc[:, 1]]], 1)
+            c_k, (L_k, W_k), yaw_k = obb(xy_k)
+            qc = nt(np.asarray(c_k, float))
+            if qc[0] > OFF + 0.005 and CAB_T[0] - 0.01 < qc[1] < CAB_T[1] + 0.01:
+                continue                                        # centred inside the cabinet body: the cabinet
+            fits = (0.055 <= L_k <= 0.13 and 0.04 <= W_k <= 0.11) if self.fp_tall else (0.09 <= L_k <= 0.17 and 0.05 <= W_k <= 0.15)
+            if not fits:
+                continue
+            dd = float(np.linalg.norm(np.asarray(c_k) - xy0))
+            if best0 is None or dd < best0[0]:
+                best0 = (dd, np.asarray(c_k, float), float(L_k), float(W_k), float(yaw_k), int(len(xy_k)), bool(ne[lab0 == kk].any()))
+        if best0 is not None:
+            return best0[1:]
         occ[(q[:, 0] > OFF - 0.015) & (q[:, 1] > CAB_T[0] - 0.03) & (q[:, 1] < CAB_T[1] + 0.03)] = 0
         occ = cv2.morphologyEx(occ.reshape(X.shape), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
         n, lab, st, _ = cv2.connectedComponentsWithStats(occ, connectivity=8)
@@ -2118,6 +2149,10 @@ class Reset:
         fp = self.wrist_footprint(c, "across")               # 184: the side outline put the fingers on the drawer top
         if fp is not None:
             c = dict(c, obb_c=fp["obb_c"], L=fp["L"], W=fp["W"], yaw=fp["yaw"])
+        elif not c.get("wrist_fp"):
+            # 188: the raw side outline pinched air (99.1): use the measured wrist-side bias (+5.8 cm y)
+            c = dict(c, obb_c=(np.array(c["obb_c"], float) + WRIST_SIDE_BIAS).tolist())
+            s.decide(f"drag-across: no wrist outline, aiming at the bias-corrected side outline {np.round(c['obb_c'], 3).tolist()}")
         ctr, walls = self.walls_of(c)
         # attempt 185: the jaws must span the NARROW axis (85 mm stroke); prefer it, the other only if it is narrow too
         axes = [walls[2][0]] + ([walls[0][0]] if float(c["L"]) <= 0.08 else [])
@@ -2130,17 +2165,37 @@ class Reset:
             if self.seq_ok([("joint", "chk_above", T_chk, "normal", 0.0), ("line", "chk_down", Tg, "slow", 0.0)])[0]:
                 break
         else:
-            # attempt 185: beside the cabinet's corner no pinch fits: slide it sideways along the face, away from the
-            # cabinet's middle, with a low push from its cabinet-side face
-            side = TT if float(nt(ctr)[1]) > scene.SLOT_C else -TT
-            half_t = 0.5 * max(float(abs(walls[0][0] @ TT)) * float(c["L"]), float(abs(walls[2][0] @ TT)) * float(c["W"]), 0.03)
-            s.decide(f"drag-across: no model-feasible jaw axis: slide it {0.08:.2f} m along the cabinet face toward {ang(side):.0f} deg")
-            return bool(self.slide(ctr - side * half_t, side, 0.08, "tipped drawer beside the cabinet corner"))
+            # attempt 191: beside the cabinet's +t corner every tool-DOWN pose puts the gripper into the cabinet_front
+            # keep-out (offline: the open fingers / body). A tool tilted 15-30 deg away from the cabinet (fingertips at
+            # the drawer, body leaning toward the robot) with the jaws within 25 deg of the narrow axis fits: pinch
+            # it that way, approaching along the tool axis
+            return self.drag_across_tilted(c, ctr, axes[0], h_top)
         Tg = tool_down_T(np.r_[ctr, self.tz + max(h_top - 0.045, 0.03) + TIP_OPEN], yaw)
         T_hi = Tg.copy(); T_hi[2, 3] = self.tz + SAFE_H
         T_pre = Tg.copy(); T_pre[2, 3] = self.tz + h_top + 0.06
-        T_out = Tg.copy(); T_out[:2, 3] -= dist * N
-        s.decide(f"tipped drawer against the cabinet: pinch it across (jaws along {yaw:.0f} deg) and drag it {dist:.2f} m along -N")
+        # attempt 191: beside the cabinet's +t corner straight -N ends at y ~0.19 (outside the landing zone): drag it
+        # diagonally away from the cabinet toward the open table in front of the slot (toward the robot's centre line)
+        side = TT if float(nt(ctr)[1]) > scene.SLOT_C else -TT
+        T_out, d_used = None, None
+        for d in (unit(-N - side), unit(-N - 0.5 * side), -N):
+            for dd in (0.16, 0.13, dist):
+                end = ctr + d * dd
+                if OFF - float(nt(end)[0]) < 0.11 or not self.landing_ok(end) or not self.slide_ok(ctr, d, min(dd, 0.125)):
+                    continue
+                T_try = Tg.copy(); T_try[:2, 3] += d * dd
+                T_c0 = Tg.copy(); T_c0[2, 3] = self.tz + SAFE_H
+                if self.seq_ok([("joint", "chk_above", T_c0, "normal", 0.0), ("line", "chk_down", Tg, "slow", 0.0),
+                                ("grip", "", None, None, 0.8), ("line", "chk_drag_across", T_try, "slow", 0.8)])[0]:
+                    T_out, d_used, dist = T_try, d, dd
+                    break
+            if T_out is not None:
+                break
+        if T_out is None:
+            T_out, d_used = Tg.copy(), -N
+            T_out[:2, 3] -= dist * N
+        self.drag_end = np.asarray(ctr, float) + d_used * dist
+        s.decide(f"tipped drawer against the cabinet: pinch it across (jaws along {yaw:.0f} deg) at {np.round(ctr, 3).tolist()} "
+                 f"and drag it {dist:.2f} m toward {ang(d_used):.0f} deg")
         s.gripper(0.0, "open fully")
         try:
             self.to_ready()
@@ -2161,6 +2216,110 @@ class Reset:
         s.gripper(0.0, "release the drawer")
         self.lift_to("lift_after_drag_across", SAFE_H, "slow")
         s.decide(f"drag-across {'done' if ok else 'stopped at the 25 N limit'}")
+        return True
+
+    def drag_dirs(self, ctr, dist):
+        """Drag directions away from the cabinet, toward the open table in front of the slot (attempt 191: straight -N
+        from beside the +t corner ends outside the landing zone): (direction, distance) pairs that land safely."""
+        side = TT if float(nt(ctr)[1]) > scene.SLOT_C else -TT
+        out = []
+        for d in (unit(-N - side), unit(-N - 0.5 * side), -N):
+            for dd in (0.16, 0.19, 0.13, dist):
+                end = ctr + d * dd
+                toward_edge = d[1] < -0.2 and end[1] < Y_CENTRE          # 01:12 rule (held, not pushed: no 12.5 cm cap)
+                if OFF - float(nt(end)[0]) < 0.11 or not self.landing_ok(end) or toward_edge:
+                    continue
+                out.append((d, dd))
+        return out
+
+    def drag_across_tilted(self, c, ctr, ax, h_top):
+        """Attempt 191: pinch the tipped drawer beside the cabinet corner with the tool tilted away from the cabinet,
+        drag it away (25 N stop), release, back out along the tool axis. Returns True if it dragged."""
+        s = self.s
+        from scipy.spatial.transform import Rotation as _Rot
+        from rlpj.robot import sim
+        boxes = sim.cell_keep_out()
+        TT3 = np.r_[TT, 0.0]
+        yaw0 = ang(ax)
+        yaw0 = yaw0 - 180 if yaw0 > 90 else yaw0 + 180 if yaw0 < -90 else yaw0
+        dirs = self.drag_dirs(ctr, 0.10)
+        if not dirs:
+            s.decide("tilted drag-across: no drag direction lands safely"); return False
+        z_g = self.tz + max(h_top - 0.045, 0.03) + TIP_OPEN
+        G_open = sim.gripper_points(0.085, 0.0)
+        T_rdy = tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0)
+        plan, n_chk, fails = None, 0, []
+        # grasp points along the drawer's long axis, shifted away from the cabinet's middle (the narrow axis is ax)
+        u_l = np.array([-ax[1], ax[0]])
+        u_l = u_l if float(u_l @ (TT if float(nt(ctr)[1]) > scene.SLOT_C else -TT)) >= 0 else -u_l
+        half_l = 0.5 * max(float(c["L"]), float(c["W"]))
+        # attempt 192: 60 checks ran out on steep tilts (their approach lines jump IK branches); offline the 15 deg
+        # tilt with the jaws ~25 deg off the narrow axis works: every jaw angle at the mildest tilt first
+        cands = [(sh, dy, a) for sh in (0.0, 0.01, 0.02) if sh <= half_l - 0.025 for a in (-15.0, -20.0, -25.0, -30.0)
+                 for dy in (0, 5, -5, 10, -10, 15, -15, 20, -20, 25, -25, 30, -30)]
+        for sh, dy, a in cands:                           # a < 0 about +t: tool axis toward +N, body toward the robot
+            if True:
+                gp = ctr + u_l * sh
+                Tg = tool_down_T(np.r_[gp, z_g], yaw0 + dy)
+                Tg[:3, :3] = _Rot.from_rotvec(np.radians(a) * TT3).as_matrix() @ Tg[:3, :3]
+                P = G_open @ Tg[:3, :3].T + Tg[:3, 3]
+                if max(list(sim.box_depths(P, boxes)[0].values()) or [0.0]) > 0.0:
+                    continue
+                for back in (0.15, 0.12):
+                    Tw = Tg.copy(); Tw[:3, 3] -= Tg[:3, 2] * back
+                    for d, dd in dirs[:2]:
+                        To = Tg.copy(); To[:2, 3] += d * dd
+                        Tu = To.copy(); Tu[:3, 3] -= To[:3, 2] * 0.10
+                        n_chk += 1
+                        ok, why_ = self.seq_ok([("joint", "chk_tilt_pre", Tw, "normal", 0.0), ("line", "chk_tilt_in", Tg, "slow", 0.0),
+                                             ("grip", "", None, None, 0.8), ("line", "chk_tilt_drag", To, "slow", 0.8),
+                                             ("grip", "", None, None, 0.0), ("line", "chk_tilt_out", Tu, "slow", 0.0),
+                                             ("joint", "chk_tilt_ready", T_rdy, "normal", 0.0)])
+                        if ok:
+                            plan = (Tg, Tw, To, d, dd, yaw0 + dy, a, back, sh)
+                            break
+                        fails.append(f"{yaw0 + dy:.0f}/{a:.0f}/{back}: {why_[:70]}")
+                        if n_chk >= 160:
+                            break
+                    if plan or n_chk >= 160:
+                        break
+                if plan or n_chk >= 160:
+                    break
+            if plan or n_chk >= 160:
+                break
+        s.summary(tilt_search=dict(checked=n_chk, found=plan is not None, fails=fails[:12]))
+        if plan is None:
+            s.decide(f"tilted drag-across: no model-feasible tilted pinch ({n_chk} sequences checked)"); return False
+        Tg, Tw, To, d, dd, yaw, a, back, sh = plan
+        self.drag_end = np.asarray(ctr, float) + d * dd
+        s.decide(f"tipped drawer beside the cabinet: tilted pinch (jaws {yaw:.0f} deg, tilt {-a:.0f} deg away from the cabinet, "
+                 f"{sh * 100:.0f} cm along it) at {np.round(ctr, 3).tolist()}, drag {dd:.2f} m toward {ang(d):.0f} deg")
+        s.gripper(0.0, "open fully")
+        try:
+            self.to_ready()
+            self.joint_to("tilt_pre_across", Tw)
+        except Abort as ex:
+            if "check failed" not in str(ex) and "no IK" not in str(ex):
+                raise
+            s.decide(f"tilted approach refused ({str(ex)[:80]})"); self.to_ready(); return False
+        if not self.contact_line("tilt_in_across", Tg, "slow", limit=20.0):
+            self.line("tilt_out_contact", Tw, "slow"); self.to_ready(); return False
+        g = s.gripper(1.0, "pinch the drawer across (tilted)")
+        if g >= 96.5 and not s.dry:                      # 99+ = closed on nothing; a thin bottom panel reads ~93-95
+            s.decide(f"drawer not held in the tilted pinch (reading {g:.1f})")
+            s.gripper(0.0, "open")
+            self.line("tilt_out_empty", Tw, "slow"); self.to_ready(); return False
+        ok = self.contact_line("tilt_drag_across", To, "slow", limit=25.0)
+        s.gripper(0.0, "release the drawer")
+        Tu = self.T_now(); Tu[:3, 3] -= Tu[:3, 2] * 0.10
+        try:
+            self.line("tilt_out_after_drag", Tu, "slow")
+        except Abort as ex:
+            if "check failed" not in str(ex):
+                raise
+            self.lift_to("lift_after_tilt_drag", 0.15, "slow")
+        self.to_ready()
+        s.decide(f"tilted drag-across {'done' if ok else 'stopped at the 25 N limit'}")
         return True
 
     def place_plain(self, held, xy, tag):
@@ -2217,6 +2376,23 @@ class Reset:
                 st = self.state_of(p)
         if st == "table" and p["cand"] and p["cand"][0].get("near_cabinet") and not s.dry:
             st = self.slot_or_table(p, "start")
+        elif st == "out" and p.get("out") and float(p["out"]["h_top"]) > TIPPED_H and not s.dry:
+            # attempts 190-191: a drawer standing on end beside the cabinet's corner read as 'out' (its points in the
+            # slot window, top 0.099 - taller than any drawer in the slot): ask the judge; if free, find it from above
+            path = self.side_full("start_outfree")
+            ans = None if path is None else self.ask(path, "The wooden drawer is still partly inside the cabinet's bottom "
+                                                     "slot (it is NOT standing free on the table).", "start_outfree",
+                                                     goal="Decide whether the drawer is still in the cabinet slot or standing free on the table.")
+            if ans is False and self.last_conf >= 0.7:
+                h_g = float(p["out"]["h_top"])
+                g_xy = xy_of(OFF - 0.07, scene.SLOT_C).tolist()
+                guess = dict(xy=g_xy, obb_c=g_xy, h=h_g, L=0.10, W=0.07, yaw=0.0, wrist_fp=True)
+                fp = self.wrist_footprint(guess, "start_free")
+                if fp is not None:
+                    s.decide(f"judge: drawer free on the table (conf {self.last_conf:.2f}, top {h_g:.3f}); wrist outline "
+                             f"{np.round(fp['obb_c'], 3).tolist()}: table path")
+                    self.forced_cand = dict(fp, n=1000)
+                    p = dict(p, cand=[self.forced_cand]); st = "table"
         elif st in ("slot_near", "slot_back") and not s.dry:
             # attempt 173: 'slot_near' while the judge later said the drawer was out on the table next to the cabinet;
             # the whole pinch sequence ran on the slot. Ask first; a full wrist outline in front of the slot decides.
@@ -2369,6 +2545,9 @@ class Reset:
             if st != "table" and self.forced_cand is not None:
                 p = dict(p, cand=[self.forced_cand]); st = "table"      # the wrist outline from the start, once
                 self.forced_cand = None
+            elif st == "table" and self.forced_cand is not None and p["cand"][0].get("near_cabinet"):
+                p = dict(p, cand=[self.forced_cand]); self.forced_cand = None   # 189: the side outline was 11 cm off
+            self.forced_cand = None                                     # used once (check0) at most
             if st != "table":
                 s.require(s.dry and held is not None, f"drawer not seen on the table (state {st})")
                 break
@@ -2385,13 +2564,33 @@ class Reset:
                         self.go_home("home_after_drag")
                         p = self.perceive(f"after_drag{it}_{k_r}")
                         st = self.state_of(p)
-                        s.require(st == "table", f"drawer not seen on the table after the drag (state {st})")
-                        c = p["cand"][0]
+                        c_side = p["cand"][0] if st == "table" else None
+                        c_new = c_side
+                        if self.drag_end is not None:
+                            # the side camera mislocates a drawer near the cabinet (189: 11 cm): look down where the
+                            # drag ended; keep the side cloud for the open-side depth test, shifted onto the wrist outline
+                            e_ = self.drag_end.tolist()
+                            fp = self.wrist_footprint(dict(c, xy=e_, obb_c=e_, wrist_fp=True), f"drag{it}")
+                            if fp is not None:
+                                c_new = fp
+                                if c_side is not None and c_side.get("pts") is not None:
+                                    sh = np.array(fp["obb_c"], float) - np.array(c_side["obb_c"], float)
+                                    if np.linalg.norm(sh) < 0.15:
+                                        P_ = np.array(c_side["pts"], float).copy(); P_[:, :2] += sh
+                                        c_new = dict(c_side, obb_c=fp["obb_c"], xy=fp["obb_c"], L=fp["L"], W=fp["W"], yaw=fp["yaw"],
+                                                     pts=P_, near_cabinet=False)
+                                        s.decide(f"after the drag: wrist outline {np.round(fp['obb_c'], 3).tolist()}, side cloud shifted "
+                                                 f"by {np.round(sh, 3).tolist()} for the depth test")
+                        s.require(c_new is not None, f"drawer not seen on the table after the drag (state {st})")
+                        c = c_new
                         continue
                     s.require(False, "tipped drawer against the cabinet: could not grip it to drag it away (no safe righting move there)")
                 xy0 = np.array(c["xy"], float)
                 self.right_shift = np.zeros(2)
-                o_ov = self.judge_open_dir(c, f"r{it}_{k_r}") if (c["L"] < 0.095 and c["h"] > 0.10) else None
+                # 191: a wrist outline carries no (or the side camera's mislocated) points: the depth test cannot run
+                o_ov = self.judge_open_dir(c, f"r{it}_{k_r}") if ((c["L"] < 0.095 and c["h"] > 0.10) or c.get("wrist_fp")) else None
+                s.require(o_ov is not None or (c.get("pts") is not None and not c.get("wrist_fp")),
+                          "tipped drawer located from above only and the judge did not say which side is open")
                 try:
                     self.right_side(c, f"r{it}_{k_r}", o_override=o_ov)
                 except Abort as ex:
