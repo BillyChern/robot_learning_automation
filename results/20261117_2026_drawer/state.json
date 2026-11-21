@@ -18,14 +18,14 @@
    "unsure": 0
   },
   "resets": {
-   "total": 86,
-   "ok": 42,
-   "fail": 44,
+   "total": 88,
+   "ok": 43,
+   "fail": 45,
    "manual": 0
   },
   "consecutive_failures": {
    "execute": 0,
-   "reset": 2
+   "reset": 0
   },
   "rl": {
    "total": 30,
@@ -34,9 +34,9 @@
    "unsure": 0
   },
   "rl_eval": {
-   "total": 5,
+   "total": 7,
    "success": 0,
-   "fail": 5,
+   "fail": 7,
    "unsure": 0
   }
  },
@@ -286,11 +286,11 @@
    ]
   }
  },
- "next_episode": 35,
- "next_reset": 86,
+ "next_episode": 37,
+ "next_reset": 88,
  "vlm": {
-  "calls": 35,
-  "cost_usd": 2.1048608
+  "calls": 37,
+  "cost_usd": 2.2273524
  },
  "operator_notes": [],
  "rl": {

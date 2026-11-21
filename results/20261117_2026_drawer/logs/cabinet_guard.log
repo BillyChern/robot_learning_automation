@@ -17,3 +17,5 @@
 01:17:08 resets/reset_0085.json cabinet shift 38.8 mm
 01:17:08 cabinet off by 38.8 mm once: pausing if the next reading agrees
 01:17:55 guard restarted: no reading while the arm is in the scene (a second tall blob)
+01:49:24 resets/reset_0086.json cabinet shift 11.7 mm
+02:06:25 resets/reset_0087.json cabinet shift 10.8 mm

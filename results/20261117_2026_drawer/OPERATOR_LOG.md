@@ -129,3 +129,4 @@ most 8.5 N over 49 `ready` moves.
   no escape: every candidate failed the model's table margin because the START pose had the modelled tips 2.7 mm above
   the table. Library fix (sim.check): like the keep-out boxes, a move that starts below the tip/body margin may rise
   out but never go lower; offline test added (fails without the fix). The replayed escape_tool_back now passes.
+- 2026-11-21 01:46: reset 175 succeeded (max total force 26 N) and the reset agent closed its repair; my 01:36 note (pull-wall grasp for a drawer against the cabinet) was withdrawn unsent as no longer needed.
