@@ -30497,3 +30497,5 @@ summary: /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/rese
 == attempt_204 finished: exit 2, outcome fail, 353 s
 == reset failed (2 in a row): drawer: not found
 == reset program failed 2 times in a row; asking the agent to repair it
+== code sync to the agent host: ok
+== delivering the operator note to the reset agent before collection continues

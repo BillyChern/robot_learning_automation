@@ -164,3 +164,4 @@ most 8.5 N over 49 `ready` moves.
   (front +15 mm, slot_t -9 mm, keep-out +(0.0173, -0.0028), guard REF with it) but did NOT apply it: changing the
   keep-out and resuming a guard-paused run is the user's decision. Run stays PAUSED. Proposal files:
   ~/.claude/jobs/42b7911d/tmp/drawer_rl_proposed_0520.yaml and cabinet_guard_proposed_0520.sh.
+- 2026-11-21 12:17: user approved "shift the geometry and resume everything": proposed geometry applied and committed (front +15 mm, slot_t -9 mm, keep-out +(0.0173, -0.0028), guard REF (0.6083, 0.0462)); both agents notified; pipeline and guard relaunched.

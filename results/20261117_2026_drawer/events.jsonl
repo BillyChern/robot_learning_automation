@@ -686,3 +686,4 @@
 {"t": "2026-11-21T05:01:14", "kind": "episode", "episode": 40, "mode": "rl_eval", "final": "fail", "reason": "no independent check says success (claim=none, perception=False, vlm=False)", "claim": null, "exit_code": 2, "duration": 181.4, "attempt": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute/attempts/attempt_105"}
 {"t": "2026-11-21T05:06:09", "kind": "reset", "reset": 98, "ok": false, "outcome": "fail", "duration": 287.3, "attempt": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_203"}
 {"t": "2026-11-21T05:12:10", "kind": "reset", "reset": 99, "ok": false, "outcome": "fail", "duration": 353.2, "attempt": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_204"}
+{"t": "2026-11-21T12:17:54", "kind": "phase", "phase": "rl_train"}
