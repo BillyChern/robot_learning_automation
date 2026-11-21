@@ -75,8 +75,13 @@ class Executor:
                         # change from the segment start AND total size: releasing a preload (retreat after a push)
                         # changes the estimate by the preload but ends near zero, so it does not stop the retreat
                         lim = self.limit()
-                        if lim and df > lim and float(np.linalg.norm(f)) > lim:
+                        fa, fa0 = float(np.linalg.norm(f)), float(np.linalg.norm(f0))
+                        if lim and df > lim and fa > lim:
                             r["reason"] = f"contact force {df:.1f} N > {lim:.0f} N at t={t:.2f}s"; break
+                        # a preload carried over from the previous move (push steps) can take the total past the limit
+                        # with a small change inside this move: stop when the total is over the limit and still rising
+                        if lim and fa > lim and fa > fa0 + 5.0:
+                            r["reason"] = f"contact force {fa:.1f} N total > {lim:.0f} N at t={t:.2f}s"; break
                 if dev > DEV_DEG or dmm > DEV_MM:
                     over += 1
                     if over >= 2:

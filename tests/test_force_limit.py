@@ -77,3 +77,20 @@ def test_force_cap():
     ex.force_limit = 100
     r = ex.run(Seg())
     assert "contact force" in r["reason"]
+
+
+class PreloadRobot(Robot):
+    """Starts the move already pressing (40 N), then rises to 75 N: a change of 35 N, a total over the 65 N cap."""
+    def feedback(self):
+        fb = super().feedback()
+        fb["force"] = np.array([0, 0, 75.0 if time.time() - self.t0 > self.force_at else 40.0])
+        return fb
+
+
+def test_force_stop_total_over_cap_with_preload():
+    import time as _t
+    globals()["time"] = _t
+    ex = Executor(PreloadRobot(force_at=0.5), Kin(), log=lambda *a: None)
+    ex.force_limit = ex.force_cap = 65
+    r = ex.run(Seg())
+    assert "total" in r["reason"], r
