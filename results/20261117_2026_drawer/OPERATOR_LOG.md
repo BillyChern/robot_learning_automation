@@ -125,3 +125,7 @@ most 8.5 N over 49 `ready` moves.
   scene; restarted. Reset 170's knob centring walked 2 cm (+7, +7, +6 mm measured each step) and dragged the knob on
   every back-off (73-89 N force change, total under the 65 N stop); note sent: open before backing off, stop stepping
   when the offset does not shrink.
+- 2026-11-21 01:25: reset 171 ran with low forces (max total 20.5 N) but stopped at the knob pinch pose; reset 172 found
+  no escape: every candidate failed the model's table margin because the START pose had the modelled tips 2.7 mm above
+  the table. Library fix (sim.check): like the keep-out boxes, a move that starts below the tip/body margin may rise
+  out but never go lower; offline test added (fails without the fix). The replayed escape_tool_back now passes.

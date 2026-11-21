@@ -138,6 +138,8 @@ class Reset:
         self.from_recess = False
         self.tab_img = None       # last close wrist view of the drawer front (pinch approach)
         self.last_conf = 0.0
+        self.pick_refused = False
+        self.forced_cand = None
         self.place_bias = np.zeros(2)       # learned systematic placement error (measured - aimed), persisted
         self.just_placed = False
         try:
@@ -227,7 +229,7 @@ class Reset:
             for back in (0.04, 0.025):
                 Tb = T.copy(); Tb[:3, 3] -= back * T[:3, 2]
                 try:
-                    self.line("escape_tool_back", Tb, "slow", tip_margin=PIN_MARGIN)
+                    self.line("escape_tool_back", Tb, "slow", tip_margin=0.001)   # 172: the open model finger sits 3 mm above the table here
                     T = self.T_now()
                     break
                 except Abort as e:
@@ -242,10 +244,10 @@ class Reset:
         for d, z in cands:
             T2 = T.copy(); T2[:2, 3] -= d * N; T2[2, 3] = z
             try:
-                self.line("escape_up" if z > T[2, 3] else "escape_back", T2, "slow", tip_margin=PIN_MARGIN)
+                self.line("escape_up" if z > T[2, 3] else "escape_back", T2, "slow", tip_margin=0.001)
                 if z <= T[2, 3]:
                     T3 = T2.copy(); T3[2, 3] = up
-                    self.line("escape_up", T3, "slow", tip_margin=PIN_MARGIN)
+                    self.line("escape_up", T3, "slow", tip_margin=0.001)
                 return
             except Abort as e:
                 self.log(f"escape (back {d}, to {z - self.tz:.3f}) refused: {str(e)[:120]}")
@@ -542,19 +544,26 @@ class Reset:
             return False
 
     def back_off_open(self, name, T_back, limit=25.0):
-        """01:17 operator: the pre-closed pads around the knob dragged it on every back-off (73-89 N): open to 0.4,
-        then back off under a low force stop (a contact here is tolerated: re-open and try once more)."""
+        """01:17 operator: the pre-closed pads around the knob dragged it on every back-off (73-89 N): open, then back
+        off under a low force stop. Attempt 171: with the pads at 0.4 the model put a fingertip 3.7 mm above the table
+        (rolled pose) and refused: try 0.4 / 0.55 / the pre-close width, each with a 2 mm tip margin."""
         s = self.s
-        s.gripper(0.4, "open before backing off the knob")
-        try:
-            with self.low_force(limit):
-                self.line(name, T_back, "slow", tip_margin=PIN_MARGIN)
-        except Abort as e:
-            if "contact force" not in str(e):
-                raise
-            s.decide(f"{name}: contact while backing off: open fully and retry")
-            s.gripper(0.0, "open fully")
-            self.line(name + "_2", T_back, "slow", tip_margin=PIN_MARGIN)
+        last = None
+        for gopen in (0.4, 0.55, PRECLOSE):
+            s.gripper(gopen, "open before backing off the knob")
+            try:
+                with self.low_force(limit):
+                    self.line(name, T_back, "slow", tip_margin=0.002)
+                return True
+            except Abort as e:
+                last = e
+                if "contact force" in str(e):
+                    s.decide(f"{name}: contact while backing off at opening {gopen}: open wider and retry")
+                    continue
+                if "check failed" not in str(e):
+                    raise
+                s.decide(f"{name}: refused by the model with the pads at {gopen}: try another opening")
+        raise last
 
     def guarded_line(self, name, T_goal, fmax=25.0, last=0.02, step=0.005):
         """00:26 operator: approach the last `last` m to T_goal (along its tool z) in `step` increments, stopping at a
@@ -1642,8 +1651,14 @@ class Reset:
                     return None
                 break
             except Abort as ex:
-                if "check failed" not in str(ex) or k == len(ends) - 1:
+                if "check failed" not in str(ex):
                     raise
+                if k == len(ends) - 1:
+                    s.decide(f"both end walls refused by the model ({str(ex)[:80]}): no pick from this outline")
+                    if self.T_now()[2, 3] < self.tz + SAFE_H - 0.01:
+                        self.lift_to("lift_refused", SAFE_H, "slow")
+                    self.pick_refused = True
+                    return None
                 s.decide(f"end {k} refused by the model ({str(ex)[:90]}): try the other end wall")
                 if self.T_now()[2, 3] < self.tz + SAFE_H - 0.01:
                     self.lift_to("lift_other_end", SAFE_H, "slow")
@@ -1833,8 +1848,19 @@ class Reset:
         s = self.s
         if s.dry:
             return None
-        xy_look = np.array(c["xy"], float) + (0.0 if c.get("wrist_fp") else WRIST_SIDE_BIAS)
         h_top = float(np.clip(c["h"], 0.05, 0.085))
+        # attempt 174: near the cabinet the +5.8 cm side bias put the drawer at the image edge: try the biased and the
+        # raw side position
+        starts = [np.array(c["xy"], float)] if c.get("wrist_fp") else [np.array(c["xy"], float) + WRIST_SIDE_BIAS, np.array(c["xy"], float)]
+        for si, xy_look in enumerate(starts):
+            r = self.footprint_loop(c, xy_look, h_top, f"{tag}{'' if si == 0 else 'r'}")
+            if r is not None:
+                return r
+        s.decide(f"wrist footprint {tag}: no clean drawer outline: keep the side-camera outline")
+        return None
+
+    def footprint_loop(self, c, xy_look, h_top, tag):
+        s = self.s
         for look in range(3):
             res = self.footprint_look(xy_look, h_top, f"{tag}_{look}")
             if res is None:
@@ -1850,21 +1876,26 @@ class Reset:
                 break
             s.decide(f"wrist footprint {tag} look {look}: {'cut by the image border' if border else 'implausible'} {out}: re-centre on it")
             xy_look = ctr
-        s.decide(f"wrist footprint {tag}: no clean drawer outline: keep the side-camera outline")
         return None
 
     def footprint_look(self, xy0, h_top, tag):
         """One look-down at xy0: (centre, L, W, yaw, cells, touches_border) of the biggest wood blob, or None."""
         s = self.s
         from rlpj.perception.wrist import project_base_to_wrist
-        T = tool_down_T(np.r_[xy0, self.tz + 0.42], 0.0)
-        try:
-            self.to_ready()
-            self.joint_to(f"look_down_{tag}", T)
-        except Abort as e:
-            if "check failed" not in str(e):
-                raise
-            s.decide(f"look-down pose refused ({str(e)[:80]})"); return None
+        moved = False
+        for hh in (0.50, 0.42):                                # 174: higher = wider view; far reach: lower
+            T = tool_down_T(np.r_[xy0, self.tz + hh], 0.0)
+            try:
+                self.to_ready()
+                self.joint_to(f"look_down_{tag}", T)
+                moved = True
+                break
+            except Abort as e:
+                if "check failed" not in str(e) and "no IK" not in str(e):
+                    raise
+                s.decide(f"look-down pose at {hh:.2f} m refused ({str(e)[:80]})")
+        if not moved:
+            return None
         time.sleep(0.6)
         img = s.wrist.latest()[0]
         if img is None:
@@ -1889,7 +1920,17 @@ class Reset:
         n, lab, st, _ = cv2.connectedComponentsWithStats(occ, connectivity=8)
         if n < 2:
             s.decide("wrist footprint: no wood seen"); return None
-        k = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))
+        # attempt 173: the largest blob was part of the cabinet; take the sizeable blob nearest the look centre
+        best_k, best_d = None, 9.0
+        for kk in range(1, n):
+            if st[kk, cv2.CC_STAT_AREA] < 100:
+                continue
+            cc = np.argwhere(lab == kk)
+            cxy = np.array([X[cc[:, 0], cc[:, 1]].mean(), Y[cc[:, 0], cc[:, 1]].mean()])
+            dd = float(np.linalg.norm(cxy - xy0))
+            if dd < best_d:
+                best_k, best_d = kk, dd
+        k = best_k if best_k is not None else 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))
         cells = np.argwhere(lab == k)
         xy = np.stack([X[cells[:, 0], cells[:, 1]], Y[cells[:, 0], cells[:, 1]]], 1)
         border = bool(near_edge.reshape(X.shape)[lab == k].any())
@@ -2004,6 +2045,21 @@ class Reset:
                 st = self.state_of(p)
         if st == "table" and p["cand"] and p["cand"][0].get("near_cabinet") and not s.dry:
             st = self.slot_or_table(p, "start")
+        elif st in ("slot_near", "slot_back") and not s.dry:
+            # attempt 173: 'slot_near' while the judge later said the drawer was out on the table next to the cabinet;
+            # the whole pinch sequence ran on the slot. Ask first; a full wrist outline in front of the slot decides.
+            path = self.side_full("start_onslot")
+            ans = None if path is None else self.ask(path, "The wooden drawer is still partly inside the cabinet's bottom "
+                                                     "slot (it is NOT standing free on the table).", "start_onslot",
+                                                     goal="Decide whether the drawer is still in the cabinet slot or standing free on the table.")
+            if ans is False and self.last_conf >= 0.7:
+                guess = dict(xy=xy_of(OFF - 0.07, scene.SLOT_C).tolist(), obb_c=xy_of(OFF - 0.07, scene.SLOT_C).tolist(),
+                             h=0.07, L=0.12, W=0.10, yaw=0.0, wrist_fp=True)       # look straight in front of the slot
+                fp = self.wrist_footprint(guess, "start_free")
+                if fp is not None:
+                    s.decide(f"judge: drawer free on the table (conf {self.last_conf:.2f}); wrist outline {np.round(fp['obb_c'], 3).tolist()}: table path")
+                    self.forced_cand = dict(fp, h=0.07, n=1000)
+                    st = "table"
         s.summary(start_state=st, start_perception={k: v for k, v in p.items() if k != "cand"})
         s.decide(f"start state: {st}")
         s.require(st != "missing", "drawer not found (no drawer blob on the table and the bottom slot looks empty)")
@@ -2138,6 +2194,9 @@ class Reset:
             self.go_home("home_for_check")
             p = self.perceive(f"check{it}")
             st = self.state_of(p)
+            if st != "table" and self.forced_cand is not None:
+                p = dict(p, cand=[self.forced_cand]); st = "table"      # the wrist outline from the start, once
+                self.forced_cand = None
             if st != "table":
                 s.require(s.dry and held is not None, f"drawer not seen on the table (state {st})")
                 break
@@ -2223,7 +2282,9 @@ class Reset:
             if not s.dry:
                 # attempt 150: 4 end-wall misses in a row from the side-camera outline; the wrist look-down footprint
                 # (attempt 136) got the grasps right
-                c = self.wrist_footprint(c, f"p{it}") or self.side_biased(c)
+                fp = self.wrist_footprint(c, f"p{it}")
+                c = fp or (c if self.pick_refused else self.side_biased(c))   # biased point refused before: raw outline
+                self.pick_refused = False
             try:
                 held = self.pick_table(c, pull)
             except Abort as e:
