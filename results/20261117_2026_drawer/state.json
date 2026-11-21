@@ -18,9 +18,9 @@
    "unsure": 0
   },
   "resets": {
-   "total": 97,
-   "ok": 46,
-   "fail": 51,
+   "total": 100,
+   "ok": 47,
+   "fail": 53,
    "manual": 0
   },
   "consecutive_failures": {
@@ -34,15 +34,15 @@
    "unsure": 0
   },
   "rl_eval": {
-   "total": 9,
+   "total": 11,
    "success": 0,
-   "fail": 9,
+   "fail": 11,
    "unsure": 0
   }
  },
  "agents": {
   "reset": {
-   "status": "done",
+   "status": "repairing",
    "session_id": "28a976d6-48ea-4fad-b363-10f157ffb977",
    "model": "claude-opus-5-5",
    "started": "2026-11-17T20:27:03",
@@ -59,7 +59,7 @@
    "first_success_attempt": 16,
    "first_success_after_attempts": 21,
    "time_to_first_success_s": 5425.0,
-   "repairs": 31,
+   "repairs": 32,
    "rounds": 0,
    "program_command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py",
    "last_report": "Done: the repaired reset worked on the real robot in attempt 201. The drawer is upright at the target with its pull facing the robot. Measured position is (0.3657, -0.0105) against the target (0.361, -0.016), a 7 mm error. The vision judge confirmed the pull faces the robot (conf 0.85), and your layout check passed.\n\nWhat attempt 201 did:\n- **Open side:** it found the open side from two close wrist views. The open face is dark inside (V 20) and the bottom panel is bright (V 137). The vision judge had said \"open\" for both faces, so I no longer rely on it for this.\n- **Pinch:** it pinched the drawer across its narrow axis (reading 68.1).\n- **Carry and turn:** it lifted the drawer 4 cm, turned it 180\u00b0 and moved it, so that it would land by the target. Rolling it toward the robot is out of joint limits.\n- **Roll:** it rolled the drawer 45\u00b0 about the bottom panel's lower edge in six small joint moves under a 30 N stop, then let go. The drawer fell onto its bottom.\n- **Place:** the normal staging, pull-wall views and placement followed.\n\nChanges since attempt 188 (all committed):\n- **Drawer located with the wrist camera:** the wrist look-down had been cutting the drawer out of its own outline. Near the cabinet the side camera was 6\u201311 cm off, so the wrist outline is now the one used.\n- **Tilted pinch at the cabinet corner:** this got the drawer out of the corner. A partly-closed gripper now lets the arm escape when an open finger ends up inside a cabinet keep-out zone.\n- **Held drawer:** if the drawer ends up in the gripper, the program detects it, carries it to the staging spot and sets it down. This is what freed the drawer from the cabinet in 196.\n- **Sliding into view:** a tipped drawer below the side camera's view is first slid toward +y, never toward the curtain.\n- **Drift limit:** deliberate moves no longer count as drift, and up to 8 cm is allowed in open space (your 04:13 note).\n- **Pushes replaced by the pinch-roll:** pushing the top edge only slid the drawer on the table (attempts 197\u2013199).\n\nDifferences from your notes:\n- **04:22 push sideways:** a closed-finger push from behind could not get past the planning model. The cabinet's keep-out zone was on one side and the curtain's on the other. Instead, open fingers straddled the drawer and the cabinet-side finger pushed it toward the robot, with no grip. This was checked offline but not used on the robot; the run went another way.\n- **04:23 pinch the open-side wall's top edge:** the drawer lies on a side wall, so its top is closed and that edge can't be straddled from above. The pinch-roll grips the whole drawer across its narrow axis instead and does the same arc about the far bottom edge.\n\nYour 04:32 fallback is added in f7ee77b: if the wrist views and the judge can't name the open side, the program uses the side depth test's direction instead of stopping. That change was only compile-checked, not run; attempt 201 used commit 90bbd58.\n\nThe learned placement offset is now [0.012, -0.056].",
@@ -310,15 +310,23 @@
     [
      "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_191",
      "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_203",
+     "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_204",
+     "layout check failed: drawer: not found"
     ]
    ]
   }
  },
- "next_episode": 39,
- "next_reset": 97,
+ "next_episode": 41,
+ "next_reset": 100,
  "vlm": {
-  "calls": 39,
-  "cost_usd": 2.3515311999999997
+  "calls": 41,
+  "cost_usd": 2.4725295999999997
  },
  "operator_notes": [],
  "rl": {

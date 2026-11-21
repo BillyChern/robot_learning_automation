@@ -31,3 +31,9 @@
 03:15:46 resets/reset_0094.json cabinet shift nan mm
 03:23:51 resets/reset_0095.json cabinet shift nan mm
 03:25:46 resets/reset_0096.json cabinet shift nan mm
+04:57:59 resets/reset_0097.json cabinet shift nan mm
+05:06:09 resets/reset_0098.json cabinet shift 15.1 mm
+05:06:09 cabinet off by 15.1 mm once: pausing if the next reading agrees
+05:12:14 resets/reset_0099.json cabinet shift 17.0 mm
+05:12:14 CABINET MOVED 17.0 mm: pausing the run at the next safe point
+05:12:14 PAUSED (cabinet moved 17.0 mm)

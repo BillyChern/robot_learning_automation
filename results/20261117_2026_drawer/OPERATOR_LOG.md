@@ -156,3 +156,11 @@ most 8.5 N over 49 `ready` moves.
   the robot, with no person involved (tipped at 02:44 by reset 181; ~2 h, attempts 182-201; the user's instruction
   "push it to the side and lie it down" at 03:22 set the approach).
 - 2026-11-21 04:47: the total-force stop (commit 1c2c064) fired for the first time on the robot: episode 39 ins10 at 66.5 N total (change 25.4 N). RL agent now grasps from a wrist footprint; insertion still jams sideways. Note: use the grasp-time wrist footprint for the in-hand offset.
+- 2026-11-21 04:58: episode 40 jam reached 84.9 N total in push06 before the first force check (the 0.3 s baseline window). Fix (commit below): the total check now runs from the first sample; offline test fails without it. Pushes 07-09 stopped at 67-70 N under the previous fix.
+- 2026-11-21 05:12-05:25: guard paused the run on two full cabinet outlines (05:06 15.1 mm, 05:12 17.0 mm: dn +14,
+  dt -6..-9 mm; 23:42-02:46 dn was -2..-10). Image registration: side camera unmoved (fixed table marks 0.0-0.2 px);
+  cabinet body unchanged since 04:45 (0.5 px), shifted ~11-22 px against 01:47/23:10 (weak matches): it likely moved
+  between ~02:46 and 04:45 (tipped-drawer recovery, 66-69 N contacts, 84-94 N jams). I prepared a geometry shift
+  (front +15 mm, slot_t -9 mm, keep-out +(0.0173, -0.0028), guard REF with it) but did NOT apply it: changing the
+  keep-out and resuming a guard-paused run is the user's decision. Run stays PAUSED. Proposal files:
+  ~/.claude/jobs/42b7911d/tmp/drawer_rl_proposed_0520.yaml and cabinet_guard_proposed_0520.sh.

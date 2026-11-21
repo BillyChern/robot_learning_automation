@@ -1,0 +1,137 @@
+{
+ "reset": 99,
+ "t": "2026-11-21T05:12:10",
+ "targets": {
+  "drawer": [
+   0.366,
+   -0.025
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.05,
+  "objects": {
+   "drawer": {
+    "target": [
+     0.366,
+     -0.025
+    ],
+    "found": null,
+    "dist": null,
+    "ok": false
+   }
+  },
+  "extra_blobs": 6,
+  "reason": "drawer: not found"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.3922,
+    -0.1598
+   ],
+   "z_top": 0.0079,
+   "height": 0.0232,
+   "extent": [
+    0.0185,
+    0.0137
+   ],
+   "n": 100,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.6076,
+    0.0455
+   ],
+   "z_top": 0.2391,
+   "height": 0.2544,
+   "extent": [
+    0.2428,
+    0.1601
+   ],
+   "n": 10424,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.6424,
+    -0.0718
+   ],
+   "z_top": 0.0014,
+   "height": 0.0167,
+   "extent": [
+    0.0161,
+    0.0197
+   ],
+   "n": 70,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.6169,
+    -0.2323
+   ],
+   "z_top": -0.0037,
+   "height": 0.0116,
+   "extent": [
+    0.0129,
+    0.0194
+   ],
+   "n": 86,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0044,
+   "outer_r": 0.0088
+  },
+  {
+   "xy": [
+    0.7184,
+    -0.0677
+   ],
+   "z_top": -0.0018,
+   "height": 0.0135,
+   "extent": [
+    0.0506,
+    0.0202
+   ],
+   "n": 136,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.7402,
+    0.0171
+   ],
+   "z_top": -0.0037,
+   "height": 0.0116,
+   "extent": [
+    0.0513,
+    0.0417
+   ],
+   "n": 196,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": null,
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_204",
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration": 353.2
+}
