@@ -1,0 +1,86 @@
+{
+ "reset": 81,
+ "t": "2026-11-21T00:24:48",
+ "targets": {
+  "drawer": [
+   0.369,
+   -0.011
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.05,
+  "objects": {
+   "drawer": {
+    "target": [
+     0.369,
+     -0.011
+    ],
+    "found": null,
+    "dist": null,
+    "ok": false
+   }
+  },
+  "extra_blobs": 3,
+  "reason": "drawer: not found"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.4709,
+    0.0226
+   ],
+   "z_top": 0.2709,
+   "height": 0.2863,
+   "extent": [
+    0.4075,
+    0.2739
+   ],
+   "n": 21424,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.8524,
+    0.0375
+   ],
+   "z_top": -0.0044,
+   "height": 0.011,
+   "extent": [
+    0.0378,
+    0.0285
+   ],
+   "n": 83,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.8689,
+    0.1808
+   ],
+   "z_top": 0.0025,
+   "height": 0.0179,
+   "extent": [
+    0.1073,
+    0.0527
+   ],
+   "n": 409,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0156,
+   "outer_r": 0.0303
+  }
+ ],
+ "claimed": null,
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_162",
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration": 113.2
+}

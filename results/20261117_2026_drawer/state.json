@@ -18,19 +18,19 @@
    "unsure": 0
   },
   "resets": {
-   "total": 80,
+   "total": 83,
    "ok": 42,
-   "fail": 38,
+   "fail": 41,
    "manual": 0
   },
   "consecutive_failures": {
    "execute": 0,
-   "reset": 2
+   "reset": 0
   },
   "rl": {
-   "total": 28,
+   "total": 30,
    "success": 0,
-   "fail": 28,
+   "fail": 30,
    "unsure": 0
   },
   "rl_eval": {
@@ -47,22 +47,22 @@
    "model": "claude-opus-5-5",
    "started": "2026-11-17T20:27:03",
    "ended": "2026-11-17T22:12:06",
-   "attempts": 76,
-   "robot_attempts": 65,
-   "turns": 786,
-   "cost_usd": 118.24301720000007,
-   "input_tokens": 1458,
-   "output_tokens": 699520,
-   "cache_read": 289895879,
-   "cache_creation": 5495561,
-   "duration_s": 10265.435999999996,
+   "attempts": 78,
+   "robot_attempts": 67,
+   "turns": 808,
+   "cost_usd": 121.76416280000005,
+   "input_tokens": 1502,
+   "output_tokens": 717761,
+   "cache_read": 303939067,
+   "cache_creation": 5539000,
+   "duration_s": 10502.834999999995,
    "first_success_attempt": 16,
    "first_success_after_attempts": 21,
    "time_to_first_success_s": 5425.0,
-   "repairs": 23,
+   "repairs": 24,
    "rounds": 0,
    "program_command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py",
-   "last_report": "The reset works again. Attempt 159 put the drawer 0.8 cm from the target with the pull facing the robot (judge 0.9), and the orchestrator's layout check passed. It is committed as fe8b850 (code) and 149fba0 (notes).\n\nWhat failed in 155\u2013158:\n- **In-slot vs table (155/156):** a drawer right against the cabinet was sometimes taken for one still in the slot, and the reverse. It now gets a vision-judge question plus a wrist look-down before picking. The look-down outline is now accepted even when part of the drawer is behind the cabinet mask; one at width 0.063 had been wrongly rejected.\n- **Wall refinement (150, 155\u2013157):** the misses all came from shifts *away* from the drawer centre, as you said at 00:00. The refinement now accepts shifts of 0 to +4.5 cm toward the centre (strong edge only) and at most \u22121.5 cm the other way. It re-images at the corrected pose and repeats up to 3 times until the residual is \u2264 6 mm. After a refined miss, the next pick uses the unrefined point. Each pick logs the side-camera versus the wrist wall position. In 159 the wrist position was 10\u201314 mm from the side-camera point.\n- **Placement offset (151/158):** placements landed about 4 cm toward \u2212y. The program now learns the gap between where it aimed and where the drawer was measured, and saves it in `notes/place_bias.json`. It currently stands at (\u22120.004, \u22120.047) m. The 17 cm face-gap check uses the expected real position, and corrections start at 3 cm.\n\nIn 159 the first turn put the pull about 90\u00b0 off. The close wall views then found the pull wall (judge 0.85, with the neutral survey goal), and the next placement got it right.\n\nSince the last successful run, nothing in reset.py has changed.\n\n**Still open:** a drawer 3\u20134.5 cm proud at this slot position has no reachable tab pinch in the model. That case relies on the pre-checked wall clamp, which I haven't tested on the robot.",
+   "last_report": "The reset works again: attempt 164 (commit 8b043ff) passed the orchestrator's layout check. The drawer ended 2.9 cm from the target by my final measurement, with the pull facing the robot (judge 0.9).\n\nWhat was fixed across 162\u2013164:\n- **Start escape:** when the arm starts low near the cabinet, the gripper now opens fully first, whatever the tool direction. A tilted pinch pose then backs out along the tool axis before rising. In 163 this got clear of the knob from the 162 stop pose without dragging on it.\n- **Pinch aim:** the saved tab position held a wrong offset (+6.5 mm, from a hold without a fresh wrist measurement), which sent the 160/162 approaches into the drawer at 65\u201367 N. I deleted the file. Saves now store only the wrist-measured knob position, and only from real attempts; my offline tests had been rewriting the file. PIN_T (\u22120.055) matches the measured knob.\n- **Force-guarded approaches:** the last 2 cm of each pinch approach now goes in 5 mm steps and stops at 25 N, backs off and re-measures. This applies to the tab and deeper steps too. It hasn't been exercised on the robot yet, because 163 and 164 found the drawer already on the table.\n- **Wrist look-down:** near the cabinet the side camera was about 9 cm off, so the look-down centred on its estimate showed the drawer cut off at the image edge. The look-down now re-centres on the wood blob and looks again, up to 3 times. In 164 one re-centre gave a clean outline, and the first grasp held.\n\nThe learned placement offset was updated from 164 to (\u22120.005, \u22120.043) m and committed in notes/place_bias.json. The run itself writes its update in a different copy of the workspace, so I copy the value by hand after each run.",
    "reflections": 8
   },
   "execute": {
@@ -73,13 +73,13 @@
    "ended": "2026-11-18T02:06:21",
    "attempts": 25,
    "robot_attempts": 18,
-   "turns": 277,
-   "cost_usd": 69.99634110000001,
-   "input_tokens": 522,
-   "output_tokens": 225687,
-   "cache_read": 103596459,
-   "cache_creation": 4763007,
-   "duration_s": 3163.7549999999997,
+   "turns": 296,
+   "cost_usd": 73.11814729999999,
+   "input_tokens": 558,
+   "output_tokens": 239918,
+   "cache_read": 116522950,
+   "cache_creation": 4794475,
+   "duration_s": 3326.2529999999997,
    "first_success_attempt": null,
    "first_success_after_attempts": null,
    "time_to_first_success_s": null,
@@ -87,7 +87,7 @@
    "rounds": 0,
    "program_command": null,
    "last_report": "The RL loop is ready for training. A real episode runs end to end on the hardware and the learner passes its check on the real data. No episode has succeeded yet: the best one (attempt 20) left the drawer about 2 cm out of the slot.\n\n**Split between scripted and learned (notes/design.md)**\n- Scripted: find the drawer in side depth and grasp its pull wall from above (wrist-camera wall refinement). Carry it in front of the bottom slot and measure the held drawer's offset and yaw from side depth. After the insertion, release, back off and go up. At the end, retreat, go home and verify.\n- Learned, one policy with a stage flag, using small slow straight-line steps:\n  - insert: advance, sideways t, height z and yaw, while holding the drawer;\n  - push: tilted closed fingertips, 3 cm beside the pull at 5 cm height.\n- Observation: 13 values (progress, corrections applied so far, measured offsets, force change, step count).\n- Action: 4 values, squashed to [-1, 1].\n\n**Reward (fixed as you asked at 01:50)**\n- Per step: +10 \u00d7 insertion progress (m), \u22120.02 step cost, force penalty only above 35 N, \u22121/\u22122 for a refused motion or a stop.\n- Terminal: +5 / \u22125 / 0 bonus, plus 2 \u00d7 flush share \u2212 2 \u00d7 sticking-out share of the slot window.\n- The bonus is +5 only when the geometric check passes and the orchestrator's vision judge agrees. Otherwise it is \u22125, so a backwards drawer is never rewarded.\n- `learner.py` replaces the bonus with one from `rl/verdicts/<episode>.json`: success +5, backwards or wrongly paid \u22125, other fails 0. I tested this on made-up verdict files, not on a real one yet.\n\n**Algorithm**\n- SAC: networks 13-128-128 with LayerNorm critics, gamma 0.95, automatic entropy tuning, about 40 updates per new transition (at most 3000 or 200 s per call). It reuses every logged episode.\n- The actor starts from a scripted prior: a 12 mm advance plus half of the measured yaw error per step. The learner fits the actor to that prior once and keeps a decaying pull toward it.\n- No simulation. Why, and what I take from SGS-RL, is in notes/sgs_rl.md.\n\n**Hardware results**\n- Attempt 20 (commit 84d20e6): exit 2, 21 transitions logged. The orientation check found the pull facing the robot, the insertion reached its end in 13 steps, and the gripper let go on the first try (reading 62.4). The push reached its limit. The retreat then hit 136 N because the fingertip had gone over the wall top, and it dragged the drawer about 2 cm back out.\n- Attempt 21 (commit 5524457): the learner check passed and one update ran on the robot machine's GPU: 7 real episodes, 117 transitions, 3000 updates in 51 s, prior fit loss 0.0007.\n- Earlier real episodes, attempts 3, 5, 7, 14, 16 and 17, fixed in turn: the lift catching the rail, force stops while unloading, gripper release not checked, knob hooking during the push, and lift paths refused by the model check.\n\n**Not yet tested on the hardware**\n- The new push point (5 cm high, 3 cm beside the pull): it passes the model checks offline but has not run on the robot.\n- The vision-judge call inside `finish()`.\n- Relabeling from real verdict files.\n- Insertions often jam at about \u22120.06 m (tool position relative to the front plane), with three 50 N stops per episode. Learning to avoid that is now the policy's job.\n\n**Code** (commit 5524457)\n- `programs/execute.py`, `programs/learner.py`, `programs/rlcommon.py`\n- `programs/pullface.py`: the pull check before the grasp. If it sees the pull on another wall, the episode ends as a failure without inserting.\n- `programs/recover.py`: frees the arm if an episode leaves it at the cabinet.\n- `tools/offline_test.py`: runs the full episode flow against the model checks offline.",
-   "reflections": 17,
+   "reflections": 20,
    "reviews": 3
   }
  },
@@ -258,21 +258,29 @@
     [
      "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_156",
      "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_160",
+     "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_162",
+     "layout check failed: drawer: not found"
     ]
    ]
   }
  },
- "next_episode": 32,
- "next_reset": 80,
+ "next_episode": 34,
+ "next_reset": 83,
  "vlm": {
-  "calls": 32,
-  "cost_usd": 1.9256096000000003
+  "calls": 34,
+  "cost_usd": 2.0437492
  },
  "operator_notes": [],
  "rl": {
-  "episodes": 28,
+  "episodes": 30,
   "evals": [],
-  "since_review": 3,
+  "since_review": 5,
   "learner_fails": 0
  }
 }

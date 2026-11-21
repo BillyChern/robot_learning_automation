@@ -56,6 +56,7 @@ L_MIN = 0.155                # drawer depth floor: the side camera sees only par
 PUSH_GRIP = 0.55            # pusher opening (ep 27: closed tips pushed the knob, drawer stopped 2.6 cm out): the two fingers
                             # straddle the knob (~3.8 cm gap) and push the face on both sides of it
 PUSH_TILT, PUSH_H, PUSH_ZT = 35.0, 0.048, 0.027 + 0.020 * 0.55   # tilt, fingertip height (knob height), tip along tool z
+RETREAT_F = 10.0             # N: a retreat step above this drags the drawer (ep 32: 53 / 42 N)
 PUSH_DT = 0.0               # push on the drawer centre line (above the knob): every off-centre push (1.5-3 cm) jammed on contact (att 43,44,72, ep 4,5,8,25), the centred ones slid (att 7, 14, 20)
 PUSH_TMAX = SLOT_T[1] - 0.015  # closed fingers (+-14 mm along t in the model) clear of the slot-side keep-out box (t > slot_t[1])
 PUSH_NMAX = OFF + 0.012       # model tip; the flow test refuses steps beyond ~+0.012 (a static probe accepted +0.024: path differs)
@@ -459,6 +460,36 @@ class Episode:
             except Abort as e:
                 self.log(f"unload {i}: {str(e)[:100]}")
 
+    def reactive_retreat(self, n, t, h, step=0.003, max_steps=40):
+        """Leave the drawer front in small steps without dragging it: per step try up, back (-u), down-back; undo a
+        step whose peak force change exceeds RETREAT_F. Done when 4 cm in front of the plane or 5 cm higher."""
+        s = self.s
+        u = push_dirs()[0]
+        h0 = h
+        for i in range(max_steps):
+            if n <= OFF - 0.04 or h >= h0 + 0.05:
+                s.summary(retreat=dict(steps=i, n=round(n - OFF, 4), h=round(h, 4)))
+                self._ret = (n, h)
+                return True
+            moved = False
+            for dn, dh in ((0.0, step), (-step, 0.0), (-step, -0.002)):
+                if h + dh < 0.035:
+                    continue
+                T = push_T(n + dn, t, h + dh, self.tz)
+                st, r = self.try_step(f"retreat{i}", T, TIP_MARGIN_PUSH)
+                if st == "ok" and float(r.get("max_force_n", 0.0)) <= RETREAT_F:
+                    n, h = n + dn, h + dh; moved = True
+                    break
+                if st in ("ok", "force"):         # undo the dragging step
+                    try:
+                        self.line(f"retreat_undo{i}", push_T(n, t, h, self.tz), "slow", tip_margin=TIP_MARGIN_PUSH)
+                    except Abort as e:
+                        s.log(f"retreat undo: {str(e)[:80]}")
+            if not moved:
+                break
+        s.summary(retreat=dict(steps=i, n=round(n - OFF, 4), h=round(h, 4), stuck=True))
+        return n <= OFF - 0.04 or h >= h0 + 0.05
+
     def push_retreat(self, n, t, h):
         """Leave the drawer front: back off horizontally to OFF-0.04 (if deeper), then up, then READY; the first
         candidate chain that passes the model check is executed (tools/offline_test.py grid)."""
@@ -466,14 +497,24 @@ class Episode:
         # fingers straddling the knob caught it. Back off 4 mm, open wider (0.35: ~5.5 cm gap, still inside the slot
         # window in the model) and only then retreat.
         s = self.s
-        if s.grip_frac > 0.36 and s.grip_frac < 0.9:
+        if s.grip_frac > 0.16 and s.grip_frac < 0.9:
             Tq = push_T(n - 0.004, t, h, self.tz)
             if self.chain_ok([Tq]):
                 self.line("push_clear_knob", Tq, "slow", tip_margin=TIP_MARGIN_PUSH)
                 n = n - 0.004
-            s.gripper(0.35, "open wider: clear the knob before the retreat")
+            s.gripper(0.15, "open wide (~7 cm): clear the pull tab and knob before the retreat")
         # operator 18:10: retreat UP first (clear of the knob and label plate), then back: back off only to just in
         # front of the face (model), lift 5 cm, then back to OFF-0.04
+        # ep 32: the drawer ended 0.65 cm out after the push, but the retreat pulled 53 N (back) and 42 N (up): the
+        # fingers hook the pull tab / label plate. Reactive retreat: 3 mm steps, up first, then back, then down-back;
+        # a step that rises above RETREAT_F N is undone and the next direction tried, until clear.
+        if not s.dry and self.reactive_retreat(n, t, h):
+            n, h = self._ret                            # clear of the drawer: back to OFF-0.04 and up, model-checked
+            Tc1 = push_T(min(n, OFF - 0.04), t, h, self.tz); Tc2 = Tc1.copy(); Tc2[2, 3] += 0.05
+            if self.chain_ok([Tc1, Tc2]):
+                self.line("retreat_clear_back", Tc1, "slow", tip_margin=TIP_MARGIN_PUSH)
+                self.line("retreat_clear_up", Tc2, "normal", tip_margin=TIP_MARGIN_PUSH)
+                return
         # operator 22:35: straight up before any move along -N where the model allows it (no drag on the knob)
         Th = push_T(n, t, h, self.tz); Th[2, 3] += 0.05
         Thb = Th.copy(); Thb[:2, 3] -= max(0.0, n - (OFF - 0.04)) * push_dirs()[0]
@@ -566,6 +607,53 @@ class Episode:
         self.lift_to("lift", SAFE_H, "normal")
         s.summary(grasp_wall_angle=ang_w)
         return dict(yaw=yaw, d0=d0, drop=tip_h + TIP_OPEN, L_back=max(2 * half - 0.006, L_MIN), e=e.copy(), Tg=Tg.copy())
+
+    def put_down_if_held(self):
+        """On any exception: if the gripper still holds the wall, lower to just above the table at the current xy (or
+        stay if lower already) and open (operator 00:45: no exception may end an episode with the drawer in the hand)."""
+        s = self.s
+        try:
+            if s.dry or float(s.feedback()["gripper"]) >= HOLD_MAX or float(s.feedback()["gripper"]) < 60:
+                return
+            T = self.T_now()
+            if T[2, 3] > self.tz + 0.13:
+                Td = T.copy(); Td[2, 3] = self.tz + 0.12
+                try:
+                    self.line("put_down", Td, "slow")
+                except Exception as e:
+                    s.log(f"put down: {str(e)[:100]}")
+            s.gripper(0.4, "exception: let go of the drawer")
+            Tu = self.T_now(); Tu[2, 3] += 0.05
+            try:
+                self.line("up_after_letgo", Tu, "slow")
+            except Exception as e:
+                s.log(f"up after let go: {str(e)[:100]}")
+        except Exception as e:
+            s.log(f"put_down_if_held failed: {e}")
+
+    def turn_safely(self, T):
+        """Rotate to T: straight line, else the rotation in 3 line steps, else a model-checked joint move; False when
+        none works (ep 33: 'joint jump' in the cancel_yaw line raised and ended the episode with the drawer held)."""
+        s = self.s
+        try:
+            self.line("cancel_yaw", T, "slow"); return True
+        except (RuntimeError, Abort) as e:
+            s.log(f"cancel_yaw line: {str(e)[:100]}")
+        T0 = self.T_now()
+        try:
+            from rlpj.robot.plan import slerp_R
+            for k in (1, 2, 3):
+                Tk = T.copy(); Tk[:3, :3] = slerp_R(T0[:3, :3], T[:3, :3], k / 3.0)
+                Tk[:3, 3] = T0[:3, 3] + (T[:3, 3] - T0[:3, 3]) * k / 3.0
+                self.line(f"cancel_yaw_{k}", Tk, "slow")
+            return True
+        except (RuntimeError, Abort) as e:
+            s.log(f"cancel_yaw split: {str(e)[:100]}")
+        try:
+            self.joint_to("cancel_yaw_joint", T, "slow"); return True
+        except (RuntimeError, Abort) as e:
+            s.log(f"cancel_yaw joint: {str(e)[:100]}")
+        return False
 
     def align(self, n_at, z, yaw, meas=None, tries=3):
         """Put the held drawer's centre line on the slot centre (T_C + EDGE_TARGET, the slot window centre) from the
@@ -889,7 +977,20 @@ class Episode:
         # while that edge estimate was -0.001..+0.011 (attempts 2-46), and in 0/16 since it moved to -0.005..-0.016
         # (attempts 48-71). Shift the insertion line so the estimate lands at EDGE_TARGET.
         self.t_line = T_C
-        self.align(n0, z0, yaw2, meas)
+        # operator 00:22: ep 32 went in with the measured in-hand yaw +7.9 deg uncorrected and wedged skewed: cancel the
+        # measured yaw (enough points only, at most 8 deg) by turning the hand before the insertion
+        turned = False
+        if meas.get("ok") and meas.get("n", 0) >= 600 and abs(meas.get("yaw_err", 0.0)) > 1.0:
+            dy = float(np.clip(meas["yaw_err"], -8.0, 8.0))
+            yaw2 = yaw2 - dy
+            T_c = tool_down_T(np.r_[xy_of(n0, T_C), z0], yaw2)
+            turned = self.turn_safely(T_c)
+            if turned:
+                s.summary(yaw_cancel=round(-dy, 1))
+            else:
+                yaw2 = yaw2 + dy                         # not turned: keep the old yaw
+                s.summary(yaw_cancel=None, yaw_cancel_skipped=round(-dy, 1))
+        self.align(n0, z0, yaw2, None if turned else meas)   # re-measure after turning
         s.summary(held=dict(n0_minus_off=round(n0 - OFF, 4), z0_above_table=round(z0 - self.tz, 4), yaw2=round(yaw2, 1), meas=meas, t_line=round(self.t_line, 4)))
         s.decide(f"held drawer: t err {meas['t_err']:+.3f} yaw err {meas['yaw_err']:+.1f} ({meas['n']} pts); insertion from n-OFF {n0 - OFF:+.3f}")
         ins = self.stage_insert(n0, z0, yaw2, meas)
@@ -935,6 +1036,9 @@ def main():
         ep = Episode(s)
         try:
             ep.run()
+        except BaseException:
+            ep.put_down_if_held()
+            raise
         finally:
             try:
                 ep.save_transitions()     # also when aborted (no terminal reward then)

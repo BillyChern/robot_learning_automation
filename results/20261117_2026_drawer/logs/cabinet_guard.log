@@ -5,3 +5,8 @@
 23:21:36 resets/reset_0077.json cabinet shift 11.5 mm
 23:33:36 resets/reset_0078.json cabinet shift 3.3 mm
 23:42:21 resets/reset_0079.json cabinet shift 2.9 mm
+00:20:48 resets/reset_0080.json cabinet shift 130.2 mm
+00:20:48 CABINET MOVED 130.2 mm: pausing the run at the next safe point
+00:20:48 PAUSED (cabinet moved 130.2 mm)
+00:24:50 resets/reset_0081.json cabinet shift nan mm
+00:45:55 resets/reset_0082.json cabinet shift 7.5 mm

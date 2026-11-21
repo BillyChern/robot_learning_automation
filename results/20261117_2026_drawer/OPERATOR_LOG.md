@@ -97,3 +97,18 @@ most 8.5 N over 49 `ready` moves.
   pairs: +0.046..+0.070 m). The slot knob was also found 4.3 cm along t (mostly +y) from the side-camera fixtures.
   Suspect: the 11-20 15:40 automated side-camera calibration or the drawer outline itself; needs a check with the board.
   00:08 note to the RL agent: grasp from a wrist look-down, do not trust large side-camera in-hand t errors.
+- 2026-11-21 00:20: reset 160's pinch approach hit the force stop (65.6 N); its return home was refused, so the arm
+  stayed low beside the drawer. The layout check then merged the arm into the cabinet blob (extent 0.41 x 0.27 m),
+  the cabinet guard read a 130 mm move and stopped the pipeline. Side image at ~00:21: the cabinet is on its tape, not
+  moved. Guard fixed to skip blobs larger than 0.30 m (a merged cabinet); pipeline and guard relaunched at ~00:22.
+- 2026-11-21 00:38: resets 160/162 hit the force stop on the first knob approach (65.6, 67.1 N: pinch planned at the
+  flush plane with the drawer 1.3 cm proud); 162's start escape hooked the knob at 61.9 N. 163 missed 4 table picks at
+  raw side-camera points. Notes to the reset agent: open fully before escaping, plan the pinch at the measured face with
+  a slow, low-force final approach, start table look-downs at side + (0.010, 0.058) and re-centre on partial footprints.
+  Hypothesis: the 11-20 15:40 automated side calibration is ~5-6 cm off (mostly y); the "robot base moved" -46 mm t
+  shift that followed it was then undone by the wrist knob measurements (+43 mm). Needs a check with the board.
+- 2026-11-21 00:45-00:50: episode 33 crashed in the RL program's new yaw-cancel line (IK joint jump) and the session
+  went home holding the drawer, which ended up off the side camera's view at [0.52, -0.19]; reset 165's slide-down
+  hit the force stop (66.2 N). Fourth force stop tonight. Library change (commit fa5b57f): programs may lower the
+  force limit per move (executor.force_limit) but can never raise or clear the task's 65 N cap; both agents told to
+  use ~20 N for every approach into an unknown contact.

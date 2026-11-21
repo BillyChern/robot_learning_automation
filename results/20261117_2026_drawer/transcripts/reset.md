@@ -22393,3 +22393,608 @@ Structured output provided successfully
 ```
 </details>
 
+**00:24:51 reset agent:** No response requested.
+
+### 00:24:51 orchestrator -> reset agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+Operator note 00:25 (attempt 162 start): the arm started at the pinch pose left by attempt 160 (force stop 65.6 N on
+approach_pin0, return refused), gripper 70.3 = pre-closed around the knob. The start logic did not open it (70.3 is not
+> 100*PRECLOSE+2) and escape() only opens fully when the tool points down, so escape_up backed off and rose with the
+pads around the knob: 61.9 N, just under the 65 N stop, pulling on the drawer and the cabinet. Fix: at start, whenever
+the arm is low near the cabinet, open the gripper fully (0.0) before any escape move, whatever the tool direction, and
+for a tilted pinch pose back off along the tool axis first (out of the knob), then rise.
+Operator note 00:26: attempts 160 and 162 both hit the force stop on approach_pin0 (65.6 N, 67.1 N), same first try:
+"drawer face median 0.013 m out", "high pose ... depth +0.000", aim t -0.0430. The pinch is planned at the flush
+plane (depth clamped to 0) while the drawer face is 1.3 cm proud, so the pads drive into the face/knob. For a proud
+drawer, place the pinch at the measured face (protrusion added, minus a few mm), approach the last 2 cm at slow speed
+with a lower force stop (~25 N: on contact, back off and re-measure with the wrist camera), and start at the knob t
+measured earlier (-0.055), not PIN_T + 0.012.
+
+repair your program; it failed 1 times in a row during the resets between episodes:
+--- attempt_162: layout check failed: drawer: not found
+# attempt_162: exit code 2; outcome: fail
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_162/targets.json; what: reset for the next episode; commit: fe8b850; duration_s: 113.2; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "fe8b8501c2",
+"command": "programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_162/targets.json",
+"step": "return_home",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [4.37, 55.51, 221.66, 36.54, 64.0, 74.13], "tool_pose": [0.4486, 0.1214, 0.037, 130.0892, -20.0377, 111.8296], "gripper": 70.3},
+"fk_check_mm": 1.34,
+"targets": {"drawer": [0.369, -0.011]},
+"measured": null,
+"decisions": ["start: gripper reads 70.3 low near the cabinet (maybe still on the pull tab): open first", "start pose low (0.053 m above the table): back off and up first", "wrist footprint implausible {'obb_c': [0.4288, -0.0346], 'L': 0.012, 'W': 0.012, 'yaw': -90.0, 'cells': 23}: keep the side-cam
+"segments": [["escape_up", true, 0.018, 0.15, 11.39, 39.9], ["ready", true, 0.075, 0.29, 12.25, 39.8], ["home_start", true, 0.096, 0.3, 11.86, 39.9], ["ready", true, 0.134, 0.45, 11.86, 39.9], ["look_down_start_ns", true, 0.047, 0.26, 5.27, 39.7], ["ready", true, 0.046, 0.23, 5.26, 39.7], ["above_pi
+"vlm_start_inslot": {"success": true, "conf": 0.6, "reason": "The drawer sits level with the cabinet's bottom slot. Its back end is hidden behind the cabinet's side panel and only the front with the handle sticks out, so it looks partly inserted rather than stan"},
+"wrist_footprint_start_ns": {"obb_c": [0.4288, -0.0346], "L": 0.012, "W": 0.012, "yaw": -90.0, "cells": 23},
+"start_state": "slot_near",
+"start_perception": {"tag": "start", "table_z": -0.0154, "front_top": 0.0698, "face_depth": 0.0126, "slot_med": -0.0126, "blobs": 4, "low_pts": 1425, "near_cabinet": true, "drawer_blobs": [{"xy": [0.4328, 0.0924], "obb_c": [0.4643, 0.0976], "L": 0.14, "W": 0.068, "yaw": -68.1, "h": 0.073880265141698
+"stop": {"kind": "failed check", "why": "11_approach_pin0: contact force 67.1 N > 65 N at t=3.30s", "step": "pull_out", "segment": "approach_pin0", "progress": 0.649, "t": 3.3, "q_meas": [4.51, 55.72, -138.65, 36.52, 64.37, 74.48], "q_plan": [4.52, 55.72, -138.
+... (7532 more characters)
+```
+
+**00:25:05 reset agent:** Two failures: the start escape dragged the pre-closed pads around the knob (61.9 N), and the first pinch approach drove into the drawer (67.1 N). Checking where the −0.043 aim came from; the knob was measured at −0.055:
+
+**00:25:06 tool Bash:**
+
+```bash
+cat notes/tab_position.json 2>/dev/null; echo; git log --oneline -3; grep -n "TAB_DT0\b" programs/reset.py | head -5
+```
+
+<details><summary>00:25:06 result</summary>
+
+```text
+{"slot_c": -0.049499999999999995, "t_from_slot": 0.0065, "depth": 0.022, "when": "2026-11-20 22:58"}
+fe8b850 attempt 159: closed-loop wall refinement (operator 00:00), learned placement bias, corrections from 3 cm
+c75389c attempt 158: refine shift capped at 2 cm, unrefined retry after a refined miss; wrist footprint accepted down to W 0.05
+60897d7 attempt 157: near-cabinet 'table' drawer checked by the judge + wrist look-down (in the slot -> tab path); refine cap 12 mm with a wrist footprint
+40:    TAB_DT0 = float(_tab["t_from_slot"]) - (PIN_T - scene.SLOT_C)       # tab offset from PIN_T that held last time
+41:    if abs(float(_tab["slot_c"]) - scene.SLOT_C) > 0.001 or abs(TAB_DT0) > 0.03:
+42:        TAB_DT0 = None
+44:    TAB_DT0 = None
+154:        self.tab_dt = TAB_DT0     # tab t offset from PIN_T: saved from the last hold, updated by the wrist measurement
+```
+</details>
+
+**00:25:20 tool Bash:**
+
+```bash
+rm -f notes/tab_position.json; sed -n "$(grep -n '    def escape' programs/reset.py | cut -d: -f1),+30p" programs/reset.py
+```
+
+<details><summary>00:25:20 result</summary>
+
+```text
+def escape(self):
+        """Start away from home and low (a stopped run or an RL episode left the arm there): get up and clear.
+        Tool pointing down (attempts 50-51: 3.5 cm in front of the cabinet, gripper around the drawer front wall):
+        open fully first, then straight up, else back off along -N while rising, else straight back then up.
+        Other orientations (tilted at the pull): back off along -N and up."""
+        s = self.s
+        T = self.T_now()
+        if T[2, 3] > self.tz + 0.15:
+            return
+        s.decide(f"start pose low ({T[2, 3] - self.tz:.3f} m above the table): back off and up first")
+        up = max(T[2, 3], self.tz + 0.10) + 0.06
+        if T[2, 2] < -0.9:
+            g0 = float(s.feedback()["gripper"])
+            if g0 > 3.0:
+                s.gripper(0.0, "open fully before backing off (fingers away from any wall)")
+            cands = [(0.04, T[2, 3]), (0.0, up), (0.04, up)]   # 01:40 note: straight back along -N first
+        else:
+            cands = [(d, up) for d in (0.08, 0.05, 0.03, 0.0)]
+        for d, z in cands:
+            T2 = T.copy(); T2[:2, 3] -= d * N; T2[2, 3] = z
+            try:
+                self.line("escape_up"
+... (463 more characters)
+```
+</details>
+
+**00:25:33 tool Bash:**
+
+```bash
+python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+old='''        s.decide(f"start pose low ({T[2, 3] - self.tz:.3f} m above the table): back off and up first")
+        up = max(T[2, 3], self.tz + 0.10) + 0.06
+        if T[2, 2] < -0.9:
+            g0 = float(s.feedback()["gripper"])
+            if g0 > 3.0:
+                s.gripper(0.0, "open fully before backing off (fingers away from any wall)")
+            cands = [(0.04, T[2, 3]), (0.0, up), (0.04, up)]   # 01:40 note: straight back along -N first
+        else:
+            cands = [(d, up) for d in (0.08, 0.05, 0.03, 0.0)]'''
+new='''        s.decide(f"start pose low ({T[2, 3] - self.tz:.3f} m above the table): back off and up first")
+        # 00:25 operator: attempt 162 rose with the pre-closed pads around the knob (61.9 N): op
+... (3013 more characters)
+```
+
+<details><summary>00:25:33 result</summary>
+
+```text
+ok
+```
+</details>
+
+**00:25:39 reset agent:** Now the force-guarded approach: the last 2 cm to the pinch pose in 5 mm steps, stopping at 25 N. On contact the arm backs off, and that try counts as a miss.
+
+**00:25:53 tool Bash:**
+
+```bash
+python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+meth='''    def guarded_line(self, name, T_goal, fmax=25.0, last=0.02, step=0.005):
+        """00:26 operator: approach the last `last` m to T_goal (along its tool z) in `step` increments, stopping at a
+        contact force above fmax (the session's own stop is 65 N). Returns True if T_goal was reached; on contact it
+        backs off 1 cm along the tool axis and returns False."""
+        s = self.s
+        from rlpj.robot.plan import SLOW
+        z = T_goal[:3, 2]
+        T0 = T_goal.copy(); T0[:3, 3] -= last * z
+        self.line(f"{name}_near", T0, "slow", tip_margin=PIN_MARGIN)
+        n = int(round(last / step))
+        for k in range(1, n + 1):
+            Tk = T_goal.copy(); Tk[:3, 3] -= (last - k * step) * z
+            r_ = 
+... (3721 more characters)
+```
+
+<details><summary>00:25:53 result</summary>
+
+```text
+ok
+738:                reached = self.guarded_line(f"approach_pin{i}", Tg)
+804:                        self.line(f"approach_pin{i}b", Tg, "slow", tip_margin=PIN_MARGIN)
+```
+</details>
+
+**00:25:58 tool Bash:**
+
+```bash
+timeout 500 /home/r2r/robot_learning_final_pj/.venv/bin/python tools/offline.py 2>&1 | grep -c "#### OK"; cd /home/r2r/robot_learning_final_pj && timeout 590 .venv/bin/python runs/20261117_2026_drawer/agents/reset/tools/test_deep.py 2>&1 | grep "####" | cut -c1-100
+```
+
+<details><summary>00:26:38 result</summary>
+
+```text
+6
+#### level_dt+0.012 True True refused 4
+#### level_dt+0.012 False False refused 2
+#### level_dt+0.006 True True refused 4
+#### level_dt+0.006 False False refused 2
+#### level_dt+0.018 True True refused 4
+#### level_dt+0.018 False False refused 2
+#### rolled_dt+0.012 True True refused 3
+#### rolled_dt+0.012 False False refused 7
+#### drag 0 OK
+#### drag 1 OK
+```
+</details>
+
+**00:26:40 reset agent:** Two more offline checks: the tab pull for a drawer 1.3 cm proud (the current scene), and the new escape from the pose where attempt 162 stopped.
+
+**00:26:45 tool Bash:**
+
+```bash
+timeout 500 .venv/bin/python - 2>&1 <<'E' | grep "####"
+import sys; sys.argv=['x']
+__file__='runs/20261117_2026_drawer/agents/reset/tools/offline.py'; exec(open(__file__).read().split('def run(')[0])
+import io, contextlib
+s=FS(); s.dry=False; r=R.Reset(s,{}); r.tz=calib.table_z(); r.to_ready(); r.depth=-0.0126
+r.measure_tab=lambda t: 0.0; r.judge_tab_side=lambda t: None; r.save_tab=lambda: None
+msgs=[]; s.decide=lambda m, msgs=msgs: msgs.append(m)
+def gr(x,w="",s=s): s.gf=x; return 87.0 if x>=0.89 else 100*x
+s.gripper=gr
+try:
+    with contextlib.redirect_stdout(io.StringIO()): res=r.pull_pin(0)
+    print('#### proud', res, [m[:70] for m in msgs if 'pull' in m or 'aim' in m][:4])
+except Exception as e: print('#### FAIL proud', str(e)[:200])
+# escape from the attempt-162 stop pose
+s=FS(); s.
+... (422 more characters)
+```
+
+<details><summary>00:26:50 result</summary>
+
+```text
+#### proud True ['pin try 0.0: offset dy +0.000 dz +0.003 (tool frame), aim t -0.0430', 'pull of 0.065 m refused by the model', 'pull of 0.057 m: no lift afterwards passes the model', 'pull of 0.045 m: no lift afterwards passes the model']
+#### escape OK ['escape_tool_back', 'escape_up', 'escape_up', 'escape_up', 'escape_up', 'ready', 'home']
+```
+</details>
+
+**00:26:54 reset agent:** The offline proud case still aims at −0.043 even with the tab file gone. Finding where the extra 12 mm comes from:
+
+**00:26:55 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && grep -n "pin_dt = \|self.pin_dt=\|pin_dt +=" programs/reset.py | head -20; grep -n "TAB_DT0" programs/reset.py | head; ls notes/
+```
+
+<details><summary>00:26:55 result</summary>
+
+```text
+155:        self.pin_dt = 0.0         # sideways (t) offset of the tab: attempt 92 saw it ~1-1.5 cm toward +t in the recessed drawer
+687:            self.pin_dt = c.get("dt", 0.0)
+689:                self.pin_dt = self.tab_dt + (c.get("dt", 0.0) - 0.012)
+696:            self.pin_dt = 0.0 if self.tab_dt is None else self.tab_dt
+703:        dt_now = self.pin_dt; self.pin_dt = float(np.clip(dt_now, -0.012, 0.012))   # (a far knob offset: joint limits)
+715:        PIN_PHI = phi_now; self.depth = d_now; self.pin_dt = dt_now
+754:                            self.pin_dt += dtm; self.knob_t = kt
+785:                    self.pin_dt += dt_m                       # aim at the measured tab itself
+899:        self.pin_dt = 0.012                                                  # attempt 92: tab ~1.2 cm toward +t (image left = +t: camera x = -tool x)
+901:            self.pin_dt = self.knob_t - PIN_T
+40:    TAB_DT0 = float(_tab["t_from_slot"]) - (PIN_T - scene.SLOT_C)       # tab offset from PIN_T that held last time
+41:    if abs(float(_tab["slot_c"]) - scene.SLOT_C) > 0.001 or abs(TAB_DT0) > 0.03:
+42:        TAB_DT0 = None
+44:    TAB_DT0 = None
+154:        self.tab_dt = TAB_DT0     # tab t offse
+... (119 more characters)
+```
+</details>
+
+**00:26:59 reset agent:** The file came back. My own offline recessed-pinch test (test_deep) runs with `dry=False` and wrote it. I'll delete it again and only allow tab-position saves from real attempt directories:
+
+**00:27:04 tool Bash:**
+
+```bash
+rm -f notes/tab_position.json; python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+old='''        if self.s.dry:                       # 21:29: a dry run 'held' the tab and wrote a meaningless position
+            return'''
+new='''        if self.s.dry or "/attempt_" not in os.environ.get("RLPJ_ATTEMPT_DIR", ""):   # dry runs / offline tests: never
+            return'''
+assert old in s; s=s.replace(old,new,1)
+open(p,'w').write(s)
+E
+cd /home/r2r/robot_learning_final_pj && timeout 500 .venv/bin/python - 2>&1 <<'E' | grep "####"
+import sys; sys.argv=['x']
+__file__='runs/20261117_2026_drawer/agents/reset/tools/offline.py'; exec(open(__file__).read().split('def run(')[0])
+import io, contextlib
+s=FS(); s.dry=False; r=R.Reset(s,{}); r.tz=calib.table_z(); r.to_ready(); r.depth=-0.0126
+r.measur
+... (382 more characters)
+```
+
+<details><summary>00:27:08 result</summary>
+
+```text
+#### proud True ['pin try 0.0: offset dy +0.000 dz +0.003 (tool frame), aim t -0.0550', 'pulled the tab 0.045 m out']
+img
+notes.md
+place_bias.json
+```
+</details>
+
+**00:27:17 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && cat notes/place_bias.json; echo; echo "- 00:25/00:26 operator, attempts 160/162: (a) start: gripper 70.3 pre-closed around the knob was not opened and the escape rose with it (61.9 N) -> now: low at start = open fully (0.0) whatever the orientation; tilted pose backs off 4 cm along the tool axis first. (b) approach_pin0 hit 65-67 N: aim t -0.043 came from a stale tab_position.json (+6.5 mm from the slot centre, saved at a hold without a fresh measurement; knob is -0.055 = PIN_T). File deleted; save_tab stores the measured knob t and only in real attempt dirs (my offline tests had rewritten it). Approaches are now force-guarded: last 2 cm in 5 mm steps, > 25 N -> back off 1 cm, re-measure, next offset (also for t
+... (436 more characters)
+```
+
+<details><summary>00:27:17 result</summary>
+
+```text
+{"bias": [-0.015, -0.04], "last_err": [-0.019, -0.039], "when": "2026-11-21 00:10", "note": "seeded from attempts 151 (-0.0125,-0.044) and 158 (-0.019,-0.039)"}
+ab02e44 attempt 163: open fully at a low start and back out along the tool axis; force-guarded pinch approaches (25 N); tab file stores the measured knob, real runs only
+```
+</details>
+
+**00:27:22 tool Bash:**
+
+```bash
+python3 -c "
+import json; json.dump(dict(bias=[-0.004,-0.047], last_err=[0.011,-0.001], when='2026-11-21 00:15', note='learned in attempt 159 (placed 0.8 cm off with it)'), open('notes/place_bias.json','w'))"; git add -A && git commit -qm "place_bias.json: value learned in attempt 159
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && git log --oneline | head -1
+```
+
+<details><summary>00:27:22 result</summary>
+
+```text
+811ffb0 place_bias.json: value learned in attempt 159
+```
+</details>
+
+**00:27:25 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_162/targets.json",
+ "moves_robot": true,
+ "what": "The arm is stopped at the attempt-162 pinch pose. Open the gripper fully, back out along the tool axis, then rise. Pull the drawer (about 1.3 cm proud) by the knob at t -0.055 with force-guarded approaches (stop at 25 N, re-measure), then extract it, place it at the target with the learned bias and the pull facing the robot, and verify.",
+ "report": ""
+}
+```
+
+<details><summary>00:27:25 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**00:37:08 reset agent:** No response requested.
+
+### 00:37:08 orchestrator -> reset agent
+
+```text
+# attempt_163: exit code 2; outcome: fail
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_162/targets.json; what: The arm is stopped at the attempt-162 pinch pose. Open the gripper fully, back out along the tool axis, then rise. Pull the drawer (about 1.3 cm proud) by the knob at t -0.055 with force-guarded approaches (stop at 25 N, re-measure), then extract it, place it at the target with the learned bias and the pull facing the robot, and verify.; commit: 811ffb0; duration_s: 564.3; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "811ffb030c",
+"command": "programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_162/targets.json",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [4.43, 55.78, 221.47, 36.46, 64.36, 74.45], "tool_pose": [0.4472, 0.1212, 0.036, 130.0846, -20.0449, 111.8307], "gripper": 70.3},
+"fk_check_mm": 1.34,
+"targets": {"drawer": [0.369, -0.011]},
+"measured": {"drawer": [0.4165, 0.0954]},
+"decisions": ["start: gripper reads 70.3 low near the cabinet (maybe still on the pull tab): open fully first", "start pose low (0.052 m above the table): back off and up first", "wrist footprint implausible {'obb_c': [0.4412, 0.1896], 'L': 0.039, 'W': 0.039, 'yaw': 0.0, 'cells': 136}: keep the side
+"segments": [["escape_tool_back", true, 0.016, 0.12, 4.16, 39.4], ["escape_up", true, 0.017, 0.09, 8.61, 39.8], ["ready", true, 0.099, 0.42, 12.37, 39.9], ["home_start", true, 0.098, 0.35, 11.87, 39.8], ["ready", true, 0.049, 0.22, 11.85, 39.8], ["look_down_start_ns", true, 0.044, 0.22, 5.42, 39.7],
+"vlm_start_inslot": {"success": false, "conf": 0.7, "reason": "The wooden drawer appears fully out of the cabinet, sitting as a complete open box on the table next to the cabinet's base, while the bottom slot looks empty."},
+"wrist_footprint_start_ns": {"obb_c": [0.4412, 0.1896], "L": 0.039, "W": 0.039, "yaw": 0.0, "cells": 136},
+"start_state": "table",
+"start_perception": {"tag": "start", "table_z": -0.0155, "front_top": 0.0702, "face_depth": 0.0064, "slot_med": -0.0185, "blobs": 3, "low_pts": 1210, "near_cabinet": true, "drawer_blobs": [{"xy": [0.4287, 0.1021], "obb_c": [0.4574, 0.1133], "L": 0.133, "W": 0.069, "yaw": -68.2, "h": 0.07046805286078
+"vlm_check0_q1": {"success": true, "conf": 0.85, "reason": "The drawer sits upright and open side up on the table in front of the cabinet, with the metal pull on the wall that faces the lower left toward the robot base, and the gripper is not holding it."},
+"err_check0": 0.1262,
+"pull_vs_robot_deg0": 0.0,
+"wrist_footprint_p0": {"obb_c": [0.4438, 0.186], "L": 0.039, "W": 0.036, "yaw": 0.0, "cells": 125},
+"wall_refine": {"profile": [153.0, 151.0, 149.0, 149.0, 146.0, 109.0, 94.0, 81.0, 83.0, 84.0, 85.0, 84.0, 85.0, 79.0, 72.0, 79.0, 82.0, 90.0, 69.0, 84.0, 74.0, 82.0, 130.0, 109.0, 86.0, 93.0, 98.0, 102.0, 107.0, 140.0, 143.0, 138.0, 143.0, 150.0, 156.0, 156.0], "table": 151.0, "inner": -0.045, "step
+"wall_side_vs_wrist": [{"side": [0.4796, 0.0573], "wrist": [0.4796, 0.0573], "along_d0": 0.0}, {"side": [0.4349, 0.1683], "wrist": [0.4349, 0.1683], "along_d0": 0.0}, {"side": [0.4027, 0.1407], "wrist": [0.4027, 0.1407], "along_d0": 0.0}, {"side": [0.4004, 0.1371], "wrist": [0.4004, 0.1371], "along_
+"table_grip": 100.0,
+"vlm_check1_q1": {"success": true, "conf": 0.85, "reason": "The drawer sits upright and open side up on the table beside the cabinet, with its metal pull on the wall facing the lower left toward the robot base, and the gripper is not holding it."},
+"err_check1": 0.1194,
+"pull_vs_robot_deg1": 0.0,
+"wrist_footprint_p1": {"obb_c": [0.4381, 0.1886], "L": 0.062, "W": 0.03, "yaw": -18.4, "cells": 136},
+"vlm_check2_q1": {"success": true, "conf": 0.88, "reason": "The drawer is o
+... (11049 more characters)
+```
+
+**00:37:14 reset agent:** The start escape worked this time (backed out along the tool axis, then rose, max 61.9 → no contact issue). The judge says the drawer is fully out on the table next to the cabinet, but all 5 end-wall picks missed and every wrist look-down was "implausible". Looking at the look-down image:
+
+**00:37:15 tool Read:** `/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_163/wrist_down_p0.jpg`
+
+<details><summary>00:37:15 result</summary>
+
+```text
+[image]
+```
+</details>
+
+**00:37:29 tool Bash:**
+
+```bash
+sed -n "$(grep -n '    def wrist_footprint' programs/reset.py | cut -d: -f1),+20p" programs/reset.py
+```
+
+<details><summary>00:37:29 result</summary>
+
+```text
+def wrist_footprint(self, c, tag):
+        """Look straight down from 0.40 m above the drawer: wood pixels projected onto the rim plane -> footprint OBB
+        (the side camera's outline merges with the cabinet near it: attempt 135 outline centre 4.5 cm off)."""
+        s = self.s
+        if s.dry:
+            return None
+        from rlpj.perception.wrist import project_base_to_wrist
+        xy0 = np.array(c["xy"], float)
+        h_top = float(np.clip(c["h"], 0.05, 0.085))
+        T = tool_down_T(np.r_[xy0, self.tz + 0.40], 0.0)
+        try:
+            self.to_ready()
+            self.joint_to(f"look_down_{tag}", T)
+        except Abort as e:
+            if "check failed" not in str(e):
+                raise
+            s.decide(f"look-down pose refused ({str(e)[:80]})"); return None
+        time.sleep(0.6)
+        img = s.wrist.latest()[0]
+        if img is None:
+            return None
+```
+</details>
+
+**00:37:45 tool Bash:**
+
+```bash
+python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+a=s.index("    def wrist_footprint(self, c, tag):")
+b=s.index("    def wall_views(self, c, tag):")
+new='''    def wrist_footprint(self, c, tag):
+        """Look straight down from above the drawer: wood pixels projected onto the rim plane -> footprint OBB.
+        Attempt 163: centred on the side camera's estimate the drawer sat cut off at the image edge (side camera off by
+        several cm near the cabinet): if the biggest wood blob touches the image border or is implausible, re-centre
+        on it and look again (max 3 looks)."""
+        s = self.s
+        if s.dry:
+            return None
+        xy_look = np.array(c["xy"], float)
+        h_top = float(np.clip(c["h"], 0.05, 0.085))
+        for look in range(3):
+            res =
+... (3648 more characters)
+```
+
+<details><summary>00:37:45 result</summary>
+
+```text
+ok
+1683:        fp = self.wrist_footprint(p["cand"][0], f"{tag}_ns")
+1696:    def wrist_footprint(self, c, tag):
+2069:                    fp = self.wrist_footprint(c, f"s{it}")
+2082:                c = self.wrist_footprint(c, f"v{it}") or c
+2094:                c = self.wrist_footprint(c, f"p{it}") or c
+```
+</details>
+
+**00:37:48 reset agent:** Checking the look-down poses near the cabinet in the model, then the main suite:
+
+**00:37:52 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj && timeout 300 .venv/bin/python - 2>&1 <<'E' | grep "####"
+import sys; sys.argv=['x']
+__file__='runs/20261117_2026_drawer/agents/reset/tools/offline.py'; exec(open(__file__).read().split('def run(')[0])
+import io, contextlib
+for xy in [(0.444,0.104),(0.44,0.19),(0.40,0.05),(0.48,0.06),(0.36,-0.15)]:
+    s=FS(); r=R.Reset(s,{}); r.tz=calib.table_z()
+    try:
+        with contextlib.redirect_stdout(io.StringIO()): r.to_ready(); r.joint_to('look', R.tool_down_T(np.r_[xy, r.tz+0.42], 0.0))
+        print('#### look OK', xy)
+    except Exception as e: print('#### look FAIL', xy, str(e)[:100])
+E
+cd runs/20261117_2026_drawer/agents/reset && timeout 400 /home/r2r/robot_learning_final_pj/.venv/bin/python tools/offline.py 2>&1 | grep -c "#### OK"
+```
+
+<details><summary>00:38:13 result</summary>
+
+```text
+#### look OK (0.444, 0.104)
+#### look OK (0.44, 0.19)
+#### look OK (0.4, 0.05)
+#### look OK (0.48, 0.06)
+#### look OK (0.36, -0.15)
+6
+```
+</details>
+
+**00:38:16 tool Bash:**
+
+```bash
+echo "- attempt 163: start escape OK (opened, backed out along the tool axis). Drawer fully out on the table beside the cabinet (judge 0.7), but 5 end-wall picks missed: the look-down centred on the side-camera xy showed the drawer cut off at the image bottom (side camera off by several cm near the cabinet) -> footprints 'implausible'. Fix: footprint_look() per look; if the biggest wood blob touches the image border or is implausible, re-centre on it and look again (max 3), look height 0.42." >> notes/notes.md; git add -A && git commit -qm "attempt 164: wrist look-down re-centres on the wood blob when it is cut by the image border (up to 3 looks)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && git log --oneline | head -1
+```
+
+<details><summary>00:38:16 result</summary>
+
+```text
+8b043ff attempt 164: wrist look-down re-centres on the wood blob when it is cut by the image border (up to 3 looks)
+```
+</details>
+
+**00:38:19 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_162/targets.json",
+ "moves_robot": true,
+ "what": "The drawer is on the table beside the cabinet. Find it with the wrist look-down, re-centring until the whole outline is in view, then pick it by an end wall with closed-loop refinement. Place it at the target with the learned bias and the pull facing the robot, and verify.",
+ "report": ""
+}
+```
+
+<details><summary>00:38:19 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**00:42:23 reset agent:** No response requested.
+
+### 00:42:23 orchestrator -> reset agent
+
+```text
+# attempt_164: exit code 0; outcome: success
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_162/targets.json; what: The drawer is on the table beside the cabinet. Find it with the wrist look-down, re-centring until the whole outline is in view, then pick it by an end wall with closed-loop refinement. Place it at the target with the learned bias and the pull facing the robot, and verify.; commit: 8b043ff; duration_s: 229.4; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "8b043ffad0",
+"command": "programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_162/targets.json",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9577, 0.561, 90.4595], "gripper": 14.8},
+"fk_check_mm": 0.18,
+"targets": {"drawer": [0.369, -0.011]},
+"measured": {"drawer": [0.3618, -0.0395]},
+"vlm_start_inslot": {"success": false, "conf": 0.9, "reason": "The wooden drawer is standing free on the table to the left of the cabinet, fully out of the bottom slot."},
+"segments": [["ready", true, 0.124, 0.37, 11.85, 39.8], ["look_down_start_ns_0", true, 0.041, 0.2, 5.54, 39.7], ["ready", true, 0.044, 0.2, 5.55, 39.6], ["look_down_start_ns_1", true, 0.055, 0.5, 7.27, 39.8], ["ready", true, 0.034, 0.16, 7.27, 39.8], ["ready", true, 0.002, 0.02, 0.56, 35.7], ["home_
+"wrist_footprint_start_ns_0": {"obb_c": [0.4241, 0.1877], "L": 0.084, "W": 0.048, "yaw": 0.0, "cells": 303, "border": true},
+"decisions": ["wrist footprint start_ns look 0: cut by the image border {'obb_c': [0.4241, 0.1877], 'L': 0.084, 'W': 0.048, 'yaw': 0.0, 'cells': 303, 'border': True}: re-centre on it", "wrist footprint start_ns: centre [0.4246, 0.2024] L 0.095 W 0.065 yaw -10 (side camera [0.445, 0.106])", "near-cab
+"wrist_footprint_start_ns_1": {"obb_c": [0.4246, 0.2024], "L": 0.095, "W": 0.065, "yaw": -10.1, "cells": 412, "border": false},
+"start_state": "table",
+"start_perception": {"tag": "start", "table_z": -0.0154, "front_top": 0.0678, "face_depth": 0.0042, "slot_med": -0.0337, "blobs": 3, "low_pts": 948, "near_cabinet": true, "drawer_blobs": [{"xy": [0.4241, 0.0947], "obb_c": [0.4447, 0.1064], "L": 0.123, "W": 0.102, "yaw": -33.9, "h": 0.064034184459770
+"vlm_check0_q1": {"success": true, "conf": 0.85, "reason": "The drawer is out of the cabinet and sitting upright on the table, with the metal pull on the wall facing the lower left toward the robot base, and the gripper is not holding it."},
+"err_check0": 0.1192,
+"pull_vs_robot_deg0": 0.0,
+"wrist_footprint_p0_0": {"obb_c": [0.4239, 0.1901], "L": 0.081, "W": 0.039, "yaw": 0.0, "cells": 258, "border": true},
+"wrist_footprint_p0_1": {"obb_c": [0.424, 0.1994], "L": 0.099, "W": 0.069, "yaw": -11.3, "cells": 438, "border": false},
+"wall_refine": {"profile": [181.0, 183.0, 185.0, 185.0, 185.0, 183.0, 187.0, 186.0, 186.0, 187.0, 185.0, 182.0, 182.0, 173.0, 166.0, 159.0, 148.0, 139.0, 129.0, 117.0, 99.0, 75.0, 71.0, 63.0, 71.0, 72.0, 74.0, 79.0, 86.0, 63.0, 70.0, 66.0, 77.0, 81.0, 87.0, 84.0], "table": 183.0, "inner": 0.01, "ste
+"wall_side_vs_wrist": [{"side": [0.372, 0.2098], "wrist": [0.372, 0.2098], "along_d0": 0.0}],
+"table_grip": 89.1,
+"cabinet_clearance": 0.069,
+"face_gap": 0.17,
+"vlm_check1_q1": {"success": true, "conf": 0.9, "reason": "The drawer sits upright on the table, released by the gripper, and its metal pull is on the wall facing the lower left toward the robot base."},
+"err_check1": 0.0062,
+"pull_vs_robot_deg1": 0.0,
+"pull_vs_robot_deg": 0.0,
+"errors": {"drawer": 0.0294},
+"target": {"drawer": [0.369, -0.011]},
+"verify": {"obb_center": [0.3618, -0.0232], "L": 0.123, "W": 0.101, "height": 0.0667, "yaw_vs_normal_deg": -65.4, "tol": 0.05},
+"return
+... (7967 more characters)
+```
+
+**00:42:27 tool Bash:**
+
+```bash
+python3 -c "
+import json; json.dump(dict(bias=[-0.005,-0.043], last_err=[-0.001,0.006], when='2026-11-21 00:41', note='learned in attempt 164'), open('notes/place_bias.json','w'))" && echo "- attempt 164 SUCCESS (layout ok, 2.9 cm, judge 0.9): look-down re-centred once (drawer was ~9 cm from the side-camera xy: (0.425, 0.202) vs (0.445, 0.106)), first grasp held (89.1), placement error 0.6 cm with the learned bias (now (-0.005, -0.043))." >> notes/notes.md && git add -A && git commit -qm "notes: attempt 164 success; placement bias from the run
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && git log --oneline | head -1
+```
+
+<details><summary>00:42:27 result</summary>
+
+```text
+aed8e34 notes: attempt 164 success; placement bias from the run
+```
+</details>
+
+**00:42:35 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Reset repaired: attempt 164 succeeded; the layout check passed with the pull facing the robot.",
+ "report": "The reset works again: attempt 164 (commit 8b043ff) passed the orchestrator's layout check. The drawer ended 2.9 cm from the target by my final measurement, with the pull facing the robot (judge 0.9).\n\nWhat was fixed across 162\u2013164:\n- **Start escape:** when the arm starts low near the cabinet, the gripper now opens fully first, whatever the tool direction. A tilted pinch pose then backs out along the tool axis before rising. In 163 this got clear of the knob from the 162 stop pose without dragging on it.\n- **Pinch aim:** the saved tab position held a wrong offset (+6.5 mm, from a hold without a fresh wris
+... (1119 more characters)
+```
+
+<details><summary>00:42:35 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

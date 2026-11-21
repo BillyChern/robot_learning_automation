@@ -216,11 +216,25 @@ class Reset:
         if T[2, 3] > self.tz + 0.15:
             return
         s.decide(f"start pose low ({T[2, 3] - self.tz:.3f} m above the table): back off and up first")
+        # 00:25 operator: attempt 162 rose with the pre-closed pads around the knob (61.9 N): open fully first,
+        # whatever the tool direction
+        g0 = float(s.feedback()["gripper"])
+        if g0 > 3.0:
+            s.gripper(0.0, "open fully before backing off (fingers away from any wall / the knob)")
+        if T[2, 2] > -0.9:
+            # tilted (a pinch pose): back off along the tool axis first, out of the knob, then the usual escape
+            for back in (0.04, 0.025):
+                Tb = T.copy(); Tb[:3, 3] -= back * T[:3, 2]
+                try:
+                    self.line("escape_tool_back", Tb, "slow", tip_margin=PIN_MARGIN)
+                    T = self.T_now()
+                    break
+                except Abort as e:
+                    if "check failed" not in str(e):
+                        raise
+                    self.log(f"escape along the tool axis ({back}) refused: {str(e)[:100]}")
         up = max(T[2, 3], self.tz + 0.10) + 0.06
         if T[2, 2] < -0.9:
-            g0 = float(s.feedback()["gripper"])
-            if g0 > 3.0:
-                s.gripper(0.0, "open fully before backing off (fingers away from any wall)")
             cands = [(0.04, T[2, 3]), (0.0, up), (0.04, up)]   # 01:40 note: straight back along -N first
         else:
             cands = [(d, up) for d in (0.08, 0.05, 0.03, 0.0)]
@@ -496,6 +510,27 @@ class Reset:
             return True, T_out
         return False, None
 
+    def guarded_line(self, name, T_goal, fmax=25.0, last=0.02, step=0.005):
+        """00:26 operator: approach the last `last` m to T_goal (along its tool z) in `step` increments, stopping at a
+        contact force above fmax (the session's own stop is 65 N). Returns True if T_goal was reached; on contact it
+        backs off 1 cm along the tool axis and returns False."""
+        s = self.s
+        from rlpj.robot.plan import SLOW
+        z = T_goal[:3, 2]
+        T0 = T_goal.copy(); T0[:3, 3] -= last * z
+        self.line(f"{name}_near", T0, "slow", tip_margin=PIN_MARGIN)
+        n = int(round(last / step))
+        for k in range(1, n + 1):
+            Tk = T_goal.copy(); Tk[:3, 3] -= (last - k * step) * z
+            r_ = s.run_segment(s.planner.cart_line(f"{name}_{k}", self.q_now(), Tk, SLOW), tip_margin=PIN_MARGIN)
+            f = float((r_ or {}).get("max_force_n") or 0.0)
+            if not s.dry and f > fmax:
+                s.decide(f"{name}: contact {f:.1f} N at {(last - k * step) * 1000:.0f} mm before the goal: back off")
+                Tb = self.T_now(); Tb[:3, 3] -= 0.01 * z
+                self.line(f"{name}_off", Tb, "slow", tip_margin=PIN_MARGIN)
+                return False
+        return True
+
     def lift_any(self, name, cands, speed):
         """First model-feasible line among cands (a refused plan does not move the arm)."""
         for j, T in enumerate(cands):
@@ -622,11 +657,15 @@ class Reset:
 
     def save_tab(self):
         """Persist the tab position that held (slot-centre relative) for later resets (15:52 operator)."""
-        if self.s.dry:                       # 21:29: a dry run 'held' the tab and wrote a meaningless position
+        if self.s.dry or "/attempt_" not in os.environ.get("RLPJ_ATTEMPT_DIR", ""):   # dry runs / offline tests: never
             return
         try:
             extra = (self.deep_cfg.get("dt", 0.0) - 0.012) if self.deep_cfg is not None else 0.0   # variant spread
-            d = dict(slot_c=scene.SLOT_C, t_from_slot=round(float(self.pin_t + self.pin_dt - extra - scene.SLOT_C), 4),
+            # 00:26: a hold without a fresh wrist measurement saved +6.5 mm (aim -0.043 vs knob -0.055): store the
+            # measured knob position when there is one; never a dry-run value
+            t_abs = self.knob_t if self.knob_t is not None else float(self.pin_t + self.pin_dt - extra)
+            t_abs = t_abs - (0.012 if self.deep_cfg is not None and self.knob_t is not None else 0.0) * 0
+            d = dict(slot_c=scene.SLOT_C, t_from_slot=round(float(t_abs - scene.SLOT_C - (0.0 if self.knob_t is not None else 0.0)), 4),
                      depth=round(float(self.depth), 4), when=time.strftime("%Y-%m-%d %H:%M"))
             with open(TAB_FILE, "w") as f:
                 json.dump(d, f)
@@ -696,12 +735,24 @@ class Reset:
             s.decide(f"pin try {k}.{i}: offset dy {dy:+.3f} dz {dz:+.3f} (tool frame), aim t {self.pin_t + self.pin_dt:.4f}")
             try:
                 self.line(f"to_pin_pre{i}", T_pre, "normal" if i == 0 else "slow", tip_margin=PIN_MARGIN)
-                self.line(f"approach_pin{i}", Tg, "slow", tip_margin=PIN_MARGIN)
+                reached = self.guarded_line(f"approach_pin{i}", Tg)
             except Abort as e:
                 if "check failed" not in str(e):
                     raise
                 s.decide(f"pin offset {i} refused by the model ({str(e)[:90]}); next offset")
                 tries.append([dy, dz, "refused"])
+                continue
+            if not reached:
+                tries.append([dy, dz, "contact"])
+                self.line(f"back_pin_c{i}", T_pre, "slow", tip_margin=PIN_MARGIN)
+                if i == 0 and not s.dry:          # re-measure the knob from the pre-pose view before the next offset
+                    time.sleep(0.4)
+                    dtm = self.measure_tab(f"{k}_contact")
+                    if dtm is not None and abs(dtm) > 0.0025:
+                        kt = float(self.pin_t + self.pin_dt + dtm)
+                        if scene.SLOT_T[0] + 0.01 <= kt <= scene.SLOT_T[1] - 0.01:
+                            self.pin_dt += dtm; self.knob_t = kt
+                            s.decide(f"after the contact: knob re-measured, aim t {kt:.4f}")
                 continue
             if i == 0 and not s.dry:
                 # 15:52 operator: the knob needs ~2 mm; locate it in the close wrist view and centre it between the pads.
@@ -739,7 +790,9 @@ class Reset:
                     s.decide(f"commanded pinch aim t {aim_t:.4f} (yaml slot centre {scene.SLOT_C:.4f}, PIN_T {PIN_T:.4f}, step {dt_m * 1000:+.1f} mm)")
                     try:
                         self.line(f"to_tab_pre{it_m}", T_pre, "slow", tip_margin=PIN_MARGIN)
-                        self.line(f"approach_tab{it_m}", Tg, "slow", tip_margin=PIN_MARGIN)
+                        if not self.guarded_line(f"approach_tab{it_m}", Tg):
+                            self.line(f"back_tab_c{it_m}", T_pre, "slow", tip_margin=PIN_MARGIN)
+                            break
                     except Abort as e:
                         if "check failed" not in str(e):
                             raise
@@ -780,7 +833,9 @@ class Reset:
                     Tgd = self.pin_T(PIN_OUT)
                     s.decide(f"pinch {deeper * 1000:.0f} mm deeper, {higher * 1000:.0f} mm higher (aim t {self.pin_t + self.pin_dt:.4f})")
                     try:
-                        self.line(f"deeper_pin_{int(deeper * 1000)}_{int(higher * 1000)}", Tgd, "slow", tip_margin=PIN_MARGIN)
+                        if not self.guarded_line(f"deeper_pin_{int(deeper * 1000)}_{int(higher * 1000)}", Tgd, last=0.008, step=0.004):
+                            s.decide("contact while going deeper: stop stepping deeper")
+                            break
                     except Abort as e:
                         if "check failed" not in str(e):
                             raise
@@ -1639,15 +1694,38 @@ class Reset:
         return "table"
 
     def wrist_footprint(self, c, tag):
-        """Look straight down from 0.40 m above the drawer: wood pixels projected onto the rim plane -> footprint OBB
-        (the side camera's outline merges with the cabinet near it: attempt 135 outline centre 4.5 cm off)."""
+        """Look straight down from above the drawer: wood pixels projected onto the rim plane -> footprint OBB.
+        Attempt 163: centred on the side camera's estimate the drawer sat cut off at the image edge (side camera off by
+        several cm near the cabinet): if the biggest wood blob touches the image border or is implausible, re-centre
+        on it and look again (max 3 looks)."""
         s = self.s
         if s.dry:
             return None
-        from rlpj.perception.wrist import project_base_to_wrist
-        xy0 = np.array(c["xy"], float)
+        xy_look = np.array(c["xy"], float)
         h_top = float(np.clip(c["h"], 0.05, 0.085))
-        T = tool_down_T(np.r_[xy0, self.tz + 0.40], 0.0)
+        for look in range(3):
+            res = self.footprint_look(xy_look, h_top, f"{tag}_{look}")
+            if res is None:
+                return None
+            ctr, L, W, yaw, n_cells, border = res
+            out = dict(obb_c=np.round(ctr, 4).tolist(), L=round(L, 3), W=round(W, 3), yaw=round(yaw, 1), cells=n_cells, border=border)
+            s.summary(**{f"wrist_footprint_{tag}_{look}": out})
+            plausible = 0.09 <= L <= 0.17 and 0.05 <= W <= 0.15
+            if plausible and not border:
+                s.decide(f"wrist footprint {tag}: centre {out['obb_c']} L {L:.3f} W {W:.3f} yaw {yaw:.0f} (side camera {np.round(c['obb_c'], 3).tolist()})")
+                return dict(c, obb_c=out["obb_c"], L=out["L"], W=out["W"], yaw=out["yaw"], xy=out["obb_c"], wrist_fp=True)
+            if np.linalg.norm(ctr - xy_look) < 0.015 and not border:
+                break
+            s.decide(f"wrist footprint {tag} look {look}: {'cut by the image border' if border else 'implausible'} {out}: re-centre on it")
+            xy_look = ctr
+        s.decide(f"wrist footprint {tag}: no clean drawer outline: keep the side-camera outline")
+        return None
+
+    def footprint_look(self, xy0, h_top, tag):
+        """One look-down at xy0: (centre, L, W, yaw, cells, touches_border) of the biggest wood blob, or None."""
+        s = self.s
+        from rlpj.perception.wrist import project_base_to_wrist
+        T = tool_down_T(np.r_[xy0, self.tz + 0.42], 0.0)
         try:
             self.to_ready()
             self.joint_to(f"look_down_{tag}", T)
@@ -1663,11 +1741,14 @@ class Reset:
         Tm = calib.pose_to_T(s.feedback()["pose"])
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         mask = (hsv[..., 0] >= 3) & (hsv[..., 0] <= 25) & (hsv[..., 1] > 80) & (hsv[..., 2] > 25)
-        g = np.arange(-0.16, 0.1601, 0.003)
+        g = np.arange(-0.18, 0.1801, 0.003)
         X, Y = np.meshgrid(xy0[0] + g, xy0[1] + g, indexing="ij")
         G = np.stack([X.ravel(), Y.ravel(), np.full(X.size, self.tz + h_top)], 1)
         uv = project_base_to_wrist(G, Tm)
-        ok = np.all(np.isfinite(uv), 1) & (uv[:, 0] >= 0) & (uv[:, 0] < img.shape[1]) & (uv[:, 1] >= 0) & (uv[:, 1] < img.shape[0])
+        H_, W_ = img.shape[:2]
+        ok = np.all(np.isfinite(uv), 1) & (uv[:, 0] >= 0) & (uv[:, 0] < W_) & (uv[:, 1] >= 0) & (uv[:, 1] < H_)
+        near_edge = np.zeros(X.size, bool)
+        near_edge[ok] = (uv[ok, 0] < 12) | (uv[ok, 0] > W_ - 13) | (uv[ok, 1] < 12) | (uv[ok, 1] > H_ - 13)
         occ = np.zeros(X.size, np.uint8)
         occ[ok] = mask[uv[ok, 1].astype(int), uv[ok, 0].astype(int)]
         q = nt(G[:, :2])
@@ -1679,13 +1760,9 @@ class Reset:
         k = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))
         cells = np.argwhere(lab == k)
         xy = np.stack([X[cells[:, 0], cells[:, 1]], Y[cells[:, 0], cells[:, 1]]], 1)
+        border = bool(near_edge.reshape(X.shape)[lab == k].any())
         ctr, (L, W), yaw = obb(xy)
-        res = dict(obb_c=np.round(ctr, 4).tolist(), L=round(L, 3), W=round(W, 3), yaw=round(yaw, 1), cells=int(len(xy)))
-        s.summary(**{f"wrist_footprint_{tag}": res})
-        if not (0.09 <= L <= 0.17 and 0.05 <= W <= 0.15):    # attempt 157: W 0.063 = drawer partly behind the cabinet mask
-            s.decide(f"wrist footprint implausible {res}: keep the side-camera outline"); return None
-        s.decide(f"wrist footprint {tag}: centre {res['obb_c']} L {L:.3f} W {W:.3f} yaw {yaw:.0f} (side camera {np.round(c['obb_c'], 3).tolist()})")
-        return dict(c, obb_c=res["obb_c"], L=res["L"], W=res["W"], yaw=res["yaw"], xy=res["obb_c"], wrist_fp=True)
+        return np.asarray(ctr, float), float(L), float(W), float(yaw), int(len(xy)), border
 
     def wall_views(self, c, tag):
         """18:39 operator: find the pull wall directly: a close wrist view of each wall from outside (camera 20 cm out,
@@ -1781,9 +1858,8 @@ class Reset:
                 s.gripper(PRECLOSE, "let go of the drawer")
                 g0 = float(s.feedback()["gripper"])
             if 3.0 < g0 < 97.0 and self.T_now()[2, 3] < self.tz + 0.15:
-                s.decide(f"start: gripper reads {g0:.1f} low near the cabinet (maybe still on the pull tab): open first")
-                if g0 > 100 * PRECLOSE + 2:
-                    s.gripper(PRECLOSE, "let go before backing off")
+                s.decide(f"start: gripper reads {g0:.1f} low near the cabinet (maybe still on the pull tab): open fully first")
+                s.gripper(0.0, "let go fully before backing off (00:25: pre-closed pads stayed around the knob)")
             self.escape()
             self.go_home("home_start")
         p = self.perceive("start")
