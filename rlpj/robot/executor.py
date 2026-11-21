@@ -71,6 +71,7 @@ class Executor:
                     else:
                         df = float(np.linalg.norm(np.asarray(f, float) - f0))
                         r["max_force_n"] = round(max(r.get("max_force_n", 0.0), df), 1)
+                        r["max_abs_force_n"] = round(max(r.get("max_abs_force_n", 0.0), float(np.linalg.norm(f))), 1)
                         # change from the segment start AND total size: releasing a preload (retreat after a push)
                         # changes the estimate by the preload but ends near zero, so it does not stop the retreat
                         lim = self.limit()
