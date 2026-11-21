@@ -110,7 +110,7 @@ def relabel(d, f, part):
     final = str(v.get("final", "")).lower()
     reason = json.dumps(v).lower()
     if final == "success":
-        new = 5.0
+        new = 10.0
     elif final in ("fail", "failure") and (mine > 0 or "backward" in reason or "wrong way" in reason):
         new = -5.0
     elif final in ("fail", "failure"):

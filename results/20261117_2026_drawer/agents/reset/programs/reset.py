@@ -1421,7 +1421,9 @@ class Reset:
                 time.sleep(0.4)
                 img = s.wrist.latest()[0]
                 self.save(f"wrist_wall_pre{k}", img)
-                sh = self.refine_wall(img, e, d0, h_top)
+                # 23:12 operator: refine shifts of 18-24 mm missed 4x in attempt 150; with the wrist footprint the
+                # outline is already good: cap the refinement at 12 mm (attempt 151: -11 mm, held)
+                sh = self.refine_wall(img, e, d0, h_top, max_shift=0.012 if c.get("wrist_fp") else 0.06)
                 if sh is not None:
                     e = e + sh * d0
                     Tg[:2, 3] = e; T_pre[:2, 3] = e
@@ -1575,6 +1577,30 @@ class Reset:
         return delta
 
     # ------------------------------------------------------------ wrist survey of a drawer on the table (18:39)
+    def slot_or_table(self, p, tag):
+        """Attempts 155-156: a drawer still ~2.5 cm proud in the slot was taken for a table drawer against the cabinet
+        (near-cabinet blob) and 5 end-wall picks closed on nothing. Ask the judge; a wrist look-down that finds no
+        drawer-sized wood in front of the cabinet confirms it. Returns 'slot_near' or 'table'."""
+        s = self.s
+        path = self.side_full(f"{tag}_inslot")
+        ans = None
+        if path is not None:
+            ans = self.ask(path, "The wooden drawer is still partly inside the cabinet's bottom slot (its back part is in "
+                           "the slot and only its front sticks out); it is NOT standing free on the table.", f"{tag}_inslot",
+                           goal="Decide whether the drawer is still in the cabinet slot or standing free on the table.")
+        fp = self.wrist_footprint(p["cand"][0], f"{tag}_ns")
+        in_slot = bool(ans) or (ans is None and fp is None)
+        if ans and fp is not None and self.last_conf < 0.7:
+            in_slot = False                        # a full footprint in front of the cabinet beats a weak 'yes'
+        sm = p.get("slot_med")
+        s.decide(f"near-cabinet drawer: judge in-slot={ans} (conf {self.last_conf:.2f}), wrist footprint "
+                 f"{'found' if fp is not None else 'not found'} -> {'IN THE SLOT (tab path)' if in_slot else 'on the table'}")
+        if in_slot:
+            p["slot_med"] = float(min(sm if sm is not None else -float(p["protr"]), -0.01))
+            p["cand"] = []
+            return "slot_near"
+        return "table"
+
     def wrist_footprint(self, c, tag):
         """Look straight down from 0.40 m above the drawer: wood pixels projected onto the rim plane -> footprint OBB
         (the side camera's outline merges with the cabinet near it: attempt 135 outline centre 4.5 cm off)."""
@@ -1622,7 +1648,7 @@ class Reset:
         if not (0.09 <= L <= 0.17 and 0.08 <= W <= 0.15):
             s.decide(f"wrist footprint implausible {res}: keep the side-camera outline"); return None
         s.decide(f"wrist footprint {tag}: centre {res['obb_c']} L {L:.3f} W {W:.3f} yaw {yaw:.0f} (side camera {np.round(c['obb_c'], 3).tolist()})")
-        return dict(c, obb_c=res["obb_c"], L=res["L"], W=res["W"], yaw=res["yaw"], xy=res["obb_c"])
+        return dict(c, obb_c=res["obb_c"], L=res["L"], W=res["W"], yaw=res["yaw"], xy=res["obb_c"], wrist_fp=True)
 
     def wall_views(self, c, tag):
         """18:39 operator: find the pull wall directly: a close wrist view of each wall from outside (camera 20 cm out,
@@ -1731,6 +1757,8 @@ class Reset:
                 self.go_home("home_after_find")
                 p = self.perceive("after_find")
                 st = self.state_of(p)
+        if st == "table" and p["cand"] and p["cand"][0].get("near_cabinet") and not s.dry:
+            st = self.slot_or_table(p, "start")
         s.summary(start_state=st, start_perception={k: v for k, v in p.items() if k != "cand"})
         s.decide(f"start state: {st}")
         s.require(st != "missing", "drawer not found (no drawer blob on the table and the bottom slot looks empty)")

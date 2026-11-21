@@ -55,7 +55,7 @@ L_MIN = 0.155                # drawer depth floor: the side camera sees only par
                              # reset agent: obb 0.154 x 0.14-0.15), a short estimate would put its back into the cabinet
 PUSH_GRIP = 0.55            # pusher opening (ep 27: closed tips pushed the knob, drawer stopped 2.6 cm out): the two fingers
                             # straddle the knob (~3.8 cm gap) and push the face on both sides of it
-PUSH_TILT, PUSH_H, PUSH_ZT = 40.0, 0.048, 0.027 + 0.020 * 0.55   # tilt, fingertip height (knob height), tip along tool z
+PUSH_TILT, PUSH_H, PUSH_ZT = 35.0, 0.048, 0.027 + 0.020 * 0.55   # tilt, fingertip height (knob height), tip along tool z
 PUSH_DT = 0.0               # push on the drawer centre line (above the knob): every off-centre push (1.5-3 cm) jammed on contact (att 43,44,72, ep 4,5,8,25), the centred ones slid (att 7, 14, 20)
 PUSH_TMAX = SLOT_T[1] - 0.015  # closed fingers (+-14 mm along t in the model) clear of the slot-side keep-out box (t > slot_t[1])
 PUSH_NMAX = OFF + 0.012       # model tip; the flow test refuses steps beyond ~+0.012 (a static probe accepted +0.024: path differs)
@@ -474,6 +474,14 @@ class Episode:
             s.gripper(0.35, "open wider: clear the knob before the retreat")
         # operator 18:10: retreat UP first (clear of the knob and label plate), then back: back off only to just in
         # front of the face (model), lift 5 cm, then back to OFF-0.04
+        # operator 22:35: straight up before any move along -N where the model allows it (no drag on the knob)
+        Th = push_T(n, t, h, self.tz); Th[2, 3] += 0.05
+        Thb = Th.copy(); Thb[:2, 3] -= max(0.0, n - (OFF - 0.04)) * push_dirs()[0]
+        if self.chain_ok([Th, Thb]):
+            s.decide(f"push retreat: straight up at n-OFF {n - OFF:+.3f}, then back")
+            self.line("push_ret_up0", Th, "slow", tip_margin=TIP_MARGIN_PUSH)
+            self.line("push_ret_back0", Thb, "normal", tip_margin=TIP_MARGIN_PUSH)
+            return
         n_up = min(n, OFF - 0.006)
         Tu0 = push_T(n_up, t, h, self.tz); Tu1 = Tu0.copy(); Tu1[2, 3] += 0.05
         Tu2 = Tu1.copy(); Tu2[:2, 3] -= max(0.0, n_up - (OFF - 0.04)) * push_dirs()[0]
@@ -506,7 +514,7 @@ class Episode:
         self.s.require(False, "no model-checked retreat from the push pose")
 
     # ------------------------------------------------------------ episode
-    def grasp(self, d):
+    def grasp(self, d, refine=True):
         s = self.s
         c, p, half, h_top = d["c"], d["p"], d["half"], d["h_top"]
         e = c + p * (half - 0.006)
@@ -524,22 +532,34 @@ class Episode:
         time.sleep(0.4)
         img = s.wrist.latest()[0]
         self.save("wrist_front_pre", img)
-        sh = self.refine_wall(img, e, d0, h_top)
-        if sh is not None:
-            e = e + sh * d0; Tg[:2, 3] = e; T_pre[:2, 3] = e
+        sh = self.refine_wall(img, e, d0, h_top) if refine else None
         # straight drawer in the hand (user 00:30): turn the jaws to the wall's angle seen by the wrist camera
         ang_w = self.wall_angle(img, e, d0, h_top)
         if ang_w is not None and 0.5 <= abs(ang_w) <= 15.0:
             yaw = yaw + ang_w; d0 = rot2(d0, ang_w)
-            Tg = tool_down_T(np.r_[e, Tg[2, 3]], yaw); T_pre = Tg.copy(); T_pre[2, 3] += 0.05
-        if sh is not None or ang_w is not None:
-            self.line("front_correct", T_pre, "slow")
-        self.line("down_to_front", Tg, "slow")
-        g = s.gripper(1.0, "grasp the front wall")
-        s.summary(grasp_reading=round(g, 1), wall_shift=sh)
-        if g >= HOLD_MAX and not s.dry:
+        # grasp candidates along d0 (eps 29-30: the side-camera front edge is now ~2-3.5 cm out; the wrist step says
+        # +0.024..+0.037 with strength ~100; successful grasps of eps 24-28 used +0.003..+0.025): the refined shift
+        # first, then the unrefined point, then +-1.5 cm around the better guess, until the wall is held
+        cands = ([sh] if sh is not None else []) + [0.0, 0.015, 0.03, -0.012]
+        seen, tried = [], []
+        e0 = e.copy(); g = 100.0
+        for k, shv in enumerate(cands):
+            if any(abs(shv - x) < 0.006 for x in seen) or len(tried) >= 3:
+                continue
+            seen.append(shv)
+            e = e0 + shv * d0
+            Tg = tool_down_T(np.r_[e, self.tz + tip_h + TIP_OPEN], yaw); T_pre = Tg.copy(); T_pre[2, 3] += 0.05
+            self.line(f"front_pre{k}", T_pre, "slow")
+            self.line(f"down_to_front{k}", Tg, "slow")
+            g = s.gripper(1.0, "grasp the front wall")
+            tried.append([round(shv, 3), round(g, 1)])
+            if g < HOLD_MAX or s.dry:
+                sh = shv
+                break
             s.gripper(0.4, "open, missed")
-            self.line("up_empty", T_pre, "slow")
+            self.line(f"up_empty{k}", T_pre, "slow")
+        s.summary(grasp_reading=round(g, 1), wall_shift=sh, grasp_tries=tried)
+        if g >= HOLD_MAX and not s.dry:
             self.lift_to("lift_empty", SAFE_H)
             return None
         self.line("lift_slow", T_pre, "slow")
@@ -592,7 +612,7 @@ class Episode:
             self.log(f"wall fit failed: {ex}")
             return None
 
-    def refine_wall(self, img, e, d_in, h_top, half=0.04, max_shift=0.03):
+    def refine_wall(self, img, e, d_in, h_top, half=0.05, max_shift=0.04):    # candidates are tried in grasp()
         """Reset agent's wrist refinement: strongest bright->dark step along d_in at the wall-top height."""
         s = self.s
         if img is None or s.dry:
@@ -639,7 +659,7 @@ class Episode:
         bonus, judge = 0.0, None
         if ok is True:
             judge = self.judge()
-            bonus = -5.0 if (judge or {}).get("success") is False else 5.0
+            bonus = -5.0 if (judge or {}).get("success") is False else 10.0
         R = extra_terminal + bonus + 2.0 * slot.get("flush", 0.0) - 2.0 * slot.get("front", 0.0) - 2.0 * slot.get("behind", 0.0) - (1.0 if d_after else 0.0)
         self.terminal = dict(bonus=bonus, R=round(R, 3), judge=judge)
         if self.trans:
@@ -844,7 +864,7 @@ class Episode:
             P, tz, b2 = self.scene("retry")
             d = self.find_drawer(b2, tz)
             s.require(d is not None, "drawer not seen after a missed grasp")
-            held = self.grasp(d)
+            held = self.grasp(d, refine=False)           # after a refined miss: the unrefined perception point
         s.require(held is not None, "front wall not grasped after two tries")
         s.phase("carry")
         # straight drawer (user 00:30): the drawer sits ~7 deg turned in the jaws (insertions got through in 5/12

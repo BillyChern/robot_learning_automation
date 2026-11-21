@@ -84,3 +84,7 @@ most 8.5 N over 49 `ready` moves.
 - 2026-11-20 23:02-23:15: attempt 150 extracted the drawer (wall clamp) and placed it upright, pull toward the robot,
   9.2 cm off the target (table corrections missed: refine_wall shift); attempt 151 placed it at the target: reset
   success at 23:15, the first since ~20:50, with no person involved.
+- 2026-11-20 23:15-23:24: RL episodes 29-30 resumed and failed at the front-wall grasp (pads closed on nothing).
+  23:18 note to the RL agent: cap the wrist refine shift at 12 mm (the agent did, commit a0263e0). 23:24 correction:
+  that cap was wrong; episode 30's pre image shows the perceived wall point ~3 cm outside the wall, the refine's +3.2 cm
+  was right and was discarded; asked to raise the cap and find why episode 29's refined grasps still missed.

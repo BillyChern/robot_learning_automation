@@ -21847,3 +21847,146 @@ Structured output provided successfully
 ```
 </details>
 
+**23:42:35 reset agent:** No response requested.
+
+### 23:42:35 orchestrator -> reset agent
+
+```text
+repair your program; it failed 2 times in a row during the resets between episodes:
+--- attempt_155: layout check failed: drawer: not found
+# attempt_155: exit code 2; outcome: fail
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_155/targets.json; what: reset for the next episode; commit: 03e8fa0; duration_s: 574.5; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "03e8fa0b0d",
+"command": "programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_155/targets.json",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [350.87, 26.7, 215.86, 17.15, 31.13, 84.02], "tool_pose": [0.4082, 0.1104, 0.1212, 140.1795, -0.3784, 111.9615], "gripper": 54.6},
+"fk_check_mm": 1.27,
+"targets": {"drawer": [0.367, -0.022]},
+"measured": {"drawer": [0.4393, 0.059]},
+"decisions": ["start: gripper reads 54.6 low near the cabinet (maybe still on the pull tab): open first", "start pose low (0.137 m above the table): back off and up first", "start state: table", "wrist footprint implausible {'obb_c': [0.4508, 0.1816], 'L': 0.036, 'W': 0.036, 'yaw': 0.0, 'cells': 114
+"segments": [["escape_up", true, 0.018, 0.09, 13.7, 39.9], ["ready", true, 0.112, 0.41, 9.28, 39.9], ["home_start", true, 0.127, 0.41, 11.86, 39.9], ["ready", true, 0.045, 0.25, 11.87, 39.8], ["ready", true, 0.002, 0.01, 0.57, 36.8], ["home_for_check", true, 0.087, 0.35, 11.85, 39.8], ["ready", true
+"start_state": "table",
+"start_perception": {"tag": "start", "table_z": -0.0156, "front_top": 0.0673, "face_depth": 0.0058, "slot_med": -0.0185, "blobs": 1, "low_pts": 914, "near_cabinet": true, "drawer_blobs": [{"xy": [0.442, 0.0931], "obb_c": [0.4691, 0.107], "L": 0.131, "W": 0.069, "yaw": -57.8, "h": 0.06756008139578526
+"vlm_check0_q1": {"success": true, "conf": 0.85, "reason": "The drawer is out of the slot beside the cabinet, upright with its open side up, and its metal pull is on the wall facing the lower left toward the robot base."},
+"err_check0": 0.1326,
+"pull_vs_robot_deg0": 0.0,
+"wrist_footprint_p0": {"obb_c": [0.4508, 0.1816], "L": 0.036, "W": 0.036, "yaw": 0.0, "cells": 114},
+"wall_refine": {"profile": [136.0, 130.0, 124.0, 122.0, 111.0, 61.0, 47.0, 20.0, 31.0, 54.0, 51.0, 62.0, 53.0, 54.0, 34.0, 44.0, 53.0, 50.0, 55.0, 58.0, 58.0, 63.0, 41.0, 51.0, 91.0, 94.0, 92.0, 97.0, 97.0, 101.0, 103.0, 107.0, 116.0, 146.0, 159.0, 163.0], "table": 130.0, "inner": -0.051, "step": 73
+"table_grip": 100.0,
+"vlm_check1_q1": {"success": true, "conf": 0.85, "reason": "The drawer sits upright on the table next to the cabinet with its open side up, and the metal pull is on the wall facing the lower left, toward the robot base."},
+"err_check1": 0.133,
+"pull_vs_robot_deg1": 0.0,
+"wrist_footprint_p1": {"obb_c": [0.4455, 0.1743], "L": 0.048, "W": 0.039, "yaw": 0.0, "cells": 141},
+"vlm_check2_q1": {"success": true, "conf": 0.85, "reason": "The drawer is out of the cabinet, sitting upright on the table with its open side up, and its metal pull is on the wall facing the lower left toward the robot base."},
+"err_check2": 0.1368,
+"pull_vs_robot_deg2": 0.0,
+"wrist_footprint_p2": {"obb_c": [0.4443, 0.1837], "L": 0.036, "W": 0.036, "yaw": 0.0, "cells": 108},
+"vlm_check3_q1": {"success": true, "conf": 0.85, "reason": "The drawer sits upright on the table next to the cabinet, with its metal pull on the wall facing the lower left toward the robot base."},
+"err_check3": 0.1237,
+"pull_vs_robot_deg3": 0.0,
+"wrist_footprint_p3": {"obb_c": [0.4421, 0.1647], "L": 0.057, "W": 0.054, "yaw": 0.0, "cells": 252},
+"vlm_check4_q1": {"success": true, "conf": 0.85, "reason": "The drawer sits upright on the table next to the cabinet, open side up, and its metal pull is on the wall facing the lower left, toward the robot base."},
+"
+... (23706 more characters)
+```
+
+**23:42:57 reset agent:** Both runs (made with commit 03e8fa0) had the drawer still partly in the slot, about 2–2.5 cm proud by the face median. The judge even said "upright and partly out of the bottom slot". The near-cabinet table detector took its protruding part for a table drawer, so all five end-wall picks closed on nothing. The wrist look-down found no drawer-sized wood in front of the cabinet either; it reported "implausible" footprints. The fix: when a near-cabinet table candidate appears, ask the vision judge whether the drawer is still partly inside the slot, and treat the wrist footprint failing as confirming that. If it is, take the in-slot tab path.
+
+**23:43:05 tool Bash:**
+
+```bash
+git log --oneline -1 && python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+old='''        s.summary(start_state=st, start_perception={k: v for k, v in p.items() if k != "cand"})
+        s.decide(f"start state: {st}")'''
+new='''        if st == "table" and p["cand"] and p["cand"][0].get("near_cabinet") and not s.dry:
+            st = self.slot_or_table(p, "start")
+        s.summary(start_state=st, start_perception={k: v for k, v in p.items() if k != "cand"})
+        s.decide(f"start state: {st}")'''
+assert old in s; s=s.replace(old,new,1)
+meth='''    def slot_or_table(self, p, tag):
+        """Attempts 155-156: a drawer still ~2.5 cm proud in the slot was taken for a table drawer against the cabinet
+        (near-cabinet blob) and 5 end-wall picks closed on nothing. Ask the judge; a wr
+... (1615 more characters)
+```
+
+<details><summary>23:43:05 result</summary>
+
+```text
+03e8fa0 attempt 151: accept <= 4.5 cm when oriented; wrist footprint before every table pick
+ok
+```
+</details>
+
+**23:43:08 reset agent:** The latest commit is 03e8fa0, but I committed 7a0031a (the 12 mm refinement cap) after it. Checking whether that change is still in the file:
+
+**23:43:09 tool Bash:**
+
+```bash
+grep -n "wrist_fp" programs/reset.py | head; git log --oneline -4; git reflog -6 2>/dev/null | head; git status --short | head
+```
+
+<details><summary>23:43:09 result</summary>
+
+```text
+1426:                sh = self.refine_wall(img, e, d0, h_top, max_shift=0.012 if c.get("wrist_fp") else 0.06)
+1651:        return dict(c, obb_c=res["obb_c"], L=res["L"], W=res["W"], yaw=res["yaw"], xy=res["obb_c"], wrist_fp=True)
+03e8fa0 attempt 151: accept <= 4.5 cm when oriented; wrist footprint before every table pick
+9e71665 attempt 150: repeated short tab pulls, clamp pull pre-checked before clamping, no abort without a high pose
+50a10c4 attempt 149: pull distance chosen with its lift pre-checked; high-pose candidates at the real protrusion
+1c93198 attempt 149: pinch depth stepping (4-12 mm deeper, +3 mm higher) until held; force-guided press for the drag
+03e8fa0 HEAD@{0}: commit: attempt 151: accept <= 4.5 cm when oriented; wrist footprint before every table pick
+9e71665 HEAD@{1}: commit: attempt 150: repeated short tab pulls, clamp pull pre-checked before clamping, no abort without a high pose
+50a10c4 HEAD@{2}: commit: attempt 149: pull distance chosen with its lift pre-checked; high-pose candidates at the real protrusion
+1c93198 HEAD@{3}: commit: attempt 149: pinch depth stepping (4-12 mm deeper, +3 mm higher) until held; force-guided press for the drag
+241689b HEAD@{4}: co
+... (367 more characters)
+```
+</details>
+
+**23:43:12 reset agent:** The refinement cap is in the working tree but was never committed; the earlier commit apparently didn't land in this repository. I'll commit everything now, after the offline checks.
+
+**23:43:16 tool Bash:**
+
+```bash
+timeout 400 /home/r2r/robot_learning_final_pj/.venv/bin/python tools/offline.py 2>&1 | grep -c "#### OK"; echo "- attempts 155-156 (commit 03e8fa0): drawer still ~2.5 cm proud IN the slot (judge: 'partly out of the bottom slot'), taken for a table drawer against the cabinet (near-cabinet blob, W 0.07-0.09); 5 end-wall picks each closed on nothing, wrist footprints 'implausible' (no drawer-size wood in front). Fix: slot_or_table() for a near-cabinet table candidate: judge 'still partly inside the slot?' + wrist look-down; in slot -> slot_near (tab path). Also commits the 12 mm refine cap (7a0031a had not landed)." >> notes/notes.md; git add -A && git commit -qm "attempt 157: near-cabinet 'table' drawer checked by the judge + wrist look-down (in the slot -> tab path); refine cap 12 mm with a
+... (105 more characters)
+```
+
+<details><summary>23:43:35 result</summary>
+
+```text
+6
+60897d7 attempt 157: near-cabinet 'table' drawer checked by the judge + wrist look-down (in the slot -> tab path); refine cap 12 mm with a wrist footprint
+03e8fa0 attempt 151: accept <= 4.5 cm when oriented; wrist footprint before every table pick
+```
+</details>
+
+**23:43:38 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_156/targets.json",
+ "moves_robot": true,
+ "what": "The drawer is about 2.5 cm proud in the slot. Confirm \"in the slot\" with the judge and a wrist look-down, then take the tab path: wrist-centred knob pinch, deeper steps, short model-checked pulls, the clamp only if pre-checked. Then extract it, place it at the target with the pull facing the robot, and verify.",
+ "report": ""
+}
+```
+
+<details><summary>23:43:38 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
