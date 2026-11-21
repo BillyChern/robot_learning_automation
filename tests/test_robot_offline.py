@@ -561,3 +561,12 @@ def test_session_refuses_to_open_with_the_bee_on_the_fingers_outside_the_zone(fa
         raise AssertionError("not reached")
     S = json.load(open(A / "summary.json"))
     assert s.exit_code == 2 and "release refused: the object is on the fingers" in S["stop"]["why"]
+
+
+def test_cart_line_turn_in_place():
+    """A pure rotation (no translation) is sampled finely enough: no 'joint jump' error (episodes 33-34)."""
+    pl = Planner(KIN)
+    q0 = KIN.ik(tool_down_T([0.40, 0.0, 0.15], 0.0), Q_HOME)[0]
+    line = pl.cart_line("turn", q0, tool_down_T([0.40, 0.0, 0.15], 12.0), SLOW, exact_goal=False)
+    assert np.abs(np.diff(line.q, axis=0)).max() <= 3.0
+    assert np.linalg.norm(KIN.fk(line.q[-1])[:3, 3] - [0.40, 0.0, 0.15]) < 1e-3

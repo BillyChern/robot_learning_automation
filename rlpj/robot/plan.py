@@ -156,7 +156,8 @@ class Planner:
         if Ts is None:
             Ts = T0
         L = np.linalg.norm(T_goal[:3, 3] - Ts[:3, 3])
-        n = int(max(np.ceil(L / step), 2))
+        ang = np.degrees(np.arccos(np.clip((np.trace(T0[:3, :3].T @ T1adj[:3, :3]) - 1) / 2, -1.0, 1.0)))
+        n = int(max(np.ceil(L / step), np.ceil(ang / 0.5), 2))      # 2 mm or 0.5 deg per sample: a turn in place
         path = [q0]; q = q0.copy()
         corr1 = T1adj[:3, 3] - T_goal[:3, 3]          # model target offset at the goal
         corr0 = T0[:3, 3] - Ts[:3, 3]                  # model target offset at the start
