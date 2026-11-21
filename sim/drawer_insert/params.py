@@ -7,6 +7,8 @@ RANGES = dict(
     W=(0.098, 0.108),            # drawer width (m)
     H=(0.060, 0.070),            # drawer height (m)
     wall=(0.008, 0.011),         # wall thickness (m)
+    r_edge=(0.0005, 0.003),      # rounding of the drawer's back vertical edges (m): wood lead-in
+    r_post=(0.0005, 0.002),      # rounding of the slot side walls' front inner edges (m)
     mass=(0.2, 0.5),             # drawer mass (kg)
     clearance=(0.003, 0.010),    # slot width - drawer width (m)
     vgap=(0.006, 0.015),         # slot height - drawer height (m)
@@ -34,12 +36,22 @@ RANGES = dict(
 )
 P_DEEP_STOP = 0.25               # share of cabinets whose back stop lies beyond flush (the real one may: see README)
 STOP_EXTRA = ((0.0, 0.003), (0.003, 0.020))   # back stop beyond flush (m): usual, deep
+# start variants: 'carry' = grasp on the table, carry, align with the side-camera estimate (the current program);
+# 'aligned' = user's 2026-11-21 proposal: square the drawer on the table in front of the slot, grasp the pull wall
+# at its centre, lift ~2.5 cm above the table (~1 cm above the 1.5 cm slot floor), insert straight
+VARIANTS = dict(carry={}, aligned=dict(hand_off=(-0.005, 0.005), hand_yaw=(-2.0, 2.0), est_sd_off=(0.001, 0.003),
+                                       est_sd_yaw=(0.3, 1.0), lift=(0.004, 0.010)))
+# 'aligned' plus a slot pose measured to +-3 mm / +-0.5 deg (e.g. squared against the real slot, not the yaml)
+VARIANTS["aligned_slot"] = dict(VARIANTS["aligned"], slot_dn=(-0.003, 0.003), slot_dt=(-0.003, 0.003), slot_dyaw=(-0.5, 0.5))
 
 
-def sample(rng):
+def sample(rng, variant="carry"):
     """One episode's parameters: dict of floats."""
     p = {k: float(rng.uniform(*v)) for k, v in RANGES.items()}
     p["stop_extra"] = float(rng.uniform(*STOP_EXTRA[int(rng.random() < P_DEEP_STOP)]))
+    for k, v in VARIANTS[variant].items():
+        p[k] = float(rng.uniform(*v))
+    p["vgap"] = max(p["vgap"], p["lift"] + 0.004)
     p["est_off"] = p["hand_off"] + float(np.clip(rng.normal(0, p["est_sd_off"]), -0.03, 0.03))
     p["est_yaw"] = p["hand_yaw"] + float(np.clip(rng.normal(0, p["est_sd_yaw"]), -10, 10))
     return p

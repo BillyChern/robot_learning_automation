@@ -31476,3 +31476,241 @@ Structured output provided successfully
 ```
 </details>
 
+**12:59:15 reset agent:** No response requested.
+
+### 12:59:15 orchestrator -> reset agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+Operator note 12:50 (attempts 204-205): side_final.jpg: the drawer stands UPRIGHT against the cabinet front, left of
+the cabinet in the image, pull wall toward the robot. Every grasp/drag pose over a wall is refused by the keep-out
+(81_above_drag_wall: cabinet_front at 17 cm up; 105_above_drawer_wall: cabinet + cabinet_front): the gripper body
+over a wall near the cabinet reaches into the front boxes. Use the open top instead, which keeps the tool over the
+drawer's middle, away from the cabinet: wrist look-down to find the drawer outline (side camera is ~5-6 cm low in y),
+tool straight down over the drawer centre, gripper closed, lower the fingertips into the drawer to ~2-3 cm above its
+floor (walls are ~6.5 cm tall) under low_force(20), then move straight toward the robot along -N 8-10 cm under
+low_force(30): the fingers catch the inside of the robot-side (pull) wall and drag the drawer clear. Lift straight
+up out of the drawer, then do the normal pick and place.
+
+# attempt_206: exit code 2; outcome: fail
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets '{"drawer": [0.362, -0.012]}'; what: Real reset run with commit e95b9e1: drag the upright drawer from the cabinet's +t corner (waypoint approach, diagonal drag), then pick and place it at the target; commit: e95b9e1; duration_s: 1148.5; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "e95b9e117d",
+"command": "programs/reset.py --targets {\"drawer\": [0.362, -0.012]}",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9585, 0.5608, 90.4585], "gripper": 14.8},
+"fk_check_mm": 0.18,
+"targets": {"drawer": [0.362, -0.012]},
+"measured": {"drawer": [0.4586, 0.1265]},
+"vlm_start_inslot": {"success": false, "conf": 0.6, "reason": "The whole drawer box, including its back wall, is visible on the table to the left of the cabinet; it looks pulled fully out of the bottom slot rather than partly inside it, though the angle makes thi"},
+"segments": [["ready", true, 0.124, 0.43, 11.86, 39.9], ["ready", true, 0.003, 0.01, 0.56, 37.5], ["look_down_start_ns_0", true, 0.066, 0.45, 7.4, 39.9], ["ready", true, 0.033, 0.18, 7.42, 39.8], ["ready", true, 0.003, 0.01, 0.56, 37.5], ["ready", true, 0.001, 0.01, 0.56, 37.5], ["look_down_start_ns
+"decisions": ["look-down pose at 0.50 m refused (model check failed for 02_look_down_start_ns_0: {'joint_limit_violations': 54, ')", "wrist footprint start_ns look 0: cut by the image border {'obb_c': [0.4495, 0.2638], 'L': 0.092, 'W': 0.059, 'yaw': -35.2, 'cells': 393, 'border': True}: re-centre on
+"wrist_footprint_start_ns_0": {"obb_c": [0.4495, 0.2638], "L": 0.092, "W": 0.059, "yaw": -35.2, "cells": 393, "border": true},
+"wrist_footprint_start_nsr_0": {"obb_c": [0.4501, 0.2553], "L": 0.105, "W": 0.036, "yaw": 0.0, "cells": 347, "border": true},
+"start_state": "table",
+"start_perception": {"tag": "start", "table_z": -0.0154, "front_top": 0.0585, "face_depth": 0.0239, "slot_med": 0.0141, "blobs": 2, "low_pts": 302, "near_cabinet": true, "drawer_blobs": [{"xy": [0.4636, 0.1293], "obb_c": [0.4832, 0.1483], "L": 0.122, "W": 0.07, "yaw": -47.3, "h": 0.06271499070377676
+"vlm_check0_q1": {"success": true, "conf": 0.85, "reason": "The drawer stands upright on the table next to the cabinet, and its metal pull is on the wall facing the lower left, toward the robot base."},
+"err_check0": 0.2893,
+"pull_vs_robot_deg0": 0.0,
+"tilt_search": {"checked": 160, "found": false, "fails": ["55/0/0.15: chk_tilt_pre: {'keep_in_violations': 67, 'keep_out_violations': ['cabi", "55/0/0.15: chk_tilt_pre: {'keep_in_violations': 67, 'keep_out_violations': ['cabi", "55/0/0.12: chk_tilt_pre: {'keep_in_violations': 68, 'keep_out_violation
+"vlm_check1_q1": {"success": true, "c
+... (18939 more characters)
+```
+
+**12:59:31 reset agent:** The 12:50 note gives a better move: put the closed fingers down into the open drawer at its centre (tool straight down, away from the cabinet faces), then pull toward the robot so the fingers catch the inside of the robot-side wall. Implementing it as `hook_inside_drag`:
+- wrist outline first;
+- fingertips 2.5 cm above the drawer's floor, lowered under a 20 N stop;
+- drag 10 cm along −N under 30 N, then lift straight up and re-measure.
+
+A second hook drag, if needed, goes diagonally (toward the robot and −y), because −N alone leaves the drawer about 3 cm from the curtain. It runs first whenever both end walls are refused.
+
+**12:59:53 tool Bash:**
+
+```bash
+/home/r2r/robot_learning_final_pj/.venv/bin/python - <<'E'
+p='programs/reset.py'; s=open(p).read()
+def rep(old,new):
+    global s
+    assert s.count(old)==1, old[:60]; s=s.replace(old,new)
+anchor='''    def free_from_cabinet(self, c):'''
+code='''    def hook_inside_drag(self, c, d=None, dist=0.10, tag="0"):
+        """12:50 operator: an upright drawer against the cabinet: every pose over a wall puts the gripper body into the
+        cabinet_front boxes. Use the open top: tool straight down over the drawer's middle, fingers closed, lower the
+        tips into it to ~2.5 cm above its floor (20 N stop), move `dist` along d (default -N, toward the robot) under a
+        30 N stop: the fingers catch the inside of the robot-side wall and drag it clear; lift straight out.
+        Returns True if 
+... (5649 more characters)
+```
+
+<details><summary>12:59:58 result</summary>
+
+```text
+#### [0.4498, 0.2668] None False ["hook-inside drag: no model-feasible pose over the drawer's middle (chk_hin_hi: {'keep_in_violations': 58})"]
+#### [0.4466, 0.2644] None False ["hook-inside drag: no model-feasible pose over the drawer's middle (chk_hin_hi: {'keep_in_violations': 51})"]
+#### [0.455, 0.27] None False ["hook-inside drag: no model-feasible pose over the drawer's middle (chk_hin_hi: {'keep_in_violations': 68})"]
+#### [0.357, 0.229] diag True ['hook-inside drag 0: closed fingers into the open drawer at [0.357, 0.229] (tips 2.5 cm above its floor), drag 0.10 m toward -113 deg catching the insi', 'hook-inside drag done']
+```
+</details>
+
+**13:00:25 tool Bash:**
+
+```bash
+/home/r2r/robot_learning_final_pj/.venv/bin/python - <<'E'
+p='programs/reset.py'; s=open(p).read()
+def rep(old,new):
+    global s
+    assert s.count(old)==1, old[:60]; s=s.replace(old,new)
+rep('''        T_rdy = tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0)
+        plan = None
+        for yaw in (ang(d) + 90.0, ang(d), ang(d) + 45.0, ang(d) - 45.0):
+            yaw = (yaw + 180.0) % 360.0 - 180.0
+            yaw = yaw - 180 if yaw > 90 else yaw + 180 if yaw < -90 else yaw
+            Tin = tool_down_T(np.r_[ctr, z_tip + TIP_CLOSED], yaw)''','''        T_rdy = tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0)
+        from rlpj.robot import sim
+        boxes = sim.cell_keep_out(); y_in = float((sim.cell_keep_in().get("y") or [-9, 9])[1])
+        G_c = sim.grippe
+... (2689 more characters)
+```
+
+<details><summary>13:00:25 result</summary>
+
+```text
+44:            T_hi = Tin.copy(); T_hi[2, 3] = self.tz + SAFE_H
+48:            for via in (None, 0.12):
+59:                ok, why = self.seq_ok(seq)
+```
+</details>
+
+**13:00:29 tool Bash:**
+
+```bash
+timeout 2500 /home/r2r/robot_learning_final_pj/.venv/bin/python tools/test_hookin.py 2>&1 | grep "####"
+```
+
+<details><summary>13:00:32 result</summary>
+
+```text
+#### [0.4498, 0.2668] None True ['hook-inside drag 0: closed fingers into the open drawer at [0.436, 0.252] (tips 2.5 cm above its floor), drag 0.10 m toward -158 deg catching the insi', 'hook-inside drag done']
+#### [0.4466, 0.2644] None True ['hook-inside drag 0: closed fingers into the open drawer at [0.447, 0.264] (tips 2.5 cm above its floor), drag 0.10 m toward -158 deg catching the insi', 'hook-inside drag done']
+#### [0.455, 0.27] None True ['hook-inside drag 0: closed fingers into the open drawer at [0.442, 0.255] (tips 2.5 cm above its floor), drag 0.10 m toward -158 deg catching the insi', 'hook-inside drag done']
+#### [0.357, 0.229] diag True ['hook-inside drag 0: closed fingers into the open drawer at [0.357, 0.229] (tips 2.5 cm above its floor), drag 0.10 m toward -113 deg catching the insi', 'hook-inside drag done']
+```
+</details>
+
+**13:00:36 reset agent:** The hook-inside drag is now feasible at all four test positions, using hook points shifted inside the cavity and a tilt where needed. Running the regressions, then committing.
+
+**13:00:41 tool Bash:**
+
+```bash
+for t in offline test_neartab; do echo "== $t $(timeout 900 /home/r2r/robot_learning_final_pj/.venv/bin/python tools/$t.py 2>&1 | grep -c '#### OK\|#### True\|OK ')"; done; echo "- 206: upright drawer at the +t corner reaching the curtain: waypoint approaches reached the via poses but the wall poses stayed refused (gripper body in cabinet_front / keep-in); drag_away came down and touched (contact), tilted drag-across: 160 refused. 12:50 operator: hook inside the open top. hook_inside_drag: closed fingers into the cavity (tips 2.5 cm above its floor, 20 N), drag 10 cm along -N (30 N), lift out; hook points anywhere in the cavity + tilt about x (body away from the curtain), static filter then full model check; a 2nd hook goes diagonally (-N -t). It runs first in free_from_cabinet (upright dr
+... (338 more characters)
+```
+
+<details><summary>13:00:59 result</summary>
+
+```text
+== offline 6
+== test_neartab 3
+72ed95b 12:50 operator: drag an upright drawer clear of the cabinet corner by hooking the closed fingers inside its open top
+```
+</details>
+
+**13:01:02 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets '{\"drawer\": [0.362, -0.012]}'",
+ "moves_robot": true,
+ "what": "Real reset run with commit 72ed95b: hook the closed fingers inside the upright drawer's open top, drag it clear of the cabinet corner toward the robot, then pick and place it at the target",
+ "report": ""
+}
+```
+
+<details><summary>13:01:02 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**13:09:02 reset agent:** No response requested.
+
+### 13:09:02 orchestrator -> reset agent
+
+```text
+# attempt_207: exit code 0; outcome: success
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py --targets '{"drawer": [0.362, -0.012]}'; what: Real reset run with commit 72ed95b: hook the closed fingers inside the upright drawer's open top, drag it clear of the cabinet corner toward the robot, then pick and place it at the target; commit: 72ed95b; duration_s: 462.4; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "reset",
+"mode": "collect",
+"dry": false,
+"commit": "72ed95b9fa",
+"command": "programs/reset.py --targets {\"drawer\": [0.362, -0.012]}",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9605, 0.5601, 90.4589], "gripper": 14.8},
+"fk_check_mm": 0.18,
+"targets": {"drawer": [0.362, -0.012]},
+"measured": {"drawer": [0.3842, -0.0086]},
+"vlm_start_inslot": {"success": false, "conf": 0.75, "reason": "The wooden drawer is fully out of the cabinet and sits on the table beside it, slightly tilted, rather than partly inside the bottom slot."},
+"segments": [["ready", true, 0.115, 0.44, 11.87, 39.8], ["ready", true, 0.002, 0.02, 0.57, 36.8], ["look_down_start_ns_0", true, 0.07, 0.48, 7.44, 39.8], ["ready", true, 0.073, 0.54, 7.45, 39.7], ["ready", true, 0.002, 0.02, 0.56, 37.5], ["ready", true, 0.001, 0.01, 0.57, 36.8], ["look_down_start_ns
+"decisions": ["look-down pose at 0.50 m refused (model check failed for 02_look_down_start_ns_0: {'joint_limit_violations': 137, )", "wrist footprint start_ns look 0: cut by the image border {'obb_c': [0.4553, 0.2744], 'L': 0.093, 'W': 0.049, 'yaw': -45.0, 'cells': 333, 'border': True}: re-centre on
+"wrist_footprint_start_ns_0": {"obb_c": [0.4553, 0.2744], "L": 0.093, "W": 0.049, "yaw": -45.0, "cells": 333, "border": true},
+"wrist_footprint_start_nsr_0": {"obb_c": [0.4475, 0.2516], "L": 0.111, "W": 0.045, "yaw": 0.0, "cells": 334, "border": true},
+"wrist_footprint_start_nsr_1": {"obb_c": [0.4501, 0.2675], "L": 0.094, "W": 0.068, "yaw": -41.6, "cells": 534, "border": false},
+"start_state": "table",
+"start_perception": {"tag": "start", "table_z": -0.0154, "front_top": 0.0608, "face_depth": 0.0259, "slot_med": 0.005, "blobs": 2, "low_pts": 287, "near_cabinet": true, "drawer_blobs": [{"xy": [0.47, 0.1301], "obb_c": [0.4815, 0.1489], "L": 0.114, "W": 0.061, "yaw": -51.0, "h": 0.06414653853986794, 
+"vlm_check0_q1": {"success": true, "conf": 0.85, "reason": "The drawer is out on the table next to the cabinet, upright with its open side up, and the metal pull is on the wall facing the lower left toward the robot base; the gripper is not holding it."},
+"err_check0": 0.2931,
+"pull_vs_robot_deg0": 0.0,
+"vlm_check1_q1": {"success": true, "conf": 0.85, "reason": "The drawer is out of the cabinet, sitting upright on the table and not held by the gripper, with its metal pull on the wall facing the lower left toward the robot base."},
+"err_check1": 0.1542,
+"pull_vs_robot_deg1": 0.0,
+"wrist_footprint_p1_0": {"obb_c": [0.3791, 0.2158], "L": 0.115, "W": 0.1, "yaw": -33.7, "cells": 1116, "border": false},
+"wall_refine": {"profile": [109.0, 108.0, 108.0, 110.0, 113.0, 113.0, 114.0, 115.0, 115.0, 110.0, 151.0, 150.0, 144.0, 130.0, 120.0, 110.0, 93.0, 73.0, 86.0, 33.0, 36.0, 36.0, 41.0, 40.0, 44.0, 43.0, 45.0, 40.0, 41.0, 19.0, 17.0, 17.0, 16.0, 16.0, 15.0, 12.0], "table": 108.0, "inner": 0.004, "step":
+"wall_side_vs_wrist": [{"side": [0.3371, 0.2438], "wrist": [0.3371, 0.2438], "along_d0": 0.0}],
+"table_grip": 89.1,
+"cabinet_clearance": 0.06,
+"face_gap": 0.188,
+"vlm_check2_q1": {"success": true, "conf": 0.88, "reason": "The drawer sits upright on the table, open side up, with its metal pull on the wall facing the lower left toward the robot base."},
+"err_check2": 0.0221,
+"pull_vs_robot_deg2": 0.0,
+"pull_vs_robot_deg": 0.0,
+"errors": {"drawer": 0.0225},
+"target": {"drawer": [0.362, -0.012]},
+"verify": {"obb_center": [0.388, -0.0054], "
+... (10157 more characters)
+```
+
+**13:09:11 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Repair works: attempt 207 freed the drawer from the cabinet corner and placed it at the target; layout check ok",
+ "report": "The repair works: attempt 207 reset the drawer and your layout check passed. It finished upright at (0.384, -0.009) against the target (0.362, -0.012), a 2.2 cm error within the 5 cm tolerance. The vision judge confirmed the pull faces the robot (conf 0.88).\n\n**Cause of 205/206:** the upright drawer was stuck at the cabinet's +t corner, its outline reaching the curtain (y about 0.31). Every grasp that puts the gripper over one of its walls was refused by the planning model, because the gripper body reached into the cabinet's front keep-out or past the curtain limit (y 0.30). That covered both en
+... (1099 more characters)
+```
+
+<details><summary>13:09:11 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

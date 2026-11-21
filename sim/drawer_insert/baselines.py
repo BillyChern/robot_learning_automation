@@ -44,3 +44,16 @@ class Wiggle:
         far = abs(goal[0] - o["t"]) > 0.001 or abs(goal[1] - o["yaw"]) > 0.3
         dn = 0.0 if far else min(0.006, max(0.0, N_FLUSH + 0.003 - o["n"]))
         return np.array([dn, d_t, d_y])
+
+
+def preroll(kind, O, rng):
+    """Vectorized scripted pre-roll for reset-to-state starts. O: dict of arrays (N,) with 'stopped', 'f_peak';
+    kind 'push' (straight) or 'drift' (straight with random lateral/yaw steps). Returns (N, 3) (dn m, dt m, dyaw deg)."""
+    stop = (np.asarray(O["stopped"]) > 0) | (np.asarray(O["f_peak"]) > 50.0)
+    n = len(stop)
+    a = np.zeros((n, 3))
+    a[:, 0] = np.where(stop, -0.003, 0.008)
+    if kind == "drift":
+        a[:, 1] = rng.normal(0, 0.002, n)
+        a[:, 2] = rng.normal(0, 1.0, n)
+    return a

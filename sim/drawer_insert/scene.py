@@ -17,29 +17,35 @@ def box(name, c, h, **kw):
 
 
 def cabinet(p):
-    """Static slot geoms: floor rail, side walls, ceiling rail, back stop."""
+    """Static slot geoms: floor rail, side walls with rounded front inner edges, ceiling rail, back stop."""
     s = 0.5 * (p["W"] + p["clearance"])
     hs = p["H"] + p["vgap"]
-    f, D = p["floor_h"], p["L"] + p["stop_extra"]
+    f, D, r = p["floor_h"], p["L"] + p["stop_extra"], p["r_post"]
     top = f + hs
-    n_c, n_h = 0.5 * (D + SIDE), 0.5 * (D + SIDE)
+    n_c, n_h, zc, zh = 0.5 * (D + SIDE), 0.5 * (D + SIDE), 0.5 * (top + SIDE), 0.5 * (top + SIDE)
     g = [box("floor", (n_c, 0, 0.5 * f), (n_h, s + SIDE, 0.5 * f)),
-         box("side_r", (n_c, s + 0.5 * SIDE, 0.5 * (top + SIDE)), (n_h, 0.5 * SIDE, 0.5 * (top + SIDE))),
-         box("side_l", (n_c, -s - 0.5 * SIDE, 0.5 * (top + SIDE)), (n_h, 0.5 * SIDE, 0.5 * (top + SIDE))),
          box("ceiling", (n_c, 0, top + 0.5 * SIDE), (n_h, s, 0.5 * SIDE)),
          box("stop", (D + 0.5 * SIDE, 0, f + 0.5 * hs), (0.5 * SIDE, s, 0.5 * hs))]
+    for side, sg in (("r", 1), ("l", -1)):
+        g += [box(f"side_{side}", (n_c + 0.5 * r, sg * (s + 0.5 * SIDE), zc), (n_h - 0.5 * r, 0.5 * SIDE, zh)),
+              box(f"lip_{side}", (0.5 * r, sg * (s + 0.5 * (SIDE + r)), zc), (0.5 * r, 0.5 * (SIDE - r), zh)),
+              f'<geom name="edge_{side}" type="capsule" pos="{r:.5f} {sg * (s + r):.5f} {zc:.5f}" size="{r:.5f} {zh - r:.5f}"/>']
     return "\n    ".join(x.replace("/>", ' class="cab"/>') for x in g)
 
 
 def drawer_geoms(p):
-    """Hollow drawer in its own frame: x from the front wall's mid-plane toward the back, y centred, z up from its bottom."""
-    L, W, H, w = p["L"], p["W"], p["H"], p["wall"]
-    xc = 0.5 * (L - w)
+    """Hollow drawer in its own frame: x from the front wall's mid-plane toward the back, y centred, z up from its
+    bottom; the back vertical edges are rounded (radius r_edge)."""
+    L, W, H, w, r = p["L"], p["W"], p["H"], p["wall"], p["r_edge"]
+    xc = 0.5 * (L - w - r)
     g = [box("d_front", (0, 0, 0.5 * H), (0.5 * w, 0.5 * W, 0.5 * H)),
-         box("d_back", (L - w, 0, 0.5 * H), (0.5 * w, 0.5 * W, 0.5 * H)),
-         box("d_left", (xc, -0.5 * (W - w), 0.5 * H), (0.5 * L, 0.5 * w, 0.5 * H)),
-         box("d_right", (xc, 0.5 * (W - w), 0.5 * H), (0.5 * L, 0.5 * w, 0.5 * H)),
-         box("d_bottom", (xc, 0, 0.5 * BT), (0.5 * L, 0.5 * W, 0.5 * BT))]
+         box("d_back", (L - w, 0, 0.5 * H), (0.5 * w, 0.5 * W - r, 0.5 * H)),
+         box("d_left", (xc, -0.5 * (W - w), 0.5 * H), (0.5 * (L - r), 0.5 * w, 0.5 * H)),
+         box("d_right", (xc, 0.5 * (W - w), 0.5 * H), (0.5 * (L - r), 0.5 * w, 0.5 * H)),
+         box("d_bottom", (0.5 * (L - w), 0, 0.5 * BT), (0.5 * L - r, 0.5 * W - r, 0.5 * BT))]
+    for side, sg in (("l", -1), ("r", 1)):
+        g.append(f'<geom name="d_edge_{side}" type="capsule" pos="{L - 0.5 * w - r:.5f} {sg * (0.5 * W - r):.5f} '
+                 f'{0.5 * H:.5f}" size="{r:.5f} {0.5 * H - r:.5f}"/>')
     return "\n          ".join(x.replace("/>", ' class="drw"/>') for x in g)
 
 
@@ -84,7 +90,7 @@ def xml(p):
       <inertial pos="0 0 0.05" mass="{HAND_MASS}" diaginertia="0.004 0.004 0.002"/>
       <geom class="vis" type="box" pos="-0.011 0 0.01" size="0.004 0.012 0.02"/>
       <geom class="vis" type="box" pos="0.011 0 0.01" size="0.004 0.012 0.02"/>
-      <geom class="vis" type="cylinder" pos="0 0 0.07" size="0.035 0.04" rgba="0.9 0.9 0.9 1"/>
+      <geom class="vis" type="cylinder" pos="0 0 0.07" size="0.035 0.04" rgba="0.9 0.9 0.9 0.25"/>
       <body name="grip">
         <joint name="slip_t" type="slide" axis="0 1 0" stiffness="{p['k_slide']:.1f}" frictionloss="{p['f_slide']:.2f}"
                damping="{d_slide:.3f}" range="-0.02 0.02" limited="true"/>

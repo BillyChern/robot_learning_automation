@@ -6,27 +6,20 @@ import mujoco
 import numpy as np
 
 from . import params as P
+from .baselines import preroll
+from .policy import H_STEPS, STEP_HI, STEP_LO, step_of
 from .scene import xml
 
-H_STEPS = 48                       # decisions per episode
-STEP_LO = np.array([-0.005, -0.004, -2.0])
-STEP_HI = np.array([0.010, 0.004, 2.0])
 T_BOUND, YAW_BOUND = 0.03, 12.0    # commanded t (m) and yaw (deg) bounds around the start pose
 N_PAST = 0.02                      # tool may go this far past the believed flush pose (m)
 FLUSH_TOL, F_OK = 0.010, 40.0      # success: front within 1 cm of the front plane, force below 40 N
+F_PEN = 0.05                       # reward per 10 N of a step's peak force above F_OK (run r1: 0.02)
 SAMPLE = 25                        # substeps between force samples (40 Hz, like the arm's feedback)
-OBS_KEYS = ("n", "t", "yaw", "off_est", "yaw_est", "f", "f_peak", "stopped", "prev", "k")
 
 
 def rot(a):
     c, s = np.cos(a), np.sin(a)
     return np.array([[c, -s], [s, c]])
-
-
-def step_of(a):
-    """Policy output in [-1, 1]^3 -> (dn m, dt m, dyaw deg)."""
-    a = np.clip(np.asarray(a, float), -1, 1)
-    return STEP_LO + 0.5 * (a + 1) * (STEP_HI - STEP_LO)
 
 
 def action_of(d):
@@ -88,9 +81,9 @@ class DrawerEnv:
         return fb + self.f_bias + self.rng.normal(0, self.p["f_noise"], 3)
 
     # ------------------------------------------------------------ episode
-    def reset(self, p=None, preroll=None, k_pre=0):
-        """New episode with params p (sampled if None); optionally run a scripted controller for k_pre steps first
-        (reset-to-state: partly inserted, misaligned or jammed starts)."""
+    def reset(self, p=None, kind=None, k_pre=0):
+        """New episode with params p (sampled if None); optionally run the scripted pre-roll `kind` for k_pre steps
+        first (reset-to-state: partly inserted, misaligned or jammed starts; baselines.preroll)."""
         self.p = p = dict(p) if p is not None else P.sample(self.rng)
         self.m = mujoco.MjModel.from_xml_string(xml(p))
         self.d = mujoco.MjData(self.m)
@@ -117,9 +110,10 @@ class DrawerEnv:
         self.max_f = 0.0
         self.n_stops = 0
         obs = self.obs()
-        if preroll is not None:
+        if kind is not None:
             for _ in range(k_pre):
-                obs, _, _, _ = self.step(action_of(preroll(obs)))
+                a = preroll(kind, dict(stopped=[obs["stopped"]], f_peak=[obs["f_peak"]]), self.rng)[0]
+                obs, _, _, _ = self.step(action_of(a))
             self.max_f, self.n_stops = 0.0, 0
         return obs
 
@@ -166,7 +160,7 @@ class DrawerEnv:
         f_end = float(np.linalg.norm(f_true))
         succ = err <= FLUSH_TOL and f_end < F_OK
         dep = self.depth()
-        r = 3.0 * (dep - self.dep) - 0.02 * max(0.0, peak_true - F_OK) / 10.0 + 0.1 * succ
+        r = 3.0 * (dep - self.dep) - F_PEN * max(0.0, peak_true - F_OK) / 10.0 + 0.1 * succ
         self.dep = dep
         done = self.k >= H_STEPS
         if done:

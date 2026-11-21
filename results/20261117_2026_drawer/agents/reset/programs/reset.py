@@ -148,6 +148,7 @@ class Reset:
         self.dragged_across = False
         self.drag_end = None
         self.n_push = 0
+        self.n_hookin = 0
         self.roll_checks = 0
         self.shifted_y = False
         self.push_blocked = False
@@ -2783,11 +2784,109 @@ class Reset:
                 s.decide("push-clear: two pushes did not move it"); return None
         return c if self.cab_clearance(c) >= clear else None
 
+    def hook_inside_drag(self, c, d=None, dist=0.10, tag="0"):
+        """12:50 operator: an upright drawer against the cabinet: every pose over a wall puts the gripper body into the
+        cabinet_front boxes. Use the open top: tool straight down over the drawer's middle, fingers closed, lower the
+        tips into it to ~2.5 cm above its floor (20 N stop), move `dist` along d (default -N, toward the robot) under a
+        30 N stop: the fingers catch the inside of the robot-side wall and drag it clear; lift straight out.
+        Returns True if it dragged."""
+        s = self.s
+        fp = self.wrist_footprint(c, f"hin{tag}")
+        if fp is not None:
+            c = dict(fp, h=c["h"])
+        ctr = np.array(c["obb_c"], float)
+        h_top = float(np.clip(c["h"], 0.05, 0.08))
+        d = -N if d is None else unit(np.asarray(d, float))
+        z_tip = self.tz + 0.008 + 0.025                      # floor ~8 mm thick, tips 2.5 cm above it
+        T_rdy = tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0)
+        from rlpj.robot import sim
+        boxes = sim.cell_keep_out(); y_in = float((sim.cell_keep_in().get("y") or [-9, 9])[1])
+        G_c = sim.gripper_points(0.0, 1.0)
+        u_ = np.array([np.cos(np.radians(c["yaw"])), np.sin(np.radians(c["yaw"]))]); v_ = np.array([-u_[1], u_[0]])
+        a_max = max(float(c["L"]) / 2 - 0.02, 0.0); b_max = max(float(c["W"]) / 2 - 0.015, 0.0)
+        # 206: over the middle the body (4.5 cm) crossed the curtain keep-in (y 0.30): hook points anywhere in the
+        # cavity (nearest the middle first) and the tool tilted so the body leans away from the curtain (-y)
+        pts_h = sorted({(round(a_, 3), round(b_, 3)) for a_ in np.linspace(-a_max, a_max, 5) for b_ in np.linspace(-b_max, b_max, 3)},
+                       key=lambda ab: abs(ab[0]) + abs(ab[1]))
+        cands = []
+        for a_, b_ in pts_h:
+            ph = ctr + a_ * u_ + b_ * v_
+            for tilt in (0.0, 15.0, 25.0):
+                for yaw in (ang(d) + 90.0, ang(d), ang(d) + 45.0, ang(d) - 45.0):
+                    yaw = (yaw + 180.0) % 360.0 - 180.0
+                    yaw = yaw - 180 if yaw > 90 else yaw + 180 if yaw < -90 else yaw
+                    Tin = tool_down_T(np.r_[ph, z_tip + TIP_CLOSED], yaw)
+                    if tilt:
+                        Tin[:3, :3] = rot_axis(np.array([1.0, 0.0, 0.0]), tilt) @ Tin[:3, :3]
+                    P = G_c @ Tin[:3, :3].T + Tin[:3, 3]
+                    if float(P[:, 1].max()) > y_in - 0.004 or max(list(sim.box_depths(P, boxes)[0].values()) or [0.0]) > 0.0:
+                        continue
+                    cands.append((ph, tilt, yaw, Tin))
+        plan = None
+        n_chk = 0
+        for ph, tilt, yaw, Tin in cands:
+            if n_chk >= 40:
+                break
+            T_hi = Tin.copy(); T_hi[2, 3] = self.tz + SAFE_H
+            T_rim = Tin.copy(); T_rim[2, 3] = self.tz + h_top + 0.03 + TIP_CLOSED
+            Tdr = Tin.copy(); Tdr[:2, 3] += d * dist
+            Tup = Tdr.copy(); Tup[2, 3] = self.tz + SAFE_H
+            for via in (None, 0.12):
+                n_chk += 1
+                seq = [("grip", "", None, None, 1.0)]
+                if via:
+                    W = T_hi.copy(); W[:2, 3] -= via * N
+                    seq += [("joint", "chk_hin_via", W, "normal", 1.0), ("line", "chk_hin_hi", T_hi, "normal", 1.0)]
+                else:
+                    seq += [("joint", "chk_hin_hi", T_hi, "normal", 1.0)]
+                seq += [("line", "chk_hin_rim", T_rim, "normal", 1.0), ("line", "chk_hin_in", Tin, "slow", 1.0),
+                        ("line", "chk_hin_drag", Tdr, "slow", 1.0), ("line", "chk_hin_up", Tup, "slow", 1.0),
+                        ("joint", "chk_hin_ready", T_rdy, "normal", 1.0)]
+                ok, why = self.seq_ok(seq)
+                if ok:
+                    plan = (yaw, via, T_hi, T_rim, Tin, Tdr)
+                    ctr = ph
+                    break
+            if plan:
+                break
+        if plan is None:
+            s.decide(f"hook-inside drag: no model-feasible pose in the drawer ({len(cands)} statically clear, {n_chk} checked)"); return False
+        yaw, via, T_hi, T_rim, Tin, Tdr = plan
+        s.decide(f"hook-inside drag {tag}: closed fingers into the open drawer at {np.round(ctr, 3).tolist()} (tips 2.5 cm above its "
+                 f"floor), drag {dist:.2f} m toward {ang(d):.0f} deg catching the inside of its wall, lift out")
+        g_c = s.gripper(1.0, "close the fingers (hook inside)")
+        if g_c is not None and float(g_c) < 95.0 and not s.dry:
+            self.to_ready(); self.put_down_held("hookin"); return False
+        self.to_ready()
+        if via:
+            W = T_hi.copy(); W[:2, 3] -= via * N
+            self.joint_to("hin_via", W); self.line("above_hin", T_hi, "normal")
+        else:
+            self.joint_to("above_hin", T_hi)
+        self.line("down_to_hin_rim", T_rim, "normal")
+        if not self.contact_line("hin_in", Tin, "slow", limit=20.0):
+            s.decide("hook-inside: contact going in (on a wall's top edge?): no drag")
+            self.lift_to("up_from_hin", SAFE_H, "slow"); self.ready_via(); return False
+        ok = self.contact_line("hin_drag", Tdr, "slow", limit=30.0)
+        T = self.T_now(); T[2, 3] = self.tz + SAFE_H
+        self.line("up_from_hin", T, "slow")
+        self.ready_via()
+        self.drag_end = ctr + d * dist
+        s.decide(f"hook-inside drag {'done' if ok else 'stopped at the 30 N limit'}")
+        return True
+
     def free_from_cabinet(self, c):
         """Attempt 205: an upright drawer beside the cabinet's +t corner: both end-wall picks and the robot-side-wall
         drag were refused by the model on every try (5 picks). Drag-away once, else the drag-across (vertical pinch,
         else the tilted pinch of attempts 193-196) toward the table centre. Returns True if something moved it."""
         s = self.s
+        # 12:50 operator: the open-top hook first (toward the robot along -N); a second one diagonally (toward the
+        # robot and -y: away from the curtain edge, which the drawer reached in 205/206)
+        if self.n_hookin < 2 and float(c.get("h", 0.07)) <= TIPPED_H:
+            self.n_hookin += 1
+            d_h = None if self.n_hookin == 1 else unit(-N - (TT if float(nt(np.array(c["obb_c"], float))[1]) > scene.SLOT_C else -TT))
+            if self.hook_inside_drag(c, d=d_h, tag=str(self.n_hookin)):
+                return True
         if not self.dragged_away:
             self.dragged_away = True
             try:
