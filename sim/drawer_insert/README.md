@@ -254,7 +254,8 @@ while not done:                                   # 48 decisions; the tool heigh
   fine in the sim (97.4 % with 0.5-1.0 s steps); faster streaming must keep the force stop.
 - Geometry: the slot pose error (+-1 cm, +-1.5 deg) and the back stop position are the biggest unknowns. With no
   stop at flush the policy can only stop at the believed front plane, so a front-plane error near 1 cm leaves the
-  drawer recessed or proud by ~1 cm (most remaining sim failures are of this kind); a better front-plane estimate
+  drawer recessed or proud by ~1 cm (11 of the shipped policy's 17 failures in 500 carry episodes: recessed 7-12 mm
+  in a cabinet whose stop is 1-2 cm past flush; 2 more had a lateral error near the 30 mm search bound); a better front-plane estimate
   helps more than anything else (straight push 36 % -> 82 % when also aligned). The real cabinet also moved under
   60-90 N jams (it is taped down), which the sim does not model (fixed cabinet).
 - Keep-out: see "Calling the policy": the real vertical gripper cannot follow the drawer to flush today.
