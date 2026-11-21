@@ -44,7 +44,8 @@ class Policy:
 
     def act(self, obs):
         """One decision: obs dict -> (dn, dt, dyaw[, dz]) in m, m, deg[, m]."""
-        return tuple(float(v) for v in step_of(self.mean(obs_vector(obs))))
+        x = obs_vector(obs)[: self.layers[0][0].shape[0]]       # v1 weights read the first 14 inputs of a v2 obs
+        return tuple(float(v) for v in step_of(self.mean(x)))
 
 
 class Insertion:

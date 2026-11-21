@@ -19,17 +19,17 @@ def controller(name, policy_path=None):
     if name == "policy":
         pol = Policy(policy_path)
         return lambda o: pol.act(o)
-    c = {"straight": baselines.Straight, "wiggle": baselines.Wiggle}[name]()
+    c = {"straight": baselines.Straight, "wiggle": baselines.Wiggle, "straight_z": baselines.StraightZ}[name]()
     return c.act
 
 
 def run(args):
     """One episode: (controller name, policy path, seed) -> result dict."""
-    name, path, seed, variant, kind, k_pre = (tuple(args) + (None, 0))[:6]
+    name, path, seed, variant, kind, k_pre, v2 = (tuple(args) + (None, 0, None))[:7]
     from . import params as P
     from .env import DrawerEnv, action_of
     env = DrawerEnv(seed)
-    o = env.reset(P.sample(np.random.default_rng(seed), variant), kind, k_pre)
+    o = env.reset(P.sample(np.random.default_rng(seed), variant, v2), kind, k_pre)
     act = controller(name, path)
     first = None
     for k in range(10**6):
@@ -41,7 +41,8 @@ def run(args):
     return dict(seed=seed, success=info["success"], front_err=info["front_err"], max_f=info["max_f"],
                 n_stops=info["n_stops"], e_t=info["e_t"] * 1e3, e_yaw=info["e_yaw"], first_success=first,
                 clearance=env.p["clearance"] * 1e3, mu=env.p["mu"], protrusion=info["protrusion"] * 1e3,
-                stop_extra=env.p["stop_extra"] * 1e3, slot_dn=env.p["slot_dn"] * 1e3, f_end=info["f_end"])
+                stop_extra=env.p["stop_extra"] * 1e3, slot_dn=env.p["slot_dn"] * 1e3, f_end=info["f_end"],
+                h_mode=env.p.get("h_mode", 0.0))
 
 
 def table(res, key, bins, label):
@@ -62,7 +63,8 @@ def summary(res):
                 first_success_median=float(np.median(fs)) if fs else None,
                 stops_mean=float(np.mean([r["n_stops"] for r in res])),
                 by_lateral=table(res, "e_t", T_BINS, "|e_t| mm"), by_yaw=table(res, "e_yaw", Y_BINS, "|e_yaw| deg"),
-                by_clearance=table(res, "clearance", (3, 5, 7.5, 10.01), "clearance mm"))
+                by_clearance=table(res, "clearance", (3, 5, 7.5, 10.01), "clearance mm"),
+                by_height=table(res, "h_mode", (0, 0.5, 1.5, 2.5), "height good/low/high"))
 
 
 def report(folder):
@@ -93,28 +95,31 @@ def main():
     ap.add_argument("--variant", default="carry", help="start variant: carry | aligned (params.VARIANTS)")
     ap.add_argument("--preroll", default="", help="start from a scripted pre-roll, e.g. push:12 or drift:16 (jammed / partly in)")
     ap.add_argument("--out", default="")
+    ap.add_argument("--v2", default="", help="vertical model: carry-height mode (params.H_MODES: mix, wedge, good)")
     ap.add_argument("--episodes", action="store_true", help="also save per-episode results")
     ap.add_argument("--report", default="", help="print markdown tables of the eval_*.json in this folder and exit")
     a = ap.parse_args()
     if a.report:
         return report(a.report)
     kind, k_pre = (a.preroll.split(":")[0], int(a.preroll.split(":")[1])) if a.preroll else (None, 0)
-    names = [n for n in ("straight", "wiggle", "policy") if (not a.only or n in a.only.split(","))]
+    names = [n for n in ("straight", "wiggle", "straight_z", "policy") if (not a.only or n in a.only.split(","))]
+    if not a.v2:
+        names = [n for n in names if n != "straight_z"]
     if not a.policy:
         names = [n for n in names if n != "policy"]
     out = {}
     with mp.get_context("spawn").Pool(a.workers, initializer=os.nice, initargs=(15,)) as pool:
         for name in names:
-            res = pool.map(run, [(name, a.policy, a.seed0 + i, a.variant, kind, k_pre) for i in range(a.n)], chunksize=4)
+            res = pool.map(run, [(name, a.policy, a.seed0 + i, a.variant, kind, k_pre, a.v2 or None) for i in range(a.n)], chunksize=4)
             out[name] = dict(summary=summary(res), episodes=res)
             sm = out[name]["summary"]
             print(f"{name:9s} success {sm['success']:.3f}  median max force {sm['max_f_median']:.0f} N  >65 N {sm['over_65n']:.2f}  "
                   f"stops {sm['stops_mean']:.1f}  first success step {sm['first_success_median']}")
-            for row in sm["by_lateral"] + sm["by_yaw"] + sm["by_clearance"]:
+            for row in sm["by_lateral"] + sm["by_yaw"] + sm["by_clearance"] + sm["by_height"]:
                 print(f"   {row['bin']:16s} n {row['n']:4d}  success {row['success'] if row['success'] is None else round(row['success'], 3)}")
     if a.out:
         Path(a.out).mkdir(parents=True, exist_ok=True)
-        tag = a.variant + (f"_{kind}{k_pre}" if kind else "")
+        tag = ("v2" + a.v2 + "_" if a.v2 else "") + a.variant + (f"_{kind}{k_pre}" if kind else "")
         keep = out if a.episodes else {k: dict(summary=v["summary"]) for k, v in out.items()}
         Path(a.out, f"eval_{tag}.json").write_text(json.dumps(keep, default=float, indent=1))
 

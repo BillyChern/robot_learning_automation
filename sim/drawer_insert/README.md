@@ -234,6 +234,47 @@ while not done:                                   # 48 decisions; the tool heigh
   the policy until it commands n > -0.036, then release and use the scripted push for the last ~4 cm; the policy's job
   there is the alignment and jam recovery during the first ~8-9 cm, where the real jams happened.
 
+## v2: vertical model and dz action (`weights/policy_v2.npz`)
+
+After attempt 112 (fixed-depth jam, drawer top ~1 mm under the rail) the sim got a vertical model; v1 weights,
+env semantics and the Newton twin are unchanged (v2 is opt-in: `params.sample(rng, variant, v2="mix")`, CPU env).
+- Geometry: opening 76-82 mm (measured 1.5-9.5 cm above the table), inner floor 13-17 mm, a front lip on the bottom
+  rail 0-3 mm high and 10-20 mm deep, rounded lip and rail edges (2 mm).
+- Grasp: pitch and roll slip joints at the tool point (3-15 N m/rad, slip at 0.15-0.6 N m, +-8 deg); start pitch
+  -1.5..+3 deg (+ = back down), roll +-1.5 deg.
+- Carry height (drawer bottom above the lip, `lift`): 50 % fits (2 mm .. room - 2 mm), 25 % too low (-5..+0.5 mm: the
+  back catches the lip), 25 % too high (top within -1..+4 mm of the rail: wedges under it); `--v2 wedge` = only the
+  last two. `gap_est` = lift + N(0, 1-3 mm).
+- Action: 4th component dz in [-3, +3] mm per step (cumulative +-12 mm), the hand is servoed in z too.
+- Obs adds `z` (cumulative commanded dz, m), `gap_est` (m, constant), `jam_rep` (force stops so far within 5 mm of the
+  commanded n) and dz in `prev` (4 entries): 18 inputs. `Policy` picks v1/v2 from the weights; v1 weights also run on
+  a v2 obs (they read the first 14 inputs, dz = 0).
+- Training (`train --v2 mix --init <v1 agent.pt>`, CPU pool, v1 weights zero-padded so dz starts at 0): 130 iterations, 2.2 M samples, 17 min on 12
+  CPU workers (starts: 50 % carry, 20 % aligned, 30 % with a 30-40 N stop; heights `mix`). Deterministic eval on 384
+  carry/mix starts: 60 % (v1 weights) -> 83 % (0.17 M) -> 91 % (0.8 M), flat after; shipped: best checkpoint (it 50-60).
+
+Results (500 episodes per row, v2 model, CPU MuJoCo; `results/v2/eval_*.json`):
+
+| start | straight | wiggle | straight + height from gap_est | v1 policy (dz = 0) | **v2 policy** |
+|---|---|---|---|---|---|
+| carry, heights mix (50 % fit, 25 % low, 25 % high) | 22.6 % | 21.4 % | 20.0 % | 41.8 % | **86.2 %** |
+| aligned, heights mix | 33.2 % | 32.0 % | 26.6 % | 45.4 % | **89.8 %** |
+| carry, wedge only (low or high) | 17.4 % | 7.6 % | 19.2 % | 18.8 % | **85.0 %** |
+| aligned, wedge only | 28.8 % | 12.4 % | 25.0 % | 22.6 % | **83.6 %** |
+
+By height (carry/mix): fits 91.6 %, too low 76.4 %, too high 85.2 % (straight 25.5 / 8.7 / 31.1 %). The v2 policy
+fixes the height first: on aligned wedge starts the median commanded z after 3 / 6 steps is +3.1 / +5.9 mm when the
+back would catch the lip and -0.9 / -2.0 mm when the top meets the rail, and its sideways excursion is 11 mm; v1 (no
+dz) searches sideways to 26 mm on the low starts and succeeds in 4 % (attempt 112's pattern). Peak forces stay at
+the stop level (median ~80 N at the 60-70 N stop). The v1 model and benchmark are unchanged (v1 weights: 96.6 % on
+the v1 carry set).
+
+Robot side for v2: build `Insertion(..., tool_z=<start tool z, m>, gap_est=<drawer bottom above the slot lip, m>)`,
+and after each `xy, yaw = ins.next(force())` move to height `ins.z_target_abs` as well (same 5 Hz step, keep the tool
+vertical); pass the measured tool z to `ins.done(peak, stopped, xy, yaw, tool_z)`. `ins.obs['jam_rep']` is computed
+inside `Insertion` from the stops. gap_est = start tool z - (drawer height) - (lip top: table + ~1.5 cm), with the
+tool point at the top of the front wall.
+
 ## First real run (attempt 112, 2026-11-21): diagnosis
 
 - Bookkeeping checked, no sign or frame error: the tool poses rebuilt by FK from the step plans match `ins.cmd`

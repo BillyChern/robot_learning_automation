@@ -63,3 +63,27 @@ def test_insertion_helper_matches_env(tmp_path):
         mxy, myaw = base(env.cmd)
         ins.done(o["f_peak"], o["stopped"], mxy, myaw)
         assert np.allclose(ins.cmd, env.cmd, atol=1e-6) and np.allclose(ins.prev, o["prev"], atol=1e-9)
+
+
+def test_v2_insertion_helper_matches_env(tmp_path):
+    """v2 (dz action, jam count): base-frame bookkeeping reproduces the env's commands and obs."""
+    from sim.drawer_insert.policy import Insertion
+    from sim.drawer_insert.train import Agent
+    Agent(v2=True).export(tmp_path / "p2.npz")
+    pol = Policy(tmp_path / "p2.npz")
+    assert pol.v2
+    N, off, tc, ys, z0 = np.array([0.9282, 0.3722]), 0.5283, -0.0585, 21.85, 0.09
+    N = N / np.linalg.norm(N)
+    T = np.array([-N[1], N[0]])
+    env = DrawerEnv(4)
+    o = env.reset(P.sample(np.random.default_rng(4), "carry", "wedge"))
+    base = lambda c: ((c[0] + off) * N + (c[1] + tc) * T, c[2] + ys)
+    xy, yaw = base(env.cmd)
+    ins = Insertion(pol, N, off, tc, ys, o["off_est"], o["yaw_est"], xy, yaw, f0=np.zeros(3), tool_z=z0, gap_est=o["gap_est"])
+    for _ in range(12):
+        ins.next(np.r_[o["f"][0] * N + o["f"][1] * T, o["f"][2]])
+        assert np.allclose(obs_vector(ins.obs), obs_vector(o), atol=1e-6)
+        o, r, done, info = env.step(action_of(pol.act(o)))
+        mxy, myaw = base(env.cmd)
+        ins.done(o["f_peak"], o["stopped"], mxy, myaw, z0 + env.cmd[3])
+        assert np.allclose(np.r_[ins.cmd, ins.z], env.cmd, atol=1e-6)

@@ -17,6 +17,18 @@ class Straight:
         return np.array([min(0.008, max(0.0, N_FLUSH + 0.003 - o["n"])), 0.0, 0.0])
 
 
+class StraightZ(Straight):
+    """Straight push that first sets the height from the start-gap estimate: bottom ~6 mm above the lip (mid-opening
+    for a 6.5 cm drawer in the measured 8 cm opening). Needs the v2 obs (z, gap_est)."""
+
+    GAP = 0.006
+
+    def act(self, o):
+        dz = float(np.clip(self.GAP - (o["gap_est"] + o["z"]), -0.003, 0.003))
+        a = super().act(o)
+        return np.r_[a[0] if abs(dz) < 0.001 else 0.0, a[1:], dz]
+
+
 class Wiggle:
     """Push at 6 mm/step; on a jam back off and move to the next point of a spiral in (t, yaw) around the start pose."""
 
