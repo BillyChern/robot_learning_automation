@@ -18,14 +18,14 @@
    "unsure": 0
   },
   "resets": {
-   "total": 73,
+   "total": 75,
    "ok": 39,
-   "fail": 34,
+   "fail": 36,
    "manual": 0
   },
   "consecutive_failures": {
    "execute": 0,
-   "reset": 0
+   "reset": 1
   },
   "rl": {
    "total": 25,
@@ -242,12 +242,16 @@
     [
      "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_132",
      "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset/attempts/attempt_140",
+     "layout check failed: drawer: not found"
     ]
    ]
   }
  },
  "next_episode": 29,
- "next_reset": 73,
+ "next_reset": 75,
  "vlm": {
   "calls": 29,
   "cost_usd": 1.7520620000000002
