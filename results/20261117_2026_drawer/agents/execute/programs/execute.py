@@ -36,6 +36,7 @@ READY_XYZ = (0.40, -0.10, 0.25)
 TIP_OPEN = 0.027
 HOLD_MAX = 97.0
 SAFE_H = 0.20
+WRIST_SIDE_BIAS = np.array([0.010, 0.058])   # wrist - side camera table positions (reset agent, attempts 150-163)
 HAND_YAW = 7.0               # deg: tool yaw that makes the held drawer straight (data, see run())
 EDGE_TARGET = 0.0045           # m: held-drawer edge-based centre offset of the reached insertions
 SLOT_T = CAB["slot_t"]
@@ -383,7 +384,7 @@ class Episode:
             self.line("to_push_pre", T_pre, "normal", tip_margin=TIP_MARGIN_PUSH)
         f0 = self.force(); peak = 0.0
         ma = float(np.clip((OFF - face_n) / 0.05, -3, 3)); mb = 1.0 if ins_ok else 0.0
-        end = "steps"; k0 = len(self.trans); n_force = 0
+        end = "steps"; k0 = len(self.trans); n_force = 0; jam_steps = 0
         for k in range(K_PUSH):
             f = self.force() - f0
             o = self.obs(1, (n - PUSH_NMAX) / 0.1, t - t0, h - PUSH_H, 0.0, ma, mb, np.array([f @ N3, f @ T3, f @ Z3]), peak, k, K_PUSH, 0)
@@ -401,6 +402,12 @@ class Episode:
             if status == "ok":
                 peak = float(res.get("max_force_n", 0.0))
                 r -= 0.1 * max(0.0, peak - F_SOFT) / 5.0
+                # operator 01:55 jam rule: a hard step (> 35 N) whose tip did not really advance (< 3 mm, measured)
+                # twice in a row ends the push: no repeated full-force steps into a jam
+                if not s.dry:
+                    Tm = self.T_now(); tip = Tm[:3, 3] + PUSH_ZT * Tm[:3, 2]
+                    adv_real = float((tip[:2] - xy_of(PUSH_FRAME["n0"], PUSH_FRAME["t0"])) @ push_dirs()[0]) + PUSH_FRAME["n0"] - n
+                    jam_steps = jam_steps + 1 if (peak > 35.0 and adv_real < 0.003) else 0
                 n, t, h = nn, tt_, hh
             elif status == "force" and n_force < MAX_FORCE and not s.dry:
                 # 00:05: a held drawer needs ~45-50 N to break free (ep 10 broke free at 47 N, then slid at 4-14 N):
@@ -420,6 +427,9 @@ class Episode:
             self.log(f"push step {k}: a {np.round(a, 2).tolist()} (mu {info['mu']}) -> {status} {res.get('reason', '')} tip n-OFF {n - OFF:+.4f} dt {t - t0:+.4f} h {h:.3f} peak {peak:.1f} N r {r:+.3f}")
             if status not in ("ok", "force_retry"):
                 end = status; break
+            if jam_steps >= 2:
+                s.decide("push: two hard steps without progress: jammed, stop pushing")
+                end = "jam"; break
             if n >= PUSH_NMAX - 0.0005:
                 end = "reached"; break
         self.snap("push_end")
@@ -616,6 +626,71 @@ class Episode:
         self.lift_to("lift", SAFE_H, "normal")
         s.summary(grasp_wall_angle=ang_w)
         return dict(yaw=yaw, d0=d0, drop=tip_h + TIP_OPEN, L_back=max(2 * half - 0.006, L_MIN), e=e.copy(), Tg=Tg.copy())
+
+    def wrist_footprint(self, d):
+        """Operator 01:50: the side camera's drawer outline is ~5 cm off (along the wall too). Look straight down from
+        0.45 m above the side estimate + WRIST_SIDE_BIAS, project wood pixels onto the rim plane, take the drawer
+        blob's OBB (re-centre up to 3 looks while it touches the image border), rebuild the front wall from it.
+        Returns an updated drawer dict, or d unchanged."""
+        s = self.s
+        if s.dry:
+            return d
+        from rlpj.perception.wrist import project_base_to_wrist
+        h_top = float(np.clip(d["h_top"], 0.05, 0.085))
+        xy0 = np.asarray(d["c"], float) + WRIST_SIDE_BIAS
+        for look in range(3):
+            T = tool_down_T(np.r_[xy0, self.tz + 0.45], 0.0)
+            try:
+                self.to_ready()
+                self.joint_to(f"look_down{look}", T)
+            except (Abort, RuntimeError) as e:
+                s.log(f"look-down refused: {str(e)[:80]}"); return d
+            time.sleep(0.6)
+            img = s.wrist.latest()[0]
+            if img is None:
+                return d
+            self.save(f"wrist_down{look}", img)
+            Tm = calib.pose_to_T(s.feedback()["pose"])
+            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+            mask = (hsv[..., 0] >= 3) & (hsv[..., 0] <= 25) & (hsv[..., 1] > 80) & (hsv[..., 2] > 25)
+            g = np.arange(-0.18, 0.1801, 0.003)
+            Xg, Yg = np.meshgrid(xy0[0] + g, xy0[1] + g, indexing="ij")
+            G = np.stack([Xg.ravel(), Yg.ravel(), np.full(Xg.size, self.tz + h_top)], 1)
+            uv = project_base_to_wrist(G, Tm)
+            H_, W_ = img.shape[:2]
+            ok = np.all(np.isfinite(uv), 1) & (uv[:, 0] >= 0) & (uv[:, 0] < W_) & (uv[:, 1] >= 0) & (uv[:, 1] < H_)
+            edge = np.zeros(Xg.size, bool)
+            edge[ok] = (uv[ok, 0] < 12) | (uv[ok, 0] > W_ - 13) | (uv[ok, 1] < 12) | (uv[ok, 1] > H_ - 13)
+            occ = np.zeros(Xg.size, np.uint8)
+            occ[ok] = mask[uv[ok, 1].astype(int), uv[ok, 0].astype(int)]
+            occ[nt(G[:, :2])[:, 0] > OFF - 0.015] = 0             # not the cabinet
+            occ = cv2.morphologyEx(occ.reshape(Xg.shape), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+            n, lab, st, _ = cv2.connectedComponentsWithStats(occ, connectivity=8)
+            best, bd = None, 9.0
+            for kk in range(1, n):
+                if st[kk, cv2.CC_STAT_AREA] < 100:
+                    continue
+                cc = np.argwhere(lab == kk)
+                cxy = np.array([Xg[cc[:, 0], cc[:, 1]].mean(), Yg[cc[:, 0], cc[:, 1]].mean()])
+                if np.linalg.norm(cxy - xy0) < bd:
+                    best, bd = kk, float(np.linalg.norm(cxy - xy0))
+            if best is None:
+                s.log("wrist footprint: no wood seen"); return d
+            cells = np.argwhere(lab == best)
+            pts = np.stack([Xg[cells[:, 0], cells[:, 1]], Yg[cells[:, 0], cells[:, 1]]], 1).astype(np.float32)
+            border = bool(edge.reshape(Xg.shape)[lab == best].any())
+            (cx, cy), (w0, h0), a = cv2.minAreaRect(np.ascontiguousarray(pts))
+            c = np.array([cx, cy])
+            plausible = 0.09 <= max(w0, h0) <= 0.17 and 0.05 <= min(w0, h0) <= 0.15
+            s.summary(**{f"wrist_footprint{look}": dict(c=np.round(c, 4).tolist(), size=[round(w0, 3), round(h0, 3)], ang=round(a, 1), border=border)})
+            if plausible and not border:
+                u = np.array([np.cos(np.radians(a)), np.sin(np.radians(a))]); v = np.array([-u[1], u[0]])
+                faces = [(u, w0 / 2), (-u, w0 / 2), (v, h0 / 2), (-v, h0 / 2)]
+                p, half = max(faces, key=lambda f: float(f[0] @ -N))
+                s.decide(f"wrist footprint: centre {np.round(c, 3).tolist()} size {w0:.3f}x{h0:.3f} (side camera {np.round(d['c'], 3).tolist()})")
+                return dict(d, c=c, p=p, half=float(half), shift_w=0.0, front_dev_deg=round(wrapd(ang(p) - ang(-N)), 1), wrist_fp=True)
+            xy0 = c                                                # cut by the border: re-centre on it
+        return d
 
     def low_force(self, f):
         """Context: lower the session's force stop to f N for the moves inside (operator 00:50: final approaches toward
@@ -974,6 +1049,7 @@ class Episode:
         if not self.pull_check(d, P_img):
             return
         s.phase("grasp")
+        d = self.wrist_footprint(d)
         held = self.grasp(d)
         if held is None:
             P, tz, b2 = self.scene("retry")

@@ -24401,3 +24401,125 @@ Structured output provided successfully
 ```
 </details>
 
+**02:30:57 reset agent:** No response requested.
+
+### 02:30:57 orchestrator -> reset agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+Operator note 02:21 (re-sent: reset 177 failed the same way as 173/174, drawer against the cabinet, both end walls refused):
+Operator note 01:36 (attempts 173, 174): scene_after.jpg: the drawer sits on the table right against the cabinet front,
+in front of the bottom slot, pull wall facing the robot. Both end-wall grasps are refused by the cabinet_front
+keep-out (13_above_drawer_wall: keep_out_violations ['cabinet_front'], tips 17 cm up: the gripper body over the
+wall reaches into the front box; cabinet dist 0.014-0.026). Grasp the PULL wall instead (the front wall, facing the
+robot, ~10 cm from the cabinet: the RL program grasps it this way, tool down, jaws across the wall), drag the drawer
+8-10 cm straight away from the cabinet along -N under low_force(25), release, then do the normal end-wall pick.
+
+Before collection continues: no robot run now; update your program for the note above and test it offline.
+This is a reflection turn while the robot runs the other agent's program: you cannot use the robot or the cameras now (no run actions, not even dry runs). If this run shows a problem or a clear, safe improvement (robustness first, then speed), edit programs/reset.py, check it offline on this machine, commit, and reply done; reply done at once if nothing should change. Your next run uses what you committed, and its result comes back to you the same way.
+```
+
+**02:31:08 reset agent:** I'm adding the operator's recovery: when both end walls are refused next to the cabinet, grasp the pull wall (the one facing the robot), tool down with the jaws across it. Then drag the drawer 9 cm straight away from the cabinet under a 25 N stop, release, and let the normal pick follow.
+
+**02:31:19 tool Bash:**
+
+```bash
+python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+meth='''    def drag_away(self, c, dist=0.09):
+        """02:21 / 01:36 operator: a drawer right against the cabinet front: both end-wall grasps are refused by the
+        cabinet_front keep-out. Grasp the wall facing the robot (tool down, jaws across it), drag the drawer `dist`
+        straight away from the cabinet along -N under a 25 N stop, release, lift. Returns True if it dragged."""
+        s = self.s
+        ctr, walls = self.walls_of(c)
+        d, half = max(walls, key=lambda w: float(w[0] @ unit(-N)))
+        e = ctr + d * (half - 0.007)
+        h_top = float(np.clip(c["h"], 0.03, 0.11))
+        tip_h = max(h_top - 0.014, 0.018)
+        yaw = ang(d)
+        yaw = yaw - 180 if yaw > 90 else yaw + 180 if yaw < -90 else yaw
+   
+... (2539 more characters)
+```
+
+<details><summary>02:31:19 result</summary>
+
+```text
+ok
+```
+</details>
+
+**02:31:23 reset agent:** The staging pick (used when the pull's orientation is unknown) has the same refused-near-the-cabinet problem, so the drag-away goes there too:
+
+**02:31:29 tool Bash:**
+
+```bash
+python3 - <<'E'
+p='programs/reset.py'; s=open(p).read()
+old='''                    held = self.pick_table(fp or self.side_biased(c), None)
+                    tries += 1
+                    if held is None:
+                        continue'''
+new='''                    held = self.pick_table(fp or self.side_biased(c), None)
+                    tries += 1
+                    if held is None:
+                        if self.pick_refused and not self.dragged_away:
+                            self.dragged_away = True
+                            self.drag_away(fp or c)
+                        continue'''
+assert old in s; s=s.replace(old,new,1)
+open(p,'w').write(s)
+E
+cd /home/r2r/robot_learning_final_pj && timeout 400 .venv/bin/python - 2>&1 <<'E' | grep "####"
+import sys; sys.argv=['x']
+__file_
+... (871 more characters)
+```
+
+<details><summary>02:31:33 result</summary>
+
+```text
+#### (0.454, 0.127) -68.0 pick True refused False drag True []
+#### (0.464, 0.185) -68.0 pick False refused True drag True ['end 0 refused by the model (check failed above_drawer_wall: ', 'both end walls refused by the model (check failed above_draw']
+#### (0.45, 0.1) -35.0 pick True refused False drag True []
+#### (0.4, 0.1) 20.0 pick True refused False drag True []
+```
+</details>
+
+**02:31:35 reset agent:** In the model the drag-away works exactly where the end-wall picks are refused (the 173/174/177 position). It also passes at the other near-cabinet positions. Main suite, then commit:
+
+**02:31:38 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/reset && timeout 500 /home/r2r/robot_learning_final_pj/.venv/bin/python tools/offline.py 2>&1 | grep -c "#### OK"; echo "- 01:36/02:21 operator (173/174/177: drawer on the table against the cabinet front, both end-wall grasps refused by cabinet_front): drag_away(): grasp the robot-side wall (tool down, jaws across it, 20 N descent), drag 9 cm along -N under a 25 N stop, release, lift; triggered once per run when a pick (table or staging) had both end walls refused. Offline: at the refused position (0.464, 0.185) the drag passes the model; also at 3 other near-cabinet poses." >> notes/notes.md; git add -A && git commit -qm "drag the drawer away from the cabinet by its robot-side wall when both end-wall grasps are refused
+
+... (88 more characters)
+```
+
+<details><summary>02:31:58 result</summary>
+
+```text
+6
+daedcde drag the drawer away from the cabinet by its robot-side wall when both end-wall grasps are refused
+```
+</details>
+
+**02:32:05 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Added a drag-away for a drawer pressed against the cabinet front when both end-wall grasps are refused; committed as daedcde after offline checks, not yet run on the robot.",
+ "report": "The drag-away from your 01:36/02:21 notes is in reset.py (commit daedcde). It passes offline but has not run on the robot yet.\n\n**When it runs:** a table pick or staging pick where the safety model refuses both end-wall grasps, as in 173, 174 and 177. Then, once per run, the program:\n1. grasps the drawer wall facing the robot (the pull wall), tool down, jaws across it, descending under a 20 N stop;\n2. treats a reading of 94.5 or above as a missed grasp, opens and lifts;\n3. otherwise drags the drawer 9 cm straight away from the cabin
+... (599 more characters)
+```
+
+<details><summary>02:32:05 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

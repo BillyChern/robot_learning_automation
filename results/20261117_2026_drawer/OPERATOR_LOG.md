@@ -130,3 +130,14 @@ most 8.5 N over 49 `ready` moves.
   the table. Library fix (sim.check): like the keep-out boxes, a move that starts below the tip/body margin may rise
   out but never go lower; offline test added (fails without the fix). The replayed escape_tool_back now passes.
 - 2026-11-21 01:46: reset 175 succeeded (max total force 26 N) and the reset agent closed its repair; my 01:36 note (pull-wall grasp for a drawer against the cabinet) was withdrawn unsent as no longer needed.
+- 2026-11-21 02:21: reset 177 failed with the drawer against the cabinet front (both end-wall picks refused by the cabinet_front keep-out), as in 173/174; re-sent the withdrawn pull-wall note. Cabinet guard: 11.7 mm (01:49), 10.8 mm (02:06), up from ~3-7 mm: watching; 60-62 N jammed pushes in episode 36.
+- 2026-11-21 02:29: guard paused the run on two 16.1 mm readings (02:24, 02:29). Both came from partial cabinet
+  outlines (0.11 m instead of ~0.24 m: the drawer on its target hides part of the cabinet). Side image at ~02:33 vs
+  23:10: the cabinet base and its tape differ only by thin edge lines (a few px, <~5 mm). The scripted front-face fit
+  (cabinet_move.py) returned nonsense (41.6 deg) and was ignored. Guard now counts only full outlines (0.20-0.30 m);
+  pipeline and guard relaunched ~02:36. Note: with the drawer in front, the guard often has no reading.
+- 2026-11-21 02:37: SAFETY GAP, fixed: episode 38 (attempt 103) pushed a jammed, skewed drawer at 83.7, 90.6, 93.7,
+  93.1 N TOTAL force (push06-09) without a stop: each push step started already preloaded, so the change inside a step
+  stayed small (10.3, 2.9, 1.5, 1.4 N) and the stop rule (change AND total over 65 N) never fired. Over the user's
+  65 N cap. Fix (commit 1c2c064): also stop when the total is over the limit and rising (> start + 5 N); offline test
+  added. The executor has logged the total per move since 01:16 (max_abs_force_n), which is how this was seen.

@@ -138,6 +138,7 @@ class Reset:
         self.from_recess = False
         self.tab_img = None       # last close wrist view of the drawer front (pinch approach)
         self.last_conf = 0.0
+        self.dragged_away = False
         self.pick_refused = False
         self.forced_cand = None
         self.place_bias = np.zeros(2)       # learned systematic placement error (measured - aimed), persisted
@@ -1991,6 +1992,49 @@ class Reset:
         s.summary(**{f"pull_wall_{tag}": dict(dir_deg=round(ang(best[0]), 1), conf=best[1])})
         return best[0]
 
+    def drag_away(self, c, dist=0.09):
+        """02:21 / 01:36 operator: a drawer right against the cabinet front: both end-wall grasps are refused by the
+        cabinet_front keep-out. Grasp the wall facing the robot (tool down, jaws across it), drag the drawer `dist`
+        straight away from the cabinet along -N under a 25 N stop, release, lift. Returns True if it dragged."""
+        s = self.s
+        ctr, walls = self.walls_of(c)
+        d, half = max(walls, key=lambda w: float(w[0] @ unit(-N)))
+        e = ctr + d * (half - 0.007)
+        h_top = float(np.clip(c["h"], 0.03, 0.11))
+        tip_h = max(h_top - 0.014, 0.018)
+        yaw = ang(d)
+        yaw = yaw - 180 if yaw > 90 else yaw + 180 if yaw < -90 else yaw
+        Tg = tool_down_T(np.r_[e, self.tz + tip_h + TIP_OPEN], yaw)
+        T_hi = Tg.copy(); T_hi[2, 3] = self.tz + SAFE_H
+        T_pre = Tg.copy(); T_pre[2, 3] += 0.05
+        T_out = Tg.copy(); T_out[:2, 3] -= dist * N
+        s.decide(f"drawer against the cabinet: grasp its robot-side wall at {np.round(e, 3).tolist()} and drag it {dist:.2f} m away along -N")
+        s.gripper(TABLE_OPEN, "open to straddle the robot-side wall")
+        try:
+            self.to_ready()
+            self.joint_to("above_drag_wall", T_hi)
+            self.line("down_to_drag_pre", T_pre, "normal")
+        except Abort as ex:
+            if "check failed" not in str(ex) and "no IK" not in str(ex):
+                raise
+            s.decide(f"drag-away approach refused ({str(ex)[:80]})"); return False
+        if not self.contact_line("down_to_drag_wall", Tg, "slow", limit=20.0):
+            self.lift_to("up_from_drag_contact", SAFE_H, "slow"); return False
+        g = s.gripper(1.0, "grasp the robot-side wall")
+        if g >= FIRM_MAX and not s.dry:
+            s.decide(f"robot-side wall not held (reading {g:.1f})")
+            s.gripper(TABLE_OPEN, "open, missed")
+            self.line("up_from_drag_wall", T_pre, "slow")
+            self.lift_to("lift_empty_drag", SAFE_H, "normal")
+            return False
+        ok = self.contact_line("drag_drawer_away", T_out, "slow", limit=25.0)
+        s.gripper(TABLE_OPEN, "release the drawer")
+        Tu = self.T_now(); Tu[2, 3] += 0.05
+        self.line("up_from_drag", Tu, "slow")
+        self.lift_to("lift_after_drag", SAFE_H, "normal")
+        s.decide(f"drag-away {'done' if ok else 'stopped at the 25 N limit'}")
+        return True
+
     def place_plain(self, held, xy, tag):
         """Set the held drawer down at xy without turning it (staging spot for the survey)."""
         s = self.s
@@ -2261,6 +2305,9 @@ class Reset:
                     held = self.pick_table(fp or self.side_biased(c), None)
                     tries += 1
                     if held is None:
+                        if self.pick_refused and not self.dragged_away:
+                            self.dragged_away = True
+                            self.drag_away(fp or c)
                         continue
                     self.place_plain(held, STAGE_XY, f"{it}")
                     self.go_home("home_after_stage")
@@ -2299,6 +2346,10 @@ class Reset:
                 held = None
             tries += 1
             if held is None:
+                if self.pick_refused and not self.dragged_away:
+                    # 02:21 operator: both end walls refused next to the cabinet -> drag it away by its robot-side wall
+                    self.dragged_away = True
+                    self.drag_away(c)
                 continue
             s.phase(f"place{it}")
             if np.linalg.norm(self.place_bias) > 0.002:
