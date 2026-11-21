@@ -37,8 +37,8 @@ the slot centre line, e_yaw = true drawer yaw vs the slot normal, both at the st
 Forces (carry): median per-episode peak contact force 71 N (straight 79, wiggle 72), 1.1 force stops per episode
 (straight 15.9, wiggle 1.8), median 19 steps (3.8 s at 5 Hz) to the first success state. The peaks come from the
 executor's force stop overshooting between 40 Hz samples when the drawer meets the cabinet face during the search
-(about 60 % of the peaks) or the back stop (about 30 %); a larger force penalty in the reward (0.1-0.3 per 10 N) did
-not lower them. What does lower them is a lower stop: with the stop at 30-40 N instead of 65 N the policy still
+(about 60 % of the peaks) or the back stop (about 30 %); short fine-tunes with a larger force penalty (0.1 and 0.3
+per 10 N, runs r3/r4, 20 and 12 iterations) did not lower them. What does lower them is a lower stop: with the stop at 30-40 N instead of 65 N the policy still
 succeeds in 92.6 % (median peak 48 N, 3.7 stops per episode; r5 trained with 30 % of its starts at such a stop).
 
 Stress tests outside the training ranges (carry start, policy / wiggle): force noise sd 2.5-5 N 93.8 / 64.6 %;
@@ -114,7 +114,7 @@ Training output goes to `sim/drawer_insert/runs/<name>/` (symlink to /data/sonic
 | `f` | (f_n, f_t, f_z): external force ON the tool (environment on tool) in the slot frame, minus its value at the start of the insertion; pushing into a jam gives f_n < 0 | N |
 | `f_peak` | max \|f\| over the force samples (40 Hz) during the last step | N |
 | `stopped` | 1.0 if the last step was halted by the force stop, else 0.0 | - |
-| `prev` | last executed step (dn, dt, dyaw) | m, m, deg |
+| `prev` | last step the policy commanded (dn, dt, dyaw), before the bounds and the force stop | m, m, deg |
 | `k` | decision index 0..47 | - |
 
 Sign check against the real arm: in `rl/transitions/eval_ep0040.npz` (real, 2026-11-18) the obs column f.N reads
@@ -138,7 +138,8 @@ the target moves linearly over the first 80 % of the period, then holds.
 - Reward per step: 3 x (depth gain of the drawer's back, m) - 0.05 x max(0, true peak force - 40 N)/10 N
   + 0.1 x success; +1 x success at the last step (r1 used 0.02 for the force term).
 - Reset-to-states: a bank of max(4096, 4 x batch) start configurations (start variant + domain parameters + optional
-  scripted pre-roll of 2-23 steps: straight push or push with random lateral/yaw steps, giving partly inserted, misaligned and jammed starts), sampled
+  scripted pre-roll of 2-23 steps: straight push or push with random lateral/yaw steps, giving partly inserted,
+  misaligned and jammed starts), sampled
   with weight ((p + 0.05)(1 - p + 0.05))^2 on each one's recent success p (peak at 0.5, unvisited first);
   mastered (p > 0.95) and hopeless (p < 0.02 after 12 visits) entries are replaced; 40 % of every batch are fresh
   starts from the evaluation distribution.
@@ -185,8 +186,9 @@ Coulomb joint friction = slip); hollow drawer of 5 boxes + 2 capsule edges; the 
   push it agrees with the CPU env per episode in 96.5 % of the episodes (success 40.6 % vs 38.7 %, median depth
   difference 0.0 mm; remaining differences come from force-noise draws; `newton_try/validate.py`).
 - Throughput (RTX 4090): ~20k decisions/s at 4096 worlds (8 s per 48-step batch incl. reset) vs ~2.8k/s for the
-  12-worker CPU pool incl. PPO updates. Run r1 (first policy) trained on the CPU pool; r2 (the shipped policy)
-  continued on Newton; the CPU evaluation of the Newton-trained policy is also a sim-to-sim transfer check.
+  12-worker CPU pool incl. PPO updates. Run r1 (first policy) trained on the CPU pool; r2 and r5 (the shipped policy)
+  continued on Newton; the CPU evaluation of the Newton-trained policy is also a sim-to-sim transfer check (r2: 95.0 %
+  on 4096 Newton starts, 94.6 % on 500 CPU starts).
 
 ## Calling the policy on the robot (insertion phase)
 
@@ -249,7 +251,10 @@ while not done:                                   # 48 decisions; the tool heigh
   rotate about other axes; real in-hand yaw changes during carry are not in the estimate. The arm is a stiff servo
   (2e4-8e4 N/m), so impacts at the back stop are sharp; the real arm stops on the first 40 Hz sample over 65 N too.
 - Execution: the sim moves 0.2 s linear steps at 5 Hz; the real program uses ~1-1.5 s planned lines. Slower is
-  probably fine (quasi-static), faster streaming must keep the force stop.
-- Geometry: the slot pose error (+-1 cm, +-1.5 deg) and the back stop position are the biggest unknowns; the real
-  cabinet also moved under 60-90 N jams (it is taped down), which the sim does not model (fixed cabinet).
+  fine in the sim (97.4 % with 0.5-1.0 s steps); faster streaming must keep the force stop.
+- Geometry: the slot pose error (+-1 cm, +-1.5 deg) and the back stop position are the biggest unknowns. With no
+  stop at flush the policy can only stop at the believed front plane, so a front-plane error near 1 cm leaves the
+  drawer recessed or proud by ~1 cm (most remaining sim failures are of this kind); a better front-plane estimate
+  helps more than anything else (straight push 36 % -> 82 % when also aligned). The real cabinet also moved under
+  60-90 N jams (it is taped down), which the sim does not model (fixed cabinet).
 - Keep-out: see "Calling the policy": the real vertical gripper cannot follow the drawer to flush today.
