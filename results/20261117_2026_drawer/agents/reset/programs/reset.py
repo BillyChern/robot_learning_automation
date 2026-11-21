@@ -81,6 +81,7 @@ ORIENT_Q = ("Judge ONLY which way the wooden drawer is turned, not where it is (
 SURVEY_GOAL = ("Survey photo from a camera mounted on the robot gripper (the gripper fingers may show at the image "
                "edges). Only decide whether the drawer wall nearest the camera carries the metal pull; ignore where the "
                "drawer is, whether it is held, and the viewing angle.")
+WRIST_SIDE_BIAS = np.array([0.010, 0.058])   # 00:38 operator: wrist - side camera table positions, attempts 150-163
 STAGE_XY = (0.34, -0.15)        # 18:39 operator: turn the drawer here (>= 25 cm from the cabinet face), then carry it
 STAGE_GAP = 0.20                # never place/turn closer than this (centre to cabinet face) except at the target
 FACE_GAP_MIN = 0.17           # 16:35 operator: drawer centre >= 17 cm in front of the cabinet face
@@ -510,6 +511,36 @@ class Reset:
             return True, T_out
         return False, None
 
+    class _ForceLimit:
+        """00:50 operator: lower the executor's contact-force stop for one approach (never above the task cap)."""
+        def __init__(self, sess, limit):
+            self.ex = getattr(sess, "executor", None); self.limit = limit; self.prev = None
+        def __enter__(self):
+            if self.ex is not None and getattr(self.ex, "force_limit", None) is not None:
+                self.prev = self.ex.force_limit
+                self.ex.force_limit = min(float(self.limit), float(self.prev))
+            return self
+        def __exit__(self, *a):
+            if self.ex is not None and self.prev is not None:
+                self.ex.force_limit = self.prev
+            return False
+
+    def low_force(self, limit=20.0):
+        return Reset._ForceLimit(self.s, limit)
+
+    def contact_line(self, name, T, speed="slow", limit=20.0, tip_margin=0.008):
+        """Final approach toward the drawer / knob / table with a low force stop. Returns False on contact (the arm
+        stopped there; the caller backs off), True when reached."""
+        try:
+            with self.low_force(limit):
+                self.line(name, T, speed, tip_margin=tip_margin)
+            return True
+        except Abort as e:
+            if "contact force" not in str(e):
+                raise
+            self.s.decide(f"{name}: contact at the {limit:.0f} N stop ({str(e)[:60]})")
+            return False
+
     def guarded_line(self, name, T_goal, fmax=25.0, last=0.02, step=0.005):
         """00:26 operator: approach the last `last` m to T_goal (along its tool z) in `step` increments, stopping at a
         contact force above fmax (the session's own stop is 65 N). Returns True if T_goal was reached; on contact it
@@ -518,12 +549,28 @@ class Reset:
         from rlpj.robot.plan import SLOW
         z = T_goal[:3, 2]
         T0 = T_goal.copy(); T0[:3, 3] -= last * z
-        self.line(f"{name}_near", T0, "slow", tip_margin=PIN_MARGIN)
+        # 01:10 operator: the _near move ran at the full 65 N (71.1 N measured in 168): low stop there too
+        try:
+            with self.low_force(max(fmax, 30.0)):
+                self.line(f"{name}_near", T0, "slow", tip_margin=PIN_MARGIN)
+        except Abort as e:
+            if "contact force" not in str(e):
+                raise
+            s.decide(f"{name}_near: contact at the low stop: back off")
+            Tb = self.T_now(); Tb[:3, 3] -= 0.01 * z
+            self.line(f"{name}_off", Tb, "slow", tip_margin=PIN_MARGIN)
+            return False
         n = int(round(last / step))
         for k in range(1, n + 1):
             Tk = T_goal.copy(); Tk[:3, 3] -= (last - k * step) * z
-            r_ = s.run_segment(s.planner.cart_line(f"{name}_{k}", self.q_now(), Tk, SLOW), tip_margin=PIN_MARGIN)
-            f = float((r_ or {}).get("max_force_n") or 0.0)
+            try:
+                with self.low_force(fmax):
+                    r_ = s.run_segment(s.planner.cart_line(f"{name}_{k}", self.q_now(), Tk, SLOW), tip_margin=PIN_MARGIN)
+                f = float((r_ or {}).get("max_force_n") or 0.0)
+            except Abort as e:
+                if "contact force" not in str(e):
+                    raise
+                f = fmax + 1.0
             if not s.dry and f > fmax:
                 s.decide(f"{name}: contact {f:.1f} N at {(last - k * step) * 1000:.0f} mm before the goal: back off")
                 Tb = self.T_now(); Tb[:3, 3] -= 0.01 * z
@@ -831,9 +878,17 @@ class Reset:
                 for deeper, higher in ((0.004, 0.0), (0.008, 0.0), (0.008, 0.003), (0.012, 0.0), (0.012, 0.003)):
                     self.pin_deeper, self.pin_higher = deeper, higher
                     Tgd = self.pin_T(PIN_OUT)
+                    # 01:10 operator: back out to this target's pre-pose first, never shove the pads sideways
+                    T_pre_d = Tgd.copy(); T_pre_d[:3, 3] -= 0.05 * Tgd[:3, 2]
+                    try:
+                        self.line(f"deeper_pre_{int(deeper * 1000)}_{int(higher * 1000)}", T_pre_d, "slow", tip_margin=PIN_MARGIN)
+                    except Abort as e:
+                        if "check failed" not in str(e):
+                            raise
+                        s.decide(f"deeper pre-pose refused ({str(e)[:60]})"); continue
                     s.decide(f"pinch {deeper * 1000:.0f} mm deeper, {higher * 1000:.0f} mm higher (aim t {self.pin_t + self.pin_dt:.4f})")
                     try:
-                        if not self.guarded_line(f"deeper_pin_{int(deeper * 1000)}_{int(higher * 1000)}", Tgd, last=0.008, step=0.004):
+                        if not self.guarded_line(f"deeper_pin_{int(deeper * 1000)}_{int(higher * 1000)}", Tgd, last=0.02, step=0.005):
                             s.decide("contact while going deeper: stop stepping deeper")
                             break
                     except Abort as e:
@@ -913,7 +968,9 @@ class Reset:
         q = self.ik(T_hi, [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (20.0, 40.0, 60.0) for j6 in (-90.0, 90.0)])
         s.move_joint("above_tab_drag", q, "normal")
         self.line("to_tab_drag_pre", T_pre, "slow", tip_margin=PIN_MARGIN)
-        self.line("touch_tab", Tg, "slow", tip_margin=PIN_MARGIN)
+        if not self.contact_line("touch_tab", Tg, "slow", limit=20.0, tip_margin=PIN_MARGIN):
+            s.decide("touch_tab: contact early: press from here")
+            Tg = self.T_now()
         # 22:34 operator: a fixed 3 mm press never loaded the tab (1.5 N): press in 1 mm steps until the force rises
         # by ~6 N (or 6 mm)
         T_press = Tg.copy()
@@ -1181,13 +1238,14 @@ class Reset:
         y_goal = float(np.mean(TASK_LAYOUT["drawer"]["y"]))
         if c[1] > y_goal - 0.05:
             return False
-        sel = np.abs(xy[:, 0] - c[0]) < 0.03
+        sel = np.abs(xy[:, 0] - c[0]) < 0.06          # the whole width under the gripper body
         y_min = float(xy[sel, 1].min()) if sel.any() else float(xy[:, 1].min())
         dist = float(np.clip(y_goal - c[1], 0.03, 0.12))
         d = np.array([0.0, 1.0])                                  # toward the robot's centre line (01:12 rule)
         if not self.slide_ok(c, d, dist) and c[1] + dist > Y_CENTRE:
             s.decide("wrist look: slide not allowed by the edge rule"); return False
-        self.slide(np.array([c[0], y_min]), d, dist, "drawer off the side camera's view")
+        if self.slide(np.array([c[0], y_min]), d, dist, "drawer off the side camera's view") is False:
+            return False
         return True
 
     def open_side(self, c):
@@ -1333,17 +1391,32 @@ class Reset:
         s = self.s
         yaw = ang(np.array([-d[1], d[0]]))
         yaw = yaw - 180 if yaw > 90 else yaw + 180 if yaw < -90 else yaw
-        p0 = face_pt - d * 0.035
+        # 00:48 operator (165/166: 65 N on down_slide): the gripper BODY (4.5 cm radius, from ~4 cm above the tips)
+        # came down on the drawer's top: start 6 cm outside the pushed edge, descend and push with low force stops
+        p0 = face_pt - d * 0.06
         T0 = tool_down_T(np.r_[p0, self.tz + 0.02 + TIP_CLOSED], yaw)
         T0h = T0.copy(); T0h[2, 3] = self.tz + SAFE_H
-        T1 = T0.copy(); T1[:2, 3] += d * (dist + 0.025)
+        T1 = T0.copy(); T1[:2, 3] += d * (dist + 0.05)
         s.decide(f"{why}: slide it {dist:.2f} m toward {ang(d):.0f} deg (low push at {np.round(face_pt, 3).tolist()})")
         s.gripper(1.0, "close the fingers to push")
         self.to_ready()
-        self.joint_to("above_slide", T0h)
-        self.line("down_slide", T0, "normal")
-        self.line("slide_drawer", T1, "slow")
+        try:
+            self.joint_to("above_slide", T0h)
+        except Abort as e:
+            if "check failed" not in str(e):
+                raise
+            s.decide(f"slide refused by the model ({str(e)[:80]}): no slide")
+            return False
+        if not self.contact_line("down_slide", T0, "slow", limit=20.0):
+            s.decide("slide: contact while coming down (on the drawer?): abort the slide")
+            self.lift_to("up_from_slide", SAFE_H, "slow")
+            return False
+        if not self.contact_line("slide_drawer", T1, "slow", limit=25.0):
+            s.decide("slide: the drawer resists (> 25 N): stop pushing")
+            Tb = self.T_now(); Tb[:2, 3] -= d * 0.01
+            self.line("off_slide", Tb, "slow")
         self.lift_to("up_from_slide", SAFE_H, "normal")
+        return True
 
     def roll_seq(self, ctr, h_g, yw, P, ax, roll, jm=False):
         """Motion list for the pinch-and-roll of a tipped drawer (see right_side)."""
@@ -1515,7 +1588,12 @@ class Reset:
                 self.wall_log.append(wall_log)
                 s.summary(wall_side_vs_wrist=self.wall_log)
                 s.decide(f"end wall: side-camera point {wall_log['side']} -> wrist {wall_log['wrist']} ({wall_log['along_d0'] * 1000:+.0f} mm toward the centre)")
-                self.line("down_to_wall", Tg, "slow")
+                if not self.contact_line("down_to_wall", Tg, "slow", limit=20.0):
+                    Tb = self.T_now(); Tb[2, 3] += 0.03
+                    self.line("up_from_contact", Tb, "slow")
+                    self.refine_off = self.refined_last and not self.refine_off
+                    self.lift_to("lift_empty", SAFE_H, "normal")
+                    return None
                 break
             except Abort as ex:
                 if "check failed" not in str(ex) or k == len(ends) - 1:
@@ -1662,7 +1740,8 @@ class Reset:
         if not self.holding("after the carry"):
             return delta
         self.line("down_to_place_pre", T_pre, "normal")
-        self.line("place_down", Tp, "slow", tip_margin=0.0)
+        if not self.contact_line("place_down", Tp, "slow", limit=25.0, tip_margin=0.0):
+            s.decide("place_down: contact before the planned height: release here")
         s.gripper(0.4, "release the drawer")
         self.line("up_from_drawer", T_pre, "slow", tip_margin=0.0)
         self.lift_to("clear_up", SAFE_H, "normal")
@@ -1693,6 +1772,13 @@ class Reset:
             return "slot_near"
         return "table"
 
+    def side_biased(self, c):
+        """00:38 operator: never use a raw side-camera table point: add the measured wrist-side bias."""
+        if c.get("wrist_fp") or c.get("side_biased"):
+            return c
+        return dict(c, obb_c=(np.array(c["obb_c"], float) + WRIST_SIDE_BIAS).tolist(),
+                    xy=(np.array(c["xy"], float) + WRIST_SIDE_BIAS).tolist(), side_biased=True)
+
     def wrist_footprint(self, c, tag):
         """Look straight down from above the drawer: wood pixels projected onto the rim plane -> footprint OBB.
         Attempt 163: centred on the side camera's estimate the drawer sat cut off at the image edge (side camera off by
@@ -1701,7 +1787,7 @@ class Reset:
         s = self.s
         if s.dry:
             return None
-        xy_look = np.array(c["xy"], float)
+        xy_look = np.array(c["xy"], float) + (0.0 if c.get("wrist_fp") else WRIST_SIDE_BIAS)
         h_top = float(np.clip(c["h"], 0.05, 0.085))
         for look in range(3):
             res = self.footprint_look(xy_look, h_top, f"{tag}_{look}")
@@ -2067,7 +2153,7 @@ class Reset:
                 if gap < STAGE_GAP + 0.03 or np.linalg.norm(np.array(c["xy"]) - np.array(STAGE_XY)) > 0.12:
                     s.phase(f"stage{it}")
                     fp = self.wrist_footprint(c, f"s{it}")
-                    held = self.pick_table(fp or c, None)
+                    held = self.pick_table(fp or self.side_biased(c), None)
                     tries += 1
                     if held is None:
                         continue
@@ -2091,7 +2177,7 @@ class Reset:
             if not s.dry:
                 # attempt 150: 4 end-wall misses in a row from the side-camera outline; the wrist look-down footprint
                 # (attempt 136) got the grasps right
-                c = self.wrist_footprint(c, f"p{it}") or c
+                c = self.wrist_footprint(c, f"p{it}") or self.side_biased(c)
             try:
                 held = self.pick_table(c, pull)
             except Abort as e:

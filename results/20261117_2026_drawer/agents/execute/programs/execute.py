@@ -379,7 +379,8 @@ class Episode:
         s.gripper(PUSH_GRIP, "fingers apart: they straddle the knob")
         q = self.ik(T_hi, [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (20.0, 40.0, 60.0) for j6 in (-90.0, 90.0)])
         s.move_joint("above_push", q, "normal")
-        self.line("to_push_pre", T_pre, "normal", tip_margin=TIP_MARGIN_PUSH)
+        with self.low_force(20):
+            self.line("to_push_pre", T_pre, "normal", tip_margin=TIP_MARGIN_PUSH)
         f0 = self.force(); peak = 0.0
         ma = float(np.clip((OFF - face_n) / 0.05, -3, 3)); mb = 1.0 if ins_ok else 0.0
         end = "steps"; k0 = len(self.trans); n_force = 0
@@ -476,7 +477,8 @@ class Episode:
                 if h + dh < 0.035:
                     continue
                 T = push_T(n + dn, t, h + dh, self.tz)
-                st, r = self.try_step(f"retreat{i}", T, TIP_MARGIN_PUSH)
+                with self.low_force(20):
+                    st, r = self.try_step(f"retreat{i}", T, TIP_MARGIN_PUSH)
                 if st == "ok" and float(r.get("max_force_n", 0.0)) <= RETREAT_F:
                     n, h = n + dn, h + dh; moved = True
                     break
@@ -591,7 +593,14 @@ class Episode:
             e = e0 + shv * d0
             Tg = tool_down_T(np.r_[e, self.tz + tip_h + TIP_OPEN], yaw); T_pre = Tg.copy(); T_pre[2, 3] += 0.05
             self.line(f"front_pre{k}", T_pre, "slow")
-            self.line(f"down_to_front{k}", Tg, "slow")
+            try:
+                with self.low_force(20):
+                    self.line(f"down_to_front{k}", Tg, "slow")
+            except Abort as e:                           # touched the wall top: a miss, back up and try the next point
+                s.log(f"grasp approach {k} stopped: {str(e)[:100]}")
+                tried.append([round(shv, 3), "stop"])
+                self.line(f"up_after_stop{k}", T_pre, "slow")
+                continue
             g = s.gripper(1.0, "grasp the front wall")
             tried.append([round(shv, 3), round(g, 1)])
             if g < HOLD_MAX or s.dry:
@@ -607,6 +616,24 @@ class Episode:
         self.lift_to("lift", SAFE_H, "normal")
         s.summary(grasp_wall_angle=ang_w)
         return dict(yaw=yaw, d0=d0, drop=tip_h + TIP_OPEN, L_back=max(2 * half - 0.006, L_MIN), e=e.copy(), Tg=Tg.copy())
+
+    def low_force(self, f):
+        """Context: lower the session's force stop to f N for the moves inside (operator 00:50: final approaches toward
+        the drawer, knob or table stop at ~20 N instead of 65 N), restored after."""
+        import contextlib
+        ex = getattr(self.s, "executor", None)
+
+        @contextlib.contextmanager
+        def cm():
+            old = getattr(ex, "force_limit", None) if ex is not None else None
+            try:
+                if ex is not None and getattr(ex, "force_cap", None):
+                    ex.force_limit = min(float(f), float(ex.force_cap))
+                yield
+            finally:
+                if ex is not None and getattr(ex, "force_cap", None):
+                    ex.force_limit = old if old is not None else ex.force_cap
+        return cm()
 
     def put_down_if_held(self):
         """On any exception: if the gripper still holds the wall, lower to just above the table at the current xy (or
@@ -968,7 +995,8 @@ class Episode:
         self.line("forward_above_slot", T0h, "normal")
         T0m = T0.copy(); T0m[2, 3] += 0.04
         self.line("down_in_front_of_slot", T0m, "normal")
-        self.line("down_to_insert_start", T0, "slow")
+        with self.low_force(25):
+            self.line("down_to_insert_start", T0, "slow")
         g = float(s.feedback()["gripper"])
         s.require(g < HOLD_MAX or s.dry, f"drawer lost while carrying (gripper {g:.1f})")
         meas = self.measure_held(n0)

@@ -112,3 +112,11 @@ most 8.5 N over 49 `ready` moves.
   hit the force stop (66.2 N). Fourth force stop tonight. Library change (commit fa5b57f): programs may lower the
   force limit per move (executor.force_limit) but can never raise or clear the task's 65 N cap; both agents told to
   use ~20 N for every approach into an unknown contact.
+- 2026-11-21 01:08: RL episodes 33 and 34 crashed with "joint jump" errors in short rotating lines (cancel_yaw,
+  retreat_clear_back). Library bug: cart_line sampled by translation only. Fixed (0.5 deg per sample), offline test
+  added; reset 167 was the first reset with the 20 N per-move limit (contact stopped at 20.5 N; attempt max 23.5 N).
+- 2026-11-21 01:08: second false cabinet alarm (270 mm): reset 168 left the arm low beside the drawer; the guard took
+  the arm (a 0.30 m tall blob) for the cabinet, and the arm also hid part of the real cabinet (its centroid read 40 mm
+  off). Side image at ~01:12: cabinet on its tape, unmoved; drawer half out of the slot, pull toward the robot. Guard
+  changed: the tall blob nearest the reference, merged blobs (> 0.30 m) skipped, and a pause only after two valid
+  far readings in a row. Pipeline relaunched ~01:14.
