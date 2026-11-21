@@ -148,3 +148,6 @@ most 8.5 N over 49 `ready` moves.
   the drawer ~10 cm from the cabinet, upright"); the orchestrator restarted a repair cycle. Notified the user at 03:09.
   Keep-out boxes were not loosened.
 - 2026-11-21 03:22: user instruction relayed to the reset agent: push the tipped drawer sideways away from the cabinet and lay it down, without pushing it off the table edge (curtain side ~y +0.30); short pushes, 25 N stops, re-measure after each.
+- 2026-11-21 04:03: attempt 195 escaped (gripper part-closed) but misperceived the scene and its joint move to a pinch high pose hit something at 66.5 N (stop fired). The drawer now lies on the table at the cabinet's front-right corner, pull frame facing up. Note sent with the actual state.
+- 2026-11-21 04:09: attempt 196 dragged the standing drawer clear of the cabinet (open space ~[0.32, -0.18]); its drift rule stopped it before laying it down. Note: tip it over by its top edge (user's instruction, step 2).
+- 2026-11-21 04:16: attempts 197-198 could not lay the standing drawer down (landing out of the side camera's view; hook contact at 34.4 N; 2 cm drift rule). Note: slide toward +y into view first, then tip.

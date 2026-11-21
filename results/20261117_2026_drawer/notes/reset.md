@@ -1,14 +1,6 @@
-USER INSTRUCTION 03:22 (the user, verbatim): "you can push it the side and lie it down to get back to normal; be careful
-not to dropping the drawer to the ground from the edge of the table".
-
-So, for the drawer standing on an end wall at the cabinet's corner:
-1. Push it sideways, away from the cabinet corner, toward the middle of the table (toward -y and toward the robot),
-   in short pushes (3-5 cm each) with closed fingers at mid-height of the drawer (~5-7 cm above the table) under
-   self.low_force(25); re-measure with the wrist camera after each push. Stop when it is >= 8 cm clear of the cabinet.
-2. Then lay it down so it is the right way up: push its top edge from the open side toward its bottom side, slowly,
-   under low_force(25), so it tips onto its bottom (open side up). Lying on a side wall is acceptable too: the normal
-   reset (tipped-drawer handling, pull facing the robot) takes it from there.
-3. TABLE EDGE: the curtain side of the table is near y = +0.30 (cell keep-in y [-0.45, 0.30]) and the drawer is within
-   ~10-15 cm of it. Never push toward +y (the curtain/table edge) or away from the robot past the cabinet; every push
-   must move the drawer toward the table centre. If a push would leave the drawer's outline within 10 cm of a table
-   edge, do not do it.
+Operator note 04:16 (attempt 198): the tip push was skipped: "landing at [0.238, -0.147] not safe (edge / camera
+view)". The drawer now stands at ~[0.38, -0.11] (open side toward 14 deg, so it falls toward ~194 deg, i.e. toward
+the robot, out of the side camera's view). Fix the landing spot first: slide it toward +y (90 deg) by ~8-10 cm with low
+pushes from its -y side (its target area is x 0.36-0.37, y -0.03..-0.01, which the side camera sees), check the
+landing spot (current position + ~0.07 m toward 194 deg) is in view and >= 10 cm from the edges, then tip it. The
+2 cm drift limit still stopped this run: in open space allow ~8 cm (my 04:13 note).
