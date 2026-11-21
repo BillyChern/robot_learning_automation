@@ -556,6 +556,15 @@ class Episode:
                 meas = self.measure_held(n_at)
             if not (meas.get("ok") and meas.get("t_span")):
                 break
+            if meas["t_span"] < 0.07:
+                # attempts 84-86: t_span 0.048-0.058 (drawer partly hidden by the arm), the edge estimate moved the line
+                # 0.9-1.5 cm and every insertion jammed; with t_span >= 0.08 (ep 25, 27) it reached its end. Too little
+                # of the drawer seen: keep the tool (grasp centre) on the slot centre instead.
+                if i == 0:
+                    self.t_line = T_C + EDGE_TARGET
+                    self.line("align_t_nominal", tool_down_T(np.r_[xy_of(n_at, self.t_line), z], yaw), "slow")
+                    s.log(f"align: t_span {meas['t_span']:.3f} too small to trust, tool on the slot centre")
+                break
             # drawer centre (absolute t) = T_C + t_err_meas - t_span/2 + 0.065; t_err is measured against T_C
             c_abs = T_C + meas["t_err"] - meas["t_span"] / 2 + 0.065
             err = (T_C + EDGE_TARGET) - c_abs

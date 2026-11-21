@@ -9222,3 +9222,112 @@ Structured output provided successfully
 ```
 </details>
 
+**19:20:36 execute agent:** No response requested.
+
+### 19:20:37 orchestrator -> execute agent
+
+```text
+# attempt_86: exit code 2; outcome: fail
+
+command: RLPJ_RL_MODE=eval RLPJ_EPISODE=-1 /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: Real test episode: straight aligned insertion; even if it jams ~6 cm out, release and push the drawer in with the open pusher straddling the knob (slow steps, 50 N stop), retreat up first, verify; commit: 666424a; duration_s: 193.3; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "666424a680",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 360.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4274, 89.9565, 0.561, 90.4588], "gripper": 39.7},
+"fk_check_mm": 0.18,
+"rl_mode": "eval",
+"episode": -1,
+"policy": {"source": "/home/r2r/robot_learning_final_pj/runs/20261117_2026_drawer/agents/execute/rl/policy/actor.npz", "updates": 25840, "mtime": "Fri Nov 20 18:09:11 2026"},
+"transitions": 25,
+"return": -8.855,
+"objects": {"drawer": {"xy": [0.3544, -0.009], "rect_c": [0.3529, 0.0041], "size": [0.127, 0.102], "h_top": 0.066, "front_dev_deg": 8.8, "shift_w": 0.0014}},
+"slot_before": {"n": 568, "flush": 0.0, "behind": 0.477, "front": 0.489, "median_d": 0.0186},
+"side_brightness": 135.8,
+"pull_check": {"face": "A", "lr": ["A", "D"], "found": true, "area": 161, "side": "left"},
+"decisions": ["front wall at [0.314, -0.019] (face +9 deg from facing the robot), top 0.066, depth 0.102", "held drawer: t err -0.047 yaw err +1.4 (614 pts); insertion from n-OFF -0.185", "push retreat: up first at n-OFF -0.028, then back"],
+"segments": [["ready", true, 0.135, 0.47, 11.87, 39.8], ["above_front", true, 0.079, 0.28, 2.81, 39.5], ["down_to_front_pre", true, 0.094, 0.32, 2.09, 39.2], ["front_correct", true, 0.02, 0.08, 2.4, 39.2], ["down_to_front", true, 0.03, 0.11, 5.17, 39.7], ["lift_slow", true, 0.037, 0.14, 5.17, 39.7],
+"grasp_reading": 87.8,
+"wall_shift": 0.023000000000000048,
+"grasp_wall_angle": null,
+"align": [0.0108, -0.0012],
+"t_line": -0.1222,
+"held": {"n0_minus_off": -0.185, "z0_above_table": 0.0972, "yaw2": 28.9, "meas": {"ok": true, "n": 614, "t_err": -0.0473, "yaw_err": 1.42, "t_span": 0.048}, "t_line": -0.1222},
+"insert": {"end": "force", "steps": 16, "n_minus_off": -0.0622, "dt": 0.0, "t_line": -0.1222, "dz": -0.0008, "dyaw": 0.0},
+"release": {"frac": 0.4, "reading": 39.7, "tries": 1},
+"push_frame": {"yaw": 0.0, "n0": 0.44305869439616796, "t0": -0.1285, "drawer_t": -0.1285},
+"slot_after_push": {"n": 876, "flush": 0.114, "behind": 0.635, "front": 0.018, "median_d": 0.0296},
+"push": {"end": "force", "steps": 9, "tip_n_minus_off": -0.023, "dt": -0.0001, "h": 0.0513},
+"transitions_file": "transitions/eval_test_20261120_192020.npz",
+"verify": {"check": false, "judge": null, "bonus": 0.0, "reason": "the drawer sticks out of the slot", "slot": {"n": 950, "flush": 0.028, "behind": 0.271, "front": 0.696, "median_d": -0.0505}, "cabinet_moved_m": 0.011, "drawer_on_table": false, "terminal_reward": -1.878},
+"first_failed_check": "geometric check False: the drawer sticks out of the slot",
+"return_home": "already at default pose",
+"exit_code": 2,
+"gripper_final": {"cmd": 0.35, "reading": 34.93449783325195},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 211 lines; last 40:
+[19:19:31] push step 6: a [0.38, 0.0, 0.15, 0.0] (mu [0.383, -0.535, 0.721, 0.961]) -> force_retry 60_push06: contact force 55.3 N > 50 N at t=0.55s tip n-OFF -0.0246 dt -0.0000 h 0.051 peak 40.0 N r -1.020
+[19:19:31] plan 64_push07: T=1.1s check ok=True tip>0.043 vmax=3.1deg/s lin=0.018m/s
+[19:19:32] exec 64_push07: {'segment': 'push07', 'ok': False, 'reason': 'contact force 54.8 N > 50 N at t=0.54s', 'T_plan': 1.07, 'max_dev_deg': 0.054, 'max_dev_mm': 0.5, 'n': 22, 'max_force_n': 54.8, 't_exec': 0.6, 'rate_hz': 36.7, 'final_err_deg': 0.913}
+[19:19:32] plan 65_unload0: T=0.5s check ok=True tip>0.043 vmax=1.0deg/s lin=0.006m/s
+[19
+... (9356 more characters)
+```
+
+**19:20:54 tool Bash:**
+
+```bash
+python3 - <<'EOF'
+p="programs/execute.py"; s=open(p).read()
+old='''            if not (meas.get("ok") and meas.get("t_span")):
+                break'''
+new='''            if not (meas.get("ok") and meas.get("t_span")):
+                break
+            if meas["t_span"] < 0.07:
+                # attempts 84-86: t_span 0.048-0.058 (drawer partly hidden by the arm), the edge estimate moved the line
+                # 0.9-1.5 cm and every insertion jammed; with t_span >= 0.08 (ep 25, 27) it reached its end. Too little
+                # of the drawer seen: keep the tool (grasp centre) on the slot centre instead.
+                if i == 0:
+                    self.t_line = T_C + EDGE_TARGET
+                    self.line("align_t_nominal", tool_down_T(np.r_[xy_of(n_at, self.t_line), z], yaw), "sl
+... (1171 more characters)
+```
+
+<details><summary>19:21:01 result</summary>
+
+```text
+RESULT 0 [ 0.366 -0.025] -5.7 ('ran', 20, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': 0.0, 't_line': -0.158, 'dz': -0.0008, 'dyaw':
+RESULT 1 [ 0.369 -0.014] -8.0 ('ran', 20, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': 0.0, 't_line': -0.1227, 'dz': -0.0011, 'dyaw'
+RESULT 2 [ 0.369 -0.019] 9.8 ('ran', 20, {'end': 'reached', 'steps': 13, 'n_minus_off': np.float64(-0.036), 'dt': 0.0, 't_line': -0.158, 'dz': -0.0009, 'dyaw': 
+ca98dea alignment only with enough of the drawer seen (t_span >= 0.07), else tool on the slot centre
+```
+</details>
+
+**19:21:07 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "RLPJ_RL_MODE=eval RLPJ_EPISODE=-1 /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
+ "moves_robot": true,
+ "what": "Real test episode: lateral alignment only if enough of the held drawer is visible (else tool on the slot centre), straight insertion, push with the open pusher, retreat up first, verify",
+ "report": ""
+}
+```
+
+<details><summary>19:21:07 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

@@ -18,8 +18,8 @@
    "unsure": 0
   },
   "resets": {
-   "total": 72,
-   "ok": 38,
+   "total": 73,
+   "ok": 39,
    "fail": 34,
    "manual": 0
   },
@@ -71,15 +71,15 @@
    "model": "claude-opus-5-5",
    "started": "2026-11-17T22:12:06",
    "ended": "2026-11-18T02:06:21",
-   "attempts": 24,
-   "robot_attempts": 17,
-   "turns": 254,
-   "cost_usd": 55.07888830000001,
-   "input_tokens": 476,
-   "output_tokens": 210983,
-   "cache_read": 91232995,
-   "cache_creation": 3244195,
-   "duration_s": 2975.979,
+   "attempts": 25,
+   "robot_attempts": 18,
+   "turns": 257,
+   "cost_usd": 55.50142870000001,
+   "input_tokens": 482,
+   "output_tokens": 212976,
+   "cache_read": 92730557,
+   "cache_creation": 3254588,
+   "duration_s": 3006.816,
    "first_success_attempt": null,
    "first_success_after_attempts": null,
    "time_to_first_success_s": null,
@@ -247,7 +247,7 @@
   }
  },
  "next_episode": 29,
- "next_reset": 72,
+ "next_reset": 73,
  "vlm": {
   "calls": 29,
   "cost_usd": 1.7520620000000002
