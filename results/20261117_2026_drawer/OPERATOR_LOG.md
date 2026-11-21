@@ -62,6 +62,7 @@ Interventions, stops and mid-run changes by the operator (the user, or Claude Co
 | 2026-11-20 19:45 | Claude | Side camera stopped streaming (USB hiccup): RealSense hardware reset fixed it. Cabinet edges match the set-up (t -0.196..-0.065), front face ~9 mm deeper (inside the 12 mm flush tolerance): geometry kept; cabinet guard restarted (reference blob (0.591, 0.049), pauses at > 15 mm creep); relaunched at 65 N | user: "continue now" |
 | 2026-11-20 21:00 | user / Claude | Slot and keep-out shifted -35 mm along the cabinet front: the cabinet crept under the pushes (reset wrist image: fingers 3.6 cm beside the knob; drawer face 2.9 cm; blob 4.0 cm); notes to both agents | user: "it is now grasping right to the handle still, there are issues" |
 | 2026-11-20 21:15 | Claude | Reverted the 21:00 slot shift (it went the wrong way: attempt 141 pinched even further from the knob); corrected the notes; reset agent asked to steer the pinch by the wrist image | |
+| 2026-11-20 21:30 | Claude | Slot and keep-out shifted +36 mm along t from the reset's wrist evidence (attempts 140-142: knob 3.6 cm to +t; judge 'left'; the corrected approach was refused by the old keep-out); notes to both agents | |
 
 Force stops so far (25 N limit) were all real contacts: finger dragging on the pulled-out drawer (30.8 N), drawer meeting the
 table while placing (27.3 N), lifting while still gripping (26.6 N), drawer edge meeting the slot (25.4 N). Free moves: at

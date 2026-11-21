@@ -411,7 +411,7 @@ class Reset:
             s.log(f"measure_tab: projection unavailable ({str(e)[:80]}), fallback scale")
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         cents = []
-        for y in range(470, 710, 10):
+        for y in range(420, 710, 10):     # attempt 140: knob near the image edge, higher up
             if y + 5 > img.shape[0]:
                 break
             row = hsv[y - 4:y + 5].astype(float)
@@ -427,8 +427,8 @@ class Reset:
                     while x < len(g) and g[x]:
                         x += 1
                     w = x - x0; c = (x0 + x) / 2
-                    flank = near_wood[max(x0 - 25, 0)] and near_wood[min(x + 24, len(g) - 1)]   # wood on both sides
-                    if 40 <= w <= 200 and flank and abs(c - u_pad) < 330 and (best is None or w > best[1]):
+                    flank = (x0 < 25 or near_wood[x0 - 25]) and (x > len(g) - 25 or near_wood[x + 24])   # wood on both sides (or the image edge)
+                    if 40 <= w <= 200 and flank and (best is None or w > best[1]):
                         best = (c, w)          # the knob is the widest metal run (frame bars are thin)
                 x += 1
             if best is not None:
@@ -448,12 +448,30 @@ class Reset:
             c = float(np.median(cents)); spread = float(np.median(np.abs(np.array(cents) - c)))
             res.update(u_tab=round(c, 1), spread=round(spread, 1))
             if spread < 25:
-                dt = float(np.clip((c - u_pad) / px_per_m * sgn, -0.04, 0.04))
+                dt = float(np.clip((c - u_pad) / px_per_m * sgn, -0.06, 0.06))
                 res["dt"] = round(dt, 4)
         s.summary(**{f"tab_measure_{tag}": res})
         self.tab_img = self.save(f"wrist_tab_{tag}", img) or self.tab_img
         s.decide(f"wrist tab measurement {tag}: " + (f"tab {dt * 1000:+.1f} mm along t from the aim" if dt is not None else f"not found {res}"))
         return dt
+
+    def judge_tab_side(self, tag):
+        """20:55 operator: when the grey-run detector finds nothing, ask the vision judge on the close wrist image
+        whether the knob is left or right of the gap between the finger pads; step 12 mm that way (image left = +t)."""
+        s = self.s
+        if self.tab_img is None or s.dry:
+            return None
+        goal = ("Close-up photo from a camera on a robot gripper whose two dark finger pads are at the bottom of the "
+                "image; the robot wants to pinch the small grey metal knob (tab) below a grey metal label frame on a "
+                "wooden drawer front. Only judge where the knob is relative to the gap between the two finger pads.")
+        for side, dt in (("LEFT", 0.012), ("RIGHT", -0.012)):
+            q = (f"The grey metal knob of the drawer is visible and it is clearly to the {side} of the gap between the two "
+                 f"finger pads (more than about 1 cm off, not between them).")
+            if self.ask(self.tab_img, q, f"tab_side_{tag}_{side.lower()}", goal=goal):
+                s.decide(f"judge: knob {side} of the finger gap -> step {dt * 1000:+.0f} mm along t")
+                return dt
+        s.decide("judge: knob not clearly left or right of the finger gap (or not visible)")
+        return None
 
     def save_tab(self):
         """Persist the tab position that held (slot-centre relative) for later resets (15:52 operator)."""
@@ -524,6 +542,8 @@ class Reset:
                 for it_m in range(3):
                     time.sleep(0.4)
                     dt_m = self.measure_tab(f"{k}_{it_m}")
+                    if dt_m is None:
+                        dt_m = self.judge_tab_side(f"{k}_{it_m}")     # 20:55 operator: ask the judge where the knob is
                     if dt_m is None:
                         break
                     if abs(dt_m) <= 0.0025:

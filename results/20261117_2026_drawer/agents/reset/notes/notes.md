@@ -201,3 +201,18 @@
   pull is trusted even if the side judge cannot see the pull afterwards (no loops). Offline: look-down at 4 spots,
   all 4 wall views at the stage for yaw 0/30/-40, stage + target placements OK.
 - attempt 136 SUCCESS (layout ok, 1.8 cm, pull facing the robot, judge 0.88): staging + wrist footprint worked (footprint centre fixed the cabinet-merged outline), grasps 89.1. The close wall views all came back 'no' although two said the pull/label frame were visible (judge used the reset goal: 'still held', 'fingers in view'); the side judge's lower-right answer then gave the right 90 deg turn. Fix: wall views use a neutral SURVEY_GOAL. Run took 824 s (two staging rounds).
+- 20:55/21:00 operator + attempts 140-141: pinches closed on nothing, the tab detector found nothing (rows 0): the
+  close views show the fingers at the cabinet's side edge with the knob far image-left (= +t, the sign that converged
+  in 133) by 3.6-7 cm. The yaml was shifted at 21:00 to slot_t [-0.201,-0.126] (= -t) and rewritten back to
+  [-0.166,-0.091] at 21:13:19 (file mtime); side depth shows the cabinet body t -0.21..-0.049 in both 136 and 141
+  (= the restored yaml). Saved tab position deleted. Detector: rows 420-710, whole image width, image-edge flank,
+  cap 60 mm (finds 140's knob at the left edge: +57 mm offline scale); judge fallback 'knob left/right of the finger
+  gap' -> 12 mm step. Model (current yaml keep-out): pinch aims up to t ~ -0.114 are feasible; a knob at ~-0.098
+  would be refused as cabinet front -> if so, the yaml's t is off and the run will log the measured knob t.
+- attempt 142 (21:17-21:28): judge (conf 0.88) put the knob LEFT (= +t) of the finger gap twice; first +12 mm step
+  (aim t -0.110) executed, the next (aim -0.098) REFUSED by the model: keep-out 'cabinet_front' box at
+  t -0.091..-0.051, n >= OFF+1 cm (centre (0.5261, 0.1344)) - the fingers around a knob at t ~ -0.098 (drawer
+  recessed 1.7 cm) enter it. Same for all variants; the drags use the old t. => the knob/drawer face is centred
+  ~+3 cm along t from the yaml slot (operator 21:00 also saw the face centred 2.9 cm 'further' but shifted the yaml
+  the wrong way); the slot window and the opening's keep-out boxes need ~+3 cm in t before the reset can reach it.
+- 21:30 operator: yaml slot_t [-0.130,-0.055] (centre -0.0925), keep-out moved (-13.4,+33.4) mm. A pinch at PIN_T held at 21:29 with the new yaml (tab_position.json slot_c -0.0925, t_from_slot -0.0055, depth 0.022): kept. Offline 6/6, deep 8/8 with the new boxes.

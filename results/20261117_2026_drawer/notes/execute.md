@@ -11,3 +11,8 @@ task yaml is back to slot_t [-0.166, -0.091] (centre -0.1285). Evidence from you
 (these numbers) the knob was at the LEFT edge of the wrist view, ~3.6 cm (280 px at 7687 px/m) from the gap between
 the pads; with the shift (attempt 141) it went almost out of view at the bottom left. So the knob is ~3.6 cm on the
 image-left side of where the yaml puts it.
+
+SLOT SHIFTED +36 mm ALONG t (21:30), from the reset's own wrist evidence: attempt 140 knob 3.6 cm image-left of the
+finger gap; attempt 141 (after a wrong -35 mm shift) further away; attempt 142 the judge said "left" (= +t) and the
++12 mm correction was refused by the OLD keep-out. task yaml now: slot_t [-0.130, -0.055] (centre -0.0925), keep-out
+boxes moved by (-13.4, +33.4) mm. Re-read the yaml; discard saved knob poses from before 21:30.
