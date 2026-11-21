@@ -336,9 +336,15 @@ class Episode:
                     except Abort as e:
                         s.log(f"back out: {str(e)[:100]}")
                     xyz = self.T_now()[:3, 3]; q2 = nt(xyz[:2]); n, t, z = float(q2[0]), float(q2[1]), float(xyz[2])
-                    self.align(n, z, yaw2 + dyaw)
+                    # no lateral re-alignment while the drawer is partly in the slot (attempt 84: the side view then
+                    # does not follow the tool, the re-aligns walked the tool 2.5 cm sideways against the slot):
+                    # back to the aligned line only
                     t = self.t_line
-                    TL = self.t_line
+                    T_l = tool_down_T(np.r_[xy_of(n, t), z], yaw2 + dyaw)
+                    try:
+                        self.line(f"back_to_line{n_force}", T_l, "slow")
+                    except Abort as e:
+                        s.log(f"back to line: {str(e)[:100]}")
             else:
                 r -= 2.0
                 peak = F_STOP
@@ -366,7 +372,7 @@ class Episode:
     def stage_push(self, face_n, t0, ins_ok):
         s = self.s
         s.phase("push_learned")
-        n = min(face_n - 0.025, PUSH_NMAX - 0.03); t, h = t0, PUSH_H
+        n = max(min(face_n - 0.025, PUSH_NMAX - 0.03), OFF - 0.085); t, h = t0, PUSH_H
         T_pre = push_T(n, t, h, self.tz)
         T_hi = T_pre.copy(); T_hi[2, 3] += 0.06
         s.gripper(PUSH_GRIP, "fingers apart: they straddle the knob")
@@ -878,7 +884,7 @@ class Episode:
             self.finish(before); return
         # ep 26: the insertion stopped on force at n-OFF -0.056 and the drawer ended nearly flush in the side view
         # (flush 0.43, median_d 0.0) but the push was skipped: a jammed insertion still gets the push when reachable
-        if face_n - 0.025 < OFF - 0.08:
+        if face_n - 0.012 < OFF - 0.088:          # pusher reach (tilt 40: pre-pose checked to n-OFF -0.08 offline)
             s.decide(f"drawer front at n-OFF {face_n - OFF:+.3f}: too far out for the tilted push (j3 limit), no push")
             self.finish(before); return
         self.to_ready()

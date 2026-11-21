@@ -191,3 +191,12 @@
   images 122 -> +11 mm, 132 first view +27 (offline scale), 132 check/closed -> +9 mm.
 - attempt 133: tab centring converged (34 -> 5 -> 3.5 mm) but the pinch still closed on nothing (knob overlapping the left finger in the image); the cocked drawer then came out with the end-wall pick of its protruding part (near-cabinet candidate) - but the orientation judge used the task's reset_orientation text, which also requires 'on the table away from the cabinet': at check1 the pull DID face the robot (drawer still at the slot) -> 'no' -> 90/180 turns made it backwards. Fix: ORIENT_Q asks orientation only.
 - attempt 134: 2 end-wall misses + a marginal grasp (96.5) whose drawer hit the table on place (58 N). Cause: L forced to 0.155 when < 0.145 (old camera partial outline); the moved camera measures the whole drawer 0.12 x 0.105 -> grasp ~1.8 cm outside the wall. Fix: trust measured L (only < 0.10 -> 0.12); table grasp must read < FIRM_MAX 94.5 (good grasps 86-90 in all past attempts).
+- attempts 134-135 + 18:39 operator: side judge kept saying 'pull on a hidden wall' -> 180 deg turns in a loop; the
+  end-wall grasps of a drawer near the cabinet missed (outline merged with the cabinet: centre 4.5 cm off).
+  New flow when the side judge does not confirm the pull: (1) wrist look-down (0.40 m above the drawer) -> footprint
+  from wood pixels on the rim plane; (2) pick and set it down WITHOUT turning at STAGE_XY (0.34, -0.15), >= 25 cm
+  from the cabinet face; (3) wrist footprint again + close views of each wall (camera 6-14 cm out, 22-30 cm up,
+  looking at the wall's outer face) judged one by one ('the near wall carries the pull'); (4) pick and place at the
+  target turning by exactly the angle that brings that wall to the robot side. A placement made with a close-view
+  pull is trusted even if the side judge cannot see the pull afterwards (no loops). Offline: look-down at 4 spots,
+  all 4 wall views at the stage for yaw 0/30/-40, stage + target placements OK.

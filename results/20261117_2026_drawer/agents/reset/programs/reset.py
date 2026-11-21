@@ -77,6 +77,8 @@ ORIENT_Q = ("Judge ONLY which way the wooden drawer is turned, not where it is (
             "cabinet slot, or anywhere on the table). The drawer's metal pull - a small grey metal label frame with a "
             "short metal tab below it - is on the outside of the drawer wall that faces the lower left of this image, "
             "toward the robot base.")
+STAGE_XY = (0.34, -0.15)        # 18:39 operator: turn the drawer here (>= 25 cm from the cabinet face), then carry it
+STAGE_GAP = 0.20                # never place/turn closer than this (centre to cabinet face) except at the target
 FACE_GAP_MIN = 0.17           # 16:35 operator: drawer centre >= 17 cm in front of the cabinet face
 Y_CENTRE = -0.10                # robot's centre line on the table side (01:12: slide only toward it)
 DRIFT_MAX = 0.02                # 01:12: stop sliding/righting attempts after 2 cm of unintended drift
@@ -130,6 +132,8 @@ class Reset:
         self.deep_cfg = None
         self.from_recess = False
         self.tab_img = None       # last close wrist view of the drawer front (pinch approach)
+        self.last_conf = 0.0
+        self.survey_pending = self.survey_placed = False
         self.or_stage = 0         # judge guess sequence for an unseen pull (attempt 124)
         self.tab_dt = TAB_DT0     # tab t offset from PIN_T: saved from the last hold, updated by the wrist measurement
         self.pin_dt = 0.0         # sideways (t) offset of the tab: attempt 92 saw it ~1-1.5 cm toward +t in the recessed drawer
@@ -741,6 +745,10 @@ class Reset:
             r = dict(success=None, reason=f"judge error {e}")
         self.s.log(f"vision judge {tag}: success={r.get('success')} conf={r.get('confidence')} reason={str(r.get('reason'))[:300]}")
         self.s.summary(**{f"vlm_{tag}": dict(success=r.get("success"), conf=r.get("confidence"), reason=str(r.get("reason"))[:200])})
+        try:
+            self.last_conf = float(r.get("confidence") or 0.0)
+        except Exception:
+            self.last_conf = 0.0
         return r.get("success")
 
     def walls_of(self, c):
@@ -1302,6 +1310,127 @@ class Reset:
         self.lift_to("clear_up", SAFE_H, "normal")
         return delta
 
+    # ------------------------------------------------------------ wrist survey of a drawer on the table (18:39)
+    def wrist_footprint(self, c, tag):
+        """Look straight down from 0.40 m above the drawer: wood pixels projected onto the rim plane -> footprint OBB
+        (the side camera's outline merges with the cabinet near it: attempt 135 outline centre 4.5 cm off)."""
+        s = self.s
+        if s.dry:
+            return None
+        from rlpj.perception.wrist import project_base_to_wrist
+        xy0 = np.array(c["xy"], float)
+        h_top = float(np.clip(c["h"], 0.05, 0.085))
+        T = tool_down_T(np.r_[xy0, self.tz + 0.40], 0.0)
+        try:
+            self.to_ready()
+            self.joint_to(f"look_down_{tag}", T)
+        except Abort as e:
+            if "check failed" not in str(e):
+                raise
+            s.decide(f"look-down pose refused ({str(e)[:80]})"); return None
+        time.sleep(0.6)
+        img = s.wrist.latest()[0]
+        if img is None:
+            return None
+        self.save(f"wrist_down_{tag}", img)
+        Tm = calib.pose_to_T(s.feedback()["pose"])
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        mask = (hsv[..., 0] >= 3) & (hsv[..., 0] <= 25) & (hsv[..., 1] > 80) & (hsv[..., 2] > 25)
+        g = np.arange(-0.16, 0.1601, 0.003)
+        X, Y = np.meshgrid(xy0[0] + g, xy0[1] + g, indexing="ij")
+        G = np.stack([X.ravel(), Y.ravel(), np.full(X.size, self.tz + h_top)], 1)
+        uv = project_base_to_wrist(G, Tm)
+        ok = np.all(np.isfinite(uv), 1) & (uv[:, 0] >= 0) & (uv[:, 0] < img.shape[1]) & (uv[:, 1] >= 0) & (uv[:, 1] < img.shape[0])
+        occ = np.zeros(X.size, np.uint8)
+        occ[ok] = mask[uv[ok, 1].astype(int), uv[ok, 0].astype(int)]
+        q = nt(G[:, :2])
+        occ[(q[:, 0] > OFF - 0.015) & (q[:, 1] > CAB_T[0] - 0.03) & (q[:, 1] < CAB_T[1] + 0.03)] = 0
+        occ = cv2.morphologyEx(occ.reshape(X.shape), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+        n, lab, st, _ = cv2.connectedComponentsWithStats(occ, connectivity=8)
+        if n < 2:
+            s.decide("wrist footprint: no wood seen"); return None
+        k = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))
+        cells = np.argwhere(lab == k)
+        xy = np.stack([X[cells[:, 0], cells[:, 1]], Y[cells[:, 0], cells[:, 1]]], 1)
+        ctr, (L, W), yaw = obb(xy)
+        res = dict(obb_c=np.round(ctr, 4).tolist(), L=round(L, 3), W=round(W, 3), yaw=round(yaw, 1), cells=int(len(xy)))
+        s.summary(**{f"wrist_footprint_{tag}": res})
+        if not (0.09 <= L <= 0.17 and 0.08 <= W <= 0.15):
+            s.decide(f"wrist footprint implausible {res}: keep the side-camera outline"); return None
+        s.decide(f"wrist footprint {tag}: centre {res['obb_c']} L {L:.3f} W {W:.3f} yaw {yaw:.0f} (side camera {np.round(c['obb_c'], 3).tolist()})")
+        return dict(c, obb_c=res["obb_c"], L=res["L"], W=res["W"], yaw=res["yaw"], xy=res["obb_c"])
+
+    def wall_views(self, c, tag):
+        """18:39 operator: find the pull wall directly: a close wrist view of each wall from outside (camera 20 cm out,
+        16 cm up, looking at the wall's outer face), judged one by one. Returns the pull wall's outward normal or None."""
+        s = self.s
+        if s.dry:
+            return None
+        ctr, walls = self.walls_of(c)
+        # robot-facing wall first, then the two sides, then the far one
+        walls = sorted(walls, key=lambda w: -float(w[0] @ unit(-N)))
+        Q = ("This photo is from a camera on the robot gripper, looking at one outer wall of a wooden drawer that stands "
+             "upright on a table. The drawer wall facing the camera (the nearest wall, in the middle of the image) carries "
+             "the drawer's metal pull: a small grey metal label frame with a short metal tab or knob below it.")
+        best = None
+        for j, (d, half) in enumerate(walls):
+            target = np.r_[ctr + d * (half + 0.005), self.tz + 0.035]
+            moved = False
+            for out_, up_ in ((0.10, 0.26), (0.14, 0.22), (0.06, 0.30)):
+                p_cam = np.r_[ctr + d * (half + out_), self.tz + up_]
+                z = unit(target - p_cam)
+                for sx in (1.0, -1.0):
+                    x = sx * np.r_[-d[1], d[0], 0.0]; x = unit(x - (x @ z) * z)
+                    T = np.eye(4); T[:3, :3] = np.stack([x, np.cross(z, x), z], 1); T[:3, 3] = p_cam
+                    try:
+                        self.to_ready()
+                        q = self.ik(T, [self.q_now(), SEED_DOWN] + [np.array([0, 40, -120, 0, j5, j6], float) for j5 in (30.0, 60.0) for j6 in (-90.0, 90.0)])
+                        s.move_joint(f"view_wall_{tag}_{j}", q, "normal")
+                        moved = True
+                        break
+                    except Abort as e:
+                        if "check failed" not in str(e) and "no IK" not in str(e):
+                            raise
+                if moved:
+                    break
+            if not moved:
+                s.decide(f"wall view {j} ({ang(d):.0f} deg) not reachable"); continue
+            time.sleep(0.6)
+            img = s.wrist.latest()[0]
+            path = self.save(f"wrist_wall_{tag}_{j}", img, w=960) if img is not None else None
+            if path is None:
+                continue
+            ans = self.ask(path, Q, f"wall_{tag}_{j}")
+            s.decide(f"wall view {j}: wall facing {ang(d):.0f} deg -> pull {'YES' if ans else 'no' if ans is False else '?'} (conf {self.last_conf:.2f})")
+            if ans and (best is None or self.last_conf > best[1]):
+                best = (d, self.last_conf)
+                if self.last_conf >= 0.7:
+                    break
+        self.to_ready()
+        if best is None:
+            return None
+        s.summary(**{f"pull_wall_{tag}": dict(dir_deg=round(ang(best[0]), 1), conf=best[1])})
+        return best[0]
+
+    def place_plain(self, held, xy, tag):
+        """Set the held drawer down at xy without turning it (staging spot for the survey)."""
+        s = self.s
+        g = np.asarray(xy, float) + held["grasp_off"]
+        h_tool = held["drop"] + held.get("release", 0.008)
+        Tp = tool_down_T(np.r_[g, self.tz + h_tool], held["yaw_pick"])
+        T_hi = Tp.copy(); T_hi[2, 3] = self.tz + SAFE_H
+        T_pre = Tp.copy(); T_pre[2, 3] += 0.05
+        s.decide(f"stage: set the drawer down at {np.round(xy, 3).tolist()} without turning it")
+        if not self.holding("before staging"):
+            return False
+        self.joint_to(f"above_stage_{tag}", T_hi)
+        self.line(f"down_to_stage_pre_{tag}", T_pre, "normal")
+        self.line(f"stage_down_{tag}", Tp, "slow", tip_margin=0.0)
+        s.gripper(0.4, "release the drawer")
+        self.line(f"up_from_stage_{tag}", T_pre, "slow", tip_margin=0.0)
+        self.lift_to(f"clear_stage_{tag}", SAFE_H, "normal")
+        return True
+
     # ------------------------------------------------------------ main
     def run(self):
         s = self.s
@@ -1451,7 +1580,7 @@ class Reset:
             delta = self.place(held, tgt)
         # table: pick and place; then up to two corrections
         tries = 0
-        for it in range(4):
+        for it in range(6):
             s.phase(f"check{it}")
             self.go_home("home_for_check")
             p = self.perceive(f"check{it}")
@@ -1486,21 +1615,45 @@ class Reset:
             self.bias = np.array(c["obb_c"]) - np.array(c["xy"])
             err = float(np.linalg.norm(np.array(c["xy"]) - tgt))
             ok_or, pull = self.vlm_pull(c, f"check{it}")
-            if ok_or is None:                      # judge unavailable: wrist overview
-                pull = self.overview_pull(c, f"check{it}")
-                facing = None if pull is None else float(np.degrees(np.arccos(np.clip(pull @ unit(-N), -1, 1))))
-            else:
-                facing = 0.0 if ok_or else 180.0
-            s.summary(**{f"err_check{it}": round(err, 4), f"pull_vs_robot_deg{it}": None if facing is None else round(facing, 0)})
-            bad_yaw = facing is not None and facing > 40
+            if not ok_or and self.survey_placed and not s.dry:
+                # placed with the turn from a close wrist view of the pull wall: the side judge may simply not see it
+                s.decide("side judge does not confirm, but the last placement used the pull wall seen up close: trust it")
+                ok_or = True
+            facing = None if ok_or is None else (0.0 if ok_or else 180.0)
+            s.summary(**{f"err_check{it}": round(err, 4), f"pull_vs_robot_deg{it}": facing})
             self.final_facing = facing
-            if (err <= GOOD and not bad_yaw) or (held is not None and it >= 3):
+            if (err <= GOOD and ok_or) or (held is not None and it >= 5):
                 break
-            if bad_yaw:
-                s.decide(f"pull wall faces {facing:.0f} deg away from the robot side: pick and turn it")
-            if tries >= 3:
+            if tries >= 5:
                 s.decide(f"drawer {err:.3f} m from the target after {tries} picks: stop correcting, verify")
                 break
+            if not ok_or and not s.dry:
+                # 18:39 operator: find the pull wall directly with close wrist views, at a spot with room (>= 25 cm
+                # from the cabinet face); turn by exactly the needed angle when carrying it to the target
+                gap = OFF - float(nt(np.array(c["obb_c"]))[0])
+                if gap < STAGE_GAP + 0.03 or np.linalg.norm(np.array(c["xy"]) - np.array(STAGE_XY)) > 0.12:
+                    s.phase(f"stage{it}")
+                    fp = self.wrist_footprint(c, f"s{it}")
+                    held = self.pick_table(fp or c, None)
+                    tries += 1
+                    if held is None:
+                        continue
+                    self.place_plain(held, STAGE_XY, f"{it}")
+                    self.go_home("home_after_stage")
+                    p = self.perceive(f"staged{it}")
+                    st = self.state_of(p)
+                    s.require(st == "table", f"drawer not seen on the table after staging (state {st})")
+                    c = p["cand"][0]
+                    self.bias = np.array(c["obb_c"]) - np.array(c["xy"])
+                s.phase(f"survey{it}")
+                c = self.wrist_footprint(c, f"v{it}") or c
+                pw = self.wall_views(c, f"{it}")
+                if pw is not None:
+                    pull = pw
+                    self.survey_pending = True
+                    s.decide(f"pull wall found by the close views: facing {ang(pw):.0f} deg; turn it to the robot side at the target")
+                else:
+                    s.decide("close views did not find the pull: fall back to the side-judge guess")
             s.phase(f"pick{it}")
             try:
                 held = self.pick_table(c, pull)
@@ -1519,6 +1672,8 @@ class Reset:
                 continue
             s.phase(f"place{it}")
             self.place(held, tgt)
+            self.survey_placed = self.survey_pending
+            self.survey_pending = False
         # final measurement (arm at home)
         s.phase("verify")
         self.go_home("home_final")
