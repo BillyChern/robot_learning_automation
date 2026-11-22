@@ -58,8 +58,8 @@ perception:                        # size priors (m); the drawer is a guess unti
   cabinet: {height: [0.22, 0.32], extent: [0.10, 0.45]}
 
 rl:
-  near_goal:                       # user 2026-11-22: reset only to "drawer partly in the slot"; after a failed episode the next one starts where it ended (reset-free)
-    enabled: true
+  near_goal:                       # user 2026-11-22: reset only to "drawer partly in the slot"; after a failed episode the next one starts where it ended (reset-free); the new run uses config/tasks/drawer_ng.yaml
+    enabled: false
     pull_out: [0.03, 0.05]         # after a success (or when needed) the reset pulls the drawer straight out until its front is this far in front of the cabinet front (m)
     start_out: [0.005, 0.09]       # a failed episode's end state is the next start only with the drawer front this far out of the slot (else a reset)
     max_fail_streak: 3             # this many failed episodes in a row without a reset -> a reset

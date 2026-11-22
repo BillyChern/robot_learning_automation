@@ -849,6 +849,20 @@ class Pipeline:
         return self._attempt(ws.path, command, attempt_dir, True, extra_env={"RLPJ_RESET_TARGETS": str(tpath)},
                              what="reset for the next episode", commit=self._safe_head(ws))
 
+    def _cabinet_top(self, blobs):
+        """xy centroid (m) of the cabinet's upper body (12-24 cm above the table, above any drawer in the slot) from the
+        tallest blob, for the cabinet guard; None when there is no single clean cabinet blob (arm in view, merged)."""
+        try:
+            tall = [b for b in blobs or [] if 0.22 < b.get("height", 0) < 0.32]
+            if len(tall) != 1 or max(tall[0].get("extent", [0, 0])) > 0.30 or not len(tall[0].get("points", [])):
+                return None
+            P = np.asarray(tall[0]["points"], float)
+            h = P[:, 2] - (tall[0]["z_top"] - tall[0]["height"])
+            P = P[(h > 0.12) & (h < 0.24)]
+            return [round(float(v), 4) for v in P[:, :2].mean(0)] if len(P) > 200 else None
+        except Exception:
+            return None
+
     def _record_reset(self, targets, r, blobs, ok, rep):
         n = self.st.next_reset
         self.st.next_reset = n + 1
@@ -856,7 +870,8 @@ class Pipeline:
         d.mkdir(exist_ok=True)
         rec = dict(reset=n, t=now_iso(), targets=targets, ok=ok, report=rep, measured=self._summ(blobs),
                    claimed=r.summary.get("measured"), claimed_outcome=r.summary.get("claimed_outcome"),
-                   attempt=str(r.attempt_dir), exit_code=r.exit_code, outcome=r.outcome, duration=r.duration)
+                   attempt=str(r.attempt_dir), exit_code=r.exit_code, outcome=r.outcome, duration=r.duration,
+                   cabinet_top_xy=self._cabinet_top(blobs))
         (d / f"reset_{n:04d}.json").write_text(json.dumps(rec, indent=1, default=str))
         c = self.st.counters["resets"]
         c["total"] += 1
