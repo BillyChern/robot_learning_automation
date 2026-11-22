@@ -318,10 +318,12 @@ class Pipeline:
         t = _mod("rlpj.perception.layout").sample(self.task, self.rng)
         return {k: [float(v[0]), float(v[1])] for k, v in t.items()}
 
-    def _reset_orientation(self, attempt_dir):
+    def _reset_orientation(self, attempt_dir, targets=None):
         """(ok, why) of the task's reset_orientation criterion, judged by the VLM on a full-size side image after a reset
-        ("" = no criterion). Unsure counts as not confirmed."""
+        ("" = no criterion; near-goal targets use rl.near_goal.orientation). Unsure counts as not confirmed."""
         text = (self.task.get("reset_orientation") or "").strip()
+        if targets and "drawer_out" in targets:
+            text = ((self._near_goal() or {}).get("orientation") or text).strip()
         if not text:
             return True, ""
         img = Path(attempt_dir) / "orientation_side.jpg"
@@ -358,6 +360,8 @@ class Pipeline:
         if blobs is None:
             return False, "no side-camera measurement"
         try:
+            if targets and ("drawer_out" in targets or "drawer_out_range" in targets):
+                return self._slot_state(targets, blobs)          # near-goal: the drawer partly in the slot
             ok, rep = _mod("rlpj.perception.layout").check(self.task, targets, blobs)
             return bool(ok), rep
         except Exception as e:
@@ -807,7 +811,7 @@ class Pipeline:
                 blobs = self._safe_measure(save)
                 ok, rep = self._layout_ok(targets, blobs)
                 if ok:
-                    ok, why = self._reset_orientation(r.attempt_dir)
+                    ok, why = self._reset_orientation(r.attempt_dir, targets)
                     rep = rep if ok else why
                 self._record_reset(targets, r, blobs, ok, rep)
                 if ok:
@@ -1435,14 +1439,26 @@ class Pipeline:
     def _rl_episode(self, mode):
         """Reset, then one recorded RL episode (mode rl: training, rl_eval: evaluation); the episode dict or None (stop)."""
         idx, ep_dir = self._new_episode_dir()
-        targets = self._sample_targets()
         self._reset_runs = []
-        before = self._reset_to(targets, save=ep_dir / "scene_before.jpg")
+        ng = self._near_goal()
+        if ng:
+            targets, before = self._near_goal_start(ng, ep_dir)
+        else:
+            targets = self._sample_targets()
+            before = self._reset_to(targets, save=ep_dir / "scene_before.jpg")
         if before is None:
             shutil.rmtree(ep_dir, ignore_errors=True)
             return None
         env = self._rl_env("eval" if mode == "rl_eval" else "train", idx)
+        if ng:
+            env.update(RLPJ_NEAR_GOAL="1", RLPJ_START="continue" if targets.get("continue") else "reset",
+                       RLPJ_START_OUT=str(targets.get("measured_out", "")))
         ep = self._episode(ep_dir, idx, targets, before, mode, extra_env=env)
+        if ng and ep is not None:
+            r = self.st.rl
+            r["ng_last"] = ep["final"]
+            r["ng_fail_streak"] = 0 if ep["final"] == "success" else int(r.get("ng_fail_streak", 0)) + 1
+            self.st.save()
         if ep is not None:                       # the independent verdict, for the agent's learner (terminal reward)
             vdir = Path(env["RLPJ_RL_DIR"]) / "verdicts"
             vdir.mkdir(parents=True, exist_ok=True)
@@ -1453,6 +1469,50 @@ class Pipeline:
             (vdir / f"{idx:06d}.json").write_text(json.dumps(dict(
                 episode=idx, mode=mode, final=ep["final"], reason=ep["reason"], verdict=meta.get("verdict")), default=str))
         return ep
+
+    def _near_goal(self):
+        """The task's rl.near_goal settings when enabled (user 2026-11-22: reset only to "drawer partly in the slot";
+        after a failed episode the next one starts where it ended), else None."""
+        ng = (self.task.get("rl") or {}).get("near_goal") or {}
+        return ng if ng.get("enabled") else None
+
+    def _near_goal_start(self, ng, ep_dir):
+        """(targets, blobs) for a near-goal episode: continue from the last episode's end state when it failed and the
+        drawer is still partly in the slot (at most max_fail_streak times), else reset to pull_out; blobs None = stop."""
+        r, save = self.st.rl, ep_dir / "scene_before.jpg"
+        streak = int(r.get("ng_fail_streak", 0))
+        if r.get("ng_last") != "success" and streak < int(ng.get("max_fail_streak", 3)):
+            blobs = self._safe_measure(save)
+            ok, rep = self._layout_ok({"drawer_out_range": ng.get("start_out", [0.005, 0.09])}, blobs)
+            if ok:
+                self.op.notify(f"near-goal: no reset, the episode starts where the last one ended ({_reason(rep)})")
+                self.st.event("near_goal_continue", streak=streak, report=rep)
+                return {"continue": True, "measured_out": rep.get("out_m")}, blobs
+            self.op.notify(f"near-goal: reset needed ({_reason(rep)})")
+        lo, hi = ng.get("pull_out", [0.03, 0.05])
+        targets = {"drawer_out": round(float(self.rng.uniform(lo, hi)), 3)}
+        blobs = self._reset_to(targets, save=save)
+        r["ng_fail_streak"], r["ng_last"] = 0, None
+        if blobs is not None:
+            ok, rep = self._layout_ok({"drawer_out_range": [0.0, 1.0]}, blobs)
+            targets["measured_out"] = rep.get("out_m") if isinstance(rep, dict) else None
+        return targets, blobs
+
+    def _slot_state(self, targets, blobs):
+        """(ok, report) for near-goal targets: the drawer front's distance in front of the cabinet front (out_m, from the
+        side camera's bottom-slot window) within the target +-0.02 m, or within drawer_out_range."""
+        pts = [np.asarray(b["points"], float) for b in blobs if len(b.get("points", []))]
+        if not pts:
+            return False, dict(reason="no points")
+        fixtures = self.task["fixtures"]
+        table_z = float(np.median([b["z_top"] - b["height"] for b in blobs]))
+        prof = _mod("rlpj.success.checks").slot_profile(np.vstack(pts), table_z, fixtures["cabinet"], fixtures.get("flush_tol", 0.012))
+        if "median_d" not in prof:
+            return False, dict(reason=f"only {prof.get('n')} points in the slot window", slot=prof)
+        out = round(-float(prof["median_d"]), 4)
+        lo, hi = targets.get("drawer_out_range") or (targets["drawer_out"] - 0.02, targets["drawer_out"] + 0.02)
+        ok = lo <= out <= hi and prof.get("behind", 1.0) < 0.5
+        return ok, dict(reason=f"drawer front {out * 100:.1f} cm out of the slot (wanted {lo * 100:.1f}-{hi * 100:.1f})", out_m=out, slot=prof)
 
     def _rl_curve(self, **row):
         with open(self.st.dir / "rl_curve.jsonl", "a") as f:

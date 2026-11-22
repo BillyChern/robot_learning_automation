@@ -58,6 +58,15 @@ perception:                        # size priors (m); the drawer is a guess unti
   cabinet: {height: [0.22, 0.32], extent: [0.10, 0.45]}
 
 rl:
+  near_goal:                       # user 2026-11-22: reset only to "drawer partly in the slot"; after a failed episode the next one starts where it ended (reset-free)
+    enabled: true
+    pull_out: [0.03, 0.05]         # after a success (or when needed) the reset pulls the drawer straight out until its front is this far in front of the cabinet front (m)
+    start_out: [0.005, 0.09]       # a failed episode's end state is the next start only with the drawer front this far out of the slot (else a reset)
+    max_fail_streak: 3             # this many failed episodes in a row without a reset -> a reset
+    orientation: >-
+      The drawer is partly inside the bottom slot of the cabinet, roughly straight, with its front (the wall carrying
+      the small metal label frame and tab) facing out of the slot toward the robot, sticking out of the cabinet front by
+      a few centimetres. It is not lying on the table, not tipped over and not inserted backwards.
   eval_every: 30                   # training episodes between fixed evaluations (20 -> 30 at 00:05: time-limited, skip the eval of a known-broken policy)
   eval_episodes: 5                 # deterministic-policy episodes per evaluation (10 -> 5 at 00:05: time-limited)
   target_success_rate: 0.7         # over one evaluation
