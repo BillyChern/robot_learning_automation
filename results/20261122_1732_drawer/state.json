@@ -1,0 +1,55 @@
+{
+ "run_id": "20261122_1732_drawer",
+ "task": "drawer_ng",
+ "condition": "text",
+ "created": "2026-11-22T17:32:32",
+ "phase": "new",
+ "counters": {
+  "episodes": {
+   "total": 0,
+   "success": 0,
+   "fail": 0,
+   "unsure": 0
+  },
+  "evals": {
+   "total": 0,
+   "success": 0,
+   "fail": 0,
+   "unsure": 0
+  },
+  "resets": {
+   "total": 0,
+   "ok": 0,
+   "fail": 0,
+   "manual": 0
+  },
+  "consecutive_failures": {
+   "execute": 0,
+   "reset": 0
+  }
+ },
+ "agents": {},
+ "datasets": {},
+ "training_runs": {},
+ "evals": {},
+ "deployable_checkpoint": null,
+ "zero_shot": null,
+ "collection": {
+  "round": 0,
+  "round_successes": 0,
+  "round_target": null
+ },
+ "next_episode": 0,
+ "next_reset": 0,
+ "vlm": {
+  "calls": 0,
+  "cost_usd": 0.0
+ },
+ "operator_notes": [],
+ "rl": {
+  "episodes": 0,
+  "evals": [],
+  "since_review": 0,
+  "learner_fails": 0
+ }
+}

@@ -19,3 +19,12 @@ has slot_t [-0.0735, 0.0015] (centre -0.036, knob ~ -0.036) and every cabinet ke
 (xy -0.0084, +0.0209); the front plane (0.5283) is unchanged. Re-read the yaml and discard slot-relative values from
 before 15:30. RL agent: still measure the opening with the wrist camera before each insertion (my 15:20 note) and
 report the residual offset; reset agent: report your knob measurement on the next pinch.
+Operator note (user's new scheme, near-goal / reset-free RL): episodes now START WITH THE DRAWER PARTLY IN THE SLOT.
+Env: RLPJ_NEAR_GOAL=1, RLPJ_START=reset (fresh: front ~3-5 cm out, straight, pull out) or continue (the end state of
+your last FAILED episode: could be cocked, jammed, 0.5-9 cm out), RLPJ_START_OUT=<measured front distance out, m>.
+The job is only the last part: get the drawer flush (within 1 cm) and release cleanly without dragging it out (your
+episodes 25/27/28 lost flush drawers on the retreat), and recover from whatever your last attempt left (e.g. pinch the
+knob, pull back 1-2 cm, straighten, push again). No table pick, no carry. After a success the reset pulls it out again;
+after 3 failures in a row it resets. This gives fast episodes and real successes for the learner. Update
+programs/execute.py: perceive the start (protrusion and yaw of the drawer in the slot, wrist look at the front), then
+push/straighten with your force rules (40 N while cocked, 65 N only straight), release, retreat, claim. Test offline.
