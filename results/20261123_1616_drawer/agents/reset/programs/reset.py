@@ -37,14 +37,14 @@ PRIOR = TASK["perception"]["drawer"]
 HOME_Q = np.array([0, 15, -130, 0, 55, 90.0])
 SEED_DOWN = np.array([0, 25, -110, 0, -45, 90.0])
 READY_XYZ = (0.40, -0.10, 0.25)
-DRAWER_L = 0.083                # back wall to front face (flush top 0.096 - compartment floor 0.013)
+DRAWER_L = 0.093                # back wall to front face (attempt 6: standing blob 0.093-0.094, table contact at tool 0.145)
 KNOB_OFF = 0.0168               # drawer centre to knob centre, along the knob axis (attempt 3, two wrist views)
 TIP_CLOSED = 0.047              # closed fingertips below the tool frame
 TIP_CLEAR = 0.006               # closed fingertips above the drawer's top face at the pinch
 PRE = 0.55                      # pre-close (~38 mm) around the 15 mm knob
 GRIP = 0.95
 HOLD = (60.0, 96.0)             # reading when the knob is held
-LIFT = 0.12
+LIFT = 0.13                     # operator 16:33: lift ~13 cm
 TOL = 0.02                      # orchestrator layout tolerance
 GOOD = 0.012                    # correct above this
 YAW_RANGE = 25.0                # deg, inside the allowed +/-30
@@ -104,7 +104,7 @@ class Reset:
     def line(self, name, T, speed="slow", tip_margin=0.008):
         self.s.move_line(name, T, speed, tip_margin=tip_margin)
 
-    def contact_line(self, name, T, limit=22.0):
+    def contact_line(self, name, T, limit=20.0):
         """Slow approach with a low force stop: True when reached, False when it stopped on contact."""
         try:
             with ForceLimit(self.s, limit):
@@ -137,6 +137,9 @@ class Reset:
         s.log("session home set to HOME_Q")
 
     def go_home(self):
+        if np.abs(wrap180(self.q_now() - HOME_Q)).max() < 1.0:
+            self.set_home()
+            return
         T = tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0)
         self.s.move_joint("ready", self.s.planner.ik_exact(T, SEED_DOWN)[0], "normal")
         self.s.move_joint("home_pose", HOME_Q, "normal")
@@ -240,7 +243,9 @@ class Reset:
         if v is None and self.s.dry:                    # the dry-run wrist image does not show the simulated pose
             self.s.decide("dry run: knob position from the prior")
             ax = -A
-            return dict(knob=loc["xy"] + KNOB_OFF * ax, axis=ax, r_m=0.0, frame=[])
+            prior = dict(knob=loc["xy"] + KNOB_OFF * ax, axis=ax, r_m=0.0, frame=[])
+            self.look(prior["knob"], loc["h_top"], loc["h_top"] + 0.085, f"{tag}_lo")   # checks the low view's motion
+            return prior
         if v is None:
             return None
         low = self.look(v["knob"], loc["h_top"], loc["h_top"] + 0.085, f"{tag}_lo")
@@ -264,7 +269,7 @@ class Reset:
                 s.log(f"grasp yaw {yaw:.0f}: not plannable ({str(e)[:70]})")
                 continue
             ok1 = sim.check(seg.q, s.kin, NORMAL, gripper_frac=PRE, table_z=self.tz)[0]
-            ok2 = sim.check(seg2.q, s.kin, SLOW, gripper_frac=GRIP, table_z=self.tz)[0]
+            ok2 = sim.check(seg2.q, s.kin, SLOW, gripper_frac=PRE, table_z=self.tz)[0]
             cost = float(np.abs(qa - q0).max())
             s.log(f"grasp yaw {yaw:.0f}: move {ok1} descent {ok2} cost {cost:.0f}")
             if ok1 and ok2 and (best is None or cost < best[0]):
@@ -333,7 +338,7 @@ class Reset:
         except (RuntimeError, ValueError) as e:
             s.log(f"straight carry not plannable ({str(e)[:80]}): joint move")
             s.move_joint("carry_joint", self.ik(Tc), "normal")
-        h_place = grip["h_g"] - grip["bottom"] + 0.001
+        h_place = grip["h_g"] - grip["bottom"] - 0.004     # 4 mm past the expected touch: the 20 N stop ends it
         T1 = Tc.copy()
         T1[2, 3] = self.tz + h_place + 0.05
         self.line("lower_fast", T1, "normal")

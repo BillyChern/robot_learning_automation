@@ -19,6 +19,18 @@ def detect(img, px_per_m, centre_uv=None, radius_m=0.06):
         roi = np.zeros((H, W), np.uint8)
         cv2.circle(roi, (int(centre_uv[0]), int(centre_uv[1])), int(radius_m * px_per_m), 1, -1)
         m = m & roi
+    # only metal on the wood counts: dark table edges and shadows outside the drawer also have a low saturation
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    wood = ((hsv[..., 1] >= 165) & (hsv[..., 2] >= 45)).astype(np.uint8)
+    if centre_uv is not None:
+        wood = wood & roi
+    nw, lw, sw, _ = cv2.connectedComponentsWithStats(wood, connectivity=8)
+    if nw < 2:
+        return None
+    big = np.column_stack(np.nonzero(lw == 1 + int(np.argmax(sw[1:, cv2.CC_STAT_AREA]))))[:, ::-1]
+    hull = np.zeros((H, W), np.uint8)
+    cv2.fillConvexPoly(hull, cv2.convexHull(big.astype(np.int32)), 1)
+    m = m & hull
     kc = max(3, int(0.0015 * px_per_m) | 1)
     m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kc, kc)))
     m[0, :] = m[-1, :] = 0; m[:, 0] = m[:, -1] = 0       # the distance transform must see the image edge as background
