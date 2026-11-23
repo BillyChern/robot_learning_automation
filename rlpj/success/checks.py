@@ -187,8 +187,51 @@ def drawer_rl(before, after, task_cfg):
     return None, _why(rep, "slot window ambiguous")
 
 
+def drawer_lying(before, after, task_cfg):
+    """Success (cabinet lying on its back): the target compartment's opening (shrunk 1 cm) is filled at rim height (the
+    drawer's top flush, within flush_tol), no drawer-sized blob stands on the table, the cabinet has not moved."""
+    fx = task_cfg["fixtures"]["cabinet"]
+    tol = task_cfg["fixtures"].get("flush_tol", 0.012)
+    pri = task_cfg.get("perception", {}) or {}
+    if not after:
+        return None, dict(reason="no blobs after")
+    pts = np.vstack([np.asarray(b["points"], float) for b in after if len(b.get("points", []))])
+    table_z = float(np.median([b["z_top"] - b["height"] for b in after]))
+    y = np.radians(fx["yaw_deg"]); a = np.array([np.cos(y), np.sin(y)]); bb = np.array([-a[1], a[0]])
+    d = pts[:, :2] - np.asarray(fx["target_centre"], float)
+    s, t, h = d @ a, d @ bb, pts[:, 2] - table_z
+    hl, hw = fx["compartment"][0] / 2 - 0.01, fx["compartment"][1] / 2 - 0.01
+    m = (np.abs(s) < hl) & (np.abs(t) < hw) & (h > 0.003)
+    rep = dict(n=int(m.sum()))
+    cab_a = [b for b in after if layout.matches(pri.get("cabinet") or {}, b)]
+    cab_b = [b for b in (before or []) if layout.matches(pri.get("cabinet") or {}, b)]
+    if cab_a and cab_b:
+        moved = _dist(max(cab_a, key=lambda b: b["n"])["xy"], max(cab_b, key=lambda b: b["n"])["xy"])
+        rep["cabinet_moved_m"] = round(moved, 4)
+        if moved > CABINET_MOVE_MAX:
+            return False, _why(rep, f"the cabinet moved {moved * 100:.1f} cm")
+    c0 = np.asarray(fx["centre"], float)
+    loose = [b for b in after if layout.matches(pri.get("drawer") or {}, b)
+             and np.linalg.norm(np.asarray(b["xy"][:2]) - c0) > max(fx["size"]) / 2 + 0.05]
+    rep["drawer_on_table"] = [_brief(b) for b in loose]
+    if loose:
+        return False, _why(rep, "a drawer-sized blob is still on the table")
+    if m.sum() < SLOT_MIN_POINTS:
+        return None, _why(rep, f"only {int(m.sum())} points in the target compartment (arm in the way?)")
+    hh = h[m]
+    rep.update(median_h=round(float(np.median(hh)), 4), flush=round(float(np.mean(np.abs(hh - fx["rim_h"]) < tol)), 3),
+               above=round(float(np.mean(hh > fx["rim_h"] + tol)), 3), deep=round(float(np.mean(hh < fx["rim_h"] - 0.03)), 3))
+    if rep["above"] > FRONT_SHARE:
+        return False, _why(rep, "the drawer sticks out of the compartment")
+    if rep["flush"] >= FLUSH_SHARE:
+        return True, _why(rep, "drawer flush in the target compartment")
+    if rep["deep"] > BEHIND_SHARE:
+        return False, _why(rep, "the target compartment is empty")
+    return None, _why(rep, "target compartment ambiguous")
+
+
 CHECKS = {"bee_in_tape_roll": bee_in_tape_roll, "cup_down_stacking": cup_down_stacking, "bee_in_bowl": bee_in_bowl,
-          "drawer_rl": drawer_rl}
+          "drawer_rl": drawer_rl, "drawer_lying": drawer_lying}
 
 
 def _rel(b, c, r):
