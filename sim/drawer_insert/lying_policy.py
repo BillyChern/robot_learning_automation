@@ -100,6 +100,9 @@ class Descent:
         return self.k >= H_STEPS
 
 
+Insertion = Descent              # same name as the standing-cabinet helper in policy.py
+
+
 def start_pose(centre, axis_deg, rim_z, yaw_straight, est, length, gap=0.015):
     """Scripted start (as in the sim): tool yaw that squares the estimated drawer with the opening, tool xy that puts the
     estimated bottom-face centre over the believed opening centre, tool z with the bottom gap above the rim.
