@@ -857,6 +857,11 @@ class Pipeline:
             tall = [b for b in blobs or [] if lo < b.get("height", 0) < hi]
             if len(tall) != 1 or max(tall[0].get("extent", [0, 0])) > 0.30 or not len(tall[0].get("points", [])):
                 return None
+            cab = ((self.task.get("fixtures") or {}).get("cabinet") or {})
+            if self.task.get("name") == "drawer_lying":        # outline: a drawer in a compartment moves the centroid
+                from rlpj.success.checks import outline_xy
+                o = outline_xy(tall[0], cab.get("yaw_deg", 0.0))
+                return [round(v, 4) for v in o] if o is not None else None
             P = np.asarray(tall[0]["points"], float)
             h = P[:, 2] - (tall[0]["z_top"] - tall[0]["height"])
             P = P[(h > 0.45 * hi) & (h < 0.9 * hi)]          # the upper body (standing: 12-24 cm; lying: its walls)

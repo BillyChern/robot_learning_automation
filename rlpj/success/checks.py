@@ -206,10 +206,13 @@ def drawer_lying(before, after, task_cfg):
     cab_a = [b for b in after if layout.matches(pri.get("cabinet") or {}, b)]
     cab_b = [b for b in (before or []) if layout.matches(pri.get("cabinet") or {}, b)]
     if cab_a and cab_b:
-        moved = _dist(max(cab_a, key=lambda b: b["n"])["xy"], max(cab_b, key=lambda b: b["n"])["xy"])
-        rep["cabinet_moved_m"] = round(moved, 4)
-        if moved > CABINET_MOVE_MAX:
-            return False, _why(rep, f"the cabinet moved {moved * 100:.1f} cm")
+        # outline centre, not the blob centroid: an inserted drawer fills a compartment and moves the centroid ~3 cm
+        oa, ob = (outline_xy(max(c, key=lambda b: b["n"]), fx["yaw_deg"]) for c in (cab_a, cab_b))
+        if oa is not None and ob is not None:
+            moved = _dist(oa, ob)
+            rep["cabinet_moved_m"] = round(moved, 4)
+            if moved > CABINET_MOVE_MAX:
+                return False, _why(rep, f"the cabinet moved {moved * 100:.1f} cm")
     c0 = np.asarray(fx["centre"], float)
     loose = [b for b in after if layout.matches(pri.get("drawer") or {}, b)
              and np.linalg.norm(np.asarray(b["xy"][:2]) - c0) > max(fx["size"]) / 2 + 0.05]
@@ -232,6 +235,20 @@ def drawer_lying(before, after, task_cfg):
 
 CHECKS = {"bee_in_tape_roll": bee_in_tape_roll, "cup_down_stacking": cup_down_stacking, "bee_in_bowl": bee_in_bowl,
           "drawer_rl": drawer_rl, "drawer_lying": drawer_lying}
+
+
+def outline_xy(b, yaw_deg, lo=0.02):
+    """Centre (xy, m) of a blob's outline along/across yaw_deg (2nd-98th percentiles of its points above lo m)."""
+    P = np.asarray(b.get("points") if b.get("points") is not None else [], float)
+    if len(P) < 200:
+        return None
+    P = P[P[:, 2] - (b["z_top"] - b["height"]) > lo]
+    if len(P) < 200:
+        return None
+    y = np.radians(yaw_deg); R = np.array([[np.cos(y), -np.sin(y)], [np.sin(y), np.cos(y)]])
+    q = P[:, :2] @ R
+    mid = np.array([np.percentile(q[:, k], [2, 98]).mean() for k in (0, 1)])
+    return [float(v) for v in R @ mid]
 
 
 def _rel(b, c, r):
