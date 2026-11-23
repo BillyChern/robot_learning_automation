@@ -106,3 +106,12 @@ commanded bottom. Not confirmed: side-depth tilt repeats to ~2 deg, and the wris
 +1.0, -6.1, -4.1 deg on three looks at one pose and -6.5 on a standing drawer, so neither is used for control.
 Changed: the first try tilts the tool -3 deg about b through the pinch point, and the contact search sweeps tilt (-5, -1.5,
 +2.5) and then +-2 mm around -3. Tilt stays scripted for now, and the log shows which values were tried and entered.
+
+## Real test of the tilt sweep (attempt 26, commit c668ca8)
+Tilts -5, -3, -1.5, +2.5 deg about b and +-2 mm all stopped at the rim (commanded bottom ~0.096-0.097 m). Tilt about b is
+not the explanation I expected. The put-back descents reach 3 mm above the table with almost no force (2-12 N), so the
+held drawer's lowest point is less than ~3 mm below plan: a large tilt is unlikely.
+Gap in the searches so far: one axis at a time around the measured centre. The drawer fits only in a window of about
+3.7 x 2 mm, and the half-width assumed for the a edge (36.8 mm) is itself uncertain by 1-2 mm.
+Changed: 2-D probe grid (a 0, +-3, +-6 mm; b 0, +-2, +-4 mm), nearest first, up to 25 contacts, stop lateral moves once the
+drawer is 4 mm below the rim. `insert.contact_map` records the contact height per point. Contact penalty 0.5 -> 0.15.

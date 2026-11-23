@@ -18,8 +18,8 @@
    "unsure": 0
   },
   "resets": {
-   "total": 10,
-   "ok": 9,
+   "total": 12,
+   "ok": 11,
    "fail": 1,
    "manual": 0
   },
@@ -64,15 +64,15 @@
    "model": "claude-opus-5-5",
    "started": "2026-11-23T17:06:56",
    "ended": "2026-11-23T17:32:18",
-   "attempts": 14,
-   "robot_attempts": 4,
-   "turns": 142,
-   "cost_usd": 11.6851846,
-   "input_tokens": 166,
-   "output_tokens": 199210,
-   "cache_read": 20232003,
-   "cache_creation": 456740,
-   "duration_s": 2054.254,
+   "attempts": 16,
+   "robot_attempts": 5,
+   "turns": 150,
+   "cost_usd": 12.6878578,
+   "input_tokens": 176,
+   "output_tokens": 216872,
+   "cache_read": 22186489,
+   "cache_creation": 489052,
+   "duration_s": 2258.151,
    "first_success_attempt": null,
    "first_success_after_attempts": null,
    "time_to_first_success_s": null,
@@ -92,10 +92,23 @@
  "collection": {
   "round": 0,
   "round_successes": 0,
-  "round_target": null
+  "round_target": null,
+  "window": {
+   "n": 0,
+   "success": 0,
+   "fail": 0,
+   "unsure": 0,
+   "failed": [],
+   "reset_failed": [
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_29",
+     "layout check failed: drawer: not found"
+    ]
+   ]
+  }
  },
  "next_episode": 5,
- "next_reset": 10,
+ "next_reset": 12,
  "vlm": {
   "calls": 5,
   "cost_usd": 0.38139880000000004

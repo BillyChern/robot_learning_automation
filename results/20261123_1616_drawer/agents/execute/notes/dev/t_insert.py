@@ -20,8 +20,8 @@ class S:
     def feedback(s): return dict(force=np.zeros(3), gripper=85.0)
 w = dict(c_o=E.OPEN_C.copy(), yaw_o=18.3, face=0.0915, tab=dict(s=0.02, t=0.0)); g = dict(h_g=0.1396); pl = dict(off=np.array([-0.0193, -0.0064]), dyaw=-34.0, yaw_f=-71.7)
 def episode(hole, tol, seed):
-    e = E.Episode.__new__(E.Episode); e.s = S(); e.tz = -0.0154; e.mode = "train"; e.rng = np.random.default_rng(seed); e.actor = E.rc.Actor("/nonexistent")
-    e.trans, e.events, e.ret, e.phi, e.R_fix, e.tilt = [], [], 0.0, 0.0, np.eye(3), {}
+    e = E.Episode.__new__(E.Episode); e.s = S(); e.tz = -0.0154; e.mode = "eval"; e.rng = np.random.default_rng(seed); e.actor = E.rc.Actor("/nonexistent")
+    e.trans, e.events, e.ret, e.phi, e.R_fix, e.tilt, e.contact_map = [], [], 0.0, 0.0, np.eye(3), {}, []
     e.c0 = np.zeros(3)
     st = dict(b=E.RIM + E.HOVER, c=np.zeros(3))
     e.force = lambda: np.zeros(3)
@@ -38,8 +38,8 @@ def episode(hole, tol, seed):
         st["b"], st["c"] = b, c; return "ok", dict(max_force_n=2.0)
     e.try_step = try_step
     return e.insert(w, g, pl), len(e.trans)
-tol = np.array([0.0012, 0.0010, 0.8]); TRUE_TILT = -3.0
-for hole, TRUE_TILT in (((0, 0, 0), -3.0), ((0, 0, 0), -5.0), ((0, 0, 0), 2.5), ((0.002, 0, 0), -3.0), ((0, 0, 0), 0.0)):
+tol = np.array([0.0018, 0.0010, 0.8]); TRUE_TILT = 0.0
+for hole, TRUE_TILT in (((0, 0, 0), 0.0), ((0.003, 0.002, 0), 0.0), ((-0.0055, 0.0035, 0), 0.0), ((0.006, -0.004, 0), 0.0), ((0.0095, 0, 0), 0.0)):
     R = [episode(np.array(hole), tol, i) for i in range(300)]
     print("hole", hole, "true tilt", TRUE_TILT, "seated", round(np.mean([r[0]["end"] == "seated" for r in R]), 3), "ends", {k: sum(r[0]["end"] == k for r in R) for k in ("seated", "jam", "steps")}, "max steps", max(r[1] for r in R))
 kin = Kin.load(); P = Planner(kin); e = E.Episode.__new__(E.Episode); e.tz = -0.0154; e.R_fix = np.eye(3)

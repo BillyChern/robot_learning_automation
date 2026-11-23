@@ -41,17 +41,20 @@ HOVER = 0.008                                  # drawer bottom above the rim whe
 LIFT_CLEAR = 0.030                             # drawer bottom above the rim while carrying
 FLOOR = float(CAB["floor_h"])
 B_MIN = 0.006                                  # lowest commanded drawer bottom above the table
-K_ALIGN, K_DESC = 2, 30
+K_ALIGN, K_DESC = 2, 66
 DZ0 = 0.007                                    # nominal descent per step (m); the action scales it by 0.5 .. 1.5
 SC_ALIGN = np.array([0.003, 0.003, 1.5])       # m, m, deg per unit action, align steps
 SC_DESC = np.array([0.001, 0.001, 0.5])        # descent steps
 MAX_C = np.array([0.008, 0.008, 4.0])          # bound of the accumulated corrections
 PEAK_SEAT = 12.0                               # N: a force rise this large near the floor means the drawer is seated
-MAX_CONTACTS = 7
-FIRST_TILT = -3.0                              # deg about b at the first try: raises the far side (+a), against the suspected sag
-# search point per contact, around the measured alignment: a (m), b (m), yaw (deg), tilt about b (deg). Attempt 24: with the top
-# face aligned to 0.4 mm, seven contacts at tilt 0 all stopped ~3 mm above the rim, so tilt is the variable under test
-SEARCH = np.array([[0, 0, 0, -5.0], [0, 0, 0, -1.5], [0, 0, 0, 2.5], [0.002, 0, 0, -3.0], [-0.002, 0, 0, -3.0], [0, 0.002, 0, -3.0]])
+MAX_CONTACTS = 25
+FIRST_TILT = 0.0                               # deg about b; tilts -5 .. +2.5 at the rim all failed (attempt 26)
+# 2-D probe grid around the measured alignment, nearest first: a (m), b (m), yaw (deg), tilt (deg). Attempts 24, 26 moved one axis at
+# a time; the window where the drawer fits is only ~3.7 mm (a) x ~2 mm (b), so a combined offset was never tried
+_G = sorted(((x, y) for x in (0.0, 0.003, -0.003, 0.006, -0.006) for y in (0.0, 0.002, -0.002, 0.004, -0.004) if (x, y) != (0.0, 0.0)),
+            key=lambda p: (p[0] / 0.003) ** 2 + (p[1] / 0.002) ** 2)
+SEARCH = np.array([[x, y, 0.0, 0.0] for x, y in _G])
+ENTERED = 0.004                                # m below the rim: the drawer is in the opening, no more lateral moves
 FIX_MAX = np.array([0.010, 0.010, 4.0])         # bound of the measured correction (drawer vs opening, wrist image)
 LEVEL_H = 0.025                                # drawer bottom above the rim while it is levelled
 LEVEL_TOL, LEVEL_MAX = 0.8, 6.0                # deg: tilt left alone, largest correction about the jaw axis
@@ -80,6 +83,7 @@ class Episode:
         self.terminal = None
         self._saved = False
         self.tilt = {}
+        self.contact_map = []                       # [da mm, db mm, bottom mm at the contact] around the measured alignment
         self.c0 = np.zeros(3)                       # in-hand correction (a, b, yaw), the start of the learned part
         self.g_ref = np.zeros(2)                    # side-depth slope of the standing drawer (base frame)
         self.phi, self.R_fix = 0.0, np.eye(3)       # levelling rotation about the opening's b axis
@@ -387,15 +391,18 @@ class Episode:
                 r += 30.0 * (b - b2) - 0.05 * max(0.0, peak - 15.0) / 5.0
                 c, b = c2, b2
             elif status == "force":
-                r -= 0.5
+                r -= 0.15                               # contacts are part of the search now
                 peak = F_INSERT
                 n_contact += 1
                 b_now = float(self.T_now()[2, 3]) - self.tz - g["h_g"]
                 # no descent reward on a force stop: at the rim the tool sinks while the drawer stays (attempt 10: 8 mm over
                 # three stops at 25 N with the drawer on the rim), and paying it would teach pressing on the rim
                 b = min(b, b_now)
+                self.contact_map.append([round((c2 - self.c0)[0] * 1000, 1), round((c2 - self.c0)[1] * 1000, 1), round(b_now * 1000, 1)])
                 if b <= FLOOR + 0.012:
                     end = "seated"
+                elif b_now < RIM - ENTERED:             # partly in: a lateral search step would push on the walls
+                    end = "partial"
                 elif n_contact >= MAX_CONTACTS:
                     end = "jam"
                 else:                                   # unload: 3 mm up, the policy sees the contact and may correct
@@ -421,7 +428,7 @@ class Episode:
             if status == "ok" and phase == 1 and (b <= B_MIN + 1e-4 or (peak >= PEAK_SEAT and b <= FLOOR + 0.012)):
                 end = "seated"
                 break
-        s.summary(insert=dict(end=end, steps=len(self.trans), bottom=round(b, 4), c=np.round(c, 4).tolist(), contacts=n_contact, peak=round(peak, 1), tilt=self.phi,
+        s.summary(insert=dict(end=end, steps=len(self.trans), bottom=round(b, 4), c=np.round(c, 4).tolist(), contacts=n_contact, peak=round(peak, 1), tilt=self.phi, contact_map=self.contact_map,
                                  tilts_tried=sorted({e[7] for e in self.events if e[1] == "force"})))
         self.save("side_inserted", s.side.latest()[0])
         return dict(end=end, b=b, c=c)

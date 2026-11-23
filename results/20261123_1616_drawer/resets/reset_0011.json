@@ -1,0 +1,146 @@
+{
+ "reset": 11,
+ "t": "2026-11-23T18:27:41",
+ "targets": {
+  "drawer": [
+   0.281,
+   -0.03
+  ]
+ },
+ "ok": true,
+ "report": {
+  "tolerance": 0.02,
+  "objects": {
+   "drawer": {
+    "target": [
+     0.281,
+     -0.03
+    ],
+    "found": [
+     0.2829,
+     -0.0144
+    ],
+    "dist": 0.0157,
+    "ok": true
+   }
+  },
+  "extra_blobs": 5,
+  "reason": "layout ok"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.2829,
+    -0.0144
+   ],
+   "z_top": 0.0804,
+   "height": 0.0967,
+   "extent": [
+    0.0844,
+    0.1143
+   ],
+   "n": 4249,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0172,
+   "outer_r": 0.0528
+  },
+  {
+   "xy": [
+    0.3816,
+    0.0878
+   ],
+   "z_top": 0.0427,
+   "height": 0.0591,
+   "extent": [
+    0.026,
+    0.0574
+   ],
+   "n": 212,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0067,
+   "outer_r": 0.0185
+  },
+  {
+   "xy": [
+    0.5318,
+    0.0214
+   ],
+   "z_top": 0.079,
+   "height": 0.0954,
+   "extent": [
+    0.2758,
+    0.1818
+   ],
+   "n": 12384,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0564,
+   "outer_r": 0.0952
+  },
+  {
+   "xy": [
+    0.5189,
+    0.1811
+   ],
+   "z_top": 0.0015,
+   "height": 0.0179,
+   "extent": [
+    0.0662,
+    0.0367
+   ],
+   "n": 218,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.7101,
+    0.1261
+   ],
+   "z_top": -0.0014,
+   "height": 0.015,
+   "extent": [
+    0.032,
+    0.0453
+   ],
+   "n": 91,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.7501,
+    0.1894
+   ],
+   "z_top": -0.0033,
+   "height": 0.0131,
+   "extent": [
+    0.0393,
+    0.0217
+   ],
+   "n": 76,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": {
+  "drawer": [
+   0.2828,
+   -0.014
+  ]
+ },
+ "claimed_outcome": "success",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_31",
+ "exit_code": 0,
+ "outcome": "success",
+ "duration": 150.4,
+ "cabinet_top_xy": null
+}
