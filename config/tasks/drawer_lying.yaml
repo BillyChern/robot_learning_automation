@@ -1,0 +1,74 @@
+name: drawer_lying
+mode: rl                           # RL loop (docs/RL_DESIGN.md); near-goal, reset-free variant of drawer_rl (user, 2026-11-22)
+instruction: push the drawer fully into the bottom slot of the cabinet
+goal: >-
+  A small wooden cabinet with three slots is taped to the far end of the table, front facing the robot. Its drawer sits
+  partly inside the bottom slot, the right way round: the drawer's front, the wall carrying the metal pull (a small
+  label frame with a short tab below it), faces out toward the robot and sticks out of the cabinet front by a few
+  centimetres. An episode starts either from a fresh reset (front ~3-5 cm out, roughly straight) or from wherever the
+  previous, failed episode left the drawer (it may be cocked, jammed, or further out). Push the drawer fully in so its
+  front is flush with the cabinet front, straighten or back it out first if it is cocked, and release it cleanly
+  without dragging it back out.
+success: >-
+  The drawer is fully inside the bottom slot the right way round: its front with the metal pull faces out and is
+  flush with the cabinet front (within about 1 cm). A drawer inserted backwards (plain wooden wall facing out, no pull
+  visible) is a failure. The cabinet has not moved, and the gripper is clear of both.
+reset: >-
+  Leave the drawer partly inside the bottom slot, never out on the table: the right way round (the metal pull facing
+  out toward the robot), roughly straight, with its front the distance given in targets.json ("drawer_out", metres) in
+  front of the cabinet front (within about 2 cm), gripper clear, arm at home. Usually the drawer is flush after a
+  success: pinch the pull tab and pull it straight out to that distance. The reset must work from ANY state an episode
+  can leave: flush, recessed, partly out, cocked or jammed in the slot, still held by the gripper, the arm stopped low
+  next to the cabinet; if the drawer has come out of the slot, put it back into this near-goal state (partly inside,
+  pull out), never to a far table position. Start by working out the state, free the arm, then recover. The drawer
+  pull is about 4 cm above the table when the drawer is in the slot. Never move the cabinet; leave the two upper slots
+  empty.
+reset_orientation: >-
+  The drawer is partly inside the bottom slot of the cabinet, roughly straight, with its front (the wall carrying the
+  small metal label frame and tab) facing out of the slot toward the robot, sticking out of the cabinet front by a few
+  centimetres. It is not lying on the table, not tipped over and not inserted backwards.
+objects: [drawer]
+
+fixtures:                          # 2026-11-23: the cabinet LIES ON ITS BACK, compartments open to the top; outline fitted to the rim in the freshly calibrated side camera (runs/drawers_setup/lying); compartments to be measured
+  cabinet:
+    centre: [0.5298, 0.0207]           # rim outline centre (base frame, m)
+    yaw_deg: 20.3                  # long axis (along the three compartments)
+    size: [0.269, 0.135]           # outer length (long axis) x width (m)
+    rim_h: 0.093                   # rim height above the table (m)
+    target: nearest                # the compartment nearest the robot base (the former bottom slot)
+
+keep_out:                          # model check: no gripper point inside (rlpj.robot.sim); conservative until the compartments are measured: the whole cabinet + 1.5 cm, up to 2 cm above the rim
+  - {name: cabinet, center: [0.5298, 0.0207, 0.0405], half: [0.1495, 0.0825, 0.0565], yaw_deg: 20.3}
+
+layout:                            # reset target for the drawer centre on the table (base frame, m)
+  drawer: {x: [0.36, 0.37], y: [-0.03, -0.01]}    # 2026-11-20: whole drawer in the moved side camera's view at any yaw (+-30 deg), >= 17 cm in front of the cabinet face
+  radius: [0.36, 0.52]
+  tolerance: 0.05
+
+perception:                        # size priors (m); the drawer is a guess until the reset agent measures it
+  drawer: {height: [0.04, 0.10], extent: [0.08, 0.30]}
+  cabinet: {height: [0.22, 0.32], extent: [0.10, 0.45]}
+
+rl:
+  near_goal:                       # user 2026-11-22: reset only to "drawer partly in the slot"; after a failed episode the next one starts where it ended (reset-free)
+    enabled: true
+    pull_out: [0.03, 0.05]         # after a success (or when needed) the reset pulls the drawer straight out until its front is this far in front of the cabinet front (m)
+    start_out: [0.005, 0.09]       # a failed episode's end state is the next start only with the drawer front this far out of the slot (else a reset)
+    max_fail_streak: 3             # this many failed episodes in a row without a reset -> a reset
+    orientation: >-
+      The drawer is partly inside the bottom slot of the cabinet, roughly straight, with its front (the wall carrying
+      the small metal label frame and tab) facing out of the slot toward the robot, sticking out of the cabinet front by
+      a few centimetres. It is not lying on the table, not tipped over and not inserted backwards.
+  eval_every: 30                   # training episodes between fixed evaluations (20 -> 30 at 00:05: time-limited, skip the eval of a known-broken policy)
+  eval_episodes: 5                 # deterministic-policy episodes per evaluation (10 -> 5 at 00:05: time-limited)
+  target_success_rate: 0.7         # over one evaluation
+  max_episodes: 600                # training episodes, then stop and report
+  reflect_every_episode: true      # RL agent reflects on each episode while the next reset runs (2026-11-20, time-limited)
+  review_every: 5                  # the RL agent's tuning turn (40 -> 10 -> 5 at 00:05: time-limited, react fast)
+  learner_timeout_s: 300           # programs/learner.py between episodes (CPU on the robot machine)
+  episode_timeout_s: 300
+  reset_repairs: 10                # reset-agent repairs per failing reset before the run stops (default 2; 5 -> 10 at 21:30: user "the robot can, keep trying")
+  force_limit_n: 65                # contact-force stop (N). 50 (user 11-17) stopped every insertion/push at the drawer's
+                                   # static friction (51-57 N, then it slides at 2-6 N); 65 N on 2026-11-20 (user: raise the force cap to 65 N)
+
+reuse: []
