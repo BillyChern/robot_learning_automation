@@ -9,3 +9,4 @@ intervention below.
 
 - 2026-11-22 17:32: run created; programs seeded; operator briefs written (notes/). Arm offline since 11-21 15:24
   (eno1 no carrier); launch waits for the user.
+- 2026-11-23 01:22: the 11-20 automated side-camera calibration recording (dashboard.mp4, 7 min, 12 views) is registered for the final video in VIDEO_ASSETS.md, with a backup copy on /data/sonic.
