@@ -41,16 +41,17 @@ HOVER = 0.008                                  # drawer bottom above the rim whe
 LIFT_CLEAR = 0.030                             # drawer bottom above the rim while carrying
 FLOOR = float(CAB["floor_h"])
 B_MIN = 0.006                                  # lowest commanded drawer bottom above the table
-K_ALIGN, K_DESC = 2, 18
+K_ALIGN, K_DESC = 2, 24
 DZ0 = 0.007                                    # nominal descent per step (m); the action scales it by 0.5 .. 1.5
 SC_ALIGN = np.array([0.003, 0.003, 1.5])       # m, m, deg per unit action, align steps
 SC_DESC = np.array([0.001, 0.001, 0.5])        # descent steps
 MAX_C = np.array([0.008, 0.008, 4.0])          # bound of the accumulated corrections
 PEAK_SEAT = 12.0                               # N: a force rise this large near the floor means the drawer is seated
-MAX_CONTACTS = 3
+MAX_CONTACTS = 5
 LEVEL_H = 0.020                                # drawer bottom above the rim while it is levelled
 LEVEL_TOL, LEVEL_MAX = 0.8, 6.0                # deg: tilt left alone, largest correction about the jaw axis
-LEVEL_ITERS = 2
+LEVEL_ITERS = 0                                # measure only: the side-depth tilt repeats to ~2 deg only (episode 2)
+SEARCH_STD = 0.6                               # extra exploration on alignment steps (units of the action), train mode
 
 
 def wrapd(a):
@@ -311,7 +312,7 @@ class Episode:
     def obs(self, phase, b, c, f, peak, k, w, n_contact):
         t = w["tab"]
         o = [phase, (RIM + HOVER - b) / 0.09, c[0] / MAX_C[0], c[1] / MAX_C[1], c[2] / MAX_C[2], *(f / 20.0), peak / 30.0,
-             k / (K_ALIGN + K_DESC), t["s"] / 0.03, t["t"] / 0.03, n_contact / MAX_CONTACTS]
+             k / 20.0, t["s"] / 0.03, t["t"] / 0.03, n_contact / 3.0]
         return np.clip(np.array(o, float), -5, 5)
 
     def insert(self, w, g, pl):
@@ -321,10 +322,13 @@ class Episode:
         ax, bx = V.axes(w["yaw_o"])
         A3 = np.array([[*ax, 0.0], [*bx, 0.0], [0, 0, 1.0]])
         f0, peak, n_contact, end = self.force(), 0.0, 0, "steps"
+        last_force = False
         for k in range(K_ALIGN + K_DESC):
-            phase = 0 if k < K_ALIGN else 1
+            phase = 0 if k < K_ALIGN or last_force else 1   # after a contact: one lateral alignment step at the unloaded height
             o = self.obs(phase, b, c, A3 @ (self.force() - f0), peak, k, w, n_contact)
             a, info = self.actor.act(o, explore=self.mode == "train", rng=self.rng)
+            if self.mode == "train" and phase == 0:      # episodes 0-2 all tried the same alignment within ~1 mm
+                a = np.r_[np.clip(a[:3] + self.rng.normal(0.0, SEARCH_STD, 3), -1.0, 1.0), a[3]]
             c2 = np.clip(c + (SC_ALIGN if phase == 0 else SC_DESC) * a[:3], -MAX_C, MAX_C)
             b2 = b if phase == 0 else max(b - DZ0 * (1.0 + 0.5 * a[3]), B_MIN)
             status, res = self.try_step(f"ins{k:02d}", self.pose(w, g, pl, c2, b2))
@@ -354,6 +358,7 @@ class Episode:
             else:
                 r -= 1.0
                 end = status
+            last_force = status == "force"
             self.trans.append(dict(obs=o, act=a, rew=r))
             self.ret += r
             self.events.append([k, status, np.round(a, 2).tolist(), round(r, 3), round(b, 4), np.round(c, 4).tolist(), round(peak, 1)])

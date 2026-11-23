@@ -59,3 +59,12 @@ tab). Added: the tool levels the drawer about the jaw axis at 2 cm above the rim
 re-measure. The +6 deg along b has no physical explanation yet and may be a partial-view artefact, so it is logged, not
 corrected. The rim fit failed in episode 1 (too few edge samples on one long side); a tighter search window did not fix
 it offline, so it was not kept. The stored rim it falls back to agrees with the fits of attempts 10 and 12 within 1 mm.
+
+## Reflection on episode 2 (attempt 16)
+Levelling turned off (measure only). Its readings moved -0.95 deg after a -1 deg turn (expected about +1) and +4.3 after
+a -1.9 deg turn (expected about +1.9), so the side-depth tilt repeats to ~2 deg, the size of the tolerance. Tilt remains
+an unconfirmed cause. The +8..10 deg along b is probably the fingers in the fit: the drawer's long edges look parallel
+to the rim in the image.
+Changed: wider exploration on alignment steps (extra std 0.6 action units, about 2.5 mm and 1.3 deg over the two align
+steps), one lateral alignment step after each contact, up to 5 contacts per episode. Episodes 0-2 tried the same
+alignment within ~1 mm, so the data could not show where the drawer fits.
