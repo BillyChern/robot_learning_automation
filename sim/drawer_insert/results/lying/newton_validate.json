@@ -1,0 +1,18 @@
+{
+ "n": 1024,
+ "variant": "carry",
+ "build_s": 1.5,
+ "reset_s": 1.3,
+ "steps_s": 8.7,
+ "decisions_per_s": 4713,
+ "success_cpu": 0.1171875,
+ "success_newton": 0.1171875,
+ "agree": 0.974609375,
+ "depth_cpu_med": 0.0013261552907177648,
+ "depth_newton_med": 0.0012933200258831434,
+ "depth_absdiff_med_mm": 0.06749697737543081,
+ "maxf_cpu_med": 79.50641798218338,
+ "maxf_newton_med": 80.54391479492188,
+ "overflow": 0,
+ "e_xy_absdiff_max_mm": 0.05270938470164355
+}

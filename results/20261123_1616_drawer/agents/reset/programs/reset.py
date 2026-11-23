@@ -37,17 +37,65 @@ PRIOR = TASK["perception"]["drawer"]
 HOME_Q = np.array([0, 15, -130, 0, 55, 90.0])
 SEED_DOWN = np.array([0, 25, -110, 0, -45, 90.0])
 READY_XYZ = (0.40, -0.10, 0.25)
-DRAWER_L = 0.093                # back wall to front face (attempt 6: standing blob 0.093-0.094, table contact at tool 0.145)
+DRAWER_L = 0.0885               # back wall to front face (attempt 12: pinched at 0.142, touched the table at 0.141); the blob top ~0.095 is the knob
+HELD_H = 0.124                  # tool height for lowering a drawer held by an unknown grasp: the 20 N stop ends the move
 KNOB_OFF = 0.0168               # drawer centre to knob centre, along the knob axis (attempt 3, two wrist views)
 TIP_CLOSED = 0.047              # closed fingertips below the tool frame
 TIP_CLEAR = 0.006               # closed fingertips above the drawer's top face at the pinch
 PRE = 0.55                      # pre-close (~38 mm) around the 15 mm knob
-GRIP = 0.95
-HOLD = (60.0, 96.0)             # reading when the knob is held
+GRIP = 1.0                      # command full closure: a reading well below it means the pads are stopped by the knob
+HOLD = (65.0, 93.0)             # knob held (attempt 6: 86.6). Attempt 9: 94.8 at a 0.95 command was an empty pinch
+LIFT_FORCE = 35.0               # N, lift out of a compartment (attempt 6: 24 N): a jammed drawer must not raise the cabinet
+LIFT_FORCE_TABLE = 50.0         # N, lift from the table: the force estimate read 19-45 N on these lifts (attempts 9, 12, 17)
+PLACE_BIAS = np.array([0.0008, -0.0056])   # side-camera blob centre - commanded drawer centre near the target (attempts 12, 17)
 LIFT = 0.13                     # operator 16:33: lift ~13 cm
 TOL = 0.02                      # orchestrator layout tolerance
-GOOD = 0.012                    # correct above this
-YAW_RANGE = 25.0                # deg, inside the allowed +/-30
+YAW_RANGE = 30.0                # deg, allowed turn from the cabinet axis
+IN_PLACE = 0.018                # already this close to the target, pull up, inside the edge rule: leave it (attempt 15: the
+                                # orchestrator finds a motionless drawer 14 times of 20, so a repeat must not re-handle it)
+AIM_TOL = 0.008                 # re-place when the drawer is further than this from the aim
+HALF = (0.040, 0.058)           # half sizes of the standing drawer: along the knob axis, across it
+EDGE_MARGIN = 0.10              # user 16:41: the drawer's outline stays >= 10 cm inside every table edge
+SHIFT_MAX = 0.019               # the aim may leave the target by this much (layout tolerance 2 cm)
+
+
+def _plane(nx, ny, d):
+    k = float(np.hypot(nx, ny))
+    return np.array([nx / k, ny / k]), d / k
+
+
+# table edges as half-planes n.p >= d. Camera side: the operator's line (16:41). The side camera's view ends before that
+# edge (a fit to its cloud is the image border, notes/fov.py); wrist views put the real edge further out for x < 0.6
+# (notes/edge_wrist.py), so the operator's line is the safe one. Far side fitted to the side cloud, robot end from the
+# operator's note. The end beyond the cabinet was not measured (table points reach at least x = 0.75).
+EDGES = [_plane(1 / 6, 1.0, -0.13), _plane(0.40, -1.0, -0.15), _plane(1.0, 0.0, 0.05), _plane(-1.0, 0.0, -0.80)]
+
+
+def edge_margin(c, axis=None):
+    """(margin m, inward normal of the nearest edge) of the drawer outline at centre c; axis None: a bounding circle."""
+    c = np.asarray(c, float)
+    best = (np.inf, None)
+    for n, d in EDGES:
+        if axis is None:
+            sup = float(np.hypot(*HALF))
+        else:
+            a = np.asarray(axis, float) / np.linalg.norm(axis)
+            sup = HALF[0] * abs(n @ a) + HALF[1] * abs(n @ np.array([-a[1], a[0]]))
+        m = float(n @ c - d - sup)
+        if m < best[0]:
+            best = (m, n)
+    return best
+
+
+def safe_aim(xy, axis=None):
+    """The point nearest xy whose outline keeps EDGE_MARGIN (plus 4 mm for the placing error) from every edge."""
+    c = np.array(xy, float)
+    for _ in range(5):
+        m, n = edge_margin(c, axis)
+        if m >= EDGE_MARGIN + 0.004:
+            break
+        c = c + (EDGE_MARGIN + 0.004 - m + 1e-4) * n
+    return c
 
 
 def rz(deg):
@@ -151,11 +199,17 @@ class Reset:
         T = self.T_now()
         h = T[2, 3] - self.tz
         g = float(s.feedback()["gripper"])
-        held = HOLD[0] <= g <= HOLD[1]
-        if h >= 0.20 and not held:
-            if g > 3.0:
-                s.gripper(0.0, "open: nothing is held at this height")
+        if h >= 0.20:                                   # never open blindly up here: the drawer may be in the gripper
+            if g <= 3.0:
+                return False
+            g2 = float(s.gripper(1.0, "close fully at a safe height: is the drawer held?"))
+            if not s.dry and g2 <= 97.0:
+                s.decide(f"start: gripper stops at {g2:.1f} when closing: the drawer is held")
+                return True
+            s.decide(f"start: gripper closes to {g2:.1f}: nothing is held")
+            s.gripper(0.0, "open: nothing is held")
             return False
+        held = HOLD[0] <= g <= HOLD[1]
         s.decide(f"start: tool {h:.3f} m above the table, gripper {g:.1f}, {'holding' if held else 'not holding'}")
         if not held and g > 3.0:
             s.gripper(0.0, "open before rising")
@@ -180,7 +234,7 @@ class Reset:
         d = P[:, :2] - np.asarray(FX["centre"], float)
         in_cab = (np.abs(d @ A) < FX["size"][0] / 2 + 0.02) & (np.abs(d @ B) < FX["size"][1] / 2 + 0.02)
         blobs = [b for b in tt.detect(P[~in_cab], table_z=tz, max_height=0.16)
-                 if 0.05 <= b["height"] <= 0.14 and 0.05 <= max(b["extent"]) <= 0.19 and b["n"] > 150]
+                 if 0.05 <= b["height"] <= 0.14 and 0.05 <= max(b["extent"]) <= 0.19 and b["n"] > 1000]   # drawer ~4300 points; depth artifacts beside it ~200
         blobs.sort(key=lambda b: -b["n"])
         comps = []
         for k in range(3):
@@ -193,10 +247,22 @@ class Reset:
         s.summary(**{f"scan_{tag}": info})
         return dict(blobs=blobs, comps=comps)
 
+    def face_height(self, b):
+        """Height of the drawer's top face: the densest 2 mm layer of the blob (its 98th percentile is the knob's top)."""
+        hs = np.asarray(b["points"], float)[:, 2] - (float(b["z_top"]) - float(b["height"]))
+        edges = np.arange(0.05, float(b["height"]) + 0.006, 0.002)
+        cnt, _ = np.histogram(hs, bins=edges)
+        k = int(np.argmax(cnt))
+        c = 0.5 * (edges[k] + edges[k + 1])
+        face = float(np.median(hs[np.abs(hs - c) < 0.003]))
+        self.s.log(f"top face {face:.4f} m (blob top {b['height']:.4f}, layer of {int(cnt[k])} of {len(hs)} points)")
+        return float(np.clip(face, 0.07, 0.125))
+
     def locate(self, p):
         if p["blobs"]:
             b = p["blobs"][0]
-            return dict(where="table", xy=np.array(b["xy"], float), h_top=float(b["height"]))
+            standing = 0.085 <= float(b["height"]) <= 0.108   # the side-depth face height varies 5 mm with the spot (attempt 13)
+            return dict(where="table", xy=np.array(b["xy"], float), h_top=DRAWER_L if standing else self.face_height(b))
         filled = [k for k, v in enumerate(p["comps"]) if v is not None and v > 0.06]
         if filled:
             k = max(filled, key=lambda i: p["comps"][i])
@@ -296,31 +362,52 @@ class Reset:
                 continue
             g = float(s.gripper(GRIP, "pinch the knob"))
             s.summary(**{f"pinch_{tag}_{trial}": round(g, 1)})
-            if not HOLD[0] <= g <= HOLD[1]:
+            if not s.dry and not HOLD[0] <= g <= HOLD[1]:
                 s.decide(f"gripper reads {g:.1f}: the knob is not between the pads")
                 s.gripper(PRE, "release")
                 self.rise("up_after_miss", h_g + 0.09)
                 continue
-            with ForceLimit(s, 45.0):
-                T = self.T_now()
-                T[2, 3] += LIFT
-                self.line("lift_drawer", T, "slow")
-            g2 = float(s.feedback()["gripper"]) if not s.dry else g
-            if not HOLD[0] <= g2 <= HOLD[1] + 1.0:
+            T = self.T_now()
+            T[2, 3] += LIFT
+            try:
+                with ForceLimit(s, LIFT_FORCE if loc["where"].startswith("compartment") else LIFT_FORCE_TABLE):
+                    self.line("lift_drawer", T, "slow")
+            except Abort as e:
+                if "contact force" not in str(e):
+                    raise
+                s.decide("the lift stopped at its force limit: lower the drawer back to where it was before letting go")
+                self.contact_line("lower_back", Tg, 25.0)
+                s.gripper(PRE, "release: the drawer is back at its place")
+                self.rise("up_after_stuck", h_g + 0.09)
+                continue
+            g2 = float(s.feedback()["gripper"])
+            if not s.dry and not HOLD[0] <= g2 <= HOLD[1] + 1.0:
                 s.decide(f"after the lift the gripper reads {g2:.1f}: the drawer was lost")
                 s.gripper(0.0, "open")
                 continue
             return dict(knob=v["knob"], axis=v["axis"], h_g=h_g, bottom=loc["h_top"] - DRAWER_L, yaw=yaw)
         s.require(False, f"could not grasp the knob after two tries ({loc['where']})")
 
-    def yaw_delta(self, ax):
-        """Rotation (deg) that brings the knob axis to a random yaw within +/-YAW_RANGE of the cabinet's -A direction
-        (or the opposite direction, whichever is nearer)."""
+    def plan_yaw(self, ax, target):
+        """(turn deg, aim): a random yaw within +/-YAW_RANGE of the cabinet axis among those needing the least shift of
+        the aim to keep the outline EDGE_MARGIN inside the table."""
         nominal = np.degrees(np.arctan2(-A[1], -A[0]))
         now = wrap(np.degrees(np.arctan2(ax[1], ax[0])) - nominal)
-        goal = float(self.rng.uniform(-YAW_RANGE, YAW_RANGE))
-        d = wrap(goal - now)
-        return d if abs(d) <= 90 else wrap(d + 180.0)
+        opts = []
+        for goal in np.arange(-YAW_RANGE, YAW_RANGE + 0.1, 5.0):
+            d = wrap(goal - now)
+            d = d if abs(d) <= 90 else wrap(d + 180.0)
+            c = safe_aim(target, rz(d)[:2, :2] @ ax)
+            opts.append((float(np.linalg.norm(c - target)), float(goal), d, c))
+        least = min(o[0] for o in opts)
+        good = [o for o in opts if o[0] <= max(least + 0.003, 0.010)]
+        s_, goal, d, c = good[int(self.rng.integers(len(good)))]
+        self.s.decide(f"yaw {goal:+.0f} deg from the cabinet axis, aim {np.round(c, 4).tolist()} ({s_ * 100:.1f} cm from the target "
+                      f"to keep {EDGE_MARGIN * 100:.0f} cm from the table edges)")
+        self.s.summary(aim_shift_m=round(s_, 4), yaw_goal_deg=goal)
+        if s_ > SHIFT_MAX:
+            self.s.decide(f"target {np.round(target, 3).tolist()} cannot meet both the edge rule and the 2 cm tolerance: the edge rule wins")
+        return d, c
 
     def place(self, grip, aim, delta):
         """Carry the held drawer so its centre is over aim, turned by delta deg, lower it onto the table, release."""
@@ -328,10 +415,15 @@ class Reset:
         s.phase("place")
         T0 = self.T_now()
         R = rz(delta)
-        off = KNOB_OFF * (R[:2, :2] @ grip["axis"]) if grip.get("axis") is not None else np.zeros(2)
+        ax = None if grip.get("axis") is None else R[:2, :2] @ grip["axis"]
+        off = np.zeros(2) if ax is None else KNOB_OFF * ax
+        m0 = edge_margin(aim, ax)[0]
+        s.require(m0 >= EDGE_MARGIN, f"placement refused: outline {m0 * 100:.1f} cm from a table edge at {np.round(aim, 3).tolist()}")
+        self.last_axis = ax
         Tc = T0.copy()
         Tc[:3, :3] = R @ T0[:3, :3]
-        Tc[:2, 3] = aim + off
+        bias = PLACE_BIAS if aim[0] < 0.40 else np.zeros(2)
+        Tc[:2, 3] = aim - bias + off
         s.decide(f"carry: drawer centre to {np.round(aim, 3).tolist()}, turn {delta:+.1f} deg")
         try:
             self.line("carry", Tc, "normal")
@@ -345,6 +437,11 @@ class Reset:
         T2 = Tc.copy()
         T2[2, 3] = self.tz + h_place
         touched = not self.contact_line("lower_to_table", T2, 20.0)
+        s.require(touched or s.dry or not grip.get("unknown"), "held drawer: no table contact while lowering, not releasing")
+        c_now = self.T_now()[:2, 3] - off + bias
+        m1 = edge_margin(c_now, ax)[0]
+        s.summary(edge_margin_at_release_m=round(m1, 4))
+        s.require(m1 >= EDGE_MARGIN, f"release refused: outline {m1 * 100:.1f} cm from a table edge")
         s.gripper(PRE, "release the knob")
         s.decide(f"released {'on contact' if touched else 'at the planned height'}, tool "
                  f"{self.T_now()[2, 3] - self.tz:.3f} m above the table")
@@ -353,12 +450,41 @@ class Reset:
         s.gripper(0.0, "open")
 
     def measure(self):
-        """The drawer's position as the orchestrator sees it: side-camera blobs and the task's size prior."""
-        blobs = [b for b in self.s.tabletop() if layout.matches(PRIOR, b)]
+        """The drawer's position from the side camera with the cabinet footprint removed (attempt 12: the plain blob search
+        merged the drawer and the cabinet in one frame). Also records whether the plain search sees it as its own blob,
+        which is what the orchestrator's layout check needs."""
+        plain = [b for b in self.s.tabletop() if layout.matches(PRIOR, b)
+                 and float(np.linalg.norm(np.subtract(b["xy"], self.target))) < 0.06]
+        blobs = self.scan("measure")["blobs"]
+        self.s.summary(plain_blob_found=bool(plain))
+        if not plain:
+            self.s.decide("the plain side-camera blob search does not separate the drawer from the cabinet in this frame")
         if not blobs:
             return None, None
         b = min(blobs, key=lambda c: float(np.linalg.norm(np.subtract(c["xy"], self.target))))
         return np.array(b["xy"], float), float(b["height"])
+
+    def in_place(self):
+        """The knob axis when the drawer already stands correctly at the target, else None. The arm is at home."""
+        s = self.s
+        p = self.scan("start")
+        loc = self.locate(p)
+        if loc is None or loc["where"] != "table" or float(np.linalg.norm(loc["xy"] - self.target)) > IN_PLACE:
+            return None
+        v = self.look(loc["xy"], loc["h_top"], loc["h_top"] + 0.165, "in_place")
+        if v is None:
+            s.decide("near the target but the pull is not visible from above: handle it")
+            self.go_home()
+            return None
+        nominal = np.degrees(np.arctan2(-A[1], -A[0]))
+        turn = wrap(np.degrees(np.arctan2(v["axis"][1], v["axis"][0])) - nominal)
+        turn = turn if abs(turn) <= 90 else wrap(turn + 180.0)
+        margin = edge_margin(loc["xy"], v["axis"])[0]
+        ok = abs(turn) <= YAW_RANGE + 3.0 and margin >= EDGE_MARGIN
+        s.decide(f"drawer near the target: turn {turn:+.0f} deg, outline {margin * 100:.1f} cm from the nearest edge: "
+                 + ("already in place, not moving it" if ok else "re-place it"))
+        self.go_home()
+        return v["axis"] if ok else None
 
     # ------------------------------------------------------------ main
     def run(self):
@@ -367,16 +493,26 @@ class Reset:
         s.phase("clear")
         held = self.escape()
         grip = None
+        self.set_home()                                   # clear of the scene now: aborts return to HOME_Q
         if held:
-            s.decide("the drawer is already in the gripper: carry it to the target")
-            T = self.T_now()
-            h_g = T[2, 3] - self.tz - LIFT                # unknown grasp: lower onto the table under the force stop
-            grip = dict(knob=None, axis=None, h_g=max(h_g, DRAWER_L + TIP_CLOSED + TIP_CLEAR), bottom=0.0, yaw=None)
+            c = safe_aim(self.target)
+            s.decide(f"the drawer is already in the gripper: carry it tool-down above {np.round(c, 3).tolist()}")
+            s.move_joint("carry_held", self.ik(tool_down_T(np.r_[c, self.tz + 0.27], YAW_DEG - 90.0)), "normal")
+            grip = dict(knob=None, axis=None, h_g=HELD_H, bottom=0.0, yaw=None, unknown=True)
         else:
             self.go_home()
+        s.require(edge_margin(self.target)[0] > -0.05, f"target {self.target.tolist()} is at a table edge")
         aim = self.target.copy()
-        err, m, hb = None, None, None
-        for rnd in range(3):
+        self.last_axis = None
+        err, m, hb, seen = None, None, None, None
+        placed = None if grip is not None else self.in_place()
+        if placed is not None:
+            self.last_axis, seen = placed, True
+            m, hb = self.measure()
+            s.require(m is not None, "the drawer blob was lost while checking it in place")
+            err = float(np.linalg.norm(m - self.target))
+            s.summary(already_in_place=True)
+        for rnd in range(0 if placed is not None else 3):
             if grip is None:
                 s.phase(f"scan_{rnd}")
                 p = self.scan(str(rnd))
@@ -384,7 +520,10 @@ class Reset:
                 s.require(loc is not None, f"drawer not found: no table blob, compartments {p['comps']}")
                 s.decide(f"round {rnd}: drawer at {loc['where']} {np.round(loc['xy'], 3).tolist()}, top {loc['h_top']:.3f} m")
                 grip = self.pick(loc, str(rnd))
-            delta = self.yaw_delta(grip["axis"]) if rnd == 0 and grip.get("axis") is not None else 0.0
+            if rnd == 0 and grip.get("axis") is not None:
+                delta, aim = self.plan_yaw(grip["axis"], self.target)
+            else:
+                delta, aim = 0.0, safe_aim(aim, grip.get("axis"))
             self.place(grip, aim, delta)
             grip = None
             self.go_home()
@@ -398,19 +537,21 @@ class Reset:
             err = float(np.linalg.norm(m - self.target))
             s.summary(measured={"drawer": np.round(m, 4).tolist()}, error_m=round(err, 4), blob_height=hb, rounds=rnd + 1)
             s.decide(f"measured {np.round(m, 4).tolist()}, error {err * 100:.1f} cm (height {hb:.3f})")
-            if err <= GOOD:
+            if float(np.linalg.norm(m - aim)) <= AIM_TOL:
                 break
-            aim = aim - np.clip(m - self.target, -0.06, 0.06)
+            aim = aim - np.clip(m - aim, -0.03, 0.03)
         s.phase("verify")
-        seen = self.look(m, hb, hb + 0.165, "verify") is not None
-        self.go_home()
+        if seen is None:
+            seen = self.look(m, DRAWER_L, DRAWER_L + 0.165, "verify") is not None
+            self.go_home()
         m2, hb2 = self.measure()
         if m2 is not None:
             m, err = m2, float(np.linalg.norm(m2 - self.target))
-        ok = bool(err is not None and err <= TOL and seen and m2 is not None)
+        margin = edge_margin(m, self.last_axis)[0]
+        ok = bool(err is not None and err <= TOL and seen and m2 is not None and margin >= EDGE_MARGIN)
         s.summary(measured={"drawer": np.round(m, 4).tolist()}, errors={"drawer": round(err, 4)}, pull_seen_from_above=seen,
-                  verify=dict(tolerance=TOL, height=hb2))
-        s.decide(f"final error {err * 100:.1f} cm, pull seen from above: {seen}")
+                  verify=dict(tolerance=TOL, height=hb2, edge_margin_m=round(margin, 4)))
+        s.decide(f"final error {err * 100:.1f} cm, outline {margin * 100:.1f} cm from the nearest table edge, pull seen: {seen}")
         s.claim("success" if ok else "fail")
 
 

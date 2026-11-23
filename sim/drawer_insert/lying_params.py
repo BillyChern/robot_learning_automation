@@ -4,17 +4,18 @@ Opening frame: origin at the believed target-compartment centre on the table, x 
 (yaw_deg, away from the robot base, toward the middle compartment), y = z cross x, z up from the table."""
 import numpy as np
 
-OPEN_X, OPEN_Y, RIM_H, FLOOR_H = 0.0757, 0.1150, 0.095, 0.013   # believed (measured) values
+OPEN_X, OPEN_Y, RIM_H, L_EST = 0.0757, 0.1150, 0.095, 0.091    # believed (measured) values; L_EST: drawer length
 
 RANGES = dict(
     open_x=(0.0745, 0.0770),     # true opening along x (m): measured 0.0757 (outer length, 12 mm walls)
     open_y=(0.1135, 0.1165),     # true opening along y (m): measured 0.115
     rim_h=(0.093, 0.097),        # rim above the table (m): 0.095; an inserted drawer's top measured 0.097
-    floor_h=(0.011, 0.015),      # compartment floor above the table (m): 0.013
+    L=(0.088, 0.094),            # drawer front-to-back length = its height standing (m): 0.0905-0.093 in the side cloud
+                                 # of the standing drawer (live run, reset attempt_14); the yaml's floor_h 0.013 is not used
     wall=(0.010, 0.014),         # cabinet wall / divider thickness (m): 0.012
     clr_x=(0.002, 0.006),        # opening minus drawer thickness along x (m)
     clr_y=(0.002, 0.006),        # opening minus drawer width along y (m)
-    flush=(-0.002, 0.003),       # drawer top above the rim when it rests on the floor (m): length = rim - floor + flush
+    flush=(-0.002, 0.003),       # drawer top above the rim when it rests on the floor (m): floor = rim + flush - length
     dwall=(0.007, 0.010),        # drawer wall thickness (m)
     r_edge=(0.0005, 0.003),      # rounding of the drawer's bottom (back wall) edges (m)
     r_rim=(0.0005, 0.002),       # rounding of the rim's inner edges (m)
@@ -23,7 +24,8 @@ RANGES = dict(
     open_dx=(-0.010, 0.010),     # true minus believed opening centre along x (m)
     open_dy=(-0.010, 0.010),     # ... along y (m)
     open_dyaw=(-3.0, 3.0),       # true minus believed opening yaw (deg)
-    off_x=(-0.015, 0.015),       # drawer top-face centre minus tool point, tool x (m)
+    off_x=(-0.025, 0.025),       # drawer top-face centre minus tool point, tool x (m): the knob sits ~17 mm off centre
+                                 # along the drawer's thickness (wrist look-down), on either side (drawer turned 180 deg)
     off_y=(-0.015, 0.015),       # ... tool y (m)
     hand_yaw=(-6.0, 6.0),        # drawer yaw minus tool yaw (deg)
     tilt=(0.0, 8.0),             # in-hand tilt of the drawer's axis from vertical (deg), direction uniform
@@ -33,8 +35,8 @@ RANGES = dict(
     est_sd_tilt=(1.0, 3.0),      # ... of each tilt component (deg)
     est_sd_hold=(0.001, 0.003),  # ... of hold (m)
     gap0=(0.005, 0.025),         # drawer's lowest point above the rim at the start (m)
-    k_soft=(0.5, 3.0),           # in-hand tilt stiffness about the jaw closing axis (N m/rad)
-    f_soft=(0.08, 0.3),          # ... slip torque (N m)
+    k_soft=(0.5, 5.0),           # in-hand tilt stiffness about the jaw closing axis (N m/rad)
+    f_soft=(0.08, 0.5),          # ... slip torque (N m): pinch on a ~16 mm knob, 0.1-0.3 by estimate
     k_stiff=(5.0, 20.0),         # about the other horizontal axis (N m/rad)
     f_stiff=(0.4, 1.5),          # (N m)
     k_yaw=(2.0, 8.0),            # in-hand yaw stiffness (N m/rad)
@@ -58,6 +60,8 @@ VARIANTS = dict(
     soft_arm=dict(kp_arm=(5e3, 2e4)),
     slow_steps=dict(dt_dec=(0.5, 1.0)),
     low_stop=dict(f_stop=(25.0, 40.0)),
+    poor_est=dict(est_sd_off=(0.005, 0.010), est_sd_yaw=(3.0, 5.0), est_sd_tilt=(3.0, 6.0)),
+    no_tilt_est={},                                                    # the robot passes tilt = (0, 0)
 )
 
 
@@ -73,10 +77,13 @@ def sample(rng, variant="carry"):
     p["est_yaw"] = e("hand_yaw", p["est_sd_yaw"], 8.0)
     p["est_tilt_x"], p["est_tilt_y"] = e("tilt_x", p["est_sd_tilt"], 8.0), e("tilt_y", p["est_sd_tilt"], 8.0)
     p["est_hold"] = e("hold", p["est_sd_hold"], 0.008)
+    if variant == "no_tilt_est":
+        p["est_tilt_x"] = p["est_tilt_y"] = 0.0
     b = p.pop("f_bias", F_BIAS)
     for i, ax in enumerate("xyz"):
         p["fb_" + ax], p["fd_" + ax] = float(rng.uniform(-b, b)), float(rng.uniform(-F_DRIFT, F_DRIFT))
-    p["L"] = p["rim_h"] - p["floor_h"] + p["flush"]
+    p["floor_h"] = max(0.003, p["rim_h"] + p["flush"] - p["L"])      # the back panel is at least 3 mm thick
+    p["flush"] = p["floor_h"] + p["L"] - p["rim_h"]
     return p
 
 
@@ -88,5 +95,5 @@ def nominal():
              est_tilt_y=0.0)
     p["est_hold"] = p["hold"]
     p.update({k + ax: 0.0 for k in ("fb_", "fd_") for ax in "xyz"})
-    p["L"] = p["rim_h"] - p["floor_h"] + p["flush"]
+    p["floor_h"] = p["rim_h"] + p["flush"] - p["L"]
     return p

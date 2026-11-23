@@ -140,7 +140,7 @@ def main():
     ap.add_argument("--fresh", type=float, default=0.4)
     ap.add_argument("--eval_every", type=int, default=10)
     ap.add_argument("--init", default="")
-    ap.add_argument("--f_pen", type=float, default=0.05, help="reward per 10 N of peak force above 40 N")
+    ap.add_argument("--f_pen", type=float, default=None, help="reward per 10 N of peak force above 40 N (slot 0.05, lying 0.02)")
     ap.add_argument("--v2", default="", help="vertical model + dz action: carry-height mode (params.H_MODES), e.g. mix")
     ap.add_argument("--variants", default="carry:0.8,aligned:0.2", help="start variant shares (params.VARIANTS)")
     ap.add_argument("--seed", type=int, default=0)
@@ -149,7 +149,9 @@ def main():
     a = ap.parse_args()
     lying = a.task == "lying"
     if lying and a.variants == "carry:0.8,aligned:0.2":
-        a.variants = "carry:0.8,small:0.2"
+        a.variants = "carry:0.6,small:0.4"
+    if a.f_pen is None:
+        a.f_pen = 0.02 if lying else 0.05
     H = LY.H_STEPS if lying else H_STEPS
     torch.set_num_threads(4)
     torch.manual_seed(a.seed)

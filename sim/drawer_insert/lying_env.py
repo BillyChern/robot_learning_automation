@@ -11,7 +11,8 @@ from .lying_policy import H_STEPS, XY_BOUND, YAW_BOUND, Z_HIGH, Z_LOW, action_of
 from .lying_scene import pose, xml
 
 FLUSH_TOL, F_OK = 0.010, 40.0      # success: every top corner within 1 cm of the rim, force below 40 N
-F_PEN = 0.05                       # reward per 10 N of a step's true peak force above F_OK
+F_PEN = 0.02                       # reward per 10 N of a step's true peak force above F_OK
+W_DEPTH, W_XY = 3.0, 5.0           # reward per m of bottom-centre depth gained / lateral distance to the true centre lost
 SAMPLE = 25                        # substeps between force samples (40 Hz)
 SETTLE = 30
 
@@ -83,7 +84,7 @@ class LyingEnv:
         self.z_flush = P.RIM_H + p["est_hold"]
         est = dict(off=(p["est_off_x"], p["est_off_y"]), yaw=p["est_yaw"], tilt=(p["est_tilt_x"], p["est_tilt_y"]))
         yaw0 = -p["est_yaw"]
-        xy0 = -rot(yaw0) @ bottom_offset(est, P.RIM_H - P.FLOOR_H)
+        xy0 = -rot(yaw0) @ bottom_offset(est, P.L_EST)
         c = np.array([xy0[0], xy0[1], yaw0, 0.2])
         self.set_hand(self.to_true(c))
         low = min(self.site(f"bot_{i}")[2] for i in range(4))
@@ -96,7 +97,7 @@ class LyingEnv:
             mujoco.mj_step(self.m, self.d)
         self.k, self.prev, self.f_last, self.f_peak, self.stopped = 0, np.zeros(4), np.zeros(3), 0.0, 0.0
         self.e_xy, self.e_yaw = self.errors()
-        self.dep = self.depth()
+        self.dep, self.dxy = self.depth(), float(np.hypot(*self.e_xy))
         self.max_f, self.n_stops = 0.0, 0
         obs = self.obs()
         if kind is not None:
@@ -148,9 +149,9 @@ class LyingEnv:
         err = self.top_err()
         f_end = float(np.linalg.norm(f_true))
         succ = err <= FLUSH_TOL and f_end < F_OK
-        dep = self.depth()
-        r = 3.0 * (dep - self.dep) - F_PEN * max(0.0, peak_true - F_OK) / 10.0 + 0.1 * succ
-        self.dep = dep
+        dep, dxy = self.depth(), float(np.hypot(*self.site("bot_c")[:2]))
+        r = W_DEPTH * (dep - self.dep) + W_XY * (self.dxy - dxy) - F_PEN * max(0.0, peak_true - F_OK) / 10.0 + 0.1 * succ
+        self.dep, self.dxy = dep, dxy
         done = self.k >= H_STEPS
         if done:
             r += 1.0 * succ

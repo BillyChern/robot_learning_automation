@@ -72,7 +72,7 @@ def drawer(p):
     corners = [(sx * H / 2, sy * W / 2) for sx in (-1, 1) for sy in (-1, 1)]
     sites = [(f"top_{i}", (x, y, 0)) for i, (x, y) in enumerate(corners)] + \
             [(f"bot_{i}", (x, y, -L)) for i, (x, y) in enumerate(corners)] + [("bot_c", (0, 0, -L)), ("top_c", (0, 0, 0))]
-    g += [f'<site name="{n}" pos="{" ".join(f"{v:.6f}" for v in t + R @ np.array(c))}"/>' for n, c in sites]
+    g += [f'<site name="{n}" pos="{" ".join(f"{v:.6f}" for v in t + R @ np.array(c))}" group="4"/>' for n, c in sites]
     I = p["mass"] / 12 * np.array([W**2 + L**2, H**2 + L**2, H**2 + W**2])
     com = t + R @ np.array([0, 0, -L / 2])
     g.insert(0, f'<inertial pos="{com[0]:.6f} {com[1]:.6f} {com[2]:.6f}" quat="{q[0]:.6f} {q[1]:.6f} {q[2]:.6f} {q[3]:.6f}" '

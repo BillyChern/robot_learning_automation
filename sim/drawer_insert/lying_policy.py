@@ -4,7 +4,7 @@ import numpy as np
 
 from .policy import Policy as Mlp
 
-H_STEPS = 40
+H_STEPS = 60
 STEP_LO = np.array([-0.004, -0.004, -2.0, -0.008])     # dx, dy (m, opening frame), dyaw (deg), dz (m, - = down)
 STEP_HI = np.array([0.004, 0.004, 2.0, 0.004])
 OBS_DIM = 19
