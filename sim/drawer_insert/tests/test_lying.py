@@ -66,3 +66,10 @@ def test_descent_matches_env(tmp_path):
         o, r, done, info = env.step(action_of(pol.act(o)))
         ins.done(o["f_peak"], o["stopped"], *base(env.cmd))
         assert np.allclose(ins.cmd, env.cmd, atol=1e-6)
+
+
+def test_guided_steps_along_the_lateral_force():
+    from sim.drawer_insert.lying_baselines import Guided
+    o = dict(x=0.0, y=0.0, yaw=0.0, z=0.09, f=np.array([-8.0, 3.0, 25.0]), f_peak=30.0, stopped=0.0)
+    d = Guided().act(o)
+    assert d[0] < 0 < d[1] and d[3] > 0

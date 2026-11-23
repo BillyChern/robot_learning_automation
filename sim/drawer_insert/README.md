@@ -332,7 +332,7 @@ signals the robot has. The standing-cabinet sim (sections above) is unchanged.
 
 Files (next to the old ones): `lying_params.py` (measured values + randomization), `lying_scene.py` (MJCF),
 `lying_env.py` (MuJoCo CPU reference), `newton_lying.py` (Newton GPU twin), `lying_policy.py` (numpy runtime: `Policy`,
-`Descent`, `start_pose`), `lying_baselines.py` (straight descent, spiral search, pre-rolls), `lying_eval.py`,
+`Descent`, `start_pose`), `lying_baselines.py` (straight descent, spiral search, force-guided script, pre-rolls), `lying_eval.py`,
 `lying_render.py`, `weights/policy_lying.npz`, `results/lying/`, `tests/test_lying.py`,
 `newton_try/validate_lying.py`. `train.py --task lying` (default `--task slot` = the old task).
 
@@ -427,49 +427,67 @@ distance of the bottom centre to the true opening centre, m; privileged shaping)
 hover above the rim within 20 iterations.) Reset-to-states: the same SGS-style bank; pre-rolls are a straight descent
 (`descend`) or a descent with random lateral/yaw steps (`drift`) of 2-29 steps (resting on the rim, cocked on an edge,
 part-way in); 40 % fresh starts; start variants 60 % `carry` (full ranges), 40 % `small` (opening +-3 mm / +-1 deg,
-tilt 0-3 deg).
+tilt 0-3 deg). The shipped policy was fine-tuned (ly_n4) with a 0.05 force penalty and 30 % carry, 30 % `robust`
+(force noise sd 1-4.5 N, bias +-5 N), 15 % `small`, 25 % `low_stop` (stop at 25-40 N) starts.
 
-### Results (shipped policy: `weights/policy_lying.npz`, run ly_n3 iteration 50)
+### Results (shipped policy: `weights/policy_lying.npz`, run ly_n4 iteration 100)
 
 500 episodes per row in the CPU MuJoCo reference env (`lying_eval.py`, seeds 100000-100499, the same episodes for every
 controller; deterministic policy; 60 decisions). Success = all four top corners within 10 mm of the true rim and the
 true contact force < 40 N at the end. Full tables: `results/lying/eval_*.json`
-(`python -m sim.drawer_insert.lying_eval --report sim/drawer_insert/results/lying`).
+(`python -m sim.drawer_insert.lying_eval --report sim/drawer_insert/results/lying`). Controllers: straight descent from
+the nominal pose (back up 2 mm after a stop), spiral search (2.5 mm pitch spiral in x/y with +-1 deg yaw after each
+jam on the rim), force-guided script (`lying_baselines.Guided`: step 2 mm/N along the measured lateral force while
+pressing, i.e. the strategy the policy turned out to use, written by hand and tuned on 300 episodes), PPO policy.
 
-| start | straight descent | spiral search | PPO policy |
-|---|---|---|---|
-| carry (full ranges: opening +-10 mm / +-3 deg, in-hand estimate sd 2-5 mm / 1-3 deg, tilt 0-8 deg) | 21.0 % | 14.0 % | **66.2 %** |
-| carry, released when seated (z < 1 cm and f_z > 10 N for 2 decisions) | 15.6 % | 9.4 % | **64.8 %** |
-| small (opening known to +-3 mm / +-1 deg, tilt 0-3 deg) | 46.2 % | 32.8 % | **86.6 %** |
-| big_open (opening +-15 mm / +-5 deg) | 9.2 % | 5.8 % | **44.2 %** |
-| after 8 straight-descent steps (resting on the rim / cocked) | 21.0 % | 14.4 % | **66.2 %** |
-| after 10 drift steps (random lateral/yaw on the way down) | 19.2 % | 15.0 % | **61.8 %** |
+| start | straight descent | spiral search | force-guided script | PPO policy |
+|---|---|---|---|---|
+| carry (full ranges: opening +-10 mm / +-3 deg, in-hand estimate sd 2-5 mm / 1-3 deg, tilt 0-8 deg) | 21.0 % | 14.0 % | 59.6 % | **74.8 %** |
+| carry, released when seated (z < 1 cm and f_z > 10 N for 2 decisions) | 15.6 % | 9.4 % | 49.2 % | **70.2 %** |
+| small (opening known to +-3 mm / +-1 deg, tilt 0-3 deg) | 46.2 % | 32.8 % | 78.4 % | **94.8 %** |
+| big_open (opening +-15 mm / +-5 deg) | 9.2 % | 5.8 % | 43.2 % | **52.6 %** |
+| after 8 straight-descent steps (resting on the rim / cocked) | 21.0 % | 14.4 % | 59.4 % | **76.2 %** |
+| after 10 drift steps (random lateral/yaw on the way down) | 19.2 % | 15.0 % | 56.8 % | **73.6 %** |
 
 Carry start, success by start error (episodes per bin in brackets; e_xy = true offset of the drawer's bottom-face
 centre from the true opening centre at the start; e_yaw = true drawer yaw vs the opening; tilt = in-hand tilt):
 
-| | 0-3 mm (36) | 3-6 (100) | 6-10 (157) | 10-15 (145) | 15-30 (62) | 0-1 deg (151) | 1-2 (111) | 2-4 (167) | 4-10 (71) | tilt 0-2 (116) | 2-4 (135) | 4-6 (112) | 6-8 (137) |
+| | e_xy mm 0-3 (36) | e_xy mm 3-6 (100) | e_xy mm 6-10 (157) | e_xy mm 10-15 (145) | e_xy mm 15-30 (62) | e_yaw deg 0-1 (151) | e_yaw deg 1-2 (111) | e_yaw deg 2-4 (167) | e_yaw deg 4-10 (71) | tilt deg 0-2 (116) | tilt deg 2-4 (135) | tilt deg 4-6 (112) | tilt deg 6-8.01 (137) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | straight | 0.69 | 0.51 | 0.15 | 0.04 | 0.00 | 0.24 | 0.29 | 0.20 | 0.04 | 0.28 | 0.21 | 0.23 | 0.12 |
 | spiral | 0.72 | 0.35 | 0.05 | 0.01 | 0.00 | 0.17 | 0.21 | 0.13 | 0.00 | 0.16 | 0.14 | 0.18 | 0.09 |
-| policy | 0.86 | 0.89 | 0.72 | 0.56 | 0.27 | 0.69 | 0.75 | 0.67 | 0.45 | 0.78 | 0.67 | 0.64 | 0.56 |
+| guided | 0.94 | 0.77 | 0.70 | 0.44 | 0.21 | 0.62 | 0.64 | 0.65 | 0.34 | 0.66 | 0.64 | 0.62 | 0.48 |
+| policy | 0.92 | 0.93 | 0.85 | 0.68 | 0.26 | 0.76 | 0.78 | 0.79 | 0.56 | 0.87 | 0.76 | 0.74 | 0.64 |
 
-Stress tests outside the training ranges (carry start; straight / spiral / policy): force noise sd 3-5 N and bias
-+-6 N 18.4 / 10.8 / 46.4 %; clearance 1-2 mm 5.4 / 3.8 / 40.0 %; in-hand estimate sd 5-10 mm, 3-6 deg 8.2 / 5.2 /
-45.4 %; tilt estimate passed as zero 21.6 / 12.0 / 62.2 %; friction 0.6-0.9 17.8 / 10.6 / 65.2 %; loose grasp (slip
-torques / forces / 3) 20.0 / 12.8 / 66.6 %; arm 5e3-2e4 N/m 32.4 / 20.2 / 57.4 %; decision period 0.5-1.0 s
-21.4 / 16.0 / 62.2 %; force stop 25-40 N 16.8 / 12.6 / 65.8 % (median peak 62 N instead of 84 N).
+Stress tests outside the training ranges (carry start; the noisy force and the 25-40 N stop overlap ly_n4's
+training shares `robust` and `low_stop`):
 
-Forces (carry): median per-episode true peak 84 N (straight 81, spiral 79), 15.7 force stops per episode (straight
-24.7, spiral 12.4), median 23 decisions to the first success state. The policy probes with the force stop: it
-descends until the stop, reads the lateral force, shifts and tries again. The peaks are the stop's overshoot between
-40 Hz samples. Failures (300 carry episodes, 105 fails): 87 never entered the opening (start error median 11.6 mm),
-10 stuck part-way, 8 fully in but pressing > 40 N at the end.
+| stress test (carry start) | straight | spiral | guided | policy |
+|---|---|---|---|---|
+| force noise sd 3-5 N, bias +-6 N | 18.4 % | 10.8 % | 53.6 % | 56.4 % |
+| clearance 1-2 mm | 5.4 % | 3.8 % | 30.8 % | 48.0 % |
+| in-hand estimate sd 5-10 mm, 3-6 deg | 8.2 % | 5.2 % | 39.8 % | 50.6 % |
+| tilt estimate passed as zero | 21.6 % | 12.0 % | 61.6 % | 72.2 % |
+| friction 0.6-0.9 | 17.8 % | 10.6 % | 66.4 % | 71.4 % |
+| loose grasp (slip torques / forces / 3) | 20.0 % | 12.8 % | 57.6 % | 78.0 % |
+| arm 5e3-2e4 N/m | 32.4 % | 20.2 % | 50.8 % | 69.6 % |
+| decision period 0.5-1.0 s | 21.4 % | 16.0 % | 59.8 % | 74.2 % |
+| force stop 25-40 N | 16.8 % | 12.6 % | 65.4 % | 72.8 % |
+
+Forces (carry): median per-episode true peak 74 N (straight 81, spiral 79, guided 78), 6.9 force stops per episode
+(straight 24.7, spiral 12.4, guided 14.1), median 23 decisions to the first success state. The peaks are the stop's
+overshoot between 40 Hz samples; with the stop at 25-40 N the policy's median peak is 56 N. In contact (f_z > 15 N,
+|f_xy| > 4 N; 2093 decisions in 300 episodes) the policy's lateral step points along the measured lateral force (mean
+cosine 0.95, always positive): it learned a force-guided search, which is why the hand-written `Guided` script is the
+strongest baseline. Final lateral shift: median 12 mm (10-90 %: 5-18 mm), yaw change median 6 deg. Failures (300 carry
+episodes, 73 fails): 60 never entered the opening (start error median 13 mm), 12 stuck part-way, 1 fully in but pressing
+with over 40 N at the end. The first shipped policy (ly_n3 it 50, before the force-penalty / noise fine-tune) had 66.2 %
+on carry, 46.4 % with the noisy force and 15.7 stops per episode.
 
 `results/lying/strip.jpg`: oblique and side views at decisions 0, 5, 10, 15, 20, 30, 45, 59. Rows 1 and 3: the policy
-with 14 and 13 mm start errors (lands on the rim, shifts toward the lateral force, drops in, seats); rows 2 and 4: the
+with 14 mm start errors (lands on the rim, steps toward the lateral force, drops in, seats); rows 2 and 4: the
 straight descent on the same episodes stays on the rim. GIF of the four episodes: `/data/sonic/drawer_insert_runs/
-lying_episodes.gif` (8 MB, not in git).
+lying_episodes.gif` (not in git).
 
 ### Training (RTX 4090, local; niced, 1-2 CPU threads)
 
@@ -478,11 +496,13 @@ lying_episodes.gif` (8 MB, not in git).
 | ly_c1 | CPU pool (10 x 32) | prior "descend 5 mm/step" | force penalty 0.05 / 10 N | 0.27 M | 2 min | collapsed to hovering above the rim (0 %) by it 20; stopped |
 | ly_n1 | Newton, 4096 worlds | prior | penalty 0.02, xy shaping; first geometry (drawer 0.082 m, off_x +-15 mm), 40 decisions | 3.7 M | 8 min | 12 % (it 10) -> 24 % (it 20) |
 | ly_n2 | Newton | ly_n1 it 20 | measured drawer length 0.091 m, off_x +-25 mm | 4.8 M | 9 min | 28 % -> 36 % (it 30) |
-| ly_n3 | Newton | ly_n2 it 30 | 60 decisions (was 40), soft grasp axis 0.5-5 N m/rad / 0.08-0.5 N m | 11.1 M | 23 min | 55 % (it 10) -> 59 -> 60 -> 64 -> 66 % (it 50) |
+| ly_n3 | Newton | ly_n2 it 30 | 60 decisions (was 40), soft grasp axis 0.5-5 N m/rad / 0.08-0.5 N m | 13.3 M | 30 min | 55 % (it 10) -> 59 -> 60 -> 64 -> 66 -> 68 % (it 60); it 50 was the first shipped policy (CPU carry 66.2 %) |
+| ly_n4 (shipped) | Newton | ly_n3 it 50 | force penalty 0.05 / 10 N; starts 30 % carry, 30 % `robust` (force noise sd 1-4.5 N, bias +-5 N), 15 % small, 25 % `low_stop` (25-40 N) | 22.2 M | 47 min | 67 % (it 10) -> 70 -> 72 -> 73 -> 74 -> 76.5 % (it 100); median peak 82 -> 76 N |
 
 PPO as for the standing sim (2 x 256 tanh, Gaussian, gamma 0.99, GAE 0.95, clip 0.2, 4 epochs, minibatch 4096, lr 3e-4);
 19 inputs, 4 actions; the actor's last layer starts at "descend 5 mm per step, no correction". ~16-27 s per 4096-world
-iteration (incl. pre-rolls and resets). Curves: `results/lying/curves_<run>.csv`.
+iteration (incl. pre-rolls and resets; ly_n3 and ly_n4 shared the GPU for 6 min). Curves:
+`results/lying/curves_<run>.csv`. Not done: a no-curriculum ablation (the standing sim's showed little effect).
 
 ### Engine
 
@@ -548,14 +568,14 @@ while not done:                                           # 60 decisions
 - Lateral force: the search uses the lateral force (~10 N toward the opening when the bottom rests on a rim edge, at
   30-40 N down). The real estimate comes from joint torques with pose-dependent bias; if its lateral error over a 10 cm
   descent is well above the sim's (bias +-3 N, drift +-3 N, noise 1-3 N), success drops (`noisy_force`, noise 3-5 N,
-  bias +-6 N: 46.4 %). Check on the robot: hold
+  bias +-6 N: 56.4 %). Check on the robot: hold
   the drawer, rest it on the rim on purpose, read `ins.obs["f"]` (f_z > 0, f_xy pointing toward the opening).
 - Grasp: the pinch on the knob is modelled as spring + Coulomb slip joints (guessed stiffness and slip torques, the
   soft axis along the jaw axis), with a slide of -8..+4 mm along z. The real drawer can pivot more, slip out or be
   dropped; `loose_grip` covers weaker grasps. Releasing is not modelled.
 - In-hand estimates: the policy relies on `off`, `yaw_est`, `tilt` (sd 2-5 mm, 1-3 deg in training). Tilt from a
-  wrist look-down at a held drawer is hard: passing tilt = (0, 0) costs ~4 points (62.2 vs 66.2 %), estimate errors
-  of sd 5-10 mm / 3-6 deg (`poor_est`) ~21 points (45.4 %).
+  wrist look-down at a held drawer is hard: passing tilt = (0, 0) costs ~3 points (72.2 vs 74.8 %), estimate errors
+  of sd 5-10 mm / 3-6 deg (`poor_est`) ~24 points (50.6 %).
 - Geometry: drawer length 0.091 from one survey cloud, floor height inferred (~5 mm), clearance from one wrist image
   (front fills the opening, ~1-2 mm per side; `tight`), rim edge rounding guessed. Wood friction, burrs and swelling
   are not modelled; the cabinet is fixed in the sim (the real one could shift or tip under 40-65 N).

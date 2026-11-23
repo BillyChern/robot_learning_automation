@@ -296,97 +296,97 @@
  "policy": {
   "summary": {
    "n": 500,
-   "success": 0.658,
-   "max_f_median": 61.610360588820484,
-   "over_65n": 0.414,
-   "stops_mean": 24.618,
-   "first_success_median": 26.0,
+   "success": 0.728,
+   "max_f_median": 56.221705094676366,
+   "over_65n": 0.296,
+   "stops_mean": 17.222,
+   "first_success_median": 25.0,
    "by_xy": [
     {
      "bin": "|e_xy| mm 0-3",
      "n": 39,
-     "success": 0.9487179487179487
+     "success": 0.9230769230769231
     },
     {
      "bin": "|e_xy| mm 3-6",
      "n": 89,
-     "success": 0.7865168539325843
+     "success": 0.8764044943820225
     },
     {
      "bin": "|e_xy| mm 6-10",
      "n": 165,
-     "success": 0.7151515151515152
+     "success": 0.806060606060606
     },
     {
      "bin": "|e_xy| mm 10-15",
      "n": 149,
-     "success": 0.5771812080536913
+     "success": 0.6442953020134228
     },
     {
      "bin": "|e_xy| mm 15-30",
      "n": 58,
-     "success": 0.3103448275862069
+     "success": 0.3620689655172414
     }
    ],
    "by_yaw": [
     {
      "bin": "|e_yaw| deg 0-1",
      "n": 150,
-     "success": 0.7266666666666667
+     "success": 0.76
     },
     {
      "bin": "|e_yaw| deg 1-2",
      "n": 125,
-     "success": 0.672
+     "success": 0.768
     },
     {
      "bin": "|e_yaw| deg 2-4",
      "n": 173,
-     "success": 0.6242774566473989
+     "success": 0.6936416184971098
     },
     {
      "bin": "|e_yaw| deg 4-10",
      "n": 52,
-     "success": 0.5384615384615384
+     "success": 0.6538461538461539
     }
    ],
    "by_tilt": [
     {
      "bin": "tilt deg 0-2",
      "n": 116,
-     "success": 0.7155172413793104
+     "success": 0.7844827586206896
     },
     {
      "bin": "tilt deg 2-4",
      "n": 135,
-     "success": 0.6962962962962963
+     "success": 0.762962962962963
     },
     {
      "bin": "tilt deg 4-6",
      "n": 112,
-     "success": 0.6517857142857143
+     "success": 0.7857142857142857
     },
     {
      "bin": "tilt deg 6-8.01",
      "n": 137,
-     "success": 0.5766423357664233
+     "success": 0.5985401459854015
     }
    ],
    "by_clr": [
     {
      "bin": "clr mm 2-3",
      "n": 212,
-     "success": 0.6179245283018868
+     "success": 0.6698113207547169
     },
     {
      "bin": "clr mm 3-4",
      "n": 167,
-     "success": 0.6227544910179641
+     "success": 0.7245508982035929
     },
     {
      "bin": "clr mm 4-6.01",
      "n": 121,
-     "success": 0.7768595041322314
+     "success": 0.8347107438016529
     }
    ]
   }
