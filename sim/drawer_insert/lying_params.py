@@ -62,6 +62,7 @@ VARIANTS = dict(
     low_stop=dict(f_stop=(25.0, 40.0)),
     poor_est=dict(est_sd_off=(0.005, 0.010), est_sd_yaw=(3.0, 5.0), est_sd_tilt=(3.0, 6.0)),
     no_tilt_est={},                                                    # the robot passes tilt = (0, 0)
+    robust=dict(f_noise=(1.0, 4.5), f_bias=(5.0, 5.0)),                # training share with a worse force estimate
 )
 
 

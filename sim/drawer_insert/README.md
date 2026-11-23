@@ -320,3 +320,254 @@ tool point at the top of the front wall.
   helps more than anything else (straight push 36 % -> 82 % when also aligned). The real cabinet also moved under
   60-90 N jams (it is taped down), which the sim does not model (fixed cabinet).
 - Keep-out: see "Calling the policy": the real vertical gripper cannot follow the drawer to flush today.
+
+## Lying cabinet (vertical insertion, task drawer_lying, 2026-11-23)
+
+The cabinet lies on its back, compartments open to the top. The drawer, held by its pull (tool pointing down), is
+lowered back wall first into the compartment nearest the robot until its top is flush with the rim. The sim models
+only that descent: the hand carries the drawer through a compliant pinch grasp at the pull and moves in small steps in
+the opening frame; the compartment has a floor, four walls with rounded inner rim edges and, beyond the divider, the
+middle compartment. A PPO policy (reset-to-states curriculum as above) outputs one bounded tool step per decision from
+signals the robot has. The standing-cabinet sim (sections above) is unchanged.
+
+Files (next to the old ones): `lying_params.py` (measured values + randomization), `lying_scene.py` (MJCF),
+`lying_env.py` (MuJoCo CPU reference), `newton_lying.py` (Newton GPU twin), `lying_policy.py` (numpy runtime: `Policy`,
+`Descent`, `start_pose`), `lying_baselines.py` (straight descent, spiral search, pre-rolls), `lying_eval.py`,
+`lying_render.py`, `weights/policy_lying.npz`, `results/lying/`, `tests/test_lying.py`,
+`newton_try/validate_lying.py`. `train.py --task lying` (default `--task slot` = the old task).
+
+### Measured geometry
+
+From `config/tasks/drawer_lying.yaml` and the side clouds `runs/drawers_setup/lying/{cloud_20261123.npy,
+measure_20261123_160851/cloud_clear.npy}` and `wrist_down.jpg`:
+- Both clouds show the drawer INSIDE the target compartment (so does `side_20261123.jpg`), not on the table. In the
+  cabinet frame the target compartment's top reads 94-98 mm above the table (rim 95; label frame and knob up to 103):
+  the inserted drawer is flush.
+- Wrist look-down (30 cm above the rim, cabinet 776 px = 0.275 m): the drawer front spans 217 x 335 px = 0.075-0.077 x
+  0.113 m, i.e. it fills the 0.0757 x 0.115 opening with ~1-2 mm per side. Sim: clearance 2-6 mm per axis (1-2 mm in
+  the `tight` stress test).
+- The pull is a label frame (~33 x 59 mm) with a round knob (~16 mm) at its edge, ~17 mm off the drawer centre along
+  the drawer's thickness (the opening's x axis); depending on how the drawer stands it is on either side. In-hand
+  offset in the sim: x +-25 mm, y +-15 mm (the policy gets the estimate; what matters is the estimate error).
+- The standing drawer itself is in the live run's reset survey cloud (`runs/20261123_1616_drawer/agents/reset/attempts/
+  attempt_14/cloud.npy`, 16:56): its top face is 0.0905-0.093 m above the table (knob up to 0.100), footprint
+  0.073 x 0.110 m (incl. depth edge bleeding). So the drawer is ~0.091 m front-to-back (not 0.1-0.12), and since it sits flush
+  (0.097) when inserted, the compartment floor is ~5 mm above the table (the yaml's floor_h 0.013 is too high; the
+  side camera cannot see the bottom of the 76 mm wide compartments). Sim: L 0.088-0.094 m, flush -2..+3 mm, floor
+  = rim + flush - L (>= 3 mm), believed L 0.091.
+
+### Model
+
+| parameter | sim range | source |
+|---|---|---|
+| opening (x along the cabinet, y across) | 0.0745-0.0770 x 0.1135-0.1165 m | yaml 0.0757 x 0.115 (12 mm walls) |
+| rim / wall thickness | 0.093-0.097 m / 10-14 mm | yaml 0.095 / 0.012; inserted top 0.097 |
+| drawer length, flush offset | 0.088-0.094 m, -2..+3 mm | standing drawer 0.091 (above) |
+| clearance per axis (opening - drawer) | 2-6 mm (stress test 1-2 mm) | wrist look-down: front fills the opening |
+| edge rounding | drawer bottom edges 0.5-3 mm, rim inner edges 0.5-2 mm | guess (wood) |
+| mass, friction | 0.12-0.30 kg, 0.2-0.6 | wood drawer ~0.18 kg (estimate) |
+| opening pose error (true - believed) | +-10 mm x and y, +-3 deg | task brief |
+| in-hand offset (drawer top centre - tool point, tool frame) | x +-25 mm, y +-15 mm | brief (+-15 mm), knob ~17 mm off centre |
+| in-hand yaw / tilt | +-6 deg / 0-8 deg in any direction | brief |
+| tool point above the drawer's top face (`hold`) | 6-18 mm | knob ~2 cm |
+| wrist estimate errors (sd) | offset 2-5 mm, yaw 1-3 deg, tilt 1-3 deg per axis, hold 1-3 mm | guess |
+| grasp compliance (at the tool point) | tilt about the jaw axis 0.5-5 N m/rad, slip 0.08-0.5 N m; about the other horizontal axis 5-20, 0.4-1.5; yaw 2-8, 0.3-1.0; slide along z: slip at 20-50 N, -8..+4 mm | pinch on a round knob (guess) |
+| arm | 2e4-8e4 N/m, yaw 50-200 N m/rad (position servo) | as the standing sim |
+| force estimate | contact force + bias +-3 N/axis + drift +-30 N/m of height + white noise sd 1-3 N/axis, 40 Hz | brief (+-5 N) |
+| force stop | 40-65 N on \|f - f0\| | brief, task 65 N |
+| start | drawer's lowest point 5-25 mm above the true rim | scripted carry |
+| decision period | 0.18-0.22 s, 60 decisions | |
+
+Physics as in the standing sim (MuJoCo 3.17, 1 ms, implicitfast, elliptic cones, solref 3 ms); the hand is four
+position-servoed joints (x, y, z, yaw); the drawer hangs from four spring + Coulomb slip joints at the tool point
+(z slide, tilt about the tool x and y axes, yaw; the jaw-closing axis, i.e. the soft tilt axis, is tool x or y with
+equal odds); limits stiffened (solreflimit 4 ms). The drawer's in-hand pose (offset, yaw, tilt, hold) is baked into its
+geoms so the Newton twin needs no per-world body frames. The hand itself does not collide (the fingers stay `hold`
+above the face, above the rim at flush).
+
+### Frames, observation, action (`lying_policy.py`)
+
+- Opening frame: origin at `fixtures.cabinet.target_centre` (believed, base xy) on the table, x = (cos, sin) of
+  `fixtures.cabinet.yaw_deg` (21.2 deg; +x points away from the robot base, toward the middle compartment), y = z x x,
+  z up. The sim world is the TRUE opening frame; the policy only sees the believed one.
+- Tool frame (sim): x = the jaw-closing axis (the `yaw_deg` direction of `rlpj.robot.plan.tool_down_T`), y = x turned
+  90 deg counter-clockwise seen from above (= minus the robot's tool y), z up. Tool yaw in the opening frame = tool
+  yaw (deg, base, `atan2(T[1,0], T[0,0])` of the measured tool pose) - `yaw_straight`; `yaw_straight` = the base yaw
+  at which the jaw axis lies along the opening's +x, i.e. `yaw_deg` (21.2).
+- Tool point: between the fingertips, where they pinch the knob; `hold` = its height above the drawer's top face.
+- Units: m, deg, N. Forces are the base-frame force ON the tool (`feedback()["force"]`, as verified for the standing
+  sim), minus f0 taken at rest at the start of the descent, rotated into the opening frame. The floor or rim pushing
+  the drawer up gives f_z > 0.
+
+| obs key | meaning | unit |
+|---|---|---|
+| `x`, `y` | commanded tool point in the believed opening frame | m |
+| `yaw` | commanded tool yaw relative to `yaw_straight` | deg |
+| `z` | commanded tool height minus the believed flush height `rim_z + hold_est` (0 = drawer top flush if it hangs straight) | m |
+| `off` | wrist estimate (x, y) of drawer top-face centre minus tool point, tool frame (constant) | m |
+| `yaw_est` | wrist estimate of drawer yaw minus tool yaw (constant) | deg |
+| `tilt` | wrist estimate (tx, ty) of the drawer's in-hand tilt: the drawer axis is Rz(yaw_est) Ry(-tx) Rx(ty) (0, 0, -1), i.e. its bottom sits ~L tan(tx) further along tool +x than its top (constant) | deg |
+| `f` | (f_x, f_y, f_z) force on the tool minus f0, opening frame | N |
+| `f_peak` | max \|f - f0\| over the 40 Hz samples of the last move | N |
+| `stopped` | 1.0 if the last move was halted by the force stop | - |
+| `prev` | last step the policy returned (dx, dy, dyaw, dz), before bounds and the stop | m, m, deg, m |
+| `k` | decision index 0..59 | - |
+
+Action (`Policy.act` -> `(dx, dy, dyaw, dz)`): dx, dy in [-4, +4] mm along the opening's x / y, dyaw in [-2, +2] deg
+about the tool point, dz in [-8, +4] mm (negative = down). The commanded pose is clipped to |x - x0|, |y - y0| <= 15 mm,
+|yaw - yaw0| <= 8 deg, z in [-15 mm, z0 + 20 mm]. After a force stop the measured pose becomes the command.
+
+Episode: start (scripted carry + wrist estimate, `start_pose`): tool yaw squares the estimated drawer with the opening,
+tool xy puts the estimated bottom-face centre over the believed opening centre, drawer's lowest point 5-25 mm above
+the rim. 60 decisions of 0.18-0.22 s; the target moves linearly over 80 % of the period, then holds. Force samples at
+40 Hz, stop when \|f - f0\| (measured) > 40-65 N. Success: all four top corners within 10 mm of the true rim and the
+true contact force < 40 N at the end. Reward per step: 3 x (depth gain of the bottom centre, m) + 5 x (gain in lateral
+distance of the bottom centre to the true opening centre, m; privileged shaping) - 0.02 x max(0, true peak - 40 N)/10 N
++ 0.1 x success, +1 x success at the last step. (With 0.05 per 10 N, as in the standing sim, the first run learned to
+hover above the rim within 20 iterations.) Reset-to-states: the same SGS-style bank; pre-rolls are a straight descent
+(`descend`) or a descent with random lateral/yaw steps (`drift`) of 2-29 steps (resting on the rim, cocked on an edge,
+part-way in); 40 % fresh starts; start variants 60 % `carry` (full ranges), 40 % `small` (opening +-3 mm / +-1 deg,
+tilt 0-3 deg).
+
+### Results (shipped policy: `weights/policy_lying.npz`, run ly_n3 iteration 50)
+
+500 episodes per row in the CPU MuJoCo reference env (`lying_eval.py`, seeds 100000-100499, the same episodes for every
+controller; deterministic policy; 60 decisions). Success = all four top corners within 10 mm of the true rim and the
+true contact force < 40 N at the end. Full tables: `results/lying/eval_*.json`
+(`python -m sim.drawer_insert.lying_eval --report sim/drawer_insert/results/lying`).
+
+| start | straight descent | spiral search | PPO policy |
+|---|---|---|---|
+| carry (full ranges: opening +-10 mm / +-3 deg, in-hand estimate sd 2-5 mm / 1-3 deg, tilt 0-8 deg) | 21.0 % | 14.0 % | **66.2 %** |
+| carry, released when seated (z < 1 cm and f_z > 10 N for 2 decisions) | 15.6 % | 9.4 % | **64.8 %** |
+| small (opening known to +-3 mm / +-1 deg, tilt 0-3 deg) | 46.2 % | 32.8 % | **86.6 %** |
+| big_open (opening +-15 mm / +-5 deg) | 9.2 % | 5.8 % | **44.2 %** |
+| after 8 straight-descent steps (resting on the rim / cocked) | 21.0 % | 14.4 % | **66.2 %** |
+| after 10 drift steps (random lateral/yaw on the way down) | 19.2 % | 15.0 % | **61.8 %** |
+
+Carry start, success by start error (episodes per bin in brackets; e_xy = true offset of the drawer's bottom-face
+centre from the true opening centre at the start; e_yaw = true drawer yaw vs the opening; tilt = in-hand tilt):
+
+| | 0-3 mm (36) | 3-6 (100) | 6-10 (157) | 10-15 (145) | 15-30 (62) | 0-1 deg (151) | 1-2 (111) | 2-4 (167) | 4-10 (71) | tilt 0-2 (116) | 2-4 (135) | 4-6 (112) | 6-8 (137) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| straight | 0.69 | 0.51 | 0.15 | 0.04 | 0.00 | 0.24 | 0.29 | 0.20 | 0.04 | 0.28 | 0.21 | 0.23 | 0.12 |
+| spiral | 0.72 | 0.35 | 0.05 | 0.01 | 0.00 | 0.17 | 0.21 | 0.13 | 0.00 | 0.16 | 0.14 | 0.18 | 0.09 |
+| policy | 0.86 | 0.89 | 0.72 | 0.56 | 0.27 | 0.69 | 0.75 | 0.67 | 0.45 | 0.78 | 0.67 | 0.64 | 0.56 |
+
+Stress tests outside the training ranges (carry start; straight / spiral / policy): force noise sd 3-5 N and bias
++-6 N 18.4 / 10.8 / 46.4 %; clearance 1-2 mm 5.4 / 3.8 / 40.0 %; in-hand estimate sd 5-10 mm, 3-6 deg 8.2 / 5.2 /
+45.4 %; tilt estimate passed as zero 21.6 / 12.0 / 62.2 %; friction 0.6-0.9 17.8 / 10.6 / 65.2 %; loose grasp (slip
+torques / forces / 3) 20.0 / 12.8 / 66.6 %; arm 5e3-2e4 N/m 32.4 / 20.2 / 57.4 %; decision period 0.5-1.0 s
+21.4 / 16.0 / 62.2 %; force stop 25-40 N 16.8 / 12.6 / 65.8 % (median peak 62 N instead of 84 N).
+
+Forces (carry): median per-episode true peak 84 N (straight 81, spiral 79), 15.7 force stops per episode (straight
+24.7, spiral 12.4), median 23 decisions to the first success state. The policy probes with the force stop: it
+descends until the stop, reads the lateral force, shifts and tries again. The peaks are the stop's overshoot between
+40 Hz samples. Failures (300 carry episodes, 105 fails): 87 never entered the opening (start error median 11.6 mm),
+10 stuck part-way, 8 fully in but pressing > 40 N at the end.
+
+`results/lying/strip.jpg`: oblique and side views at decisions 0, 5, 10, 15, 20, 30, 45, 59. Rows 1 and 3: the policy
+with 14 and 13 mm start errors (lands on the rim, shifts toward the lateral force, drops in, seats); rows 2 and 4: the
+straight descent on the same episodes stays on the rim. GIF of the four episodes: `/data/sonic/drawer_insert_runs/
+lying_episodes.gif` (8 MB, not in git).
+
+### Training (RTX 4090, local; niced, 1-2 CPU threads)
+
+| run | engine | init | change | samples | wall | eval success (deterministic, 4096 carry starts) |
+|---|---|---|---|---|---|---|
+| ly_c1 | CPU pool (10 x 32) | prior "descend 5 mm/step" | force penalty 0.05 / 10 N | 0.27 M | 2 min | collapsed to hovering above the rim (0 %) by it 20; stopped |
+| ly_n1 | Newton, 4096 worlds | prior | penalty 0.02, xy shaping; first geometry (drawer 0.082 m, off_x +-15 mm), 40 decisions | 3.7 M | 8 min | 12 % (it 10) -> 24 % (it 20) |
+| ly_n2 | Newton | ly_n1 it 20 | measured drawer length 0.091 m, off_x +-25 mm | 4.8 M | 9 min | 28 % -> 36 % (it 30) |
+| ly_n3 | Newton | ly_n2 it 30 | 60 decisions (was 40), soft grasp axis 0.5-5 N m/rad / 0.08-0.5 N m | 11.1 M | 23 min | 55 % (it 10) -> 59 -> 60 -> 64 -> 66 % (it 50) |
+
+PPO as for the standing sim (2 x 256 tanh, Gaussian, gamma 0.99, GAE 0.95, clip 0.2, 4 epochs, minibatch 4096, lr 3e-4);
+19 inputs, 4 actions; the actor's last layer starts at "descend 5 mm per step, no correction". ~16-27 s per 4096-world
+iteration (incl. pre-rolls and resets). Curves: `results/lying/curves_<run>.csv`.
+
+### Engine
+
+`newton_lying.py` is the GPU twin of `lying_env.py` (same MJCF per world, parsed into the replicated Newton model: geom
+poses and sizes incl. the baked in-hand pose, drawer inertia, joint springs / slip / damping, servo gains; Newton 1.8,
+`SolverMuJoCo`, `rigid_gap = 0`). Validation with the straight descent on the same parameter sets
+(`newton_try/validate_lying.py`, `results/lying/newton_validate.json`): 1024 carry episodes, success 11.7 % on both,
+per-episode agreement 97.5 %, median depth difference 0.07 mm, median peak force 79.5 vs 80.5 N, no contact overflow.
+Throughput on the RTX 4090: ~11k decisions/s at 2048 worlds (CPU MuJoCo: ~350 decisions/s per process).
+
+### Calling the policy on the robot (descent phase)
+
+`lying_policy.py` needs only numpy (robot `.venv`). `Descent` does the bookkeeping in the base frame:
+
+```python
+import sys; sys.path.insert(0, "/home/r2r/robot_learning_final_pj")
+import numpy as np
+from sim.drawer_insert.lying_policy import Policy, Descent, start_pose
+
+cab = config.load()["task"]["fixtures"]["cabinet"]
+C, AX = cab["target_centre"], cab["yaw_deg"]               # believed opening centre (base xy), opening x axis (deg)
+RIM_Z = calib.table_z() + cab["rim_h"]                     # rim height, base z
+YS = AX                                                    # tool_down_T yaw at which the jaw axis lies along +x
+est = dict(off=(ox, oy), yaw=dyaw, tilt=(tx, ty), hold=h)  # wrist look-down of the held drawer, sim tool frame (see above)
+pol = Policy("/home/r2r/robot_learning_final_pj/sim/drawer_insert/weights/policy_lying.npz")
+xyz0, yaw0 = start_pose(C, AX, RIM_Z, YS, est, length=0.091, gap=0.015)   # move there (tool vertical), settle
+T = measured_tool_pose()
+ins = Descent(pol, C, AX, RIM_Z, YS, est, T[:3, 3], yaw_of(T), f0=force())  # f0: base force at rest, drawer held
+done = False
+while not done:                                           # 60 decisions
+    xyz, yaw = ins.next(force())                          # base force now -> next tool target (base xyz, yaw deg)
+    peak, stopped = move_with_force_stop(tool_down_T(xyz, yaw), limit=50)   # ~0.2-1 s; peak = max |f - f0| (N)
+    T = measured_tool_pose()
+    done = ins.done(peak, stopped, T[:3, 3], yaw_of(T))  # after a stop the measured pose becomes the command
+    log(k=ins.k, obs=ins.obs, step=ins.step, target=ins.target, tool=T, f=force(), peak=peak, stopped=stopped)
+# then open the gripper and rise straight up
+```
+
+- Signs: `ins.obs["f"][2] > 0` when the drawer presses on the floor or the rim; `z` decreases as the tool goes down;
+  `dz < 0` is down. `off`, `tilt`, `yaw_est` are in the sim tool frame (x = jaw axis, y = 90 deg CCW from it seen from
+  above, z up): convert from the camera / robot tool frame (robot tool y = - sim y, robot tool z = - sim z).
+- `yaw_of(T)` = `degrees(atan2(T[1, 0], T[0, 0]))` (the jaw axis in the base plane, as `tool_down_T` defines it).
+- Force stop: the policy was trained with stops at 40-65 N on |f - f0| (40 Hz). Use the task's limit or lower; a stop
+  must freeze the tool at its measured pose for the rest of the step.
+- f_peak must be max |f - f0| over the move (stream the 40 Hz feedback); `max_force_n` relative to the segment start
+  is a fallback (`max_force_n + |f_seg_start - f0|`).
+- Step time: the sim used 0.2 s steps; 0.5-1 s real steps are fine for this quasi-static contact (see `slow_steps`).
+- Stop early (and release) when `ins.cmd[3] < 0.01` and `ins.obs["f"][2] > 10` for two decisions: the drawer is on the
+  floor. Otherwise run the 60 decisions; the success check (side camera top height) decides.
+- Log per decision: `ins.k`, `ins.obs` (all keys), `ins.step`, `ins.target`, the measured tool pose after the move,
+  the raw base force at decision time, `peak`, `stopped`, move duration. Per attempt: C, AX, RIM_Z, YS, `est` and how
+  it was measured (wrist image + pose), f0, the start pose, the final drawer top height and success.
+
+### Sim-to-real risks (lying cabinet)
+
+- Opening pose: the policy's success falls with the start error of the drawer's bottom vs the true opening (table
+  above); the +-1 cm / +-3 deg opening error of the brief dominates it. A wrist look-down at the opening right before
+  the descent (opening edges at ~2 px/mm) that brings the error to +-3 mm / +-1 deg (`small`) helps more than anything.
+- Lateral force: the search uses the lateral force (~10 N toward the opening when the bottom rests on a rim edge, at
+  30-40 N down). The real estimate comes from joint torques with pose-dependent bias; if its lateral error over a 10 cm
+  descent is well above the sim's (bias +-3 N, drift +-3 N, noise 1-3 N), success drops (`noisy_force`, noise 3-5 N,
+  bias +-6 N: 46.4 %). Check on the robot: hold
+  the drawer, rest it on the rim on purpose, read `ins.obs["f"]` (f_z > 0, f_xy pointing toward the opening).
+- Grasp: the pinch on the knob is modelled as spring + Coulomb slip joints (guessed stiffness and slip torques, the
+  soft axis along the jaw axis), with a slide of -8..+4 mm along z. The real drawer can pivot more, slip out or be
+  dropped; `loose_grip` covers weaker grasps. Releasing is not modelled.
+- In-hand estimates: the policy relies on `off`, `yaw_est`, `tilt` (sd 2-5 mm, 1-3 deg in training). Tilt from a
+  wrist look-down at a held drawer is hard: passing tilt = (0, 0) costs ~4 points (62.2 vs 66.2 %), estimate errors
+  of sd 5-10 mm / 3-6 deg (`poor_est`) ~21 points (45.4 %).
+- Geometry: drawer length 0.091 from one survey cloud, floor height inferred (~5 mm), clearance from one wrist image
+  (front fills the opening, ~1-2 mm per side; `tight`), rim edge rounding guessed. Wood friction, burrs and swelling
+  are not modelled; the cabinet is fixed in the sim (the real one could shift or tip under 40-65 N).
+- Execution: 0.2 s steps in the sim; real 0.5-1 s steps (`slow_steps`) are fine if the force stop freezes the tool at
+  its measured pose. Fingers and the hand do not collide in the sim.
+
+### How to run (lying)
+
+From the repo root (`PY=sim/drawer_insert/.venv/bin/python`, `export PYTHONPATH=. OMP_NUM_THREADS=2
+WARP_CACHE_PATH=/data/sonic/cache/warp_drawer`):
+```
+nice -n 15 $PY -m sim.drawer_insert.train --task lying --engine newton --envs 4096 --iters 100 --name a     # from scratch
+nice -n 15 $PY -m sim.drawer_insert.train --task lying --engine newton --envs 4096 --iters 100 --name b --init sim/drawer_insert/runs/a/agent.pt
+nice -n 15 $PY -m sim.drawer_insert.train --task lying --workers 10 --envs 320 --name c                    # CPU MuJoCo pool instead
+nice -n 15 $PY -m sim.drawer_insert.lying_eval --policy sim/drawer_insert/weights/policy_lying.npz -n 500 [--variant small] [--preroll descend:8] [--early] --out sim/drawer_insert/results/lying
+MUJOCO_GL=egl $PY -m sim.drawer_insert.lying_render --policy sim/drawer_insert/weights/policy_lying.npz --names policy,straight --seeds 100092,100064 --out strip.jpg --gif ep.gif
+$PY sim/drawer_insert/newton_try/validate_lying.py 1024 carry
+$PY -m pytest -q sim/drawer_insert/tests
+```
