@@ -18,14 +18,14 @@
    "unsure": 0
   },
   "resets": {
-   "total": 12,
-   "ok": 11,
-   "fail": 1,
+   "total": 15,
+   "ok": 12,
+   "fail": 3,
    "manual": 0
   },
   "consecutive_failures": {
    "execute": 0,
-   "reset": 0
+   "reset": 2
   },
   "rl": {
    "total": 5,
@@ -36,50 +36,50 @@
  },
  "agents": {
   "reset": {
-   "status": "done",
+   "status": "repairing",
    "session_id": "254eca5c-59b6-4a8f-b974-f31948fb090f",
    "model": "claude-opus-5-5",
    "started": "2026-11-23T16:22:41",
    "ended": "2026-11-23T17:06:56",
-   "attempts": 19,
+   "attempts": 20,
    "robot_attempts": 7,
-   "turns": 122,
-   "cost_usd": 8.4964266,
-   "input_tokens": 162,
-   "output_tokens": 149975,
-   "cache_read": 13664593,
-   "cache_creation": 345420,
-   "duration_s": 1512.261,
+   "turns": 133,
+   "cost_usd": 12.0726598,
+   "input_tokens": 180,
+   "output_tokens": 162917,
+   "cache_read": 15879079,
+   "cache_creation": 704723,
+   "duration_s": 1648.959,
    "first_success_attempt": 2,
    "first_success_after_attempts": 6,
    "time_to_first_success_s": 874.9,
-   "repairs": 0,
+   "repairs": 1,
    "rounds": 0,
    "program_command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py",
    "last_report": "NOT VERIFIED ON THE FINAL CODE: taking the drawer out of the cabinet. It worked once on the arm (attempt 6, commit 37542bf, 0.1 cm error, layout check ok), but that run placed it at the old unsafe target and the pinch check, heights and lift limit have changed since. I did not re-create the done state, because inserting the drawer with about 1 mm clearance risks moving the cabinet. The first real episode will be the test.\n\nWORKS ON THE HARDWARE (drawer standing on the table, pull up): attempt 12 (6fabb80) layout ok, but its own claim failed on a measurement bug, since fixed. Attempt 17 (f0c3117) 0.4 cm error, outline 9.8 cm from the edge, which led to the bias fix. Attempt 19 (07a16a8, final code) 0.36 cm error, outline 10.3 cm from the nearest edge, pull seen from above, claim success, layout check ok, 150 s.\n\nNOT HANDLED: drawer lying on a side, upside down, or tilted so the pull cannot be seen. The program stops cleanly with a message and does not touch it.\n\nWRITTEN BUT NEVER RUN ON THE ARM: carrying a drawer already in the gripper, escaping from a low start pose, lowering the drawer back after a lift force stop, and leaving a drawer that is already in place.\n\nKNOWN RISK, ORCHESTRATOR CHECK: with the drawer motionless at [0.29, -0.02], the orchestrator's layout measurement found it only 14 of 20 times (attempt 15), because depth artifacts merge it with the cabinet or stretch its blob past the 16 cm size limit. Expect false reset failures until that check ignores the cabinet footprint or filters thin artifacts. I cannot change it from this workspace. The in-place path is meant to make a repeat cheap.\n\nTABLE EDGE RULE: every release is refused if the drawer outline would be under 10 cm from an edge, using the operator's camera-side line. The side camera does not see that edge near the target, and the table end beyond the cabinet was not measured. To satisfy the rule the aim shifts inward by up to 1.8 cm of the 2 cm tolerance at the worst target, and the yaw is mostly near -30 deg, so yaw variation in the data will be small.\n\nReading debug frames from /tmp was denied, so helper scripts and frames are in notes/."
   },
   "execute": {
-   "status": "reviewing",
+   "status": "done",
    "session_id": "5fed3068-1646-4cfb-9430-33473e8dbbd1",
    "model": "claude-opus-5-5",
    "started": "2026-11-23T17:06:56",
    "ended": "2026-11-23T17:32:18",
-   "attempts": 16,
-   "robot_attempts": 5,
-   "turns": 150,
-   "cost_usd": 12.6878578,
-   "input_tokens": 176,
-   "output_tokens": 216872,
-   "cache_read": 22186489,
-   "cache_creation": 489052,
-   "duration_s": 2258.151,
+   "attempts": 19,
+   "robot_attempts": 7,
+   "turns": 164,
+   "cost_usd": 14.452879,
+   "input_tokens": 196,
+   "output_tokens": 242353,
+   "cache_read": 26461975,
+   "cache_creation": 539080,
+   "duration_s": 2523.494,
    "first_success_attempt": null,
    "first_success_after_attempts": null,
    "time_to_first_success_s": null,
    "repairs": 0,
    "rounds": 0,
    "program_command": null,
-   "last_report": "NOT YET VERIFIED: the drawer has not gone into the compartment in any run, and no learned policy has run (attempt 10 used the zero-residual prior with exploration noise). The final commit 0550191 changes the reward on force-stopped steps and has not been run on the robot or in a dry run; dry runs never reach that branch. Why the drawer stops at the rim is not diagnosed.\n\nWORKS ON THE HARDWARE (attempt 10, commit 2f0398e, exit 2, 6 transitions, return -1.99): wrist measurement of the opening and of the drawer and its tab, pinch of the tab (reading 84.1), lift, carry, descent, three 25 N contact stops at the rim, put-back on the table, release, home. `learner.py --check` exits 0 on the real data (1 episode, 6 transitions). Attempt 10's stored rewards still include the old descent reward on its force-stopped steps.\n\nDESIGN (notes/design.md): scripted perception, grasp and carry. Learned: 2 alignment steps plus up to 18 descent steps, as bounded residuals in a, b, yaw and step size. AWAC learner using all real data. Limits as the operator asked: 20 N grasp approach, 25 N descent, 65 N session cap. No simulator. SGS-RL was not reviewed or used.\n\nFOR THE OPERATOR:\n1. The task yaml's compartment is off from the real one. Wrist measurement: centre (0.4519, 0.0032), yaw 18.2 deg. Yaml: (0.4469, -0.011), yaw 21.2 deg. The side camera agrees with the wrist on the cabinet's yaw. The program aligns to the measured rim, but the success window and keep-out boxes still use the yaml, so please check whether the fixture should be re-measured.\n2. The fixed success check can fail a correct episode. It takes the largest blob with extent 0.12-0.30 m as the cabinet, but the cabinet measured up to 0.318 m and sometimes merges with the drawer (0.446 m). Dry attempt 5 reported \"the cabinet moved 24.3 cm\" with nothing moved.\n3. The cabinet blob shifted 4.6 mm across attempt 10, which pressed on the rim at about 25 N, against about 1 mm in a static dry run. This is under the 2 cm limit but could be real movement, so watch it during training.\n4. `results/20261123_1616_drawer/agents/reset/programs/` holds a copy of the reset agent's programs outside the denied path. A filename search listed it; I did not open it.\n5. Reading debug images from /tmp was denied. I moved that work into the workspace and deleted my /tmp folder.",
+   "last_report": "NOT YET VERIFIED: the drawer has gone in once (1 of 1 at this setting), so the success rate is unknown. That success came from the scripted prior at a fixed offset; no learned policy has improved anything yet. The touch search made 0 touches, so it is untested on the robot, and the sideways-force claim from the sim is still unchecked. The learner change in b0af540 was tested offline only.\n\nRESULT (attempt 30, commit f4e80c5, exit 0): the drawer was pinched, carried and lowered straight into the nearest compartment with no rim contact. Top height is 96.9 mm against a 95 mm rim, flush share 1.0, pull facing up in the side image, peak force 17 N at the floor, return 14.4.\n\nLIKELY CAUSE of the jams: the planned drawer position was about 4 mm off, and the hover correction I added moved it the wrong way along the opening. The working offset from the plan is a +3.0 mm, b -3.0 mm, yaw 0; the hover measurement read +5 mm in a, which would have moved the drawer away from it. This is not proven: attempt 28 touched almost the same offset (+2.9, -2.8 mm, -0.14 deg), arriving by a lateral move, and did not enter. The fit window may be very narrow or depend on the grasp.\n\nNEEDS THE OPERATOR: the independent geometric check failed this correct insertion with \"the cabinet moved 3.3 cm\". The cabinet did not move: comparing the before and after side images on its far compartments, far wall and long side gives shifts of at most 0.11 px (about 0.2 mm). The filled compartment shifts the blob centre the check compares. Unless `checks.drawer_lying` is changed, real successes can be scored as failures, which would distort the training curve and evaluations.\n\nCHANGED:\n- Touch search (`programs/touch.py`): up to 36 touches along a, b and yaw, then a 4 mm spiral over +-15 mm. A found offset is saved to `rl/touch_centre.json` and starts the next episode. It can still miss a window of about 2 mm.\n- Hover measurement is now logged only. The opening look-down is re-aimed because it was clipping one long edge, and the rim fit worked in attempt 30.\n- Floor height is 5 mm instead of 13 mm. Policies and data from before the alignment change are ignored.\n- The learner no longer turns a generic failed verdict into a -5 penalty; only a stated wrong orientation is punished. `learner.py --check` passes on the real data (exit 0).\n\nNOT DONE: the sim's Descent and Guided policies were not compared, because the `lying_*` files are not on this machine. The tilted-entry trick was replaced by a tilt sweep, which did not help (attempt 26).",
    "reflections": 5,
    "reviews": 1
   }
@@ -103,12 +103,20 @@
     [
      "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_29",
      "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_33",
+     "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_34",
+     "layout check failed: drawer: not found"
     ]
    ]
   }
  },
  "next_episode": 5,
- "next_reset": 12,
+ "next_reset": 15,
  "vlm": {
   "calls": 5,
   "cost_usd": 0.38139880000000004

@@ -4286,3 +4286,451 @@ Structured output provided successfully
 ```
 </details>
 
+**18:30:51 execute agent:** No response requested.
+
+### 18:30:51 orchestrator -> execute agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+Operator note 18:30 (after attempts 24 and 26 and episodes 0-4: the drawer always rests on the rim, bottom 0.095):
+1. The hover look cannot work with this wrist camera: in attempt_26/wrist_align2.jpg the held drawer fills the bottom
+   of the image and the cabinet is hidden under it (only the table beyond is visible). Measure the opening BEFORE the
+   grasp (wrist_opening.jpg is sharp) and fix the detector: it returned "edge not found" in nearly every episode, so
+   OPEN_C [0.4519, 0.0029] (one old measurement) is used; the yaml target_centre [0.4469, -0.011] differs by 1.5 cm.
+   One of them is wrong by about the clearance.
+2. Since we do not know which, add a touch search that cannot miss: from the nominal pose, lower until contact (low
+   force), and if the bottom stops above rim - 1 cm, lift 4 mm and try the next point of a grid/spiral over
+   +-15 mm along and across the opening (4 mm steps, centre first) and yaw +-3 deg; the first point where the drawer
+   drops more than 1.5 cm below the rim is the opening. Log the found offset and use it as the start of the next
+   episode (and as the RL action's centre). Cost ~2 s per touch.
+3. Then let the RL loop resume: the episodes are the data; long gaps of test attempts do not move the return curve.
+Operator note 18:32: the lying-cabinet SIM is done (repo sim/drawer_insert, README section "Lying cabinet"; numpy only,
+loads in the robot .venv: sys.path.insert(0, "<repo>/sim"); from drawer_insert.lying_policy import Policy, Descent;
+from drawer_insert.lying_baselines import Guided). Use it as an option, compare on the robot:
+- Key finding (sim, and the learned policy's strategy): when the drawer rests on the rim, the SIDEWAYS contact force
+  (base-frame estimate minus f0 at the start of the descent) points toward the opening (cosine 0.95). Stepping 2-4 mm
+  along f_xy each touch beats a blind spiral (59.6% vs 14% for the hand-written "Guided" baseline; the trained policy
+  74.8%; 94.8% if the opening is known to +-3 mm). Check this on the robot first: rest on the rim on purpose and log
+  f_xy direction vs the direction to the opening.
+- Geometry from the sim worker: drawer ~0.091 m front-to-back, footprint ~0.073 x 0.110, so ~1-2 mm per side in the
+  opening; the compartment floor is ~5 mm above the table (not 13). Flush top = 0.095-0.097.
+- Descent(Policy(".../weights/policy_lying.npz"), centre, axis_deg, rim_z, yaw_straight, est, tool_xyz, tool_yaw, f0):
+  .next(f_base) -> (xyz, yaw) target; .done(peak, stopped, tool_xyz, tool_yaw) after each move. Frames, signs and
+  what to log: README "Lying cabinet". A 40 N stop is advised for repeated touches.
+
+# attempt_28: exit code 2; outcome: fail
+
+command: RLPJ_EPISODE=-1 RLPJ_RL_MODE=eval /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: Real test of commit 337a80b: align on the measured opening, then probe a 2-D grid (+-6 mm, +-4 mm) with up to 25 light rim contacts (25 N stop each, watch the cabinet), stop probing once the drawer enters, release or put back, home; commit: 337a80b; duration_s: 181.2; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "337a80b130",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 0.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9588, 0.5637, 90.4612], "gripper": 0.9},
+"fk_check_mm": 0.18,
+"first_failed_check": "geometric check False: a drawer-sized blob is still on the table",
+"transitions": 49,
+"return": -5.772,
+"policy": {"source": "prior", "note": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/rl/policy/actor.npz is from another version"},
+"rl_mode": "eval",
+"episode": -1,
+"segments": [["look_opening", true, 0.123, 0.28, 13.05, 39.8], ["look_drawer", true, 0.043, 0.23, 3.63, 39.
+... (12598 more characters)
+```
+
+**18:31:18 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj && ls sim/drawer_insert | head -40; grep -n "Lying cabinet" -r sim/drawer_insert/README* README.md | head; python3 - <<'EOF'
+import json
+d=json.load(open('runs/20261123_1616_drawer/agents/execute/attempts/attempt_28/summary.json'))
+print(d['insert']['contact_map'])
+EOF
+wc -l sim/drawer_insert/lying_policy.py sim/drawer_insert/lying_baselines.py; sed -n 1,200p sim/drawer_insert/lying_baselines.py | cut -c1-130
+```
+
+<details><summary>18:31:18 result</summary>
+
+```text
+baselines.py
+curriculum.py
+env.py
+evaluate.py
+__init__.py
+newton_env.py
+newton_try
+params.py
+policy.py
+__pycache__
+README.md
+render.py
+results
+runs
+scene.py
+tests
+train.py
+vec.py
+weights
+[[0.0, 0.0, 96.0], [0.0, 2.0, 95.3], [0.0, -2.0, 95.1], [3.0, 0.0, 94.5], [-3.0, 0.0, 96.0], [3.0, 2.0, 94.8], [3.0, -2.0, 94.6], [-3.0, 2.0, 95.7], [-3.0, -2.0, 95.4], [0.0, 4.0, 94.8], [0.0, -4.0, 94.9], [6.0, 0.0, 93.8], [-6.0, 0.0, 96.8], [3.0, 4.0, 94.9], [3.0, -4.0, 94.6], [-3.0, 4.0, 95.9], [-3.0, -4.0, 95.7], [6.0, 2.0, 94.0], [6.0, -2.0, 93.8], [-6.0, 2.0, 96.8], [-6.0, -2.0, 95.8], [6.0, 4.0, 93.7], [6.0, -4.0, 94.1], [-6.0, 4.0, 96.2], [-6.0, -4.0, 96.0]]
+wc: sim/drawer_insert/lying_policy.py: No such file or directory
+wc: sim/drawer_insert/lying_baselines.py: No such file or directory
+0 total
+sed: can't read sim/drawer_insert/lying_baselines.py: No such file or directory
+```
+</details>
+
+**18:31:20 tool Bash:**
+
+```bash
+f=$(grep -rl "Lying cabinet" sim/drawer_insert/README* sim/README* 2>/dev/null | head -1); echo "$f"; n=$(grep -n "Lying cabinet" "$f" | head -1 | cut -d: -f1); sed -n "$n,$((n+70))p" "$f" | cut -c1-170; cd runs/20261123_1616_drawer/agents/execute && git log --oneline | head -2; git status --short | head -3; python3 - <<'EOF'
+import cv2
+im=cv2.imread('attempts/attempt_26/wrist_opening.jpg'); print(im.shape)
+EOF
+```
+
+<details><summary>18:31:21 result</summary>
+
+```text
+ugrep: warning: : No such file or directory
+sed: -e expression #1, char 1: unknown command: `,'
+337a80b attempt 27: 2-D contact probe grid around the measured alignment, contact-height map
+c668ca8 attempt 25: tilt about the jaw axis as the search variable at the rim
+(360, 640, 3)
+```
+</details>
+
+**18:32:46 tool Write:** `/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/programs/touch.py` (84 lines)
+
+<details><summary>18:32:46 result</summary>
+
+```text
+File created successfully at: /home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/programs/touch.py (file state is current in your context — no need to Read it back)
+```
+</details>
+
+**18:33:16 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && python3 - <<'EOF'
+p='programs/execute.py'; t=open(p).read()
+def rep(old,new):
+    global t
+    assert t.count(old)==1, old
+    t=t.replace(old,new)
+rep('import vision as V\n','import touch\nimport vision as V\n')
+i=t.index('# 2-D probe grid around'); j=t.index('ENTERED = 0.004')
+t=t[:i]+t[j:]
+rep('K_ALIGN, K_DESC = 2, 66\n','K_ALIGN, K_DESC = 2, 90\n')
+rep('MAX_CONTACTS = 25\n','MAX_CONTACTS = 36\nUNLOAD = 0.004                                 # m lifted after a touch (operator 18:30)\nDROPPED = 0.015                                # m below the rim: this point is the opening, remember it\nOBS_C = np.array([0.008, 0.008, 4.0])          # scale of the residual in the observation\n')
+rep('MAX_C = np.array(
+... (7219 more characters)
+```
+
+<details><summary>18:33:18 result</summary>
+
+```text
+56:FIRST_TILT = 0.0                               # deg about b; tilts -5 .. +2.5 at the rim all failed (attem
+58:FIX_MAX = np.array([0.010, 0.010, 4.0])         # bound of the measured correction (drawer vs opening, wris
+62:SEARCH_STD = 0.35                              # extra exploration on alignment steps (units of the action)
+366:        self.set_tilt(w, FIRST_TILT)
+378:                a = np.r_[np.clip(a[:3] + self.rng.normal(0.0, SEARCH_STD, 3), -1.0, 1.0), a[3]]
+offset (0, 0, 0) found 1.0 median touches 1
+offset (0.006, 0, 0) found 1.0 median touches 3
+offset (0.009, -0.002, 0) found 1.0 median touches 10
+offset (0.012, 0.004, 1.0) found 0.39 median touches 17
+offset (-0.006, 0.006, -1.5) found 0.55 median touches 18
+offset (0.014, -0.012, 0) found 0.95 median touches 25
+aim [0.0, 0.0] outer corners u [708.0, 880.0, 363.0, 533.0] v [-78.0, 442.0, 36.0, 556.0]
+aim [0.0, -0.02] outer corners u [708.0, 880.0, 363.0, 533.0] v [1.0, 521.0, 114.0, 635.0]
+touch descents refused by the model: 0 of 45 []
+```
+</details>
+
+**18:33:46 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && python3 - <<'EOF'
+p='programs/execute.py'; t=open(p).read()
+def rep(old,new):
+    global t
+    assert t.count(old)==1, old
+    t=t.replace(old,new)
+rep('OPEN_AIM = np.array([0.0, -0.020]) ','OPEN_AIM = np.array([0.0, -0.028]) ')
+rep('FLOOR = float(CAB["floor_h"])\n','FLOOR = 0.005                                  # compartment floor above the table (operator 18:32, sim worker; the yaml\'s 0.013 is too high)\n')
+rep('B_MIN = 0.006 ','B_MIN = 0.005 ')
+open(p,'w').write(t)
+p='notes/dev/t_touch.py'; t=open(p).read()
+t=t.replace('for aim in (np.zeros(2), np.array([0, -0.020])):','for aim in (np.zeros(2), np.array([0, -0.028])):')
+t=t.replace('E.RIM - 0.002), SLOW)','E.B_MIN), SLOW)')
+open(p,'w').write(t)
+EOF
+
+... (2161 more characters)
+```
+
+<details><summary>18:33:52 result</summary>
+
+```text
+aim [0.0, 0.0] outer corners u [708.0, 880.0, 363.0, 533.0] v [-78.0, 442.0, 36.0, 556.0]
+aim [0.0, -0.028] outer corners u [708.0, 880.0, 363.0, 533.0] v [32.0, 553.0, 146.0, 667.0]
+touch descents refused by the model: 9 of 45 [(-0.018, -0.018, -3.0, ['cabinet_wall']), (-0.018, -0.018, 0, ['cabinet_wall']), (-0.018, -0.018, 3.0, ['cabinet_wall']), (-
+check: one update {'lc': 0.2414684891700
+f4e80c5 attempt 29: touch search with a saved opening offset, force logging, opening look aim, floor height
+```
+</details>
+
+**18:33:57 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "RLPJ_EPISODE=-1 RLPJ_RL_MODE=eval /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
+ "moves_robot": false,
+ "what": "Dry run of commit f4e80c5: new opening look aim, touch-search program flow, all motion checked in the model, nothing moves",
+ "report": ""
+}
+```
+
+<details><summary>18:33:57 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**18:34:18 execute agent:** No response requested.
+
+### 18:34:18 orchestrator -> execute agent
+
+```text
+# attempt_29: exit code 2; outcome: fail
+
+command: RLPJ_EPISODE=-1 RLPJ_RL_MODE=eval /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: Dry run of commit f4e80c5: new opening look aim, touch-search program flow, all motion checked in the model, nothing moves; commit: f4e80c5; duration_s: 18.2; moves_robot: False
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "execute",
+"mode": "collect",
+"dry": true,
+"commit": "f4e80c5df7",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [0.01, 15.0, 230.0, 0.0, 55.02, 90.0], "tool_pose": [0.5791, 0.0048, 0.4274, 89.9539, 0.5572, 90.4546], "gripper": 50.0},
+"fk_check_mm": 0.18,
+"first_failed_check": "geometric check False: a drawer-sized blob is still on the table",
+"transitions": 16,
+"return": 1.62,
+"policy": {"source": "prior", "note": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/rl/policy/actor.npz is from another version"},
+"rl_mode": "eval",
+"episode": -1,
+"segments": [["look_opening", "dry", 13.0], ["look_drawer", "dry", 3.7], ["above_tab", "dry", 9.0], ["down_pre", "dry", 3.1], ["down_tab", "dry", 5.1], ["lift_slow", "dry", 3.1], ["lift", "dry", 3.9], ["carry", "dry", 6.1], ["to_level", "dry", 0.5], ["to_hover", "dry", 1.8], ["ins00", "dry", 0.5], [
+"decisions": ["opening not measured ({'ok': False, 'why': 'edge not found', 'c': None, 'yaw': None}): using the stored rim", "turn the drawer +27.9 deg, tool yaw -71.7, opening [0.4519, 0.0029] yaw 18.3"],
+"objects": {"drawer": {"c": [0.279906690120697, -0.0036499425768852234], "yaw": 80.38863182067871, "size": [0.0723, 0.1131], "face_h": 0.0912}, "tab": {"ok": true, "xy": [0.2606804130107434, -0.0003941372247068843], "s": -0.0195, "t": 0.0, "side": -1, "why": null}, "opening": {"c": [0.4519, 0.0029],
+"grasp": {"reading": 100.0, "held": true, "h_g": 0.1392},
+"tilt": {"standing": {"ok": true, "n": 1130, "tilt_s_deg": -1.61, "tilt_t_deg": 1.67, "z0": 0.0765, "resid_mm": 0.74, "span": [0.06, 0.1]}, "held": [{"ok": false, "n": 0, "tilt_s_deg": null, "tilt_t_deg": null, "z0": null, "rel_s": null, "phi": 0.0}]},
+"align": [{"ok": false, "ea": null, "eb": null, "eyaw": null, "c0": [0.0, 0.0, 0.0], "why": "edge not found"}],
+"touch_centre": [0.003, -0.003, 0.0],
+"touch": {"best": [0.0, 0.0, 0.0], "best_h": null, "touches": 0},
+"insert": {"end": "seated", "steps": 16, "bottom": 0.005, "c": [0.003, -0.003, 0.0], "contacts": 0, "peak": 0.0, "tilt": 0.0, "contact_map": [], "tilts_tried": []},
+"blobs_before": [[0.28, -0.01, 0.096, 0.083, 0.111, 4180], [0.533, 0.022, 0.095, 0.284, 0.182, 12529]],
+"blobs_after": [[0.28, -0.011, 0.096, 0.085, 0.112, 4255], [0.532, 0.022, 0.095, 0.276, 0.182, 12409]],
+"verify": {"check": false, "reason": "a drawer-sized blob is still on the table", "n": 423, "median_h": null, "flush": null, "above": null, "deep": null, "cabinet_moved_m": 0.0015, "on_table": true, "terminal_reward": -1.0},
+"transitions_file": "transitions/dry_eval_test_20261123_183414.npz",
+"exit_code": 2,
+"gripper_final": {"cmd": 0.5, "reading": 50.0}
+}
+
+log.txt: 63 lines; last 40:
+[18:34:08] == phase: insert_learned
+[18:34:08] plan 11_ins00: T=0.5s check ok=True tip>0.195 vmax=0.0deg/s lin=0.000m/s
+[18:34:08] step 0: a [0.0, 0.0, 0.0, 0.0] (mu [0.0, 0.0, 0.0, 0.0]) -> ok  bottom 0.1030 c [0.003, -0.003, 0.0] tilt +0.0 peak 0.0 N r -0.020
+[18:34:08] plan 12_ins01: T=0.5s check ok=True tip>0.195 vmax=0.0deg/s lin=0.000m/s
+[18:34:08] step 1: a [0.0, 0.0, 0.0, 0.0] (mu [0.0, 0.0, 0.0, 0.0]) -> ok  bottom 0.1030 c [0.003, -0.003, 0.0] tilt +0.0 peak 0.0 N r -0.020
+[18:34:08] plan 13_ins02: T=0.7s check ok=True tip>0.188 vmax=3.1deg/s lin=0.018m/s
+[18:34:08] step 2: a [0.0, 0.0, 0.0, 0.0] (mu [0.0, 0.0, 0.0, 0.0]) -> ok  bottom 0.0960 c [0.003, -0.003, 0.0] tilt +0.0 peak 0.0 N r +0.190
+[18:34:08] plan 14_ins03: T=0.7s check ok=True tip>0.181 vmax=3.1deg/s lin=0.018m/s
+[18:34:08] step 3: a [0.0, 0.0, 0.0, 0.0] (mu [0.0, 
+... (5168 more characters)
+```
+
+**18:34:22 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "RLPJ_EPISODE=-1 RLPJ_RL_MODE=eval /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
+ "moves_robot": true,
+ "what": "Real test of commit f4e80c5: touch search for the opening with the held drawer, up to 36 rim touches (25 N stop, 4 mm lift, offsets up to 15 mm, yaw up to 3 deg; watch the cabinet), lower in if it drops, release or put back, home",
+ "report": ""
+}
+```
+
+<details><summary>18:34:22 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**18:37:37 execute agent:** No response requested.
+
+### 18:37:37 orchestrator -> execute agent
+
+```text
+# attempt_30: exit code 0; outcome: success
+
+command: RLPJ_EPISODE=-1 RLPJ_RL_MODE=eval /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: Real test of commit f4e80c5: touch search for the opening with the held drawer, up to 36 rim touches (25 N stop, 4 mm lift, offsets up to 15 mm, yaw up to 3 deg; watch the cabinet), lower in if it drops, release or put back, home; commit: f4e80c5; duration_s: 116.2; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "f4e80c5df7",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 0.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9579, 0.5628, 90.4613], "gripper": 0.9},
+"fk_check_mm": 0.18,
+"first_failed_check": null,
+"transitions": 15,
+"return": 14.409,
+"policy": {"source": "prior", "note": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/rl/policy/actor.npz is from another version"},
+"rl_mode": "eval",
+"episode": -1,
+"segments": [["look_opening", true, 0.126, 0.35, 13.01, 39.9], ["look_drawer", true, 0.09, 0.56, 3.71, 39.6], ["above_tab", true, 0.076, 0.09, 8.86, 39.8], ["down_pre", true, 0.028, 0.11, 3.23, 39.3], ["down_tab", true, 0.033, 0.1, 5.16, 39.5], ["lift_slow", true, 0.032, 0.14, 3.15, 39.4], ["lift", 
+"objects": {"drawer": {"c": [0.2807, -0.0022], "yaw": 82.41, "size": [0.0734, 0.115], "face_h": 0.091}, "tab": {"ok": true, "xy": [0.2617, 0.0008], "s": -0.0192, "t": 0.0005, "side": -1, "why": null}, "opening": {"c": [0.4519, 0.0028], "yaw": 18.32, "measured": true}},
+"grasp": {"reading": 84.1, "held": true, "h_g": 0.139},
+"decisions": ["turn the drawer +25.9 deg, tool yaw -71.7, opening [0.4519, 0.0028] yaw 18.3", "opening found at offset a 3.0 mm, b -3.0 mm, yaw 0.00 deg after 0 touches"],
+"tilt": {"standing": {"ok": true, "n": 1345, "tilt_s_deg": 0.59, "tilt_t_deg": 3.04, "z0": 0.0765, "resid_mm": 1.03, "span": [0.06, 0.1]}, "held": [{"ok": true, "n": 717, "tilt_s_deg": 1.72, "tilt_t_deg": 5.32, "z0": 0.1908, "rel_s": -0.14, "phi": 0.0}]},
+"align": [{"ok": true, "ea": 0.005, "eb": 0.0034, "eyaw": 0.11, "c0": [0.0, 0.0, 0.0], "why": null}],
+"touch_centre": [0.003, -0.003, 0.0],
+"touch": {"best": [0.0, 0.0, 0.0], "best_h": null, "touches": 0},
+"insert": {"end": "seated", "steps": 15, "bottom": 0.012, "c": [0.003, -0.003, 0.0], "contacts": 0, "peak": 17.1, "tilt": 0.0, "contact_map": [], "tilts_tried": []},
+"blobs_before": [[0.28, -0.01, 0.097, 0.086, 0.123, 4404], [0.526, 0.021, 0.095, 0.28, 0.185, 12586]],
+"blobs_after": [[0.495, 0.007, 0.1, 0.31, 0.186, 12854]],
+"verify": {"check": true, "reason": "drawer flush in the target compartment", "n": 1403, "median_h": 0.0969, "flush": 1.0, "above": 0.0, "deep": 0.0, "cabinet_moved_m": null, "on_table": false, "terminal_reward": 12.0},
+"transitions_file": "transitions/eval_test_20261123_183722.npz",
+"return_home": "already at default pose",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.5, "reading": 50.0},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 92 lines; last 40:
+[18:36:45] step 5: a [0.0, 0.0, 0.0, 0.0] (mu [0.0, 0.0, 0.0, 0.0]) -> ok  bottom 0.0750 c [0.003, -0.003, 0.0] tilt +0.0 peak 1.3 N r +0.190
+[18:36:45] plan 17_ins06: T=0.7s check ok=True tip>0.160 vmax=3.0deg/s lin=0.018m/s
+[18:36:46] exec 17_ins06: {'segment': 'ins06', 'ok': True, 'reason': '', 'T_plan': 0.71, 'max_dev_deg': 0.041, 'max_dev_mm': 0.24, 'n': 29, 'max_abs_force_n': 6.0, 'max_force_n': 1.7, 't_exec': 0.77, 'rate_hz': 37.7, 'final_err_deg': 0.018}
+[18:36:46] step 6: a [0.0, 0.0, 0.0, 0.0] (mu [0.0, 0.0, 0.0, 0.0]) -> ok  bottom 0.0680 c [0.003, -0.003, 0.0] tilt +0.0 peak 1.7 N r +0.190
+[18:36:46] plan 18_ins07: T=0.7s check ok=True tip>0.153 vmax=3.0deg/s lin=0.018m/s
+[18:36:47] exec 18_ins07: {'segment': 'ins07', 'ok': True, 'reason': '', 'T_plan': 0.7, 'max_dev_deg': 0.039, 'max_dev_mm': 0.27, 'n': 29,
+... (6864 more characters)
+```
+
+**18:38:00 execute agent:** The drawer went in on the first descent, with no touches, and my check reads it flush (median height 96.9 mm, flush share 1.0). The independent check disagrees with "the cabinet moved 3.3 cm". Before reporting this as working, I'm checking from the images whether the cabinet really moved or the filled compartment just shifted its blob centre.
+
+**18:38:09 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && python3 - <<'EOF'
+import cv2, numpy as np, json
+A='attempts/attempt_30/'
+b=cv2.imread(A+'side_before.jpg'); a=cv2.imread(A+'side_after.jpg')
+print('image shift of the cabinet (px at 640 wide; ~1.6 mm per px), before vs after, regions away from the target compartment:')
+for name,(x0,y0,x1,y1) in dict(far_compartments=(320,160,405,240), far_end_wall=(375,175,405,225), front_long_side=(285,205,400,290)).items():
+    g0=np.float32(cv2.cvtColor(b[y0:y1,x0:x1],cv2.COLOR_BGR2GRAY)); g1=np.float32(cv2.cvtColor(a[y0:y1,x0:x1],cv2.COLOR_BGR2GRAY))
+    w=cv2.createHanningWindow(g0.shape[::-1],cv2.CV_32F); (dx,dy),r=cv2.phaseCorrelate(g0,g1,w)
+    print(' ',name,'dx %.2f dy %.2f response %.2f'%(dx,dy,r))
+g0=np.float
+... (907 more characters)
+```
+
+**18:38:10 tool Read:** `/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/attempts/attempt_30/side_after.jpg`
+
+<details><summary>18:38:12 result</summary>
+
+```text
+image shift of the cabinet (px at 640 wide; ~1.6 mm per px), before vs after, regions away from the target compartment:
+  far_compartments dx -0.02 dy -0.07 response 1.05
+  far_end_wall dx -0.04 dy 0.07 response 1.08
+  front_long_side dx -0.11 dy 0.04 response 1.07
+  table reference [0.0, 0.07]
+f4e80c5 attempt 29: touch search with a saved opening offset, force logging, opening look aim, floor height
+337a80b attempt 27: 2-D contact probe grid around the measured alignment, contact-height map
+learner_log.jsonl
+policy
+touch_centre.json
+transitions
+verdicts
+{"centre": [0.003, -0.003, 0.0], "bottom": 0.012, "end": "seated", "contacts": 0, "episode": -1}
+data: 4 episodes, 94 transitions; device cpu; updates so far 0
+check: one update {'lc': 13.346312522888184, 'la': -4.495916366577148, 'q': -0.32214251160
+check_exit 0
+```
+</details>
+
+<details><summary>18:38:12 result</summary>
+
+```text
+[image]
+```
+</details>
+
+**18:38:39 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && python3 - <<'EOF'
+p='programs/learner.py'; t=open(p).read()
+old='''    elif final in ("fail", "failure") and (mine > 0 or "backward" in reason or "wrong way" in reason):
+        new = -5.0'''
+new='''    elif final in ("fail", "failure") and ("backward" in reason or "wrong way" in reason or "upside" in reason):
+        new = -5.0                                 # only a stated wrong orientation is punished: the geometric check also fails
+                                                   # correct insertions ("cabinet moved 3.3 cm" in attempt 30, nothing moved)'''
+assert t.count(old)==1; open(p,'w').write(t.replace(old,new))
+EOF
+cat >> notes/design.md <<'EOF'
+
+## First real insertion (attempt 30, commit f
+... (2765 more characters)
+```
+
+<details><summary>18:38:42 result</summary>
+
+```text
+fail no independent check says su -> 0.0 ok last reward 0.0
+fail drawer is upside down -> -5.0 ok last reward -5.0
+success ok -> 10.0 ok last reward 10.0
+check: one update {'lc': 3.8118863105773926, 'la':
+check_exit 0
+b0af540 attempt 30 worked: notes; learner no longer punishes a positive terminal on a generic failed verdict
+```
+</details>
+
+**18:38:52 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "First real insertion achieved (attempt 30, commit f4e80c5); learner fix committed (b0af540); ready for the RL loop to resume",
+ "report": "NOT YET VERIFIED: the drawer has gone in once (1 of 1 at this setting), so the success rate is unknown. That success came from the scripted prior at a fixed offset; no learned policy has improved anything yet. The touch search made 0 touches, so it is untested on the robot, and the sideways-force claim from the sim is still unchecked. The learner change in b0af540 was tested offline only.\n\nRESULT (attempt 30, commit f4e80c5, exit 0): the drawer was pinched, carried and lowered straight into the nearest compartment with no rim contact. Top height is 96.9 mm against a 95 mm rim, flush
+... (1964 more characters)
+```
+
+<details><summary>18:38:52 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

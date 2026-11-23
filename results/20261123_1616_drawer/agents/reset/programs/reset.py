@@ -45,6 +45,9 @@ TIP_CLEAR = 0.006               # closed fingertips above the drawer's top face 
 PRE = 0.55                      # pre-close (~38 mm) around the 15 mm knob
 GRIP = 1.0                      # command full closure: a reading well below it means the pads are stopped by the knob
 HOLD = (65.0, 93.0)             # knob held (attempt 6: 86.6). Attempt 9: 94.8 at a 0.95 command was an empty pinch
+COMP_FACE = 0.0925              # real height of a flush drawer face: attempt 6 pinched at 0.148 and touched the table 3 mm lower,
+                                # so the face was ~0.092; the side depth reads 0.095-0.097 there. Pinching 1-2 mm too high slips (33, 34)
+LIFT_START = 0.025              # first part of the lift, then check that the knob is still held
 LIFT_FORCE = 35.0               # N, lift out of a compartment (attempt 6: 24 N): a jammed drawer must not raise the cabinet
 LIFT_FORCE_TABLE = 50.0         # N, lift from the table: the force estimate read 19-45 N on these lifts (attempts 9, 12, 17)
 PLACE_BIAS = np.array([0.0008, -0.0056])   # side-camera blob centre - commanded drawer centre near the target (attempts 12, 17)
@@ -258,6 +261,12 @@ class Reset:
         self.s.log(f"top face {face:.4f} m (blob top {b['height']:.4f}, layer of {int(cnt[k])} of {len(hs)} points)")
         return float(np.clip(face, 0.07, 0.125))
 
+    @staticmethod
+    def comp_face(med):
+        """Face height of a drawer in a compartment from the side-depth median (which reads ~3.5 mm high): flush or a
+        protruding drawer."""
+        return COMP_FACE if med <= 0.102 else float(np.clip(med - 0.0035, COMP_FACE, 0.125))
+
     def locate(self, p):
         if p["blobs"]:
             b = p["blobs"][0]
@@ -266,7 +275,7 @@ class Reset:
         filled = [k for k, v in enumerate(p["comps"]) if v is not None and v > 0.06]
         if filled:
             k = max(filled, key=lambda i: p["comps"][i])
-            return dict(where=f"compartment_{k}", xy=COMP_0 + k * PITCH * A, h_top=float(np.clip(p["comps"][k], 0.085, 0.125)))
+            return dict(where=f"compartment_{k}", xy=COMP_0 + k * PITCH * A, h_top=self.comp_face(p["comps"][k]))
         return None
 
     def ray_hit(self, Tn, uv, z):
@@ -351,7 +360,7 @@ class Reset:
             v = self.find_knob(loc, f"{tag}_{trial}")
             s.require(v is not None, f"the pull is not visible from above at {np.round(loc['xy'], 3).tolist()} "
                                      f"({loc['where']}): the drawer is not pull-up")
-            h_g = loc["h_top"] + TIP_CLOSED + TIP_CLEAR
+            h_g = loc["h_top"] + TIP_CLOSED + TIP_CLEAR - 0.0015 * trial    # second try a little lower on the knob
             Ta, Tg, yaw = self.grasp_poses(v["knob"], v["axis"], h_g)
             s.decide(f"pinch the knob at {np.round(v['knob'], 4).tolist()}, jaw yaw {yaw:.1f}, tool {h_g:.3f} m above the table")
             s.gripper(PRE, "pre-close around the knob")
@@ -367,11 +376,18 @@ class Reset:
                 s.gripper(PRE, "release")
                 self.rise("up_after_miss", h_g + 0.09)
                 continue
-            T = self.T_now()
-            T[2, 3] += LIFT
+            limit = LIFT_FORCE if loc["where"].startswith("compartment") else LIFT_FORCE_TABLE
+            z0 = self.T_now()[2, 3]
+            held = True
             try:
-                with ForceLimit(s, LIFT_FORCE if loc["where"].startswith("compartment") else LIFT_FORCE_TABLE):
-                    self.line("lift_drawer", T, "slow")
+                for name, dz in (("lift_start", LIFT_START), ("lift_drawer", LIFT)):
+                    T = self.T_now()
+                    T[2, 3] = z0 + dz
+                    with ForceLimit(s, limit):
+                        self.line(name, T, "slow")
+                    held = self.still_held(f"{name}_{tag}_{trial}")
+                    if not held:
+                        break
             except Abort as e:
                 if "contact force" not in str(e):
                     raise
@@ -380,13 +396,20 @@ class Reset:
                 s.gripper(PRE, "release: the drawer is back at its place")
                 self.rise("up_after_stuck", h_g + 0.09)
                 continue
-            g2 = float(s.feedback()["gripper"])
-            if not s.dry and not HOLD[0] <= g2 <= HOLD[1] + 1.0:
-                s.decide(f"after the lift the gripper reads {g2:.1f}: the drawer was lost")
-                s.gripper(0.0, "open")
+            if not held:
+                s.decide("the knob slipped out of the pads during the lift: the drawer stayed behind")
+                s.gripper(PRE, "open after the slip")
+                self.rise("up_after_slip", max(self.T_now()[2, 3] - self.tz, h_g + 0.09))
                 continue
             return dict(knob=v["knob"], axis=v["axis"], h_g=h_g, bottom=loc["h_top"] - DRAWER_L, yaw=yaw)
         s.require(False, f"could not grasp the knob after two tries ({loc['where']})")
+
+    def still_held(self, when):
+        """Command the closure again: after a slip the reading stays where it was until the gripper is told to move
+        (attempts 33, 34 carried nothing at a reading of 88), and then it runs on to ~98."""
+        g = float(self.s.gripper(GRIP, f"re-close: is the knob still held ({when})?"))
+        self.s.summary(**{f"held_{when}": round(g, 1)})
+        return self.s.dry or HOLD[0] <= g <= HOLD[1]
 
     def plan_yaw(self, ax, target):
         """(turn deg, aim): a random yaw within +/-YAW_RANGE of the cabinet axis among those needing the least shift of
@@ -430,6 +453,8 @@ class Reset:
         except (RuntimeError, ValueError) as e:
             s.log(f"straight carry not plannable ({str(e)[:80]}): joint move")
             s.move_joint("carry_joint", self.ik(Tc), "normal")
+        if not grip.get("unknown"):
+            s.require(self.still_held("after_carry"), "the drawer was lost during the carry")
         h_place = grip["h_g"] - grip["bottom"] - 0.004     # 4 mm past the expected touch: the 20 N stop ends it
         T1 = Tc.copy()
         T1[2, 3] = self.tz + h_place + 0.05

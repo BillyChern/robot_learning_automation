@@ -115,3 +115,20 @@ Gap in the searches so far: one axis at a time around the measured centre. The d
 3.7 x 2 mm, and the half-width assumed for the a edge (36.8 mm) is itself uncertain by 1-2 mm.
 Changed: 2-D probe grid (a 0, +-3, +-6 mm; b 0, +-2, +-4 mm), nearest first, up to 25 contacts, stop lateral moves once the
 drawer is 4 mm below the rim. `insert.contact_map` records the contact height per point. Contact penalty 0.5 -> 0.15.
+
+## Touch search (operator notes 18:30, 18:32; attempt 28)
+Attempt 28's 25-point grid: no entry, but contact height falls steadily toward +a (96.5 mm at a = -6 mm to 93.9 mm at +6 mm,
+relative to the corrected pose), so the opening lies further along +a than anything tried.
+Changed:
+- `programs/touch.py`: line searches along a, b, yaw from the best (lowest) contact, then a 4 mm spiral over +-15 mm, up to 36
+  touches, 4 mm lift between touches. A drop of 1.5 cm below the rim saves the offset to `rl/touch_centre.json`, which is the
+  start of the next episode and the centre of the RL action.
+- Each contact logs the sideways force in the opening frame, to test the sim's claim that it points to the opening.
+- Hover measurement logged only, no correction (operator). Its b reading did follow the tool's correction (3.2-4.8 mm to
+  <0.7 mm), so the near wall is at least partly in view, but it did not lead to an insertion.
+- Opening detector: the look-down clipped the -y long side (outer corner at image row -78, principal point at row 251 of 720).
+  The look now aims 28 mm toward -y. Not yet confirmed on a real image.
+- Floor 5 mm instead of 13 mm (sim worker), so a force stop at 2 cm no longer counts as seated.
+Limits: a 4 mm grid can step over a window of ~2 mm across b; the line searches rely on the height trend. Offline success on a
+toy contact model was 39-100% depending on the offset, so "cannot miss" does not hold. The sim's lying_policy files are not on
+this machine, so Descent and Guided are not used or compared yet.

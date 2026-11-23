@@ -20,6 +20,7 @@ from rlpj.robot.plan import SLOW, tool_down_T
 from rlpj.robot.session import Abort, RobotSession
 from rlpj.success import checks
 import rlcommon as rc
+import touch
 import vision as V
 
 TASK = config.load("drawer_lying")["task"]
@@ -28,6 +29,7 @@ RIM = float(CAB["rim_h"])
 OPEN_SIZE = [float(v) for v in CAB["compartment"]]
 OPEN_C = np.array([0.4519, 0.0029])            # wrist-measured (attempt 4); the yaml's centre/yaw are ~1.5 cm / 3 deg off
 OPEN_YAW = 18.3
+OPEN_AIM = np.array([0.0, -0.028])             # look-down aim shift: cy is 251 of 720, the opening's -y long side was at the image edge
 
 SEED_DOWN = np.array([0, 25, -110, 0, -45, 90.0])
 CARRY = dict(name="carry", jv=12.0, lin=0.06)
@@ -39,21 +41,19 @@ GRIP_PRE = 0.50
 HOLD = (60.0, 97.0)                            # gripper reading when the tab is held
 HOVER = 0.008                                  # drawer bottom above the rim when the learned part starts
 LIFT_CLEAR = 0.030                             # drawer bottom above the rim while carrying
-FLOOR = float(CAB["floor_h"])
-B_MIN = 0.006                                  # lowest commanded drawer bottom above the table
-K_ALIGN, K_DESC = 2, 66
+FLOOR = 0.005                                  # compartment floor above the table (operator 18:32, sim worker; the yaml's 0.013 is too high)
+B_MIN = 0.005                                  # lowest commanded drawer bottom above the table
+K_ALIGN, K_DESC = 2, 90
 DZ0 = 0.007                                    # nominal descent per step (m); the action scales it by 0.5 .. 1.5
 SC_ALIGN = np.array([0.003, 0.003, 1.5])       # m, m, deg per unit action, align steps
 SC_DESC = np.array([0.001, 0.001, 0.5])        # descent steps
-MAX_C = np.array([0.008, 0.008, 4.0])          # bound of the accumulated corrections
+MAX_C = np.array([0.018, 0.018, 4.0])          # bound of the accumulated corrections
 PEAK_SEAT = 12.0                               # N: a force rise this large near the floor means the drawer is seated
-MAX_CONTACTS = 25
+MAX_CONTACTS = 36
+UNLOAD = 0.004                                 # m lifted after a touch (operator 18:30)
+DROPPED = 0.015                                # m below the rim: this point is the opening, remember it
+OBS_C = np.array([0.008, 0.008, 4.0])          # scale of the residual in the observation
 FIRST_TILT = 0.0                               # deg about b; tilts -5 .. +2.5 at the rim all failed (attempt 26)
-# 2-D probe grid around the measured alignment, nearest first: a (m), b (m), yaw (deg), tilt (deg). Attempts 24, 26 moved one axis at
-# a time; the window where the drawer fits is only ~3.7 mm (a) x ~2 mm (b), so a combined offset was never tried
-_G = sorted(((x, y) for x in (0.0, 0.003, -0.003, 0.006, -0.006) for y in (0.0, 0.002, -0.002, 0.004, -0.004) if (x, y) != (0.0, 0.0)),
-            key=lambda p: (p[0] / 0.003) ** 2 + (p[1] / 0.002) ** 2)
-SEARCH = np.array([[x, y, 0.0, 0.0] for x, y in _G])
 ENTERED = 0.004                                # m below the rim: the drawer is in the opening, no more lateral moves
 FIX_MAX = np.array([0.010, 0.010, 4.0])         # bound of the measured correction (drawer vs opening, wrist image)
 LEVEL_H = 0.025                                # drawer bottom above the rim while it is levelled
@@ -83,6 +83,7 @@ class Episode:
         self.terminal = None
         self._saved = False
         self.tilt = {}
+        self.centre = touch.load_centre(rc.rl_dir())  # where the drawer last dropped in (a, b, yaw), the centre of the RL action
         self.contact_map = []                       # [da mm, db mm, bottom mm at the contact] around the measured alignment
         self.c0 = np.zeros(3)                       # in-hand correction (a, b, yaw), the start of the learned part
         self.g_ref = np.zeros(2)                    # side-depth slope of the standing drawer (base frame)
@@ -177,7 +178,7 @@ class Episode:
         face = sd["face"]
 
         s.phase("look")
-        img, Tm = self.look("opening", np.r_[OPEN_C, self.tz + RIM])
+        img, Tm = self.look("opening", np.r_[OPEN_C + OPEN_AIM, self.tz + RIM])
         op = V.find_opening(img, Tm, OPEN_C, OPEN_YAW, OPEN_SIZE, self.tz + RIM)
         if op.get("ok") and np.linalg.norm(np.asarray(op["c"]) - OPEN_C) < 0.012 and abs(op["yaw"] - OPEN_YAW) < 2.5:
             c_o, yaw_o = np.asarray(op["c"], float), float(op["yaw"])
@@ -293,11 +294,9 @@ class Episode:
                 m = dict(ok=False, err=str(e)[:80])
             hist.append(dict(ok=m.get("ok"), ea=m.get("ea"), eb=m.get("eb"), eyaw=m.get("eyaw"), c0=np.round(self.c0, 4).tolist(),
                              why=(m.get("drawer") or {}).get("why") or (m.get("cabinet") or {}).get("why") or m.get("err")))
-            if s.dry or not m.get("ok") or it == 2:
-                break
-            self.c0 = np.clip(self.c0 - np.array([m["ea"], m["eb"], m["eyaw"]]), -FIX_MAX, FIX_MAX)
-            s.move_line(f"align{it}", self.pose(w, g, pl, self.c0, RIM + LEVEL_H), "slow")
-        s.summary(align=hist)
+            break                                    # logged only (operator 18:30): the touch search finds the opening
+        self.c0 = self.centre.copy()
+        s.summary(align=hist, touch_centre=np.round(self.centre, 4).tolist())
         s.log(f"drawer vs opening: {hist}")
 
     def measure_held(self, w, b):
@@ -352,7 +351,7 @@ class Episode:
 
     def obs(self, phase, b, c, f, peak, k, w, n_contact):
         t = w["tab"]
-        o = [phase, (RIM + HOVER - b) / 0.09, c[0] / MAX_C[0], c[1] / MAX_C[1], c[2] / MAX_C[2], *(f / 20.0), peak / 30.0,
+        o = [phase, (RIM + HOVER - b) / 0.09, c[0] / OBS_C[0], c[1] / OBS_C[1], c[2] / OBS_C[2], *(f / 20.0), peak / 30.0,
              k / 20.0, t["s"] / 0.03, t["t"] / 0.03, n_contact / 3.0]
         return np.clip(np.array(o, float), -5, 5)
 
@@ -370,6 +369,7 @@ class Episode:
         A3 = np.array([[*ax, 0.0], [*bx, 0.0], [0, 0, 1.0]])
         f0, peak, n_contact, end = self.force(), 0.0, 0, "steps"
         last_force = False
+        ts, next_pt = touch.TouchSearch(MAX_CONTACTS), None
         for k in range(K_ALIGN + K_DESC):
             phase = 0 if k < K_ALIGN or last_force else 1   # after a contact: one lateral alignment step at the unloaded height
             o = self.obs(phase, b, c - self.c0, A3 @ (self.force() - f0), peak, k, w, n_contact)  # residual on the measured alignment
@@ -377,9 +377,7 @@ class Episode:
             if self.mode == "train" and phase == 0 and n_contact > 0:   # wide exploration only at the search points
                 a = np.r_[np.clip(a[:3] + self.rng.normal(0.0, SEARCH_STD, 3), -1.0, 1.0), a[3]]
             if phase == 0 and n_contact > 0:             # search: a new point around the measured alignment + the policy's residual
-                pt = SEARCH[(n_contact - 1) % len(SEARCH)]
-                self.set_tilt(w, pt[3])
-                c2 = self.c0 + pt[:3] + SC_ALIGN * a[:3]
+                c2 = self.c0 + next_pt + (0.0 if self.mode == "eval" else SC_DESC * a[:3])   # the search point + the policy's residual
             else:
                 c2 = c + SC_DESC * a[:3]                 # first try: stay on the measured alignment (clearance ~1 mm)
             c2 = np.clip(c2, self.c0 - MAX_C, self.c0 + MAX_C)
@@ -394,21 +392,24 @@ class Episode:
                 r -= 0.15                               # contacts are part of the search now
                 peak = F_INSERT
                 n_contact += 1
+                f_c = A3 @ (self.force() - f0)          # sideways force while resting on the rim (operator 18:32: does it point to the opening?)
                 b_now = float(self.T_now()[2, 3]) - self.tz - g["h_g"]
+                ts.report(c2 - self.c0, b_now)
+                next_pt = ts.next()
                 # no descent reward on a force stop: at the rim the tool sinks while the drawer stays (attempt 10: 8 mm over
                 # three stops at 25 N with the drawer on the rim), and paying it would teach pressing on the rim
                 b = min(b, b_now)
-                self.contact_map.append([round((c2 - self.c0)[0] * 1000, 1), round((c2 - self.c0)[1] * 1000, 1), round(b_now * 1000, 1)])
+                self.contact_map.append([round(c2[0] * 1000, 1), round(c2[1] * 1000, 1), round(c2[2], 1), round(b_now * 1000, 1), round(float(f_c[0]), 1), round(float(f_c[1]), 1)])
                 if b <= FLOOR + 0.012:
                     end = "seated"
                 elif b_now < RIM - ENTERED:             # partly in: a lateral search step would push on the walls
                     end = "partial"
-                elif n_contact >= MAX_CONTACTS:
+                elif next_pt is None:
                     end = "jam"
                 else:                                   # unload: 3 mm up, the policy sees the contact and may correct
-                    st2, _ = self.try_step(f"unload{k:02d}", self.pose(w, g, pl, c, b + 0.003))
+                    st2, _ = self.try_step(f"unload{k:02d}", self.pose(w, g, pl, c, b + UNLOAD))
                     if st2 == "ok":
-                        b += 0.003
+                        b += UNLOAD
                     else:
                         end = "stuck"
             else:
@@ -428,6 +429,10 @@ class Episode:
             if status == "ok" and phase == 1 and (b <= B_MIN + 1e-4 or (peak >= PEAK_SEAT and b <= FLOOR + 0.012)):
                 end = "seated"
                 break
+        if b <= RIM - DROPPED and not s.dry:             # found the opening: start there next time
+            touch.save_centre(rc.rl_dir(), c, dict(bottom=round(b, 4), end=end, contacts=n_contact, episode=self.ep))
+            s.decide(f"opening found at offset a {c[0] * 1000:.1f} mm, b {c[1] * 1000:.1f} mm, yaw {c[2]:.2f} deg after {n_contact} touches")
+        s.summary(touch=dict(best=np.round(ts.best, 4).tolist(), best_h=None if not np.isfinite(ts.best_h) else round(ts.best_h, 4), touches=len(ts.seen)))
         s.summary(insert=dict(end=end, steps=len(self.trans), bottom=round(b, 4), c=np.round(c, 4).tolist(), contacts=n_contact, peak=round(peak, 1), tilt=self.phi, contact_map=self.contact_map,
                                  tilts_tried=sorted({e[7] for e in self.events if e[1] == "force"})))
         self.save("side_inserted", s.side.latest()[0])

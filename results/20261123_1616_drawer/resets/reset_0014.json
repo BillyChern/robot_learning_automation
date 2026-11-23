@@ -1,0 +1,107 @@
+{
+ "reset": 14,
+ "t": "2026-11-23T18:43:09",
+ "targets": {
+  "drawer": [
+   0.282,
+   -0.018
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.02,
+  "objects": {
+   "drawer": {
+    "target": [
+     0.282,
+     -0.018
+    ],
+    "found": null,
+    "dist": null,
+    "ok": false
+   }
+  },
+  "extra_blobs": 4,
+  "reason": "drawer: not found"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.2963,
+    0.1786
+   ],
+   "z_top": -0.0018,
+   "height": 0.0145,
+   "extent": [
+    0.0538,
+    0.0311
+   ],
+   "n": 194,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.5,
+    0.009
+   ],
+   "z_top": 0.0842,
+   "height": 0.1005,
+   "extent": [
+    0.2758,
+    0.1834
+   ],
+   "n": 12501,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.5529,
+    0.1871
+   ],
+   "z_top": 0.0023,
+   "height": 0.0186,
+   "extent": [
+    0.0739,
+    0.0289
+   ],
+   "n": 164,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.7096,
+    0.1529
+   ],
+   "z_top": -0.0016,
+   "height": 0.0148,
+   "extent": [
+    0.0319,
+    0.0333
+   ],
+   "n": 92,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0073,
+   "outer_r": 0.0129
+  }
+ ],
+ "claimed": null,
+ "claimed_outcome": "fail",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_34",
+ "exit_code": 2,
+ "outcome": "fail",
+ "duration": 119.2,
+ "cabinet_top_xy": [
+  0.519,
+  0.0102
+ ]
+}
