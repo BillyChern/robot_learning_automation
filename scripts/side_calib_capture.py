@@ -90,7 +90,13 @@ def main():
                     try:
                         s.phase("overview"); s.move_joint("overview", q, speed="slow")
                     except Exception as e:
-                        s.decide(f"overview refused: {str(e)[30:120]}"); continue
+                        # 2026-11-23: a joint move from Home swept past the cell's keep-in (curtain side) for most
+                        # rolls; a straight tool line to the same pose stays inside
+                        s.decide(f"overview joint move refused ({str(e)[30:100]}); trying a straight line")
+                        try:
+                            s.move_line("overview_line", look_at(centre + np.r_[0, 0, 0.45], centre, roll) @ rc.inv(X), "slow")
+                        except Exception as e2:
+                            s.decide(f"overview line refused: {str(e2)[30:100]}"); continue
                     c_w, n_w = wrist_centre()
                     break
         if c_w is None:
