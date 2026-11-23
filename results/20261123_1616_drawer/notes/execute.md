@@ -8,3 +8,9 @@ and the descent with force feedback; keep the learner simple and fast (prior + b
 measured depth and alignment + success bonus), log per-episode return/depth/forces. programs/previous_standing_cabinet/
 holds the last run's code (wrist footprint, grasp, force rules, sim-policy hook) to reuse. Low force for approaches,
 65 N cap.
+Operator note 16:47 (user wants the first RL rollout ASAP): make your FIRST episode program minimal and finish the
+develop phase fast: wrist look-down at the standing drawer, pinch the pull (low_force(20) descent, close, check held),
+lift ~12 cm, move over fixtures.cabinet.target_centre with the drawer's long side along the opening (yaw from the
+yaml + the look-down), wrist look-down at the opening to correct x/y/yaw, descend under low_force(25) until the force
+rises or the top reaches the rim, open, rise, home. Expose the alignment offsets and descent parameters as the RL
+action (bounded residuals); dry-run, one real test, then declare done; improve during training.

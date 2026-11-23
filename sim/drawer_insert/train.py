@@ -10,6 +10,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from . import lying_params as LP
+from . import lying_policy as LY
 from . import params as P
 from .curriculum import Curriculum
 from .policy import OBS_DIM, OBS_DIM2, H_STEPS
@@ -22,13 +24,15 @@ def mlp(n_in, n_out, hidden=256):
 
 
 class Agent(nn.Module):
-    def __init__(self, v2=False):
+    def __init__(self, v2=False, task="slot"):
         super().__init__()
-        n_in, n_act = (OBS_DIM2, 4) if v2 else (OBS_DIM, 3)
+        n_in, n_act = (LY.OBS_DIM, 4) if task == "lying" else (OBS_DIM2, 4) if v2 else (OBS_DIM, 3)
         self.pi, self.v = mlp(n_in, n_act), mlp(n_in, 1)
         self.log_std = nn.Parameter(torch.full((n_act,), np.log(0.5)))
-        with torch.no_grad():                      # prior: push about 5.5 mm per step, no correction
-            self.pi[-1].weight.mul_(0.1); self.pi[-1].bias.copy_(torch.tensor([np.arctanh(0.4)] + [0.0] * (n_act - 1)))
+        # prior: push about 5.5 mm per step (lying: descend 5 mm per step), no correction
+        prior = [0.0, 0.0, 0.0, np.arctanh(-0.5)] if task == "lying" else [np.arctanh(0.4)] + [0.0] * (n_act - 1)
+        with torch.no_grad():
+            self.pi[-1].weight.mul_(0.1); self.pi[-1].bias.copy_(torch.tensor(prior))
 
     def load_padded(self, sd):
         """Load a state dict, zero-padding v1 (14 inputs, 3 actions) weights to the v2 sizes (new dz starts at 0)."""
@@ -50,23 +54,27 @@ class Agent(nn.Module):
                  **{f"b{i}": m.bias.detach().cpu().numpy() for i, m in enumerate(lin)})
 
 
-def make_env(engine, n, seed, f_pen):
+def make_env(engine, n, seed, f_pen, task="slot", workers=12):
+    if engine == "newton" and task == "lying":
+        from . import newton_lying
+        newton_lying.F_PEN = f_pen
+        return newton_lying.NewtonLying(n, seed=seed)
     if engine == "newton":
         from . import newton_env
         newton_env.F_PEN = f_pen
         return newton_env.NewtonEnv(n, seed=seed)
     from .vec import CpuPool
-    return CpuPool(num_workers=12, per_worker=n // 12, seed=seed, f_pen=f_pen)
+    return CpuPool(num_workers=workers, per_worker=n // workers, seed=seed, f_pen=f_pen, task=task)
 
 
-def rollout(env, agent, starts, dev, deterministic=False):
+def rollout(env, agent, starts, dev, deterministic=False, horizon=H_STEPS):
     """One synchronized batch of episodes -> dict of (T, N) tensors and final infos."""
     obs = env.reset(starts)
     N = len(starts)
     active = np.ones(N, bool)
     buf = {k: [] for k in ("obs", "act", "logp", "val", "rew", "mask", "done")}
     info_end = {}
-    for _ in range(H_STEPS + 1):
+    for _ in range(horizon + 1):
         if not active.any():
             break
         x = torch.as_tensor(obs, device=dev)
@@ -136,29 +144,35 @@ def main():
     ap.add_argument("--v2", default="", help="vertical model + dz action: carry-height mode (params.H_MODES), e.g. mix")
     ap.add_argument("--variants", default="carry:0.8,aligned:0.2", help="start variant shares (params.VARIANTS)")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--task", default="slot", help="slot (standing cabinet) | lying (vertical insertion, lying_*.py)")
+    ap.add_argument("--workers", type=int, default=12, help="CPU pool processes")
     a = ap.parse_args()
+    lying = a.task == "lying"
+    if lying and a.variants == "carry:0.8,aligned:0.2":
+        a.variants = "carry:0.8,small:0.2"
+    H = LY.H_STEPS if lying else H_STEPS
     torch.set_num_threads(4)
     torch.manual_seed(a.seed)
     out = RUNS / a.name
     out.mkdir(parents=True, exist_ok=True)
     dev = "cuda" if torch.cuda.is_available() else "cpu"
-    env = make_env(a.engine, a.envs, a.seed, a.f_pen)
-    agent = Agent(a.v2).to(dev)
+    env = make_env(a.engine, a.envs, a.seed, a.f_pen, a.task, a.workers)
+    agent = Agent(a.v2, a.task).to(dev)
     if a.init:
         agent.load_padded(torch.load(a.init, map_location=dev))
     opt = torch.optim.Adam(agent.parameters(), lr=a.lr)
     variants = {k: float(v) for k, v in (x.split(":") for x in a.variants.split(","))}
-    cur = Curriculum(size=max(4096, 4 * a.envs), fresh=a.fresh, seed=a.seed, variants=variants, v2=a.v2 or None)
-    rng = np.random.default_rng(12345)
-    eval_starts = [dict(p=P.sample(np.random.default_rng(200000 + i), "carry", a.v2 or None), kind=None, k_pre=0)
-                   for i in range(a.envs)]
+    cur = Curriculum(size=max(4096, 4 * a.envs), fresh=a.fresh, seed=a.seed, variants=variants, v2=a.v2 or None,
+                     task=a.task)
+    sample = (lambda r: LP.sample(r, "carry")) if lying else (lambda r: P.sample(r, "carry", a.v2 or None))
+    eval_starts = [dict(p=sample(np.random.default_rng(200000 + i)), kind=None, k_pre=0) for i in range(a.envs)]
     log = csv.writer(open(out / "log.csv", "a", newline="", buffering=1))
     log.writerow(["iter", "samples", "fresh_success", "bank_success", "bank_p", "ret", "max_f_med", "std", "pl", "vl",
                   "eval_success", "eval_max_f_med", "sec"])
     best, samples, t0 = -1.0, 0, time.time()
     for it in range(1, a.iters + 1):
         starts = cur.sample(a.envs)
-        b, info = rollout(env, agent, starts, dev)
+        b, info = rollout(env, agent, starts, dev, horizon=H)
         idx = np.array([s["idx"] for s in starts])
         cur.update(idx, info["success"])
         adv, ret = gae(b)
@@ -167,7 +181,7 @@ def main():
         fresh = idx < 0
         ev_s, ev_f = "", ""
         if it % a.eval_every == 0 or it == a.iters:
-            _, ei = rollout(env, agent, eval_starts, dev, deterministic=True)
+            _, ei = rollout(env, agent, eval_starts, dev, deterministic=True, horizon=H)
             ev_s, ev_f = float(ei["success"].mean()), float(np.median(ei["max_f"]))
             agent.export(out / f"policy_{it:04d}.npz")
             torch.save(agent.state_dict(), out / "agent.pt")
