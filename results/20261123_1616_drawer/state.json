@@ -18,9 +18,9 @@
    "unsure": 0
   },
   "resets": {
-   "total": 8,
-   "ok": 8,
-   "fail": 0,
+   "total": 10,
+   "ok": 9,
+   "fail": 1,
    "manual": 0
   },
   "consecutive_failures": {
@@ -28,9 +28,9 @@
    "reset": 0
   },
   "rl": {
-   "total": 4,
+   "total": 5,
    "success": 0,
-   "fail": 4,
+   "fail": 5,
    "unsure": 0
   }
  },
@@ -59,20 +59,20 @@
    "last_report": "NOT VERIFIED ON THE FINAL CODE: taking the drawer out of the cabinet. It worked once on the arm (attempt 6, commit 37542bf, 0.1 cm error, layout check ok), but that run placed it at the old unsafe target and the pinch check, heights and lift limit have changed since. I did not re-create the done state, because inserting the drawer with about 1 mm clearance risks moving the cabinet. The first real episode will be the test.\n\nWORKS ON THE HARDWARE (drawer standing on the table, pull up): attempt 12 (6fabb80) layout ok, but its own claim failed on a measurement bug, since fixed. Attempt 17 (f0c3117) 0.4 cm error, outline 9.8 cm from the edge, which led to the bias fix. Attempt 19 (07a16a8, final code) 0.36 cm error, outline 10.3 cm from the nearest edge, pull seen from above, claim success, layout check ok, 150 s.\n\nNOT HANDLED: drawer lying on a side, upside down, or tilted so the pull cannot be seen. The program stops cleanly with a message and does not touch it.\n\nWRITTEN BUT NEVER RUN ON THE ARM: carrying a drawer already in the gripper, escaping from a low start pose, lowering the drawer back after a lift force stop, and leaving a drawer that is already in place.\n\nKNOWN RISK, ORCHESTRATOR CHECK: with the drawer motionless at [0.29, -0.02], the orchestrator's layout measurement found it only 14 of 20 times (attempt 15), because depth artifacts merge it with the cabinet or stretch its blob past the 16 cm size limit. Expect false reset failures until that check ignores the cabinet footprint or filters thin artifacts. I cannot change it from this workspace. The in-place path is meant to make a repeat cheap.\n\nTABLE EDGE RULE: every release is refused if the drawer outline would be under 10 cm from an edge, using the operator's camera-side line. The side camera does not see that edge near the target, and the table end beyond the cabinet was not measured. To satisfy the rule the aim shifts inward by up to 1.8 cm of the 2 cm tolerance at the worst target, and the yaw is mostly near -30 deg, so yaw variation in the data will be small.\n\nReading debug frames from /tmp was denied, so helper scripts and frames are in notes/."
   },
   "execute": {
-   "status": "done",
+   "status": "reviewing",
    "session_id": "5fed3068-1646-4cfb-9430-33473e8dbbd1",
    "model": "claude-opus-5-5",
    "started": "2026-11-23T17:06:56",
    "ended": "2026-11-23T17:32:18",
-   "attempts": 10,
-   "robot_attempts": 3,
-   "turns": 106,
-   "cost_usd": 7.323726000000001,
-   "input_tokens": 116,
-   "output_tokens": 133736,
-   "cache_read": 10777750,
-   "cache_creation": 311624,
-   "duration_s": 1352.5410000000002,
+   "attempts": 14,
+   "robot_attempts": 4,
+   "turns": 142,
+   "cost_usd": 11.6851846,
+   "input_tokens": 166,
+   "output_tokens": 199210,
+   "cache_read": 20232003,
+   "cache_creation": 456740,
+   "duration_s": 2054.254,
    "first_success_attempt": null,
    "first_success_after_attempts": null,
    "time_to_first_success_s": null,
@@ -80,7 +80,8 @@
    "rounds": 0,
    "program_command": null,
    "last_report": "NOT YET VERIFIED: the drawer has not gone into the compartment in any run, and no learned policy has run (attempt 10 used the zero-residual prior with exploration noise). The final commit 0550191 changes the reward on force-stopped steps and has not been run on the robot or in a dry run; dry runs never reach that branch. Why the drawer stops at the rim is not diagnosed.\n\nWORKS ON THE HARDWARE (attempt 10, commit 2f0398e, exit 2, 6 transitions, return -1.99): wrist measurement of the opening and of the drawer and its tab, pinch of the tab (reading 84.1), lift, carry, descent, three 25 N contact stops at the rim, put-back on the table, release, home. `learner.py --check` exits 0 on the real data (1 episode, 6 transitions). Attempt 10's stored rewards still include the old descent reward on its force-stopped steps.\n\nDESIGN (notes/design.md): scripted perception, grasp and carry. Learned: 2 alignment steps plus up to 18 descent steps, as bounded residuals in a, b, yaw and step size. AWAC learner using all real data. Limits as the operator asked: 20 N grasp approach, 25 N descent, 65 N session cap. No simulator. SGS-RL was not reviewed or used.\n\nFOR THE OPERATOR:\n1. The task yaml's compartment is off from the real one. Wrist measurement: centre (0.4519, 0.0032), yaw 18.2 deg. Yaml: (0.4469, -0.011), yaw 21.2 deg. The side camera agrees with the wrist on the cabinet's yaw. The program aligns to the measured rim, but the success window and keep-out boxes still use the yaml, so please check whether the fixture should be re-measured.\n2. The fixed success check can fail a correct episode. It takes the largest blob with extent 0.12-0.30 m as the cabinet, but the cabinet measured up to 0.318 m and sometimes merges with the drawer (0.446 m). Dry attempt 5 reported \"the cabinet moved 24.3 cm\" with nothing moved.\n3. The cabinet blob shifted 4.6 mm across attempt 10, which pressed on the rim at about 25 N, against about 1 mm in a static dry run. This is under the 2 cm limit but could be real movement, so watch it during training.\n4. `results/20261123_1616_drawer/agents/reset/programs/` holds a copy of the reset agent's programs outside the denied path. A filename search listed it; I did not open it.\n5. Reading debug images from /tmp was denied. I moved that work into the workspace and deleted my /tmp folder.",
-   "reflections": 3
+   "reflections": 5,
+   "reviews": 1
   }
  },
  "datasets": {},
@@ -93,17 +94,17 @@
   "round_successes": 0,
   "round_target": null
  },
- "next_episode": 4,
- "next_reset": 8,
+ "next_episode": 5,
+ "next_reset": 10,
  "vlm": {
-  "calls": 4,
-  "cost_usd": 0.3046704
+  "calls": 5,
+  "cost_usd": 0.38139880000000004
  },
  "operator_notes": [],
  "rl": {
-  "episodes": 4,
+  "episodes": 5,
   "evals": [],
-  "since_review": 4,
+  "since_review": 0,
   "learner_fails": 0
  }
 }

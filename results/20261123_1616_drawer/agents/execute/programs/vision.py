@@ -224,3 +224,92 @@ def plane_tilt(P, c, yaw_deg, half, z_mid, z_band, exclude=None):
     return dict(ok=bool(span[0] > 0.035 and span[1] > 0.05), n=int(keep.sum()), tilt_s_deg=round(float(np.degrees(np.arctan(x[1]))), 2),
                 tilt_t_deg=round(float(np.degrees(np.arctan(x[2]))), 2), z0=round(float(x[0]), 4),
                 resid_mm=round(float(np.median(res[keep])) * 1000, 2), span=np.round(span, 3).tolist())
+
+
+def held_offset(img, T_base_tool, c_plan, yaw_deg, z, half_short=0.0368, origin=(0, 0)):
+    """Where the held drawer's top face really is, from the wrist image at the hover, relative to its planned centre
+    c_plan (axes a, b of the opening; the plane z is the top face). The long sides against the table beyond them give b
+    and the yaw; the short edge on the camera's side gives a (the other one is out of view). {ok, da, db, dyaw, ...}."""
+    R, valid = rectify(img, T_base_tool, c_plan, yaw_deg, (0.060, 0.075), z, origin)
+    cam = (np.asarray(T_base_tool, float) @ wrist_cam()[2])[:2, 3] - np.asarray(c_plan, float)
+    sg = 1.0 if float(cam @ axes(yaw_deg)[0]) > 0 else -1.0
+    wood = wood_mask(R)
+    V = cv2.GaussianBlur(cv2.cvtColor(R, cv2.COLOR_BGR2HSV)[..., 2], (5, 5), 0).astype(np.float32)
+    Hh, Ww = V.shape
+    cs, ct = (Ww - 1) / 2, (Hh - 1) / 2
+    pm, pp, pa = [], [], []
+    for x in sg * np.arange(0.006, 0.033, 0.001):                # columns on the camera side of the fingers
+        c = int(round(cs + x / RES))
+        k = _outer(wood[:, c], valid[:, c])
+        if k is not None and k < ct:
+            pm.append((x, (k - ct) * RES))
+        k = _outer(wood[:, c], valid[:, c], reverse=True)
+        if k is not None and k > ct:
+            pp.append((x, (k - ct) * RES))
+    lo, hi = int(round(cs + (sg * half_short - 0.010) / RES)), int(round(cs + (sg * half_short + 0.010) / RES))
+    for x in np.arange(-0.045, 0.045, 0.002):                    # rows: the camera-side short edge of the top face
+        r = int(round(ct + x / RES))
+        if lo < 2 or not valid[r, lo:hi].all():
+            continue
+        g = np.abs(np.gradient(V[max(r - 3, 0):r + 4].mean(0)))[lo:hi]
+        if g.max() > 1.0:
+            pa.append((x, (lo + int(np.argmax(g)) - cs) * RES))
+    L = dict(b_m=_line(pm), b_p=_line(pp), a=_line(pa))
+    if any(v is None for v in L.values()):
+        return dict(ok=False, why="edge not found", n=[len(pm), len(pp), len(pa)])
+    db = 0.5 * (L["b_m"]["off"] + L["b_p"]["off"])
+    width = L["b_p"]["off"] - L["b_m"]["off"]
+    angs = [np.degrees(np.arctan(L["b_m"]["slope"])), np.degrees(np.arctan(L["b_p"]["slope"])), -np.degrees(np.arctan(L["a"]["slope"]))]
+    dyaw = float(np.median(angs))
+    da = L["a"]["off"] - sg * half_short
+    resid = max(v["resid"] for v in L.values()) * 1000
+    ok = 0.105 <= width <= 0.125 and abs(da) < 0.012 and abs(db) < 0.012 and float(np.ptp(angs)) < 5.0 and resid < 1.5
+    # the long sides converge in the rectified plane when the face is tilted about b: width(s) ~ w (1 + g s / depth), g = dz/ds
+    depth = float((np.asarray(T_base_tool, float) @ wrist_cam()[2])[2, 3] - z)
+    tilt_s = float(np.degrees(np.arctan((L["b_p"]["slope"] - L["b_m"]["slope"]) * depth / width)))
+    return dict(ok=bool(ok), tilt_s=round(tilt_s, 2), edge=int(sg), da=round(float(da), 4), db=round(float(db), 4), dyaw=round(dyaw, 2), width_b=round(float(width), 4),
+                resid_mm=round(resid, 2), angs=np.round(angs, 2).tolist())
+
+
+def cabinet_near(img, T_base_tool, c, yaw_deg, z, origin=(0, 0)):
+    """The cabinet's near end in the rim plane, seen past the held drawer (axes of the opening, around c): outer edge of the
+    near wall (a, yaw) and the two long sides at that wall (b). {ok, a_out, cb, width_b, dyaw, ...}, offsets from c."""
+    R, valid = rectify(img, T_base_tool, c, yaw_deg, (0.075, 0.085), z, origin)
+    wood = wood_mask(R)
+    Hh, Ww = wood.shape
+    cs, ct = (Ww - 1) / 2, (Hh - 1) / 2
+    pa = []
+    for x in np.arange(-0.055, 0.055, 0.002):
+        r = int(round(ct + x / RES))
+        k = _outer(wood[r], valid[r])
+        if k is not None and k < cs:
+            pa.append((x, (k - cs) * RES))
+    La = _line(pa)                                # logged only: this edge includes the wall's outer face (moves ~8 mm)
+    pm, pp = [], []
+    for x in np.arange(-0.0445, -0.0394, 0.0005):  # columns on the near wall's top
+        c_ = int(round(cs + x / RES))
+        k = _outer(wood[:, c_], valid[:, c_])
+        if k is not None and k < ct:
+            pm.append((k - ct) * RES)
+        k = _outer(wood[:, c_], valid[:, c_], reverse=True)
+        if k is not None and k > ct:
+            pp.append((k - ct) * RES)
+    if len(pm) < 6 or len(pp) < 6:
+        return dict(ok=False, why="long sides not found", n=[len(pm), len(pp)])
+    bm, bp = float(np.median(pm)), float(np.median(pp))
+    spread = max(float(np.ptp(np.clip(pm, bm - 0.003, bm + 0.003))), float(np.ptp(np.clip(pp, bp - 0.003, bp + 0.003))))
+    ok = 0.125 <= bp - bm <= 0.145 and spread < 0.004
+    return dict(ok=bool(ok), a_out=None if La is None else round(La["off"], 4), cb=round(0.5 * (bm + bp), 4), width_b=round(bp - bm, 4))
+
+
+def drawer_vs_opening(img, T_base_tool, c, yaw_deg, z_rim, z_top, origin=(0, 0)):
+    """Drawer relative to the opening from one wrist image, camera on the -a side: the drawer's top-face edges against the
+    cabinet's near end, each in its own plane. b comes from the two in the same image; a and the yaw are the drawer against
+    the rim measured before the grasp (the near wall's outer edge is not usable for them). {ok, ea, eb, eyaw, drawer, cabinet}."""
+    d = held_offset(img, T_base_tool, c, yaw_deg, z_top, origin=origin)
+    k = cabinet_near(img, T_base_tool, c, yaw_deg, z_rim, origin)
+    out = dict(ok=False, drawer=d, cabinet=k)
+    if d.get("edge") != -1 or d.get("da") is None or not k.get("ok") or not d.get("ok"):
+        return out
+    out.update(ok=True, ea=d["da"], eb=round(d["db"] - k["cb"], 4), eyaw=d["dyaw"])
+    return out

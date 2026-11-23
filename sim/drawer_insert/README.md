@@ -532,6 +532,8 @@ while not done:                                           # 60 decisions
 - f_peak must be max |f - f0| over the move (stream the 40 Hz feedback); `max_force_n` relative to the segment start
   is a fallback (`max_force_n + |f_seg_start - f0|`).
 - Step time: the sim used 0.2 s steps; 0.5-1 s real steps are fine for this quasi-static contact (see `slow_steps`).
+- Fallback with the same bookkeeping and logs: `Descent(Guided(), ...)` (`from sim.drawer_insert.lying_baselines import
+  Guided`, numpy only) runs the hand-written force-guided search instead of the network.
 - Stop early (and release) when `ins.cmd[3] < 0.01` and `ins.obs["f"][2] > 10` for two decisions: the drawer is on the
   floor. Otherwise run the 60 decisions; the success check (side camera top height) decides.
 - Log per decision: `ins.k`, `ins.obs` (all keys), `ins.step`, `ins.target`, the measured tool pose after the move,

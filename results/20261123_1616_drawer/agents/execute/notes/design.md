@@ -68,3 +68,41 @@ to the rim in the image.
 Changed: wider exploration on alignment steps (extra std 0.6 action units, about 2.5 mm and 1.3 deg over the two align
 steps), one lateral alignment step after each contact, up to 5 contacts per episode. Episodes 0-2 tried the same
 alignment within ~1 mm, so the data could not show where the drawer fits.
+
+## Reflection on episode 3 (attempt 18)
+Five contacts at different offsets all stopped at the rim, some within ~2-3 mm of the correction measured below, so that
+correction alone may not be enough. New evidence from the
+recorded wrist frame at the hover: the held drawer's top face is 0.2-2.2 mm off its planned position in a, -1 to +2 mm in
+b, and about 1 deg in yaw, repeatable within ~0.3 mm across frames of one episode. That is as large as the clearance.
+Changed: `held_offset` measures this at the hover and the tool corrects it (bounded 5 mm, 2.5 deg), then the learned part
+starts from the corrected pose; exploration reduced to std 0.35 around it. With the tool at yaw 108 the measurement's
+angle check rejects it (attempts 10, 12), and that case keeps the old uncorrected prior.
+
+## Reflection on episode 4 (attempt 20), operator note 17:58
+Measured in one recorded wrist image at 2 cm above the rim (drawer's long sides against the cabinet's near wall): the
+drawer sat 3.3-3.7 mm off the opening along b in all three episodes checked (16, 18, 20), about 2 mm of it not seen by the
+previous correction. That exceeds the ~1 mm clearance along b and is the best explanation so far for the jams.
+Changed:
+- Grasp yaw chosen so the camera always ends on the near-wall side, where drawer and cabinet are both visible.
+- 2.5 cm above the rim: measure drawer vs opening, correct, repeat once, record what is left (bound 10 mm, 4 deg).
+  b is differential (same image). a and yaw are the drawer against the rim measured before the grasp, because the near
+  wall's outer edge moved ~8 mm between episodes (its outer face is in view).
+- On contact: 3 mm back off, then a scripted search point around the measured alignment (+-3 mm in a, b; +-1.5 deg),
+  plus the policy's residual. Up to 7 contacts. Residual range +-8 mm, +-4 deg around the measured alignment; observation
+  now holds the residual.
+Not done: the tilted-entry trick. Added only if the measured alignment still jams.
+
+## Tuning after 5 episodes (0 successes)
+The curve has no signal: every return comes from rim contacts. The dry run of 94268dd showed the learned policy drifting
+0.3-0.5 mm per step (3.8 mm over a descent), trained on data where c meant something else, and that would undo the
+measured alignment. Changed: prior version 2. The old actor and learner state are ignored and only v2 episodes train.
+Before the first contact the residual scale is 1 mm, 0.5 deg per unit; the 3 mm scale and extra noise apply at search points.
+
+## Real test of the measured alignment (attempt 24, commit 1cbb663)
+The alignment worked: residual after two corrections 0.3 mm, -0.4 mm, -0.09 deg. All 7 contacts still stopped ~3 mm above
+the rim. So the top-face position is not the limiting error. Tilt is the remaining suspect: a far-side sag of ~3 deg about
+the jaw axis makes the footprint 72.2 + 4.8 = 77 mm against a 75.7 mm opening, and puts the lowest edge ~3 mm below the
+commanded bottom. Not confirmed: side-depth tilt repeats to ~2 deg, and the wrist edge-convergence measure I tried reads
++1.0, -6.1, -4.1 deg on three looks at one pose and -6.5 on a standing drawer, so neither is used for control.
+Changed: the first try tilts the tool -3 deg about b through the pinch point, and the contact search sweeps tilt (-5, -1.5,
++2.5) and then +-2 mm around -3. Tilt stays scripted for now, and the log shows which values were tried and entered.

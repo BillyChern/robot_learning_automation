@@ -127,6 +127,11 @@ def load_data(d):
     parts, eps = [], []
     for f in files:
         try:
+            try:                               # only data whose actions and observations mean what they mean now
+                if int(json.load(open(f[:-4] + ".json")).get("version", 1)) < rc.PRIOR_VERSION:
+                    continue
+            except Exception:
+                continue
             z = np.load(f)
             if len(z["rew"]):
                 part = {k: z[k].copy() for k in ("obs", "act", "rew", "next_obs", "done")}
@@ -238,7 +243,10 @@ def main():
     if os.path.exists(st_path):
         try:
             st = torch.load(st_path, map_location=dev, weights_only=False)
-            L.load(st); prev = st.get("meta", prev)
+            if st.get("meta", {}).get("prior_version") == PRIOR_VERSION:
+                L.load(st); prev = st.get("meta", prev)
+            else:
+                print(f"learner state is from prior version {st.get('meta', {}).get('prior_version')}: starting fresh")
         except Exception as e:
             print(f"learner state not loaded ({e}): starting fresh")
     D, eps = load_data(d)

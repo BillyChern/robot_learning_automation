@@ -41,17 +41,22 @@ HOVER = 0.008                                  # drawer bottom above the rim whe
 LIFT_CLEAR = 0.030                             # drawer bottom above the rim while carrying
 FLOOR = float(CAB["floor_h"])
 B_MIN = 0.006                                  # lowest commanded drawer bottom above the table
-K_ALIGN, K_DESC = 2, 24
+K_ALIGN, K_DESC = 2, 30
 DZ0 = 0.007                                    # nominal descent per step (m); the action scales it by 0.5 .. 1.5
 SC_ALIGN = np.array([0.003, 0.003, 1.5])       # m, m, deg per unit action, align steps
 SC_DESC = np.array([0.001, 0.001, 0.5])        # descent steps
 MAX_C = np.array([0.008, 0.008, 4.0])          # bound of the accumulated corrections
 PEAK_SEAT = 12.0                               # N: a force rise this large near the floor means the drawer is seated
-MAX_CONTACTS = 5
-LEVEL_H = 0.020                                # drawer bottom above the rim while it is levelled
+MAX_CONTACTS = 7
+FIRST_TILT = -3.0                              # deg about b at the first try: raises the far side (+a), against the suspected sag
+# search point per contact, around the measured alignment: a (m), b (m), yaw (deg), tilt about b (deg). Attempt 24: with the top
+# face aligned to 0.4 mm, seven contacts at tilt 0 all stopped ~3 mm above the rim, so tilt is the variable under test
+SEARCH = np.array([[0, 0, 0, -5.0], [0, 0, 0, -1.5], [0, 0, 0, 2.5], [0.002, 0, 0, -3.0], [-0.002, 0, 0, -3.0], [0, 0.002, 0, -3.0]])
+FIX_MAX = np.array([0.010, 0.010, 4.0])         # bound of the measured correction (drawer vs opening, wrist image)
+LEVEL_H = 0.025                                # drawer bottom above the rim while it is levelled
 LEVEL_TOL, LEVEL_MAX = 0.8, 6.0                # deg: tilt left alone, largest correction about the jaw axis
 LEVEL_ITERS = 0                                # measure only: the side-depth tilt repeats to ~2 deg only (episode 2)
-SEARCH_STD = 0.6                               # extra exploration on alignment steps (units of the action), train mode
+SEARCH_STD = 0.35                              # extra exploration on alignment steps (units of the action), train mode
 
 
 def wrapd(a):
@@ -75,6 +80,7 @@ class Episode:
         self.terminal = None
         self._saved = False
         self.tilt = {}
+        self.c0 = np.zeros(3)                       # in-hand correction (a, b, yaw), the start of the learned part
         self.g_ref = np.zeros(2)                    # side-depth slope of the standing drawer (base frame)
         self.phi, self.R_fix = 0.0, np.eye(3)       # levelling rotation about the opening's b axis
 
@@ -202,7 +208,10 @@ class Episode:
     def grasp(self, w):
         s = self.s
         s.phase("grasp")
-        xy, yaw = np.asarray(w["tab"]["xy"], float), float(w["d"]["yaw"])
+        xy = np.asarray(w["tab"]["xy"], float)
+        # the jaws fit the tab either way round: take the one that ends with the camera on the near-wall (-a) side, where the
+        # drawer and the cabinet's near end are both in view
+        yaw = wrapd(w["yaw_o"] - 90.0 - self.drawer_turn(w))
         h_g = w["face"] + TIP_CLEAR + TIP_CLOSED
         Tg = tool_down_T(np.r_[xy, self.tz + h_g], yaw)
         T_pre = Tg.copy(); T_pre[2, 3] += 0.05
@@ -230,12 +239,17 @@ class Episode:
             return None
         return dict(h_g=h_g, xy_g=xy, yaw_g=yaw, T_g=Tg)
 
+    @staticmethod
+    def drawer_turn(w):
+        """Rotation (deg) that puts the tab on the near-wall side of the opening with the drawer's long side along b."""
+        tab_dir = float(w["d"]["yaw"]) - 90.0 + (0.0 if w["tab"]["side"] > 0 else 180.0)
+        return wrapd(w["yaw_o"] + 180.0 - tab_dir)
+
     def plan_place(self, w, g):
         """Rotate the drawer so that its long side lies along b and the tab points to the near end wall (-a), the side
         away from the divider; tool pose = opening centre + the rotated pinch offset."""
         d, tab = w["d"], w["tab"]
-        tab_dir = float(d["yaw"]) - 90.0 + (0.0 if tab["side"] > 0 else 180.0)
-        dyaw = wrapd(w["yaw_o"] + 180.0 - tab_dir)
+        dyaw = self.drawer_turn(w)
         return dict(dyaw=dyaw, yaw_f=g["yaw_g"] + dyaw, off=np.asarray(tab["xy"], float) - np.asarray(d["c"], float))
 
     def pose(self, w, g, pl, c, b):
@@ -257,7 +271,30 @@ class Episode:
         s.move_joint("carry", self.ik(T, seeds), CARRY)
         s.move_line("to_level", self.pose(w, g, pl, np.zeros(3), RIM + LEVEL_H), "slow")
         self.level(w, g, pl)
-        s.move_line("to_hover", self.pose(w, g, pl, np.zeros(3), RIM + HOVER), "slow")
+        self.align_fix(w, g, pl)
+        s.move_line("to_hover", self.pose(w, g, pl, self.c0, RIM + HOVER), "slow")
+
+    def align_fix(self, w, g, pl):
+        """Operator 17:58: fix the alignment before the descent. 2.5 cm above the rim, measure the drawer against the opening
+        in one wrist image and correct, twice; the third look only records what is left."""
+        s = self.s
+        hist = []
+        for it in range(3):
+            try:
+                time.sleep(0.4)
+                img = s.wrist.latest()[0]
+                self.save(f"wrist_align{it}", img)
+                m = V.drawer_vs_opening(img, self.T_now(), w["c_o"], w["yaw_o"], self.tz + RIM, self.tz + RIM + LEVEL_H + w["face"])
+            except Exception as e:
+                m = dict(ok=False, err=str(e)[:80])
+            hist.append(dict(ok=m.get("ok"), ea=m.get("ea"), eb=m.get("eb"), eyaw=m.get("eyaw"), c0=np.round(self.c0, 4).tolist(),
+                             why=(m.get("drawer") or {}).get("why") or (m.get("cabinet") or {}).get("why") or m.get("err")))
+            if s.dry or not m.get("ok") or it == 2:
+                break
+            self.c0 = np.clip(self.c0 - np.array([m["ea"], m["eb"], m["eyaw"]]), -FIX_MAX, FIX_MAX)
+            s.move_line(f"align{it}", self.pose(w, g, pl, self.c0, RIM + LEVEL_H), "slow")
+        s.summary(align=hist)
+        s.log(f"drawer vs opening: {hist}")
 
     def measure_held(self, w, b):
         """Top-face plane of the held drawer from side depth (s along a, t along b); never stops the episode."""
@@ -315,21 +352,33 @@ class Episode:
              k / 20.0, t["s"] / 0.03, t["t"] / 0.03, n_contact / 3.0]
         return np.clip(np.array(o, float), -5, 5)
 
+    def set_tilt(self, w, phi):
+        """Tilt of the tool about the opening's b axis through the pinch point (used by pose())."""
+        self.phi = float(phi)
+        self.R_fix = cv2.Rodrigues(np.r_[V.axes(w["yaw_o"])[1], 0.0] * np.radians(self.phi))[0]
+
     def insert(self, w, g, pl):
         s = self.s
         s.phase("insert_learned")
-        c, b = np.zeros(3), RIM + HOVER
+        self.set_tilt(w, FIRST_TILT)
+        c, b = self.c0.copy(), RIM + HOVER
         ax, bx = V.axes(w["yaw_o"])
         A3 = np.array([[*ax, 0.0], [*bx, 0.0], [0, 0, 1.0]])
         f0, peak, n_contact, end = self.force(), 0.0, 0, "steps"
         last_force = False
         for k in range(K_ALIGN + K_DESC):
             phase = 0 if k < K_ALIGN or last_force else 1   # after a contact: one lateral alignment step at the unloaded height
-            o = self.obs(phase, b, c, A3 @ (self.force() - f0), peak, k, w, n_contact)
+            o = self.obs(phase, b, c - self.c0, A3 @ (self.force() - f0), peak, k, w, n_contact)  # residual on the measured alignment
             a, info = self.actor.act(o, explore=self.mode == "train", rng=self.rng)
-            if self.mode == "train" and phase == 0:      # episodes 0-2 all tried the same alignment within ~1 mm
+            if self.mode == "train" and phase == 0 and n_contact > 0:   # wide exploration only at the search points
                 a = np.r_[np.clip(a[:3] + self.rng.normal(0.0, SEARCH_STD, 3), -1.0, 1.0), a[3]]
-            c2 = np.clip(c + (SC_ALIGN if phase == 0 else SC_DESC) * a[:3], -MAX_C, MAX_C)
+            if phase == 0 and n_contact > 0:             # search: a new point around the measured alignment + the policy's residual
+                pt = SEARCH[(n_contact - 1) % len(SEARCH)]
+                self.set_tilt(w, pt[3])
+                c2 = self.c0 + pt[:3] + SC_ALIGN * a[:3]
+            else:
+                c2 = c + SC_DESC * a[:3]                 # first try: stay on the measured alignment (clearance ~1 mm)
+            c2 = np.clip(c2, self.c0 - MAX_C, self.c0 + MAX_C)
             b2 = b if phase == 0 else max(b - DZ0 * (1.0 + 0.5 * a[3]), B_MIN)
             status, res = self.try_step(f"ins{k:02d}", self.pose(w, g, pl, c2, b2))
             r = -0.02
@@ -361,9 +410,9 @@ class Episode:
             last_force = status == "force"
             self.trans.append(dict(obs=o, act=a, rew=r))
             self.ret += r
-            self.events.append([k, status, np.round(a, 2).tolist(), round(r, 3), round(b, 4), np.round(c, 4).tolist(), round(peak, 1)])
+            self.events.append([k, status, np.round(a, 2).tolist(), round(r, 3), round(b, 4), np.round(c, 4).tolist(), round(peak, 1), self.phi])
             s.log(f"step {k}: a {np.round(a, 2).tolist()} (mu {info['mu']}) -> {status} {res.get('reason', '')} bottom {b:.4f} "
-                  f"c {np.round(c, 4).tolist()} peak {peak:.1f} N r {r:+.3f}")
+                  f"c {np.round(c, 4).tolist()} tilt {self.phi:+.1f} peak {peak:.1f} N r {r:+.3f}")
             if end != "steps":
                 break
             if not s.dry and not HOLD[0] <= float(s.feedback()["gripper"]) <= HOLD[1]:
@@ -372,7 +421,8 @@ class Episode:
             if status == "ok" and phase == 1 and (b <= B_MIN + 1e-4 or (peak >= PEAK_SEAT and b <= FLOOR + 0.012)):
                 end = "seated"
                 break
-        s.summary(insert=dict(end=end, steps=len(self.trans), bottom=round(b, 4), c=np.round(c, 4).tolist(), contacts=n_contact, peak=round(peak, 1)))
+        s.summary(insert=dict(end=end, steps=len(self.trans), bottom=round(b, 4), c=np.round(c, 4).tolist(), contacts=n_contact, peak=round(peak, 1), tilt=self.phi,
+                                 tilts_tried=sorted({e[7] for e in self.events if e[1] == "force"})))
         self.save("side_inserted", s.side.latest()[0])
         return dict(end=end, b=b, c=c)
 
@@ -437,7 +487,7 @@ class Episode:
         name = f"{self.mode}_ep{self.ep:04d}" if self.ep >= 0 else f"{self.mode}_test_{time.strftime('%Y%m%d_%H%M%S')}"
         if self.s.dry:
             name = "dry_" + name
-        p = rc.save_episode(name, self.trans, dict(mode=self.mode, episode=self.ep, dry=self.s.dry, ret=self.ret, check=ok, terminal=self.terminal,
+        p = rc.save_episode(name, self.trans, dict(version=rc.PRIOR_VERSION, mode=self.mode, episode=self.ep, dry=self.s.dry, ret=self.ret, check=ok, terminal=self.terminal,
                                                    reason=(rep or {}).get("reason"), events=self.events, policy=self.actor.info,
                                                    attempt=self.s.A, t=time.time()))
         self.s.summary(transitions_file=os.path.relpath(p, rc.rl_dir()), transitions=len(self.trans), **{"return": round(self.ret, 3)})
