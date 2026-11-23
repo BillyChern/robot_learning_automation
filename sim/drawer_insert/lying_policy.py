@@ -62,6 +62,8 @@ class Descent:
         self.R = rot(self.axis)
         self.f0 = np.asarray(f0, float)
         self.cmd0 = self.cmd = self.to_open(tool_xyz, tool_yaw)
+        if abs(self.cmd0[2]) > 30.0:                  # the jaw axis points the other way: flip the frame, not the policy
+            raise ValueError("tool yaw is far from yaw_straight: pass axis_deg + 180 and yaw_straight + 180")
         self.prev, self.f_peak, self.stopped, self.k = np.zeros(4), 0.0, 0.0, 0
 
     def to_open(self, xyz, yaw):

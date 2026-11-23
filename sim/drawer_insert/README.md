@@ -525,6 +525,8 @@ while not done:                                           # 60 decisions
   `dz < 0` is down. `off`, `tilt`, `yaw_est` are in the sim tool frame (x = jaw axis, y = 90 deg CCW from it seen from
   above, z up): convert from the camera / robot tool frame (robot tool y = - sim y, robot tool z = - sim z).
 - `yaw_of(T)` = `degrees(atan2(T[1, 0], T[0, 0]))` (the jaw axis in the base plane, as `tool_down_T` defines it).
+  If the arm holds the drawer with the jaw axis near `yaw_deg + 180`, pass `axis_deg = yaw_straight = yaw_deg + 180`
+  (and the estimates in that tool frame); `Descent` refuses a start yaw more than 30 deg from `yaw_straight`.
 - Force stop: the policy was trained with stops at 40-65 N on |f - f0| (40 Hz). Use the task's limit or lower; a stop
   must freeze the tool at its measured pose for the rest of the step.
 - f_peak must be max |f - f0| over the move (stream the 40 Hz feedback); `max_force_n` relative to the segment start

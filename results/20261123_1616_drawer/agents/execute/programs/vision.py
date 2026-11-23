@@ -198,3 +198,29 @@ def find_opening(img, T_base_tool, c0, yaw_deg, size, z, origin=(0, 0), wall=0.0
     ok = abs(width_b - (size[1] + 2 * wall)) < 0.010 and 0.006 <= wall_a <= 0.017 and float(np.ptp(angs)) < 3.0 and resid < 1.5
     return dict(ok=ok, c=np.round(c, 4).tolist(), yaw=round(yaw_deg + dyaw, 2), da=round(da, 4), db=round(db, 4), dyaw=round(dyaw, 2),
                 wall_a=round(wall_a, 4), width_b=round(width_b, 4), resid_mm=round(resid, 2), angs=np.round(angs, 2).tolist())
+
+
+def plane_tilt(P, c, yaw_deg, half, z_mid, z_band, exclude=None):
+    """Robust plane z = z0 + gs * s + gt * t through the base-frame points P inside a rectangle around c (axes from
+    yaw_deg) and z_mid +- z_band; exclude = (s, t, half_s, half_t) drops the fingers or the pull. Tilts in degrees."""
+    a, b = axes(yaw_deg)
+    d = np.asarray(P, float)[:, :2] - np.asarray(c, float)
+    s, t, z = d @ a, d @ b, np.asarray(P, float)[:, 2]
+    m = (np.abs(s) < half[0]) & (np.abs(t) < half[1]) & (np.abs(z - z_mid) < z_band)
+    if exclude is not None:
+        m &= ~((np.abs(s - exclude[0]) < exclude[2]) & (np.abs(t - exclude[1]) < exclude[3]))
+    if m.sum() < 150:
+        return dict(ok=False, n=int(m.sum()))
+    s, t, z = s[m], t[m], z[m]
+    A = np.c_[np.ones(len(z)), s, t]
+    keep = np.ones(len(z), bool)
+    for _ in range(5):
+        x, *_ = np.linalg.lstsq(A[keep], z[keep], rcond=None)
+        res = np.abs(A @ x - z)
+        keep = res < max(2.5 * np.median(res[keep]), 0.0015)
+        if keep.sum() < 100:
+            return dict(ok=False, n=int(keep.sum()))
+    span = [float(np.ptp(s[keep])), float(np.ptp(t[keep]))]
+    return dict(ok=bool(span[0] > 0.035 and span[1] > 0.05), n=int(keep.sum()), tilt_s_deg=round(float(np.degrees(np.arctan(x[1]))), 2),
+                tilt_t_deg=round(float(np.degrees(np.arctan(x[2]))), 2), z0=round(float(x[0]), 4),
+                resid_mm=round(float(np.median(res[keep])) * 1000, 2), span=np.round(span, 3).tolist())

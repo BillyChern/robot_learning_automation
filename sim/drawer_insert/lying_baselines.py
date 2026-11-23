@@ -58,6 +58,24 @@ class Spiral:
         return np.r_[d, 0.0 if far else -min(0.006, max(0.0, o["z"] + 0.004))]
 
 
+class Guided:
+    """Scripted force-guided search (what the policy turned out to do): descend at 6 mm/step; while the drawer presses
+    on something above the flush zone (f_z > 15 N or a stop), step along the measured lateral force (2 mm/N, at most
+    4 mm per axis) and back up 1-2 mm; stop once seated. Gains tuned on 300 carry episodes (51-60 % over 8 settings)."""
+
+    def reset(self):
+        pass
+
+    def act(self, o):
+        f = np.asarray(o["f"], float)
+        if o["z"] < 0.01 and f[2] > F_SEAT:
+            return np.zeros(4)
+        if o["stopped"] or o["f_peak"] > 50.0 or f[2] > 15.0:
+            d = np.clip(0.002 * f[:2], -0.004, 0.004)
+            return np.array([d[0], d[1], 0.0, 0.002 if o["stopped"] else 0.001])
+        return np.array([0.0, 0.0, 0.0, -min(0.006, max(0.0, o["z"] + 0.004))])
+
+
 def preroll(kind, O, rng):
     """Vectorized scripted pre-roll for reset-to-state starts. O: dict of arrays (N,) 'stopped', 'f_peak'; kind
     'descend' (straight) or 'drift' (descent with random lateral/yaw steps). Returns (N, 4) (dx, dy, dyaw, dz)."""

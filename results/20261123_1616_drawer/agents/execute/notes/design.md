@@ -32,3 +32,30 @@ carry, and lower to 8 mm above the rim.
   not capture; the operator asked for a first real rollout as soon as possible.
 - SGS-RL not used and not reviewed: it targets PPO in simulation, and this design learns directly on the robot.
 - Force limits follow the operator: 20 N for the grasp approach, 25 N for the descent, 65 N session cap.
+
+## Open issue in the fixed success check (for the operator)
+`checks.drawer_lying` picks the "cabinet" as the largest blob inside the size prior (extent 0.12-0.30 m). The real
+cabinet measures 0.28-0.29 m and the drawer up to 0.147 m, and the two blobs sometimes merge (attempt 6: 0.446 m).
+Dry attempt 5 reported "the cabinet moved 24.3 cm" with nothing moved, so a correct insertion could be failed by this.
+My program finds the drawer in its own window, so it does not depend on the merge. The check itself is not mine to change.
+
+## First real episode (attempt 10, commit 2f0398e)
+Ran end to end, exit 2, 6 transitions. Pinch held (reading 84.1). The drawer met the rim at a bottom height of ~0.096 m
+and three 25 N stops ended the descent as a jam, with no insertion. Corrections applied: 1.7 mm, 1.2 mm, 0.67 deg.
+The commanded "bottom" is not a true drawer height after contact: the tool sank 8 mm while the drawer stayed on the rim.
+Reward changed after this episode: a force-stopped step earns no descent reward.
+
+## Reflection on episode 0 (attempt 12)
+Jammed at the rim again, with the drawer's lower edges within ~2 mm of the opening in the back-projected side image.
+Hypothesis, not confirmed: the drawer hangs tilted ~3 deg from the off-centre tab (estimate from a blurry image, +-2 deg).
+At 72.3 mm wide and 91.5 mm tall, a tilt above ~2 deg needs more than the 75.7 mm opening, and the action space has no
+tilt. Changed: a read-only tilt measurement at the hover, with the standing drawer as reference. Next step depends on it.
+Commit 0550191 (no descent reward on force stops) is not in the history, so episode 0 ran without it; committed again.
+
+## Reflection on episode 1 (attempt 14)
+The tilt reading at the hover: -3.7 deg along a, +6.0 along b (standing reference -1.9, -0.2), and the jam image shows the
+far (+a) side low with the near edge on the rim. Sag about the jaw axis fits the physics (centre of mass ~2 cm off the
+tab). Added: the tool levels the drawer about the jaw axis at 2 cm above the rim from side depth, up to 6 deg, with a
+re-measure. The +6 deg along b has no physical explanation yet and may be a partial-view artefact, so it is logged, not
+corrected. The rim fit failed in episode 1 (too few edge samples on one long side); a tighter search window did not fix
+it offline, so it was not kept. The stored rim it falls back to agrees with the fits of attempts 10 and 12 within 1 mm.

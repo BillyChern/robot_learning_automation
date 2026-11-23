@@ -15,6 +15,7 @@ import numpy as np
 from rlpj import config
 from rlpj.perception import tabletop as tt
 from rlpj.robot import calib, sim
+from rlpj.robot.kin import wrap180
 from rlpj.robot.plan import SLOW, tool_down_T
 from rlpj.robot.session import Abort, RobotSession
 from rlpj.success import checks
@@ -47,6 +48,9 @@ SC_DESC = np.array([0.001, 0.001, 0.5])        # descent steps
 MAX_C = np.array([0.008, 0.008, 4.0])          # bound of the accumulated corrections
 PEAK_SEAT = 12.0                               # N: a force rise this large near the floor means the drawer is seated
 MAX_CONTACTS = 3
+LEVEL_H = 0.020                                # drawer bottom above the rim while it is levelled
+LEVEL_TOL, LEVEL_MAX = 0.8, 6.0                # deg: tilt left alone, largest correction about the jaw axis
+LEVEL_ITERS = 2
 
 
 def wrapd(a):
@@ -69,10 +73,15 @@ class Episode:
         self.ret = 0.0
         self.terminal = None
         self._saved = False
+        self.tilt = {}
+        self.g_ref = np.zeros(2)                    # side-depth slope of the standing drawer (base frame)
+        self.phi, self.R_fix = 0.0, np.eye(3)       # levelling rotation about the opening's b axis
 
     # ---------------------------------------------------------------- helpers
     def q_now(self):
-        return np.asarray(self.s.feedback()["q"], float)
+        # wrapped like the session's dry-run state: the robot reports 0..360 (attempt 8: joints 360 / 230 made the IK
+        # seed choice differ from the dry run and picked a branch that left the keep-in box)
+        return wrap180(np.asarray(self.s.feedback()["q"], float))
 
     def T_now(self):
         return calib.pose_to_T(self.s.feedback()["pose"])
@@ -89,7 +98,7 @@ class Episode:
             except Exception as e:
                 self.s.log(f"IK from a seed failed: {str(e)[:80]}")
                 continue
-            d = float(np.max(np.abs(q - q_now)))
+            d = float(np.max(np.abs(wrap180(q - q_now))))
             if best is None or d < best[1]:
                 best = (q, d)
         self.s.require(best is not None, f"no IK for the tool at {np.round(T[:3, 3], 3).tolist()}")
@@ -151,7 +160,8 @@ class Episode:
         self.tz = tt.table_fit(P)
         self.before = tt.detect(P, table_z=self.tz)
         self.save("side_before", s.side.latest()[0])
-        sd = self.side_drawer(self.before)
+        # the drawer alone: the full-scene blobs sometimes merge it with the cabinet (attempt 6: one blob 0.446 m long)
+        sd = self.side_drawer(tt.detect(P, dict(x=(0.20, 0.375), y=(-0.13, 0.12)), table_z=self.tz))
         s.require(sd is not None, "no drawer-sized blob on the table")
         face = sd["face"]
 
@@ -176,6 +186,15 @@ class Episode:
                                opening=dict(c=np.round(c_o, 4).tolist(), yaw=round(yaw_o, 2), measured=bool(op.get("ok")))))
         s.require(bool(d.get("ok")), f"drawer not found in the wrist view: {d}")
         s.require(bool(tab.get("ok")), f"pull tab not found in the wrist view: {tab}")
+        try:                                         # reference for the held-drawer tilt: the same fit, standing on the table
+            self.tilt = dict(standing=V.plane_tilt(P, d["c"], float(d["yaw"]) - 90.0, (0.030, 0.050), self.tz + face, 0.006,
+                                                   exclude=(tab["s"], tab["t"], 0.016, 0.016)))
+        except Exception as e:
+            self.tilt = dict(standing=dict(ok=False, err=str(e)[:80]))
+        st = self.tilt["standing"]
+        if st.get("ok"):
+            ds, dt = V.axes(float(d["yaw"]) - 90.0)
+            self.g_ref = np.tan(np.radians(st["tilt_s_deg"])) * ds + np.tan(np.radians(st["tilt_t_deg"])) * dt
         return dict(face=face, d=d, tab=tab, c_o=c_o, yaw_o=yaw_o)
 
     # ---------------------------------------------------------------- scripted grasp and carry
@@ -222,7 +241,11 @@ class Episode:
         """Tool pose for corrections c = (a, b, yaw) with the drawer's bottom b above the table."""
         ax, bx = V.axes(w["yaw_o"])
         xy = w["c_o"] + c[0] * ax + c[1] * bx + rot2(pl["off"], pl["dyaw"] + c[2])
-        return tool_down_T(np.r_[xy, self.tz + g["h_g"] + b], pl["yaw_f"] + c[2])
+        T = tool_down_T(np.r_[xy, self.tz + g["h_g"] + b], pl["yaw_f"] + c[2])
+        pinch = T[:3, 3] + T[:3, :3] @ np.array([0, 0, TIP_CLOSED])  # levelling turns the tool about the pinch point
+        T[:3, :3] = self.R_fix @ T[:3, :3]
+        T[:3, 3] = pinch - T[:3, :3] @ np.array([0, 0, TIP_CLOSED])
+        return T
 
     def carry(self, w, g, pl):
         s = self.s
@@ -231,7 +254,41 @@ class Episode:
         q = self.q_now()
         seeds = [q + np.array([0, 0, 0, 0, 0, sgn * pl["dyaw"]]) for sgn in (1, -1)]
         s.move_joint("carry", self.ik(T, seeds), CARRY)
+        s.move_line("to_level", self.pose(w, g, pl, np.zeros(3), RIM + LEVEL_H), "slow")
+        self.level(w, g, pl)
         s.move_line("to_hover", self.pose(w, g, pl, np.zeros(3), RIM + HOVER), "slow")
+
+    def measure_held(self, w, b):
+        """Top-face plane of the held drawer from side depth (s along a, t along b); never stops the episode."""
+        try:
+            time.sleep(0.4)
+            P = tt.cloud(self.s.side, n=5)
+            ax, bx = V.axes(w["yaw_o"])
+            xy = self.T_now()[:2, 3] - w["c_o"]
+            return V.plane_tilt(P, w["c_o"], w["yaw_o"], (0.033, 0.053), self.tz + b + w["face"], 0.018,
+                                exclude=(float(xy @ ax), float(xy @ bx), 0.016, 0.032))
+        except Exception as e:
+            return dict(ok=False, err=str(e)[:80])
+
+    def level(self, w, g, pl):
+        """The pinch on the tab's ends leaves the drawer free about the jaw axis (b), and its centre of mass is ~2 cm off
+        the tab: it hangs with the far side low and its near edge catches the rim (episodes 0, 1). Turn the tool about
+        the pinch point until the top face is level along a, relative to the same fit on the standing drawer."""
+        s = self.s
+        ax, bx = V.axes(w["yaw_o"])
+        hist = []
+        for it in range(LEVEL_ITERS + 1):
+            m = self.measure_held(w, RIM + LEVEL_H)
+            rel = None if not m.get("ok") else float(np.degrees(np.arctan(np.tan(np.radians(m["tilt_s_deg"])) - self.g_ref @ ax)))
+            hist.append({k: m.get(k) for k in ("ok", "n", "tilt_s_deg", "tilt_t_deg", "z0")} | dict(rel_s=None if rel is None else round(rel, 2), phi=round(self.phi, 2)))
+            if rel is None or abs(rel) < LEVEL_TOL or abs(rel) > 10.0 or it == LEVEL_ITERS:
+                break
+            self.phi = float(np.clip(self.phi + rel, -LEVEL_MAX, LEVEL_MAX))
+            self.R_fix = cv2.Rodrigues(np.r_[bx, 0.0] * np.radians(self.phi))[0]
+            s.move_line(f"level{it}", self.pose(w, g, pl, np.zeros(3), RIM + LEVEL_H), "slow")
+        self.tilt["held"] = hist
+        s.summary(tilt=self.tilt)
+        s.log(f"levelling: {hist}")
 
     # ---------------------------------------------------------------- learned alignment and descent
     def try_step(self, name, T):
@@ -281,7 +338,8 @@ class Episode:
                 peak = F_INSERT
                 n_contact += 1
                 b_now = float(self.T_now()[2, 3]) - self.tz - g["h_g"]
-                r += 30.0 * max(b - b_now, 0.0)
+                # no descent reward on a force stop: at the rim the tool sinks while the drawer stays (attempt 10: 8 mm over
+                # three stops at 25 N with the drawer on the rim), and paying it would teach pressing on the rim
                 b = min(b, b_now)
                 if b <= FLOOR + 0.012:
                     end = "seated"
@@ -346,6 +404,9 @@ class Episode:
         after = tt.detect(P, table_z=tt.table_fit(P))
         self.save("side_after", s.side.latest()[0])
         ok, rep = checks.drawer_lying(self.before, after, TASK)
+        brief = lambda bl: [[*np.round(b["xy"], 3).tolist(), round(float(b["height"]), 3), *np.round(b["extent"], 3).tolist(), int(b["n"])]
+                            for b in bl if b["n"] > 300]          # x, y, height, extent x, extent y, points
+        s.summary(blobs_before=brief(self.before), blobs_after=brief(after))
         bonus = 10.0 if ok is True else 0.0
         R = bonus + 2.0 * rep.get("flush", 0.0) - 2.0 * rep.get("above", 0.0) - 1.0 * rep.get("deep", 0.0) - (1.0 if rep.get("drawer_on_table") else 0.0)
         self.terminal = dict(bonus=bonus, R=round(R, 3))

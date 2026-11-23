@@ -15,7 +15,7 @@ XY_BINS = (0, 3, 6, 10, 15, 30)       # |start error of the drawer's bottom cent
 YAW_BINS = (0, 1, 2, 4, 10)           # |start yaw error| (deg)
 TILT_BINS = (0, 2, 4, 6, 8.01)        # in-hand tilt (deg)
 CLR_BINS = (2, 3, 4, 6.01)            # min(clr_x, clr_y) (mm)
-NAMES = ("straight", "spiral", "policy")
+NAMES = ("straight", "spiral", "guided", "policy")
 
 
 def controller(name, path=None):
@@ -23,7 +23,7 @@ def controller(name, path=None):
     from .lying_policy import Policy
     if name == "policy":
         return Policy(path).act
-    return {"straight": B.Straight, "spiral": B.Spiral}[name]().act
+    return {"straight": B.Straight, "spiral": B.Spiral, "guided": B.Guided}[name]().act
 
 
 def run(args):
