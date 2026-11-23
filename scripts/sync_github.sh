@@ -8,7 +8,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 REMOTE=${REMOTE:-github}
 EVERY=${EVERY:-1800}
-RUNS=${RUNS:-"20261104_1510_bee 20261117_2026_drawer 20261122_1732_drawer"}   # runs exported to results/
+RUNS=${RUNS:-"20261104_1510_bee 20261117_2026_drawer 20261123_1616_drawer"}   # runs exported to results/
 RUN=20261104_1510_bee                                    # the run whose showcase videos go to the release
 TAG=bee-run-videos
 export GH_TOKEN="$(gh auth token -u "${GH_USER:-BillyChern}")"   # this account only, the machine default stays
