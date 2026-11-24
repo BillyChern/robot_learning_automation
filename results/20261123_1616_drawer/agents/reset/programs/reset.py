@@ -44,7 +44,13 @@ TIP_CLOSED = 0.047              # closed fingertips below the tool frame
 TIP_CLEAR = 0.006               # closed fingertips above the drawer's top face at the pinch
 PRE = 0.55                      # pre-close (~38 mm) around the 15 mm knob
 GRIP = 1.0                      # command full closure: a reading well below it means the pads are stopped by the knob
-HOLD = (65.0, 93.0)             # knob held (attempt 6: 86.6). Attempt 9: 94.8 at a 0.95 command was an empty pinch
+HOLD = (65.0, 89.0)             # knob held (good grips 84.9-86.6; 87.5-88.4 slipped in 33/34; 91.4 slid off and dropped it in 101)
+SLIP = 3.0                      # a re-close reading this much above the pinch reading = the pads are sliding off
+LYING_H = (0.060, 0.084)        # blob height of a drawer lying on its bottom, open side up (attempt 101: 0.070)
+RIM_H = 0.078                   # its rim height
+WALL_OPEN = 0.47                # ~45 mm around the 10 mm front wall
+WALL_DEPTH = 0.018              # pads this far below the rim (attempt 104: 10 mm slid out on the lift)
+WALL_SIDE = 0.035               # pinch this far from the wall centre, clear of the knob in the middle of the front face
 COMP_FACE = 0.0925              # real height of a flush drawer face: attempt 6 pinched at 0.148 and touched the table 3 mm lower,
                                 # so the face was ~0.092; the side depth reads 0.095-0.097 there. Pinching 1-2 mm too high slips (33, 34)
 LIFT_START = 0.025              # first part of the lift, then check that the knob is still held
@@ -108,11 +114,12 @@ def safe_aim(xy, axis=None, buf=EDGE_BUF[0]):
 
 
 def aim_for(target, axis):
-    """safe_aim with the largest edge buffer that stays within SHIFT_MAX of the target (else the smallest buffer)."""
+    """safe_aim with the largest edge buffer that keeps the aim within 1 cm of the target, else the smallest buffer
+    (attempt 105: a 1.8 cm shift left 2 mm of the 2 cm tolerance for the placing error)."""
     c = np.array(target, float)
     for b in EDGE_BUF:
         c = safe_aim(target, axis, b)
-        if float(np.linalg.norm(c - target)) <= SHIFT_MAX:
+        if float(np.linalg.norm(c - target)) <= 0.010:
             break
     return c
 
@@ -315,6 +322,8 @@ class Reset:
     def locate(self, p):
         if p["blobs"]:
             b = p["blobs"][0]
+            if LYING_H[0] <= float(b["height"]) <= LYING_H[1]:
+                return dict(where="lying", xy=np.array(b["xy"], float), h_top=RIM_H)
             standing = 0.085 <= float(b["height"]) <= 0.108   # the side-depth face height varies 5 mm with the spot (attempt 13)
             return dict(where="table", xy=np.array(b["xy"], float), h_top=DRAWER_L if standing else self.face_height(b))
         filled = [k for k, v in enumerate(p["comps"]) if v is not None and v > 0.06]
@@ -328,6 +337,17 @@ class Reset:
         Tc = Tn @ self.Ttc
         d = Tc[:3, :3] @ np.r_[n, 1.0]
         return (Tc[:3, 3] + (z - Tc[2, 3]) / d[2] * d)[:2]
+
+    def look_pose(self, xy, h_top, h_tool):
+        X = np.r_[xy, self.tz + h_top]
+        poses = []
+        for yaw in (YAW_DEG, YAW_DEG + 180.0):
+            T = tool_down_T(np.r_[xy, self.tz + h_tool], yaw)
+            Tc = T @ self.Ttc
+            lam = (X[2] - Tc[2, 3]) / Tc[2, 2]
+            T[:2, 3] += X[:2] - (Tc[:2, 3] + lam * Tc[:2, 2])
+            poses.append(T)
+        return poses[0] if np.hypot(*poses[0][:2, 3]) >= 0.23 else max(poses, key=lambda P: np.hypot(*P[:2, 3]))
 
     def look(self, xy, h_top, h_tool, tag):
         """Tool-down view with the optical axis through (xy, h_top); the knob in the base frame, or None."""
@@ -372,7 +392,13 @@ class Reset:
             return prior
         if v is None:
             return None
-        low = self.look(v["knob"], loc["h_top"], loc["h_top"] + 0.085, f"{tag}_lo")
+        try:
+            low = self.look(v["knob"], loc["h_top"], loc["h_top"] + 0.085, f"{tag}_lo")
+        except Abort as e:                      # the low view is refused next to the base: the high view is enough
+            if "model check failed" not in str(e):
+                raise
+            self.s.log(f"low look refused ({str(e)[:80]}): using the high view")
+            low = None
         return low if low is not None and np.linalg.norm(low["knob"] - v["knob"]) < 0.012 else v
 
     # ------------------------------------------------------------ pick and place
@@ -455,6 +481,7 @@ class Reset:
                 self.rise("up_after_contact", h_g + 0.09)
                 continue
             g = float(s.gripper(GRIP, "pinch the knob"))
+            self.g_pinch = g
             s.summary(**{f"pinch_{tag}_{trial}": round(g, 1)})
             if not s.dry and not HOLD[0] <= g <= HOLD[1]:
                 s.decide(f"gripper reads {g:.1f}: the knob is not between the pads")
@@ -523,7 +550,169 @@ class Reset:
         (attempts 33, 34 carried nothing at a reading of 88), and then it runs on to ~98."""
         g = float(self.s.gripper(GRIP, f"re-close: is the knob still held ({when})?"))
         self.s.summary(**{f"held_{when}": round(g, 1)})
-        return self.s.dry or HOLD[0] <= g <= HOLD[1]
+        ref = getattr(self, "g_pinch", None)
+        return self.s.dry or (HOLD[0] <= g <= HOLD[1] + 1.0 and (ref is None or g <= ref + SLIP))
+
+    def lying_pose(self, loc):
+        """Drawer lying on its bottom, open side up: its outline from a wrist look-down (wood colour) and its front wall
+        = the long side with the dark metal knob just outside it. dict(c, u, nf) or None."""
+        s = self.s
+        T = self.look_pose(loc["xy"], RIM_H, RIM_H + 0.20)
+        s.move_joint("look_lying", self.ik(T), "normal")
+        time.sleep(0.7)
+        img = s.wrist.latest()[0]
+        Tn = self.T_now()
+        z = self.tz + RIM_H
+        px = float(self.K[0, 0]) / float((Tn @ self.Ttc)[2, 3] - z)
+        uv0 = project_base_to_wrist(np.r_[loc["xy"], z][None], Tn)[0]
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        H, S_, V = hsv[..., 0], hsv[..., 1], hsv[..., 2]
+        wood = ((H >= 3) & (H <= 30) & (S_ >= 40) & (V >= 60)).astype(np.uint8)
+        roi = np.zeros(wood.shape, np.uint8)
+        if np.all(np.isfinite(uv0)):
+            cv2.circle(roi, (int(uv0[0]), int(uv0[1])), int(0.10 * px), 1, -1)
+        wood &= roi
+        wood = cv2.morphologyEx(wood, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
+        n, lab, st, _ = cv2.connectedComponentsWithStats(wood, connectivity=8)
+        res = None
+        if n > 1:
+            j = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))
+            box = cv2.boxPoints(cv2.minAreaRect(np.column_stack(np.nonzero(lab == j))[:, ::-1].astype(np.float32)))
+            P = np.array([self.ray_hit(Tn, b, z) for b in box])
+            e1, e2 = P[1] - P[0], P[2] - P[1]
+            L1, L2 = np.linalg.norm(e1), np.linalg.norm(e2)
+            u = (e1 / L1) if L1 >= L2 else (e2 / L2)
+            lo, sh = max(L1, L2), min(L1, L2)
+            c = P.mean(0)
+            v = np.array([-u[1], u[0]])
+            s.log(f"lying drawer outline {lo:.3f} x {sh:.3f} m at {np.round(c, 3).tolist()}")
+            if 0.095 <= lo <= 0.14 and 0.07 <= sh <= 0.11:
+                counts = []
+                for sg in (1.0, -1.0):
+                    pts = [np.r_[c + sg * v * (sh / 2 + d) + u * tt, self.tz + 0.045] for d in (0.006, 0.012, 0.018, 0.024)
+                           for tt in np.linspace(-0.03, 0.03, 9)]
+                    uv = project_base_to_wrist(np.array(pts), Tn)
+                    k = 0
+                    for q in uv:
+                        if np.all(np.isfinite(q)) and 0 <= q[0] < img.shape[1] and 0 <= q[1] < img.shape[0]:
+                            k += int(V[int(q[1]), int(q[0])] < 95)
+                    counts.append(k)
+                s.log(f"dark pixels beside the two long sides: {counts}")
+                if max(counts) >= 4 and max(counts) >= 2 * min(counts) + 2:
+                    nf = v if counts[0] > counts[1] else -v
+                    res = dict(c=c, u=u, nf=nf, depth=sh)
+            cv2.drawContours(img, [box.astype(np.int32)], 0, (0, 255, 0), 3)
+        cv2.imwrite(os.path.join(s.A, "look_lying.jpg"), cv2.resize(img, (640, 360)))
+        if res is None and s.dry:
+            res = dict(c=np.asarray(loc["xy"], float), u=A.copy(), nf=B.copy(), depth=0.0885)
+        if res is not None:
+            s.decide(f"lying drawer: front wall faces {np.round(res['nf'], 2).tolist()}")
+        return res
+
+    def right_lying(self, loc):
+        """Turn a drawer lying open side up onto its back wall, pull up: pinch the front wall's top edge, lift, turn it
+        90 deg about its long axis in the air (front up), lower until the back wall touches, let go, back out."""
+        s = self.s
+        s.phase("right_lying")
+        pose = self.lying_pose(loc)
+        s.require(pose is not None, "drawer lying open side up, but its front wall (the knob side) is not clear from above")
+        c, nf = pose["c"], pose["nf"]
+        tipz = 0.027 + 0.020 * WALL_OPEN
+        G = c + nf * (pose["depth"] / 2 - 0.005) + pose["u"] * WALL_SIDE
+        Tg = tool_down_T(np.r_[G, self.tz + RIM_H - WALL_DEPTH + tipz], np.degrees(np.arctan2(nf[1], nf[0])))
+        Ta = Tg.copy()
+        Ta[2, 3] += 0.08
+        Tup = Tg.copy()
+        Tup[2, 3] = self.tz + 0.22
+        P = Tup[:3, 3] + tipz * Tup[:3, 2]
+        pl, kin = s.planner, s.kin
+        plan = None
+        a0 = np.degrees(np.arctan2(nf[1], nf[0]))
+        # the turn is reachable for some front directions only (offline: ~30-90 and ~270-300 deg): turn the lifted drawer
+        # about the vertical first, by the smallest angle that brings its front to a reachable direction
+        phis = sorted({round(float(wrap(g - a0)), 1) for g in (45.0, 60.0, 75.0, 90.0, 270.0, 285.0)} | {0.0}, key=abs)
+        for phi in phis:
+            if abs(phi) > 150.0:
+                continue
+            Tyaw = Tup.copy()
+            Tyaw[:3, :3] = rz(phi) @ Tup[:3, :3]
+            nf2 = rz(phi)[:2, :2] @ nf
+            ax3 = np.cross(np.r_[nf2, 0.0], [0.0, 0.0, 1.0])
+            K = np.array([[0, -ax3[2], ax3[1]], [ax3[2], 0, -ax3[0]], [-ax3[1], ax3[0], 0]])
+            Rr = (np.eye(3) + K + K @ K) @ Tyaw[:3, :3]      # Rodrigues, +90 deg about nf x Z: maps nf to +Z (front up)
+            for roll in (0.0, 180.0):
+                R2 = Rr @ rz(roll)
+                Tr = np.eye(4)
+                Tr[:3, :3] = R2
+                Tr[:3, 3] = P - tipz * R2[:, 2]
+                Td = Tr.copy()
+                Td[2, 3] -= P[2] - (self.tz + 0.0885 - 0.005 - 0.006)       # grip point to the top face, 6 mm past touch
+                To = Td.copy()
+                To[:3, 3] -= 0.06 * R2[:, 2]
+                try:
+                    q0 = self.q_now()
+                    qa = pl.ik_exact(Ta, q0 if self.T_now()[2, 2] < -0.9 else SEED_DOWN)[0]
+                    segs = [(pl.joint_move("a", q0, qa, NORMAL), NORMAL, WALL_OPEN)]
+                    segs.append((pl.cart_line("g", qa, Tg, SLOW), SLOW, WALL_OPEN))
+                    segs.append((pl.cart_line("u", segs[-1][0].q[-1], Tup, SLOW), SLOW, 0.9))
+                    qy = pl.ik_exact(Tyaw, segs[-1][0].q[-1])[0]
+                    segs.append((pl.joint_move("y", segs[-1][0].q[-1], qy, SLOW), SLOW, 0.9))
+                    qr = pl.ik_exact(Tr, qy)[0]
+                    segs.append((pl.joint_move("r", qy, qr, SLOW), SLOW, 0.9))
+                    segs.append((pl.cart_line("d", qr, Td, SLOW), SLOW, 0.9))
+                    segs.append((pl.cart_line("o", segs[-1][0].q[-1], To, SLOW), SLOW, WALL_OPEN))
+                    Tu2 = To.copy()
+                    Tu2[2, 3] += 0.05
+                    segs.append((pl.cart_line("u2", segs[-1][0].q[-1], Tu2, SLOW), SLOW, WALL_OPEN))
+                    qready = pl.ik_exact(tool_down_T(np.r_[READY_XYZ[:2], self.tz + READY_XYZ[2]], 0.0), SEED_DOWN)[0]
+                    segs.append((pl.joint_move("h", segs[-1][0].q[-1], qready, NORMAL), NORMAL, WALL_OPEN))
+                except Exception as e:
+                    s.log(f"righting yaw {phi:+.0f} roll {roll:.0f}: not plannable ({str(e)[:70]})")
+                    continue
+                bad = [i for i, (sg, sp, gf) in enumerate(segs) if not sim.check(sg.q, kin, sp, gripper_frac=gf, table_z=self.tz)[0]]
+                s.log(f"righting yaw {phi:+.0f} roll {roll:.0f}: refused segments {bad}")
+                if not bad:
+                    plan = (qa, qy, qr, Tr, Td, To, phi, Tu2, qready)
+                    break
+            if plan is not None:
+                break
+        s.require(plan is not None, "the righting move for the lying drawer is not reachable from here")
+        qa, qy, qr, Tr, Td, To, phi, Tu2, qready = plan
+        s.decide(f"righting plan: turn the lifted drawer {phi:+.0f} deg about the vertical, then front up")
+        s.gripper(WALL_OPEN, "open around the front wall")
+        s.move_joint("above_front_wall", qa, "normal")
+        if not self.contact_line("descend_wall", Tg, 20.0):
+            s.gripper(0.0, "open")
+            self.rise("up_after_wall_contact", 0.20)
+            s.require(False, "touched something while reaching the front wall")
+        g = float(s.gripper(GRIP, "pinch the front wall"))
+        s.summary(wall_pinch=round(g, 1))
+        if not s.dry and not 60.0 <= g <= 96.0:
+            s.gripper(0.0, "open")
+            self.rise("up_after_wall_miss", 0.20)
+            s.require(False, f"the front wall is not between the pads (reading {g:.1f})")
+        T1 = Tg.copy()
+        T1[2, 3] += 0.025
+        for name, Tl in (("lift_lying_start", T1), ("lift_lying", Tup)):
+            with ForceLimit(s, LIFT_FORCE):
+                self.line(name, Tl, "slow")
+            g2 = float(s.gripper(GRIP, "re-close: still holding the wall?"))
+            s.summary(**{f"held_{name}": round(g2, 1)})
+            if not s.dry and g2 > g + SLIP:
+                s.gripper(0.0, "open after the slip")
+                self.rise("up_after_wall_slip", 0.22)
+                s.require(False, f"the front wall slipped out of the pads during the lift ({g2:.1f})")
+        if abs(phi) > 0.5:
+            s.move_joint("turn_about_vertical", qy, "slow")
+        s.move_joint("turn_front_up", qr, "slow")
+        touched = not self.contact_line("lower_righted", Td, 20.0)
+        s.require(touched or s.dry, "no table contact under the righted drawer: not letting go in the air")
+        s.gripper(WALL_OPEN, "let go of the front wall")
+        self.line("back_out", To, "slow", tip_margin=0.004)
+        self.line("up_after_righting", Tu2, "slow", tip_margin=0.004)
+        s.move_joint("ready_after_righting", qready, "normal")      # tool down again (a straight rise hit joint limits)
+        s.gripper(0.0, "open")
+        s.decide("drawer turned onto its back wall")
 
     def plan_yaw(self, ax, target):
         """(turn deg, aim): a random yaw within +/-YAW_RANGE of the cabinet axis among those needing the least shift of
@@ -538,7 +727,7 @@ class Reset:
             c = clear_cabinet(aim_for(target, axn), axn, target)
             opts.append((float(np.linalg.norm(c - target)), float(goal), d, c, cab_gap(c, axn)))
         least = min(o[0] for o in opts)
-        fits = [o for o in opts if o[0] <= max(SHIFT_MAX, least + 1e-4)]       # edge rule and tolerance first
+        fits = [o for o in opts if o[0] <= max(min(SHIFT_MAX, least + 0.003), 0.010)]   # edge rule, then the least shift
         wide = max(o[4] for o in fits)
         good = [o for o in fits if o[4] >= min(GAP_WANT, wide - 0.003)]        # then clear of the cabinet, yaw varies among these
         s_, goal, d, c, gap = good[int(self.rng.integers(len(good)))]
@@ -581,6 +770,14 @@ class Reset:
         T2 = Tc.copy()
         T2[2, 3] = self.tz + h_place
         touched = not self.contact_line("lower_to_table", T2, 20.0)
+        if not touched and not s.dry:
+            # attempt 101: released at the planned height without contact, the drawer fell over. Go on down (tips stay
+            # above the table) and never let go in the air.
+            T2b = T2.copy()
+            T2b[2, 3] = max(T2[2, 3] - 0.025, self.tz + TIP_CLOSED + 0.012)
+            s.decide("no table contact at the planned height: keep lowering")
+            touched = not self.contact_line("lower_more", T2b, 20.0)
+            s.require(touched, "no table contact while lowering the drawer: not letting go in the air")
         early = float(self.T_now()[2, 3] - self.tz - (h_place + 0.004))
         s.summary(touch_early_mm=round(early * 1000, 1))
         if touched and early > 0.004 and not grip.get("unknown") and not s.dry:
@@ -673,19 +870,31 @@ class Reset:
             s.require(m is not None, "the drawer blob was lost while checking it in place")
             err = float(np.linalg.norm(m - self.target))
             s.summary(already_in_place=True)
-        for rnd in range(0 if placed is not None else 3):
+        righted, placed_once = 0, False
+        for rnd in range(0 if placed is not None else 5):
             if grip is None:
                 s.phase(f"scan_{rnd}")
                 p = self.scan(str(rnd))
                 loc = self.locate(p)
                 s.require(loc is not None, f"drawer not found: no table blob, compartments {p['comps']}")
                 s.decide(f"round {rnd}: drawer at {loc['where']} {np.round(loc['xy'], 3).tolist()}, top {loc['h_top']:.3f} m")
+                if loc["where"] == "lying":
+                    s.require(righted == 0, "the drawer is still lying after the righting move")
+                    self.right_lying(loc)
+                    righted += 1
+                    self.go_home()
+                    if s.dry:
+                        s.decide("dry run: righting simulated; the scene did not change")
+                        s.claim("fail")
+                        return
+                    continue
                 grip = self.pick(loc, str(rnd))
-            if rnd == 0 and grip.get("axis") is not None:
+            if not placed_once and grip.get("axis") is not None:
                 delta, aim = self.plan_yaw(grip["axis"], self.target)
             else:
                 delta, aim = 0.0, safe_aim(aim, grip.get("axis"), EDGE_BUF[-1])
             self.place(grip, aim, delta)
+            placed_once = True
             grip = None
             self.go_home()
             if s.dry:

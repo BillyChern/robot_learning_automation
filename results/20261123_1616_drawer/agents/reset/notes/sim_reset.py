@@ -45,7 +45,7 @@ TABLE_FACE, COMP_C = R.DRAWER_L, R.COMP_0
 class World:
     def __init__(self, state, c, ax):
         self.state, self.c, self.ax, self.held, self.rel, self.ax_rel = state, np.array(c, float), np.array(ax, float), False, None, None
-        self.dropped, self.tz2, self.tilt_err = None, None, 0.0
+        self.dropped, self.tz2, self.tilt_err, self.nf = None, None, 0.0, None
 
     @property
     def knob(self):
@@ -90,6 +90,21 @@ class Sess:
     def gripper(self, v, what=""):
         w, T = self.w, KIN.fk(self.q)
         self.gf = float(v)
+        tip = T[:3, 3] + (0.027 + 0.02 * min(v, 1.0)) * T[:3, 2]
+        d = tip[:2] - w.c if w.nf is not None else None
+        if w.state == "lying" and v >= 0.9 and abs(d @ w.nf - 0.039) < 0.01 and abs(d @ np.array([-w.nf[1], w.nf[0]])) < 0.05:
+            w.state, self.g = "held_lying", 88.0
+            return self.g
+        if w.state == "held_lying":
+            if v >= 0.9:
+                self.g = 88.0
+                return self.g
+            h = tip[2] - calib.table_z()
+            w.state, w.c, w.ax = "table", tip[:2] + w.nf * 0.039, w.nf.copy()
+            if h > 0.10:
+                w.dropped = round(float(h), 3)
+            self.g = 100.0 * v
+            return self.g
         if v >= 0.9:
             if not w.held and w.state != "held" and np.linalg.norm((T[:3, 3] + R.TIP_CLOSED * T[:3, 2])[:2] - w.knob) < 0.006 and T[2, 3] - calib.table_z() < 0.16:
                 w.held, w.state = True, "held"
@@ -116,6 +131,8 @@ class Sess:
 class Sim(R.Reset):
     @staticmethod
     def blobs(w):
+        if w.state == "lying":
+            return [dict(xy=w.c.tolist(), height=0.070, z_top=0.054, extent=[0.115, 0.09], n=5500, points=np.zeros((5, 3)))]
         if w.state != "table":
             return []
         return [dict(xy=w.c.tolist(), height=0.096, z_top=0.08, extent=[0.09, 0.115], n=4200, points=np.zeros((5, 3)))]
@@ -123,6 +140,16 @@ class Sim(R.Reset):
     def scan(self, tag):
         w = self.s.w
         return dict(blobs=self.blobs(w), comps=[0.0965 if w.state == "comp" else 0.018, 0.035, 0.048])
+
+    def contact_line(self, name, T, limit=20.0):
+        R.Reset.contact_line(self, name, T, limit)
+        return name not in ("lower_to_table", "lower_more", "lower_righted")   # the fake has no force: report the table
+
+    def lying_pose(self, loc):
+        T = self.look_pose(loc["xy"], R.RIM_H, R.RIM_H + 0.20)
+        self.s.move_joint("look_lying", self.ik(T), "normal")
+        w = self.s.w
+        return dict(c=w.c.copy(), u=np.array([-w.nf[1], w.nf[0]]), nf=w.nf.copy(), depth=0.0885)
 
     def look(self, xy, h_top, h_tool, tag):
         T = R.tool_down_T(np.r_[xy, self.tz + h_tool], R.YAW_DEG)
@@ -194,3 +221,17 @@ if __name__ == "__main__":
     for r in bad[:12]:
         print("BAD", r["flow"], np.round(r["target"], 3).tolist(), r["claim"], f"err {r['err'] * 100:.2f} margin {r['margin'] * 100:.2f}",
               "held" if r["held"] else "", r["dropped"] or "", r["msg"])
+
+
+def lying(target, ang, seed=0):
+    w = World("lying", [0.285, -0.064], [1.0, 0.0])
+    w.nf = np.array([np.cos(np.radians(ang)), np.sin(np.radians(ang))])
+    s = Sess(w)
+    r = Sim(s, np.asarray(target, float))
+    r.rng = np.random.default_rng(seed)
+    msg = ""
+    try:
+        r.run()
+    except (Abort, RuntimeError, ValueError) as e:
+        msg = str(e)[:120]
+    return s.out, w.state, round(float(np.linalg.norm(w.c - target)), 4), w.dropped, msg
