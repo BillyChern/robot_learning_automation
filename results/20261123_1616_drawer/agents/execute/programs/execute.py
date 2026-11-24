@@ -111,7 +111,7 @@ class Episode:
         self.terminal = None
         self._saved = False
         self.tilt = {}
-        self.centre = touch.load_centre(rc.rl_dir())  # where the drawer last dropped in (a, b, yaw), the centre of the RL action
+        self.centre = touch.frozen_centre()  # fixed start offset (a, b, yaw) of scripted r4, the centre of the RL action
         self.contact_map = []                       # [da mm, db mm, bottom mm at the contact] around the measured alignment
         self.c0 = np.zeros(3)                       # in-hand correction (a, b, yaw), the start of the learned part
         self.g_ref = np.zeros(2)                    # side-depth slope of the standing drawer (base frame)
@@ -494,11 +494,7 @@ class Episode:
                 break
         if end == "seated" and c_entry is not None and b <= RIM - DROPPED and not s.dry:
             msg = f"drawer entered at a {c_entry[0] * 1000:.1f} mm, b {c_entry[1] * 1000:.1f} mm, yaw {c_entry[2]:.2f} deg after {n_entry} rim touches"
-            if n_entry == 0:                             # only a clean first descent says where to start
-                new = touch.save_centre(rc.rl_dir(), c_entry, dict(bottom=round(b, 4), end=end, contacts=n_contact, episode=self.ep))
-                msg += f"; start now {np.round(new * [1000, 1000, 1], 2).tolist()}"
-            else:
-                msg += "; start offset unchanged"
+            msg += "; start offset frozen (scripted r4)"
             s.decide(msg)
         s.summary(entry=None if c_entry is None else dict(c=np.round(c_entry, 4).tolist(), rim_touches=n_entry))
         s.summary(touch=dict(best=np.round(ts.best, 4).tolist(), best_h=None if not np.isfinite(ts.best_h) else round(ts.best_h, 4), touches=len(ts.seen)))

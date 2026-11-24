@@ -54,12 +54,15 @@ PLACE_BIAS = np.array([0.0008, -0.0056])   # side-camera blob centre - commanded
 LIFT = 0.13                     # operator 16:33: lift ~13 cm
 TOL = 0.02                      # orchestrator layout tolerance
 YAW_RANGE = 30.0                # deg, allowed turn from the cabinet axis
-IN_PLACE = 0.018                # already this close to the target, pull up, inside the edge rule: leave it (attempt 15: the
+IN_PLACE = 0.019                # already this close to the target, pull up, inside the edge rule: leave it (attempt 15: the
                                 # orchestrator finds a motionless drawer 14 times of 20, so a repeat must not re-handle it)
 AIM_TOL = 0.008                 # re-place when the drawer is further than this from the aim
 HALF = (0.040, 0.058)           # half sizes of the standing drawer: along the knob axis, across it
 EDGE_MARGIN = 0.10              # user 16:41: the drawer's outline stays >= 10 cm inside every table edge
-SHIFT_MAX = 0.019               # the aim may leave the target by this much (layout tolerance 2 cm)
+SHIFT_MAX = 0.0185              # the aim may leave the target by this much (layout tolerance 2 cm)
+EDGE_BUF = (0.004, 0.003, 0.002, 0.001)   # extra edge margin of the aim: the largest that stays within SHIFT_MAX
+GAP_WANT = 0.06                 # drawer outline to the cabinet: at ~5 cm the side camera merged them (operator 19:45, resets 22, 25)
+GAP_MIN = 0.044                 # a drawer closer than this is not left in place (the tightest target corner plans 4.5 cm)
 
 
 def _plane(nx, ny, d):
@@ -90,15 +93,54 @@ def edge_margin(c, axis=None):
     return best
 
 
-def safe_aim(xy, axis=None):
-    """The point nearest xy whose outline keeps EDGE_MARGIN (plus 4 mm for the placing error) from every edge."""
+def safe_aim(xy, axis=None, buf=EDGE_BUF[0]):
+    """The point nearest xy whose outline keeps EDGE_MARGIN + buf from every edge."""
     c = np.array(xy, float)
     for _ in range(5):
         m, n = edge_margin(c, axis)
-        if m >= EDGE_MARGIN + 0.004:
+        if m >= EDGE_MARGIN + buf:
             break
-        c = c + (EDGE_MARGIN + 0.004 - m + 1e-4) * n
+        c = c + (EDGE_MARGIN + buf - m + 1e-4) * n
     return c
+
+
+def aim_for(target, axis):
+    """safe_aim with the largest edge buffer that stays within SHIFT_MAX of the target (else the smallest buffer)."""
+    c = np.array(target, float)
+    for b in EDGE_BUF:
+        c = safe_aim(target, axis, b)
+        if float(np.linalg.norm(c - target)) <= SHIFT_MAX:
+            break
+    return c
+
+
+def clear_cabinet(c, axis, target):
+    """Slide the aim along the camera-side edge toward the robot, inside SHIFT_MAX, until the gap to the cabinet is
+    GAP_WANT: the edge margin stays, the cabinet gets further away."""
+    n = EDGES[0][0]
+    u = np.array([-n[1], n[0]])
+    u = u if u[0] < 0 else -u
+    best = np.array(c, float)
+    for lam in np.arange(0.001, 0.0301, 0.001):
+        if cab_gap(best, axis) >= GAP_WANT:
+            break
+        p = np.asarray(c, float) + lam * u
+        if float(np.linalg.norm(p - target)) > SHIFT_MAX or edge_margin(p, axis)[0] < EDGE_MARGIN + EDGE_BUF[-1]:
+            break
+        best = p
+    return best
+
+
+def cab_gap(c, axis):
+    """Distance (m) along the row axis from the drawer outline to the cabinet's near end."""
+    a = np.asarray(axis, float) / np.linalg.norm(axis)
+    b = np.array([-a[1], a[0]])
+    reach = _along_row(a, b)
+    return float(-FX["size"][0] / 2 - ((np.asarray(c, float) - np.asarray(FX["centre"], float)) @ A + reach))
+
+
+def _along_row(a, b):
+    return HALF[0] * abs(a @ A) + HALF[1] * abs(b @ A)
 
 
 def rz(deg):
@@ -420,11 +462,15 @@ class Reset:
         for goal in np.arange(-YAW_RANGE, YAW_RANGE + 0.1, 5.0):
             d = wrap(goal - now)
             d = d if abs(d) <= 90 else wrap(d + 180.0)
-            c = safe_aim(target, rz(d)[:2, :2] @ ax)
-            opts.append((float(np.linalg.norm(c - target)), float(goal), d, c))
+            axn = rz(d)[:2, :2] @ ax
+            c = clear_cabinet(aim_for(target, axn), axn, target)
+            opts.append((float(np.linalg.norm(c - target)), float(goal), d, c, cab_gap(c, axn)))
         least = min(o[0] for o in opts)
-        good = [o for o in opts if o[0] <= max(least + 0.003, 0.010)]
-        s_, goal, d, c = good[int(self.rng.integers(len(good)))]
+        fits = [o for o in opts if o[0] <= max(SHIFT_MAX, least + 1e-4)]       # edge rule and tolerance first
+        wide = max(o[4] for o in fits)
+        good = [o for o in fits if o[4] >= min(GAP_WANT, wide - 0.003)]        # then clear of the cabinet, yaw varies among these
+        s_, goal, d, c, gap = good[int(self.rng.integers(len(good)))]
+        self.s.summary(cabinet_gap_m=round(gap, 4))
         self.s.decide(f"yaw {goal:+.0f} deg from the cabinet axis, aim {np.round(c, 4).tolist()} ({s_ * 100:.1f} cm from the target "
                       f"to keep {EDGE_MARGIN * 100:.0f} cm from the table edges)")
         self.s.summary(aim_shift_m=round(s_, 4), yaw_goal_deg=goal)
@@ -511,8 +557,9 @@ class Reset:
         turn = wrap(np.degrees(np.arctan2(v["axis"][1], v["axis"][0])) - nominal)
         turn = turn if abs(turn) <= 90 else wrap(turn + 180.0)
         margin = edge_margin(loc["xy"], v["axis"])[0]
-        ok = abs(turn) <= YAW_RANGE + 3.0 and margin >= EDGE_MARGIN
-        s.decide(f"drawer near the target: turn {turn:+.0f} deg, outline {margin * 100:.1f} cm from the nearest edge: "
+        gap = cab_gap(loc["xy"], v["axis"])
+        ok = abs(turn) <= YAW_RANGE + 3.0 and margin >= EDGE_MARGIN and gap >= GAP_MIN
+        s.decide(f"drawer near the target: turn {turn:+.0f} deg, outline {margin * 100:.1f} cm from the nearest edge, {gap * 100:.1f} cm from the cabinet: "
                  + ("already in place, not moving it" if ok else "re-place it"))
         self.go_home()
         return v["axis"] if ok else None
@@ -554,7 +601,7 @@ class Reset:
             if rnd == 0 and grip.get("axis") is not None:
                 delta, aim = self.plan_yaw(grip["axis"], self.target)
             else:
-                delta, aim = 0.0, safe_aim(aim, grip.get("axis"))
+                delta, aim = 0.0, safe_aim(aim, grip.get("axis"), EDGE_BUF[-1])
             self.place(grip, aim, delta)
             grip = None
             self.go_home()

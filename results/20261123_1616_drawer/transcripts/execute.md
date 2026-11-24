@@ -6295,3 +6295,240 @@ Structured output provided successfully
 ```
 </details>
 
+**20:07:11 execute agent:** No response requested.
+
+### 20:07:11 orchestrator -> execute agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+Operator note 19:49: the scripted part is now FROZEN at scripted r4 (commit 48fa784). Episodes 9-14 all succeeded;
+from here the curves must measure learning, not program edits. Change the scripted part only to fix a failure that
+actually happened (and say which episode); otherwise improve only through the learner (actor/critic/reward/obs).
+
+Before collection continues: no robot run now; update your program for the note above and test it offline.
+This is a reflection turn while the robot runs the other agent's program: you cannot use the robot or the cameras now (no run actions, not even dry runs). If this run shows a problem or a clear, safe improvement (robustness first, then speed), edit programs/execute.py, check it offline on this machine, commit, and reply done; reply done at once if nothing should change. Your next run uses what you committed, and its result comes back to you the same way.
+```
+
+**20:07:26 execute agent:** The operator's freeze exposes one remaining leak. The start offset still updates itself from first-descent entries, including those of the learned arm, so the scripted baseline could inherit what the learned arm finds. I'm pinning it to the current r4 value for all arms.
+
+**20:07:46 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && git log --oneline | head -2; git status --short | head -4; ls attempts | sort -t_ -k2 -n | tail -2; cut -c1-260 rl/touch_centre.json; echo; grep -n "load_centre\|save_centre\|SCRIPTED_REV =" programs/execute.py | cut -c1-120; python3 - <<'EOF'
+p='programs/touch.py'; t=open(p).read()
+old='def load_centre(rl_dir):'
+new='''def frozen_centre():
+    """The start offset of scripted r4, fixed for all arms (operator 19:49): if it followed the entries, the scripted baseline would
+    inherit what the learned arm finds and the curves would not measure learning."""
+    return densest(np.array(SEED_ENTRIES, float))
+
+
+def load_centre(rl_dir):'''
+assert t.count(old)==1; open(p,'w').write(t.replace(old,new))
+p='program
+... (4438 more characters)
+```
+
+<details><summary>20:07:52 result</summary>
+
+```text
+48fa784 episode 14 reflection: start offset only from first-descent entries (scripted r4), the search was ratcheting it upward
+35b9f57 episode 11 reflection: start offset from the densest cluster of entries (scripted r3)
+attempt_52
+attempt_53
+{"v": 3, "centre": [0.0098, -0.00252, 0.22954], "entries": [[0.0029, -0.0031, 0.0088], [0.0098, -0.0024, 0.4175], [0.00295, -0.00308, 0.0562], [0.00984, -0.00252, 0.22954], [0.01594, -0.01005, 0.01063], [0.006, -0.00308, 0.01063], [0.00623, -0.00256, 0.65494],
+
+56:SCRIPTED_REV = "r4 (r3 + start offset from first-descent entries only)"   # bump with every change of the scripted pa
+114:        self.centre = touch.load_centre(rc.rl_dir())  # where the drawer last dropped in (a, b, yaw), the centre of 
+498:                new = touch.save_centre(rc.rl_dir(), c_entry, dict(bottom=round(b, 4), end=end, contacts=n_contact, 
+114:        self.centre = touch.frozen_centre()  # where the drawer last dropped in (a, b, yaw), the centre of the RL ac
+354:        s.summary(align=hist, touch_centre=np.round(self.centre, 4).tolist())
+frozen [2.925, -3.09, 0.004] = what r4 would load with no new entries [2.925, -3.09, 0.004] | rev r4 (r3 + start offset from firs
+... (934 more characters)
+```
+</details>
+
+**20:08:01 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && sed -i 's|self.centre = touch.frozen_centre()  # where the drawer last dropped in (a, b, yaw), the centre of the RL action|self.centre = touch.frozen_centre()  # fixed start offset (a, b, yaw) of scripted r4, the centre of the RL action|' programs/execute.py && sed -n 114p programs/execute.py | cut -c1-120; cd /home/r2r/robot_learning_final_pj && uv run python -m py_compile $W/programs/execute.py && uv run python $W/notes/dev/t_freeze.py 2>&1 | head -1 | cut -c1-90; git -C $W add -A && git -C $W commit -q -m "comment: the start offset is the frozen r4 value
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && git -C $W log --oneline | head -1; git -C $W status --short | head -3
+```
+
+<details><summary>20:08:02 result</summary>
+
+```text
+self.centre = touch.frozen_centre()  # fixed start offset (a, b, yaw) of scripted r4, the centre of the RL actio
+frozen [2.925, -3.09, 0.004] = what r4 would load with no new entries [2.925, -3.09, 0.004
+317d578 comment: the start offset is the frozen r4 value
+[This command modified 1 file you've previously read: runs/20261123_1616_drawer/agents/execute/programs/execute.py. Call Read before editing.]
+```
+</details>
+
+**20:08:08 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Scripted part frozen at r4: the start offset is now constant for all arms (commit 317d578), tested offline",
+ "report": "NOT YET VERIFIED: the freeze has been tested offline only, with a fake session and contact model. The next episode is its first real use.\n\nThe scripted part is now frozen at r4, as the operator asked. One code edit was needed to make that true. The start offset was still updating itself at run time from first-descent entries, including the learned arm's, so the scripted baseline could have inherited what the learned arm found and the curves would not have measured learning.\n\nChanged (commits 44f0461, 317d578):\n- All arms now start from the constant r4 offset: a +2.925, b -3.09 mm, yaw 0.004 deg. T
+... (1012 more characters)
+```
+
+<details><summary>20:08:08 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**20:08:10 execute agent:** No response requested.
+
+### 20:08:10 orchestrator -> execute agent
+
+```text
+RL tuning turn after 15 training episodes (7 independent successes so far); evaluations: none yet. Look at rl_curve.jsonl, your learner log and these episodes; change the reward, hyperparameters, learner or episode program if the curve calls for it (say why in notes/), check offline, commit and reply done. The failed or unsure episodes:
+Find the cause, fix programs/execute.py, test it with a run (moves_robot true) and reply done when it works.
+```
+
+**20:08:17 execute agent:** No episode failed or was unsure this round, so there's nothing to fix in the frozen scripted part. I'm checking the learner log and the per-arm results to see whether the curve calls for a learner change.
+
+**20:08:22 tool Bash:**
+
+```bash
+git log --oneline | head -2; git status --short | head -3; ls attempts | sort -t_ -k2 -n | tail -3; ls ../../rl_curve.jsonl 2>&1 | head -1; python3 - <<'EOF'
+import json, glob, os
+print('file ep arm rev ret n touches check verdict')
+for f in sorted(glob.glob('rl/transitions/*.json'), key=os.path.getmtime):
+    b=os.path.basename(f)
+    if b.startswith('dry_'): continue
+    m=json.load(open(f))
+    if m.get('version',1)<2: continue
+    ev=m.get('events') or []; ep=m.get('episode'); v=None
+    p=f'rl/verdicts/{ep:06d}.json' if isinstance(ep,int) and ep>=0 else ''
+    if p and os.path.exists(p): v=json.load(open(p)).get('final')
+    rim=sum(1 for e in ev if e[1]=='force' and e[4]>0.09)
+    print(b[:-5][:24].ljust(24), ep, str(m.get('arm','-'))[:8].ljust(8), str(m.get('scripted_rev','-'))[:2],
+... (295 more characters)
+```
+
+<details><summary>20:08:23 result</summary>
+
+```text
+317d578 comment: the start offset is the frozen r4 value
+44f0461 freeze the scripted part at r4: constant start offset for all arms (operator 19:49)
+attempt_51
+attempt_52
+attempt_53
+ls: cannot access '../../rl_curve.jsonl': No such file or directory
+file ep arm rev ret n touches check verdict
+eval_test_20261123_18114 -1 -        - -3.61 15 7 False None
+eval_test_20261123_18204 -1 -        - -3.73 15 7 False None
+eval_test_20261123_18303 -1 -        - -5.77 49 25 False None
+eval_test_20261123_18372 -1 -        - 14.41 15 0 True None
+train_ep0005             5 -        - 2.08 15 0 False unsure
+train_ep0006             6 -        - 14.38 15 0 True unsure
+train_ep0007             7 -        - 13.96 19 2 True success
+train_ep0008             8 -        - 0.0 0 0 None fail
+train_ep0009             9 learned  r1 14.42 15 0 True success
+eval_test_20261123_19175 -1 learned_ r1 13.7 19 2 True None
+eval_test_20261123_19241 -1 learned_ r1 11.45 51 17 True None
+train_ep0011             11 scripted r2 14.07 18 1 True success
+train_ep0012             12 learned  r3 14.0 18 1 True success
+train_ep0013             13 learned  r3 14.05 18 1 True success
+train_ep0014             14 scripted r3 14.05 
+... (2641 more characters)
+```
+</details>
+
+**20:09:11 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && python3 - <<'EOF'
+def edit(p, pairs):
+    t=open(p).read()
+    for old,new in pairs:
+        assert t.count(old)==1, (p, old)
+        t=t.replace(old,new)
+    open(p,'w').write(t)
+edit('programs/rlcommon.py',[
+('LOG_STD_MIN, LOG_STD_MAX = -4.0, 0.0\n','LOG_STD_MIN, LOG_STD_MAX = -2.3, 0.0           # min std 0.1: most logged actions are exactly 0, and the fit collapsed the std to 0.018 (no exploration)\n'),
+])
+edit('programs/learner.py',[
+('PRIOR_VERSION = rc.PRIOR_VERSION\n','PRIOR_VERSION = rc.PRIOR_VERSION\nLEARNER_VERSION = 2                # 2: no entropy term in the critic target, bounded targets; a state from version 1 had diverged (Q -75)\nQ_RANGE = (-20.0, 20.0)            # step reward >= -1 at
+... (4191 more characters)
+```
+
+<details><summary>20:09:55 result</summary>
+
+```text
+programs/learner.py  | 16 ++++++++++------
+ programs/rlcommon.py |  2 +-
+ 2 files changed, 11 insertions(+), 7 deletions(-)
+--- current state from the real run:
+stored meta {'episodes': 14, 'n_trans': 300, 'prior_version': 2, 'learner_version': None} alpha 1.409
+episodes 14 transitions 300 | return-to-go -2.78..12.19 mean 5.48 | Q -130.84..13.14 mean -76.48 | MAE 81.99 corr 0.63 | actor |mean| 0.027 max 0.794 std 0.115 | updates 10840
+--- after the fixed learner (restart on all data):
+learner state is from prior/learner version 2/None: starting fresh on all data
+data: 14 episodes, 300 transitions; device cpu; updates so far 0
+actor fitted to prior version 2: loss 0.0000
+{"t": "2026-11-23 20:09:47", "episodes": 14, "transitions": 300, "new": 300, "updates": 3000, "total_updates": 3000, "device": "cpu", "secs": 31.2, "ret_last10": 13.615, "lc": 0.6771, "la": -29.6946, "q": 3.5231, "alpha": 0.05, "ent": -3.3587, "bc_w"
+episodes 14 transitions 300 | return-to-go -2.78..12.19 mean 5.48 | Q -2.71..12.11 mean 3.69 | MAE 2.11 corr 0.88 | actor |mean| 0.026 max 0.700 std 0.110 | updates 3000
+--- one more incremental update:
+{"t": "2026-11-23 20:09:53", "episodes": 14, "transitions": 300, "n
+... (358 more characters)
+```
+</details>
+
+**20:10:12 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && cat >> notes/design.md <<'EOF'
+
+## Tuning after 15 episodes: the critic had diverged (learner only, scripted r4 untouched)
+No failed episode this round, but the learner log showed divergence: Q mean -6 -> -75 (min -131) while returns-to-go are -2.8..12.2,
+critic loss 0.7 -> 25, temperature alpha 0.15 -> 1.4, entropy -9.7 against a target of -2.
+Likely cause: most logged actions are exactly 0 (scripted arm, frozen lateral action inside the opening), so the AWAC fit collapses the
+policy std, log-probabilities become large, the auto-tuned alpha keeps growing, and the entropy term in the critic target drags Q down.
+Changed: no entropy term in the critic target for AWAC, no alpha update, targets clamped to [-
+... (1918 more characters)
+```
+
+<details><summary>20:10:17 result</summary>
+
+```text
+rl/policy/learner_state.pt Mon Nov 23 19:47:16 2026
+rl/policy/actor.npz Mon Nov 23 19:47:16 2026
+first-descent align steps 28 | mean action [0.059, -0.001, 0.043, 0.038] max |a| [0.393, 0.147, 0.112, 0.204] -> largest shift over the 2 steps (mm): [0.79, 0.29]
+data: 14 episodes, 300 transitions; device cpu; updates so far 0
+check: one update {'lc': 14.052400588989258, 'la': -4.9305524826049805, 'q': 0.5010179877281189, 'al
+check_exit 0
+notes/design.md
+programs/learner.py
+programs/rlcommon.py
+22c6f05 learner: fix critic divergence (no entropy term in the AWAC target, bounded targets, std floor 0.1, restart on all data)
+```
+</details>
+
+**20:10:28 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Tuning after 15 episodes: fixed a diverged critic in the learner (commit 22c6f05); scripted r4 untouched",
+ "report": "NOT YET VERIFIED: the learner fix is tested offline only, on a copy of the real data. I did not make a separate robot test, following the operator's 19:19 note, because no motion code changed; the next episodes are the test. A sane critic does not show the policy will do better on the robot. `rl_curve.jsonl` is not on this machine, so I used the learner log and the logged episodes.\n\nNo episode failed or was unsure this round, so there was nothing to fix in the frozen scripted part (`execute.py` is unchanged).\n\nProblem found: the learner had diverged, so the learned arm was not learning anything usefu
+... (1334 more characters)
+```
+
+<details><summary>20:10:28 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

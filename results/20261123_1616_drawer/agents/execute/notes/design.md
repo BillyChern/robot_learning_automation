@@ -220,3 +220,11 @@ the start to +9.8 mm and would keep moving it. Possible mechanism, not measured:
 a rim contact may shift or level the drawer in the grip, after which a range of tool offsets enters.
 Changed (scripted r4, both arms): only entries on the first descent (no rim touch before) update the start offset. The stored file is
 reset to the four first-descent entries (attempts 30, 32, 34, 40), so the start returns to about +2.9, -3.1 mm.
+
+## Scripted part frozen at r4 (operator 19:49, commit 48fa784)
+From here the scripted part changes only to fix a failure that actually happened, with the episode named here. Improvements go through the
+learner (actor, critic, reward, observation).
+One edit was needed to make the freeze real: the start offset was still updated at run time by first-descent entries, including those of
+the learned arm, so the scripted baseline could inherit what the learned arm found. It is now the constant r4 value (the centre of the
+entries of attempts 30, 32, 34, 40, about +2.9, -3.1 mm) for all arms, the same value r4 would start from. Entries stay logged in
+`summary.entry`. `SCRIPTED_REV` stays r4.

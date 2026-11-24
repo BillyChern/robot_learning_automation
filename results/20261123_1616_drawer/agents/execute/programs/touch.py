@@ -95,6 +95,12 @@ def densest(entries, radius=0.0015):
     return np.median(e[near[k]], axis=0)
 
 
+def frozen_centre():
+    """The start offset of scripted r4, fixed for all arms (operator 19:49): if it followed the entries, the scripted baseline would
+    inherit what the learned arm finds and the curves would not measure learning."""
+    return densest(np.array(SEED_ENTRIES, float))
+
+
 def load_centre(rl_dir):
     """The offset (a, b, yaw) to start from: the densest cluster of the recent entries."""
     return densest(_entries(rl_dir)[-KEEP:])
