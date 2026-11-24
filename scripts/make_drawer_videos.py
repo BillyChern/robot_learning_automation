@@ -277,7 +277,7 @@ def timeline_bar(d, t, pil=None, y=990):
         if tn <= t:
             d.rectangle([X(tn) - 3, y - 9, X(tn) + 3, y + 15], fill=COL["human"])
     if pil is not None:
-        paste_drawer(pil, X(t), y + 2, 40)
+        paste_drawer(pil, X(t), y + 4, 30)
 
 
 def badge_at(d, f, cx, cy, kind, label, w=290):
@@ -376,9 +376,8 @@ def grid_segment(items, cols, rows, speed, chapter, sub, head, caption, accent, 
                 f = k - done_k[i]
                 sc = 0.4 + 0.9 * f / 5 if f < 5 else 1.3 - 0.3 * min(1.0, (f - 5) / 5)
                 cx, cy = x + tw - 42, y + 38
-                d.rounded_rectangle([cx - 28 * sc, cy - 28 * sc, cx + 28 * sc, cy + 28 * sc], int(12 * sc),
-                                    fill=COL["ok"] if ok else COL["fail"])
-                text(d, (cx, cy), "✓" if ok else "✗", max(10, int(40 * sc)), "B", fill=BG, anchor="mm")
+                d.rounded_rectangle([cx - 28 * sc, cy - 28 * sc, cx + 28 * sc, cy + 28 * sc], int(12 * sc), fill=verdict_col(final))
+                text(d, (cx, cy), "✓" if ok else ("?" if final == "unsure" else "✗"), max(10, int(40 * sc)), "B", fill=BG, anchor="mm")
         y_cap = gy + rows * th + 14
         hd = head(n_ok, sum(done)) if callable(head) else head
         text(d, (40, y_cap), hd, 44, "B", fill=accent)
@@ -979,8 +978,9 @@ def eval_part(dur, story=False):
         return card([("FINAL TEST", 34, "B", COL["eval"]), (f"[TBD] / 10{done}", 96, "B", TXT),
                      ("Runs after training episode 49: the learned policy, no exploration noise, 10 episodes.", 34, "R", DIM)], dur, COL["eval"])
     items = [(rec(e["dir"]), 45.0, 100.0, e["final"], (f"episode {e['ep']}", "eval")) for e in EVAL_EPS[:10]]
-    return grid_segment(items, 5, 2, 10 if story else 7, "The final test", "learned policy, no exploration noise",
-                        lambda k, n: f"{k} / {n} in", "Every tile is one real test episode (side camera, zoomed in).", COL["eval"],
+    return grid_segment(items, 4, 3, 10 if story else 7, "The final test", "learned policy, no exploration noise",
+                        lambda k, n: f"{k} / {n} in", "Every tile is one real test episode (side camera, zoomed in). "
+                        "✗ = not in, ? = our check said “unsure”.", COL["eval"],
                         dur=dur if story else None)
 
 

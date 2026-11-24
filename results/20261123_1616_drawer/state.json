@@ -18,14 +18,14 @@
    "unsure": 0
   },
   "resets": {
-   "total": 67,
-   "ok": 59,
-   "fail": 8,
+   "total": 73,
+   "ok": 63,
+   "fail": 10,
    "manual": 0
   },
   "consecutive_failures": {
    "execute": 0,
-   "reset": 0
+   "reset": 1
   },
   "rl": {
    "total": 50,
@@ -34,9 +34,9 @@
    "unsure": 3
   },
   "rl_eval": {
-   "total": 1,
-   "success": 1,
-   "fail": 0,
+   "total": 5,
+   "success": 3,
+   "fail": 2,
    "unsure": 0
   }
  },
@@ -138,15 +138,19 @@
     [
      "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_80",
      "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_94",
+     "layout check failed: drawer: 4.3 cm off"
     ]
    ]
   }
  },
- "next_episode": 51,
- "next_reset": 67,
+ "next_episode": 55,
+ "next_reset": 73,
  "vlm": {
-  "calls": 51,
-  "cost_usd": 3.7242114000000006
+  "calls": 55,
+  "cost_usd": 3.9725546000000005
  },
  "operator_notes": [],
  "rl": {
@@ -156,8 +160,8 @@
   "learner_fails": 0,
   "eval_cur": {
    "after": 50,
-   "done": 1,
-   "ok": 1
+   "done": 5,
+   "ok": 3
   }
  }
 }

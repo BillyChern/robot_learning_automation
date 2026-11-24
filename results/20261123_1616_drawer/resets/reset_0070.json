@@ -1,0 +1,200 @@
+{
+ "reset": 70,
+ "t": "2026-11-24T00:39:28",
+ "targets": {
+  "drawer": [
+   0.271,
+   -0.022
+  ]
+ },
+ "ok": true,
+ "report": {
+  "tolerance": 0.02,
+  "objects": {
+   "drawer": {
+    "target": [
+     0.271,
+     -0.022
+    ],
+    "found": [
+     0.2664,
+     -0.0035
+    ],
+    "dist": 0.0191,
+    "ok": true
+   }
+  },
+  "extra_blobs": 8,
+  "reason": "layout ok"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.2664,
+    -0.0035
+   ],
+   "z_top": 0.0841,
+   "height": 0.0996,
+   "extent": [
+    0.0781,
+    0.1294
+   ],
+   "n": 3982,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0149,
+   "outer_r": 0.0476
+  },
+  {
+   "xy": [
+    0.2589,
+    0.1746
+   ],
+   "z_top": -0.0001,
+   "height": 0.0154,
+   "extent": [
+    0.0219,
+    0.0248
+   ],
+   "n": 78,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.3282,
+    -0.0902
+   ],
+   "z_top": -0.0028,
+   "height": 0.0127,
+   "extent": [
+    0.0188,
+    0.0141
+   ],
+   "n": 71,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.3093,
+    0.1579
+   ],
+   "z_top": -0.0002,
+   "height": 0.0154,
+   "extent": [
+    0.0279,
+    0.025
+   ],
+   "n": 115,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0068,
+   "outer_r": 0.0136
+  },
+  {
+   "xy": [
+    0.3891,
+    0.1578
+   ],
+   "z_top": 0.0055,
+   "height": 0.0211,
+   "extent": [
+    0.0277,
+    0.0472
+   ],
+   "n": 154,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0141,
+   "outer_r": 0.0176
+  },
+  {
+   "xy": [
+    0.4603,
+    0.1535
+   ],
+   "z_top": 0.0073,
+   "height": 0.0228,
+   "extent": [
+    0.079,
+    0.052
+   ],
+   "n": 374,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0123,
+   "outer_r": 0.036
+  },
+  {
+   "xy": [
+    0.532,
+    0.021
+   ],
+   "z_top": 0.0799,
+   "height": 0.0955,
+   "extent": [
+    0.2793,
+    0.1838
+   ],
+   "n": 12374,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0569,
+   "outer_r": 0.1008
+  },
+  {
+   "xy": [
+    0.7503,
+    0.1161
+   ],
+   "z_top": 0.0017,
+   "height": 0.0173,
+   "extent": [
+    0.0214,
+    0.0213
+   ],
+   "n": 66,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.9058,
+    0.1677
+   ],
+   "z_top": 0.0015,
+   "height": 0.0171,
+   "extent": [
+    0.0488,
+    0.0507
+   ],
+   "n": 215,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0118,
+   "outer_r": 0.0228
+  }
+ ],
+ "claimed": {
+  "drawer": [
+   0.2669,
+   -0.0039
+  ]
+ },
+ "claimed_outcome": "success",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_93",
+ "exit_code": 0,
+ "outcome": "success",
+ "duration": 169.4,
+ "cabinet_top_xy": [
+  0.5325,
+  0.0197
+ ]
+}

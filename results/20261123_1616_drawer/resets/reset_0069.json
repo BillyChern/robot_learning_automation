@@ -1,0 +1,291 @@
+{
+ "reset": 69,
+ "t": "2026-11-24T00:33:54",
+ "targets": {
+  "drawer": [
+   0.267,
+   -0.03
+  ]
+ },
+ "ok": true,
+ "report": {
+  "tolerance": 0.02,
+  "objects": {
+   "drawer": {
+    "target": [
+     0.267,
+     -0.03
+    ],
+    "found": [
+     0.2592,
+     -0.0131
+    ],
+    "dist": 0.0186,
+    "ok": true
+   }
+  },
+  "extra_blobs": 13,
+  "reason": "layout ok"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.2592,
+    -0.0131
+   ],
+   "z_top": 0.0818,
+   "height": 0.0985,
+   "extent": [
+    0.0823,
+    0.1469
+   ],
+   "n": 4101,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0165,
+   "outer_r": 0.0478
+  },
+  {
+   "xy": [
+    0.2356,
+    0.1439
+   ],
+   "z_top": -0.0067,
+   "height": 0.0101,
+   "extent": [
+    0.0213,
+    0.027
+   ],
+   "n": 61,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.2319,
+    -0.1503
+   ],
+   "z_top": -0.0043,
+   "height": 0.0124,
+   "extent": [
+    0.0123,
+    0.0154
+   ],
+   "n": 71,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.332,
+    -0.1204
+   ],
+   "z_top": -0.0048,
+   "height": 0.012,
+   "extent": [
+    0.0215,
+    0.0093
+   ],
+   "n": 63,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.3073,
+    0.1852
+   ],
+   "z_top": 0.0072,
+   "height": 0.0239,
+   "extent": [
+    0.0632,
+    0.0573
+   ],
+   "n": 427,
+   "hollow": true,
+   "hole_xy": [
+    0.3068,
+    0.1699
+   ],
+   "inner_r": 0.0125,
+   "outer_r": 0.0268
+  },
+  {
+   "xy": [
+    0.3472,
+    0.1432
+   ],
+   "z_top": -0.002,
+   "height": 0.0148,
+   "extent": [
+    0.0356,
+    0.0349
+   ],
+   "n": 159,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0074,
+   "outer_r": 0.0147
+  },
+  {
+   "xy": [
+    0.4047,
+    0.1708
+   ],
+   "z_top": 0.0025,
+   "height": 0.0193,
+   "extent": [
+    0.0299,
+    0.0373
+   ],
+   "n": 168,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0108,
+   "outer_r": 0.0167
+  },
+  {
+   "xy": [
+    0.4795,
+    0.1762
+   ],
+   "z_top": -0.0035,
+   "height": 0.0133,
+   "extent": [
+    0.0408,
+    0.0293
+   ],
+   "n": 66,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.5327,
+    0.0238
+   ],
+   "z_top": 0.079,
+   "height": 0.0957,
+   "extent": [
+    0.2886,
+    0.1828
+   ],
+   "n": 12655,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0561,
+   "outer_r": 0.099
+  },
+  {
+   "xy": [
+    0.7178,
+    0.149
+   ],
+   "z_top": -0.0006,
+   "height": 0.0161,
+   "extent": [
+    0.0546,
+    0.0881
+   ],
+   "n": 402,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.012,
+   "outer_r": 0.029
+  },
+  {
+   "xy": [
+    0.8001,
+    0.1651
+   ],
+   "z_top": -0.0015,
+   "height": 0.0153,
+   "extent": [
+    0.0624,
+    0.0667
+   ],
+   "n": 305,
+   "hollow": true,
+   "hole_xy": [
+    0.8053,
+    0.1729
+   ],
+   "inner_r": 0.0198,
+   "outer_r": 0.0332
+  },
+  {
+   "xy": [
+    0.8523,
+    0.0753
+   ],
+   "z_top": -0.0034,
+   "height": 0.0134,
+   "extent": [
+    0.0335,
+    0.0221
+   ],
+   "n": 88,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.006,
+   "outer_r": 0.0131
+  },
+  {
+   "xy": [
+    0.8499,
+    0.1834
+   ],
+   "z_top": -0.0047,
+   "height": 0.012,
+   "extent": [
+    0.0223,
+    0.0272
+   ],
+   "n": 64,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.9303,
+    0.0574
+   ],
+   "z_top": -0.0055,
+   "height": 0.0113,
+   "extent": [
+    0.0341,
+    0.0313
+   ],
+   "n": 132,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0082,
+   "outer_r": 0.0179
+  }
+ ],
+ "claimed": {
+  "drawer": [
+   0.2589,
+   -0.0121
+  ]
+ },
+ "claimed_outcome": "success",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_92",
+ "exit_code": 0,
+ "outcome": "success",
+ "duration": 389.3,
+ "cabinet_top_xy": [
+  0.533,
+  0.0189
+ ]
+}
