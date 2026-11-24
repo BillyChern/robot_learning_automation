@@ -67,13 +67,13 @@
    "ended": "2026-11-23T17:32:18",
    "attempts": 27,
    "robot_attempts": 9,
-   "turns": 340,
-   "cost_usd": 38.22914840000001,
-   "input_tokens": 484,
-   "output_tokens": 459542,
-   "cache_read": 89391493,
-   "cache_creation": 1348336,
-   "duration_s": 5025.684000000001,
+   "turns": 342,
+   "cost_usd": 38.34924480000001,
+   "input_tokens": 488,
+   "output_tokens": 460094,
+   "cache_read": 89608215,
+   "cache_creation": 1356548,
+   "duration_s": 5033.618000000001,
    "first_success_attempt": 8,
    "first_success_after_attempts": 20,
    "time_to_first_success_s": 7870.1,
@@ -81,7 +81,7 @@
    "rounds": 0,
    "program_command": "RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
    "last_report": "Not verified: the actor's deterministic first descent, which the final evaluation will use, has never run on the robot. Its entry rate is unknown. I also did not find rl_curve.jsonl in my workspace, so I used the learner log and the stored episodes.\n\nNo episode failed or was unsure, so there was no failure to fix. Since episode 17, the learned arm averages 6.36 fixed return over 10 episodes, with 3 first-descent entries (19, 27, 33). The scripted arm scored 6.10 in all 6 of its episodes and touched the rim every time. The sim arm has 2 episodes (8.46, 8.22) with no force stops, which is not like for like because they skip the floor stop.\n\nThe learner is stable at version 5: critic Q 2.2 to 2.6, critic loss 0.56 to 0.77, 4520 updates. Episode 33 joined the replay, which now has 12 transitions from 3 real entries. The current actor's deterministic first-descent offset is a +2.35, b +1.35 mm on tab side -1 and a +0.86, b +1.01 mm on side +1. That is consistent with the three real entries (a +0.4 to +4.0, b +0.8 to +2.4 mm), but they are too few to say where the entry region ends.\n\nNo change: one learned episode with v5 is not enough evidence to retune, and changing again now would confound the remaining comparison. Nothing committed this turn, last commit 58a9b60.",
-   "reflections": 37,
+   "reflections": 38,
    "reviews": 7
   }
  },
@@ -140,9 +140,9 @@
  },
  "operator_notes": [],
  "rl": {
-  "episodes": 35,
+  "episodes": 36,
   "evals": [],
-  "since_review": 0,
+  "since_review": 1,
   "learner_fails": 0
  }
 }
