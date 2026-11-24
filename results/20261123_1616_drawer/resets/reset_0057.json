@@ -1,0 +1,285 @@
+{
+ "reset": 57,
+ "t": "2026-11-23T23:25:46",
+ "targets": {
+  "drawer": [
+   0.263,
+   -0.026
+  ]
+ },
+ "ok": false,
+ "report": {
+  "tolerance": 0.02,
+  "objects": {
+   "drawer": {
+    "target": [
+     0.263,
+     -0.026
+    ],
+    "found": null,
+    "dist": null,
+    "ok": false
+   }
+  },
+  "extra_blobs": 14,
+  "reason": "drawer: not found"
+ },
+ "measured": [
+  {
+   "xy": [
+    0.2587,
+    -0.0094
+   ],
+   "z_top": 0.0828,
+   "height": 0.0996,
+   "extent": [
+    0.0891,
+    0.163
+   ],
+   "n": 4490,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0152,
+   "outer_r": 0.0468
+  },
+  {
+   "xy": [
+    0.2718,
+    0.1363
+   ],
+   "z_top": -0.0026,
+   "height": 0.0142,
+   "extent": [
+    0.0222,
+    0.0226
+   ],
+   "n": 87,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.006,
+   "outer_r": 0.0114
+  },
+  {
+   "xy": [
+    0.2971,
+    -0.1696
+   ],
+   "z_top": -0.0062,
+   "height": 0.0106,
+   "extent": [
+    0.0256,
+    0.018
+   ],
+   "n": 124,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0043,
+   "outer_r": 0.009
+  },
+  {
+   "xy": [
+    0.3205,
+    -0.1529
+   ],
+   "z_top": -0.0047,
+   "height": 0.0121,
+   "extent": [
+    0.0178,
+    0.0206
+   ],
+   "n": 107,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0043,
+   "outer_r": 0.0101
+  },
+  {
+   "xy": [
+    0.3446,
+    -0.1145
+   ],
+   "z_top": -0.0052,
+   "height": 0.0116,
+   "extent": [
+    0.035,
+    0.0122
+   ],
+   "n": 115,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.3691,
+    0.1624
+   ],
+   "z_top": -0.0033,
+   "height": 0.0135,
+   "extent": [
+    0.0475,
+    0.0924
+   ],
+   "n": 263,
+   "hollow": true,
+   "hole_xy": [
+    0.3664,
+    0.1634
+   ],
+   "inner_r": 0.0168,
+   "outer_r": 0.026
+  },
+  {
+   "xy": [
+    0.4793,
+    0.1801
+   ],
+   "z_top": -0.0042,
+   "height": 0.0126,
+   "extent": [
+    0.0754,
+    0.0345
+   ],
+   "n": 256,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.5293,
+    0.0186
+   ],
+   "z_top": 0.0806,
+   "height": 0.0974,
+   "extent": [
+    0.2726,
+    0.1849
+   ],
+   "n": 12387,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0548,
+   "outer_r": 0.0987
+  },
+  {
+   "xy": [
+    0.5717,
+    0.1897
+   ],
+   "z_top": 0.0045,
+   "height": 0.0213,
+   "extent": [
+    0.0518,
+    0.0201
+   ],
+   "n": 98,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.6903,
+    0.1323
+   ],
+   "z_top": 0.0137,
+   "height": 0.0305,
+   "extent": [
+    0.0439,
+    0.0673
+   ],
+   "n": 203,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.7693,
+    0.125
+   ],
+   "z_top": -0.0049,
+   "height": 0.0119,
+   "extent": [
+    0.0407,
+    0.0291
+   ],
+   "n": 123,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.764,
+    0.1868
+   ],
+   "z_top": 0.0034,
+   "height": 0.0202,
+   "extent": [
+    0.0606,
+    0.036
+   ],
+   "n": 218,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": 0.0078,
+   "outer_r": 0.0242
+  },
+  {
+   "xy": [
+    0.8316,
+    0.1553
+   ],
+   "z_top": -0.0013,
+   "height": 0.0155,
+   "extent": [
+    0.0755,
+    0.052
+   ],
+   "n": 223,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  },
+  {
+   "xy": [
+    0.9214,
+    0.1854
+   ],
+   "z_top": -0.0062,
+   "height": 0.0106,
+   "extent": [
+    0.0568,
+    0.0274
+   ],
+   "n": 100,
+   "hollow": false,
+   "hole_xy": null,
+   "inner_r": null,
+   "outer_r": null
+  }
+ ],
+ "claimed": {
+  "drawer": [
+   0.2592,
+   -0.0078
+  ]
+ },
+ "claimed_outcome": "success",
+ "attempt": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_80",
+ "exit_code": 0,
+ "outcome": "success",
+ "duration": 174.2,
+ "cabinet_top_xy": [
+  0.5321,
+  0.0184
+ ]
+}
