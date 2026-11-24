@@ -18,9 +18,9 @@
    "unsure": 0
   },
   "resets": {
-   "total": 41,
-   "ok": 36,
-   "fail": 5,
+   "total": 45,
+   "ok": 39,
+   "fail": 6,
    "manual": 0
   },
   "consecutive_failures": {
@@ -28,8 +28,8 @@
    "reset": 0
   },
   "rl": {
-   "total": 28,
-   "success": 20,
+   "total": 30,
+   "success": 22,
    "fail": 6,
    "unsure": 2
   }
@@ -65,24 +65,24 @@
    "model": "claude-opus-5-5",
    "started": "2026-11-23T17:06:56",
    "ended": "2026-11-23T17:32:18",
-   "attempts": 26,
+   "attempts": 27,
    "robot_attempts": 9,
-   "turns": 301,
-   "cost_usd": 34.30208200000002,
-   "input_tokens": 412,
-   "output_tokens": 427972,
-   "cache_read": 85478921,
-   "cache_creation": 1034228,
-   "duration_s": 4664.074000000001,
+   "turns": 316,
+   "cost_usd": 35.08431380000001,
+   "input_tokens": 440,
+   "output_tokens": 438705,
+   "cache_read": 86663140,
+   "cache_creation": 1075555,
+   "duration_s": 4771.947000000002,
    "first_success_attempt": 8,
    "first_success_after_attempts": 20,
    "time_to_first_success_s": 7870.1,
    "repairs": 0,
    "rounds": 0,
    "program_command": "RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
-   "last_report": "Not verified: neither change has run on the robot, so there is no evidence yet that rim contacts drop. The hindsight learner was only trained on a copy of the data, and dry run attempt 81 still used the old actor (7920 updates). The real learner retrains from all data after the next training episode. Wider first-descent noise (1638d9f) and hindsight (16088c6) will reach the robot together, so their effects cannot be separated.\n\nDiagnosis (operator 21:27): no, the actor's first-descent mean did not move toward the entries. Over episodes 11-24 the entries averaged a +3.17, b +0.23 mm from the start. The actor's mean shift was a -0.10, b -0.20 mm, with mean cosine to the entry -0.37, positive in 3 of 14 episodes. AWAC only copies logged actions, and almost no logged first action went to the entry.\n\nChange (learner only, execute.py untouched, scripted and sim arms unchanged): for a successful episode that touched the rim and then entered, the learner adds the steps up to the first touch again, with lateral actions that reach the found entry and the logged return after entry, so the floor stop still counts. These transitions are built at load, never stored, and take 25% of each batch. 11 episodes give 42 transitions. Skipped: 5, 6, 9, 19 (entered before any rim touch), 7 and 22 (entry out of reach, a +6.9 and +5.7 mm), 8 (no insertion steps), 14 (other start offset).\n\nOffline result on the same episodes it trained on: mean shift a +2.18, b +0.09 mm, cosine 0.94, positive in 14 of 14. This shows the mechanism works, not that it generalises, and 2.2 mm is still short of the 3.2 mm mean entry. The entries are also biased toward +3 mm because the touch search tries that point first, and episode 19 entered at a +0.4, b +1.5 mm.\n\nChecks: learner --check passed, t_learner passed, and the retrain from the old learner state ran on a copy. Dry run attempt 81 on commit 16088c6 exited 0 with all plans passing the model check; its success claim means nothing because no drawer was moved. Standing result before this change: learned 6.13 vs scripted 6.10 mean fixed return, no failed episodes in the last window.",
-   "reflections": 29,
-   "reviews": 5
+   "last_report": "Not verified: the smaller noise has not run on the robot, and the actor's deterministic first descent has never been executed on it. A free first descent at a +3 mm may not enter, because the scripted arm only enters there after a rim touch, which could shift the drawer in the grip. I also did not find rl_curve.jsonl in my workspace, so this review uses the learner log and the stored episodes.\n\nNo episode failed or was unsure in this window, so there was no failure to fix. Fixed return over episodes 17-29: learned 6.28 mean over 8 episodes (6.10, 7.25, 6.10, 5.05, 6.15, 6.15, 7.35, 6.10), scripted 6.10 over 5 episodes. The gap is too small to call the learned arm better. Only 2 of those learned episodes (19 and 27) entered without a rim touch.\n\nWhy I changed it: since hindsight, the actor's mean first-descent offset on the stored observations is a +2.98, b +0.21 mm, which matches where the touch search found entries. The training noise was large enough to hide this. In episode 28 it turned mean actions of +0.80, +0.82, +0.47 into +0.31, +0.26, -0.83, and the drawer touched the rim at a +0.8 mm.\n\nChange (commit 280935a, learned arm only): first-descent noise std goes from 0.8, 0.8, 0.3 to 0.3, 0.3, 0.15 for a, b and yaw, so training episodes test the mean before the deterministic evaluation. The reason is in notes/design.md. Scripted and sim arms are unchanged.\n\nChecks: the exploration test gives a first-touch residual sd of 0.55 mm on a and 0.59 mm on b, with 0 residual in the scripted arm. The arm test and learner --check pass. Dry run attempt 93 on 280935a exited 0 with all plans passing the model check; its success claim means nothing because no drawer was moved.",
+   "reflections": 32,
+   "reviews": 6
   }
  },
  "datasets": {},
@@ -120,21 +120,25 @@
     [
      "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_48",
      "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_65",
+     "layout check failed: drawer: 2.7 cm off"
     ]
    ]
   }
  },
- "next_episode": 28,
- "next_reset": 41,
+ "next_episode": 30,
+ "next_reset": 45,
  "vlm": {
-  "calls": 28,
-  "cost_usd": 2.1731248
+  "calls": 30,
+  "cost_usd": 2.3284088
  },
  "operator_notes": [],
  "rl": {
-  "episodes": 27,
+  "episodes": 30,
   "evals": [],
-  "since_review": 2,
+  "since_review": 0,
   "learner_fails": 0
  }
 }

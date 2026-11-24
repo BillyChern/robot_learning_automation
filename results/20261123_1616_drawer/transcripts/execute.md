@@ -9302,3 +9302,481 @@ Structured output provided successfully
 ```
 </details>
 
+**21:51:26 execute agent:** No response requested.
+
+### 21:51:26 orchestrator -> execute agent
+
+```text
+Reflection after RL training episode 27 (28 so far): success - both independent checks say success (claim=none, perception=True, vlm=True). Look at what happened (log, images, rewards, learner log) and improve your episode program, prior, reward or learner if it helps; offline tests only; commit; then reply done. Keep it short.
+--- attempt_87: episode 27: success - both independent checks say success (claim=none, perception=True, vlm=True)
+# attempt_87: exit code 0; outcome: success
+
+command: RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: rl episode 27; commit: 16088c6; duration_s: 127.3; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "16088c6551",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 0.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9592, 0.5617, 90.4615], "gripper": 0.9},
+"fk_check_mm": 0.18,
+"first_failed_check": null,
+"transitions": 13,
+"return": 7.35,
+"policy": {"source": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/rl/policy/actor.npz", "updates": 3720, "mtime": "Mon Nov 23 21:45:35 2026"},
+"rl_mode": "train",
+"episode": 27,
+"arm": "learned",
+"scripted_rev": "r4 (r3 + start offset from first-descent entries only)",
+"segments": [["look_opening", true, 0.234, 0.43, 13.02, 39.9], ["look_drawer", true, 0.035, 0.19, 3.72, 39.5], ["above_tab", true, 0.133, 0.12, 8.46, 39.7], ["down_pre", true, 0.037, 0.14, 3.21, 39.6], ["down_tab", true, 0.021, 0.11, 5.17, 39.7], ["lift_slow", true, 0.029, 0.15, 3.14, 39.5], ["lift"
+"pull_detect_tries": 1,
+"objects": {"drawer": {"c": [0.2786, -0.003], "yaw": 86.42, "size": [0.0724, 0.1132], "face_h": 0.0929, "face_used": 0.0912}, "tab": {"ok": true, "xy": [0.2599, -0.0008], "s": -0.0187, "t": 0.001, "side": -1, "why": null}, "opening": {"c": [0.4518, 0.0027], "yaw": 18.27, "measured": true}},
+"grasp": {"reading": 84.5, "held": true, "h_g": 0.1392},
+"decisions": ["turn the drawer +21.8 deg, tool yaw -71.7, opening [0.4518, 0.0027] yaw 18.3", "drawer entered at a 6.9 mm, b -0.7 mm, yaw 0.51 deg after 0 rim touches; start offset frozen (scripted r4)"],
+"tilt": {"standing": {"ok": true, "n": 1031, "tilt_s_deg": 0.75, "tilt_t_deg": 2.74, "z0": 0.078, "resid_mm": 0.78, "span": [0.06, 0.1]}, "held": [{"ok": true, "n": 624, "tilt_s_deg": 1.55, "tilt_t_deg": 5.97, "z0": 0.1906, "rel_s": -0.17, "phi": 0.0}]},
+"align": [{"ok": true, "ea": 0.0048, "eb": 0.0042, "eyaw": 0.06, "c0": [0.0, 0.0, 0.0], "why": null}],
+"touch_centre": [0.0029, -0.0031, 0.0044],
+"entry": {"c": [0.0069, -0.0007, 0.5116], "rim_touches": 0},
+"touch": {"best": [0.004, 0.0024, 0.5072], "best_h": 0.013, "touches": 1},
+"insert": {"end": "seated", "steps": 13, "bottom": 0.013, "c": [0.0069, -0.0007, 0.5116], "contacts": 1, "peak": 25.0, "tilt": 0.0, "contact_map": [[6.9, -0.7, 0.5, 13.0, -15.1, -1.3]], "tilts_tried": [0.0]},
+"blobs_before": [[0.278, -0.012, 0.1, 0.082, 0.112, 4382], [0.532, 0.022, 0.096, 0.286, 0.184, 12627]],
+"blobs_after": [[0.428, 0.169, 0.014, 0.119, 0.067, 341], [0.49, 0.007, 0.102, 0.312, 0.184, 13238], [0.683, 0.135, 0.032, 0.119, 0.086, 406]],
+"verify": {"check": true, "reason": "drawer flush in the target compartment", "n": 1409, "median_h": 0.0969, "flush": 1.0, "above": 0.0, "deep": 0.0, "cabinet_moved_m": null, "on_table": false, "terminal_reward": 10.0, "cabinet_shift_px": 0.13, "cabinet_outline_move_m": 0.0029, "orchestrator_check":
+"transitions_file": "transitions/train_ep0027.npz",
+"return_home": "already at default pose",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.5, "reading": 50.0},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 86 lines; last 40:
+[21:50:05] step 3: a [0.99, 0.39, 0.44, 0.61] (mu [0.993, 0.367, 0.457, 0.638]) -> ok  bottom 0.0858 c [0.0069, -0.0007, 0.5116] tilt +0.0 peak 2.9 N r +0.254
+[21:50:0
+... (8033 more characters)
+```
+
+**21:51:38 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Episode 27 (first learned run with the hindsight actor) entered with no rim touch; no change",
+ "report": "Not established: this is one episode, so it does not show that the hindsight actor is better than the scripted arm. Exploration noise was also active on the first descent, so the entry point is not purely the actor's mean. Only more learned episodes and the deterministic evaluation can settle it.\n\nEpisode 27 was the first learned episode with the hindsight actor (3720 updates). It succeeded by both independent checks with 0 rim touches and 1 floor stop, 13 steps, return 7.35. The scripted arm's returns so far are all 6.10, with 1 rim touch, 1 floor stop and 18 steps in episode 26.\n\nThe drawer entered at a +4.0, 
+... (279 more characters)
+```
+
+<details><summary>21:51:38 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**21:57:10 execute agent:** No response requested.
+
+### 21:57:10 orchestrator -> execute agent
+
+```text
+Reflection after RL training episode 28 (29 so far): success - both independent checks say success (claim=none, perception=True, vlm=True). Look at what happened (log, images, rewards, learner log) and improve your episode program, prior, reward or learner if it helps; offline tests only; commit; then reply done. Keep it short.
+--- attempt_89: episode 28: success - both independent checks say success (claim=none, perception=True, vlm=True)
+# attempt_89: exit code 0; outcome: success
+
+command: RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: rl episode 28; commit: 16088c6; duration_s: 125.4; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "16088c6551",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 0.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9584, 0.5624, 90.4611], "gripper": 0.9},
+"fk_check_mm": 0.18,
+"first_failed_check": null,
+"transitions": 18,
+"return": 6.1,
+"policy": {"source": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/rl/policy/actor.npz", "updates": 4240, "mtime": "Mon Nov 23 21:51:23 2026"},
+"rl_mode": "train",
+"episode": 28,
+"arm": "learned",
+"scripted_rev": "r4 (r3 + start offset from first-descent entries only)",
+"segments": [["look_opening", true, 0.117, 0.37, 13.02, 39.9], ["look_drawer", true, 0.083, 0.55, 4.03, 39.7], ["above_tab", true, 0.159, 0.37, 4.0, 39.5], ["down_pre", true, 0.028, 0.12, 3.2, 39.4], ["down_tab", true, 0.021, 0.1, 5.4, 39.6], ["lift_slow", true, 0.031, 0.18, 3.27, 39.4], ["lift", tr
+"pull_detect_tries": 1,
+"objects": {"drawer": {"c": [0.2624, 0.0102], "yaw": -52.77, "size": [0.0739, 0.1158], "face_h": 0.0925, "face_used": 0.0912}, "tab": {"ok": true, "xy": [0.2463, -0.0008], "s": 0.0195, "t": -0.001, "side": 1, "why": null}, "opening": {"c": [0.4518, 0.0028], "yaw": 18.3, "measured": true}},
+"grasp": {"reading": 84.5, "held": true, "h_g": 0.1392},
+"decisions": ["turn the drawer -18.9 deg, tool yaw -71.7, opening [0.4518, 0.0028] yaw 18.3", "drawer entered at a 7.2 mm, b -3.2 mm, yaw 0.65 deg after 1 rim touches; start offset frozen (scripted r4)"],
+"tilt": {"standing": {"ok": true, "n": 1210, "tilt_s_deg": 0.48, "tilt_t_deg": -1.51, "z0": 0.0773, "resid_mm": 0.98, "span": [0.06, 0.1]}, "held": [{"ok": true, "n": 645, "tilt_s_deg": 0.5, "tilt_t_deg": 9.6, "z0": 0.1936, "rel_s": 1.44, "phi": 0.0}]},
+"align": [{"ok": true, "ea": 0.0021, "eb": 0.0034, "eyaw": -0.41, "c0": [0.0, 0.0, 0.0], "why": null}],
+"touch_centre": [0.0029, -0.0031, 0.0044],
+"entry": {"c": [0.0072, -0.0032, 0.6501], "rim_touches": 1},
+"touch": {"best": [0.0042, -0.0001, 0.6457], "best_h": 0.0126, "touches": 2},
+"insert": {"end": "seated", "steps": 18, "bottom": 0.0126, "c": [0.0072, -0.0032, 0.6501], "contacts": 2, "peak": 25.0, "tilt": 0.0, "contact_map": [[3.7, -3.6, 0.2, 95.0, 7.8, 1.8], [7.2, -3.2, 0.7, 12.6, -14.1, 3.6]], "tilts_tried": [0.0]},
+"blobs_before": [[0.268, -0.001, 0.097, 0.121, 0.111, 3814], [0.524, 0.019, 0.095, 0.281, 0.184, 12821]],
+"blobs_after": [[0.494, 0.007, 0.1, 0.325, 0.198, 13187]],
+"verify": {"check": true, "reason": "drawer flush in the target compartment", "n": 1391, "median_h": 0.0973, "flush": 1.0, "above": 0.0, "deep": 0.0, "cabinet_moved_m": null, "on_table": false, "terminal_reward": 10.0, "cabinet_shift_px": 0.12, "cabinet_outline_move_m": 0.0016, "orchestrator_check":
+"transitions_file": "transitions/train_ep0028.npz",
+"return_home": "already at default pose",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.5, "reading": 50.0},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 103 lines; last 40:
+[21:55:49] step 8: a [0.0, 0.0, 0.0, -0.05] (mu [0.001, 0.003, 0.03, 0.003]) -> ok  bottom 0.0726 c [0.0072, -0.0032, 0.6501] tilt +0.0 peak 1.8 N r +0.185
+[21:55:49] plan 21_ins09: T=0.7s check ok=True tip>0.158 v
+... (8215 more characters)
+```
+
+**21:57:17 execute agent:** Episode 28 touched the rim at only a +0.8 mm, and its pull tab was on the opposite side (s positive). I'm checking whether the actor has seen that side before.
+
+**21:57:24 tool Bash:**
+
+```bash
+grep -E "step [0-3]: " attempts/attempt_89/log.txt | cut -c1-175; tail -n 2 rl/learner_log.jsonl | cut -c1-60; /home/r2r/robot_learning_final_pj/.venv/bin/python - <<'E'
+import glob,json,sys,numpy as np
+sys.path.insert(0,'programs')
+import rlcommon as rc, touch
+c0=touch.frozen_centre(); A=rc.Actor('rl/policy/actor.npz'); print('actor updates',A.info.get('updates'))
+S=np.array([.001,.001,.5])
+print('ep arm s_mm t_mm rim first-touch a,b mm | entry a,b mm | mean a at steps 0-2 now')
+for f in sorted(glob.glob('rl/transitions/train_ep*.npz')):
+    m=json.load(open(f[:-4]+'.json')); ev=m.get('events') or []
+    if m.get('version',1)<2 or not ev or m['episode']<11: continue
+    z=np.load(f); o=z['obs']; F=[i for i,e in enumerate(ev) if e[1]=='force']
+    e=next((i for i,x in enumerate(ev) if x[4]
+... (606 more characters)
+```
+
+<details><summary>21:57:25 result</summary>
+
+```text
+[21:55:41] step 0: a [0.31, 0.48, 0.27, 0.01] (mu [0.797, 0.065, 0.228, 0.06]) -> ok  bottom 0.1030 c [0.0032, -0.0026, 0.1372] tilt +0.0 peak 0.4 N r -0.020
+[21:55:42] step 1: a [0.26, 0.08, -0.09, -0.1] (mu [0.816, 0.153, 0.342, 0.121]) -> ok  bottom 0.1030 c [0.0035, -0.0025, 0.0926] tilt +0.0 peak 0.5 N r -0.020
+[21:55:43] step 2: a [-0.83, -0.75, -0.05, -0.03] (mu [0.469, 0.124, 0.201, 0.004]) -> ok  bottom 0.0961 c [0.0027, -0.0033, 0.0655] tilt +0.0 peak 16.6 N r +0.171
+[21:55:44] step 3: a [1.0, -0.35, 0.3, 0.25] (mu [0.473, 0.272, 0.406, 0.248]) -> force 14_ins03: contact force 27.9 N total > 25 N at t=0.19s bottom 0.0990 c [0.0027, -0.0033
+{"t": "2026-11-23 21:51:23", "episodes": 27, "transitions": 
+{"t": "2026-11-23 21:57:07", "episodes": 28, "transitions": 
+actor updates 4960
+ep arm s_mm t_mm rim first-touch a,b mm | entry a,b mm | mean a at steps 0-2 now
+11 scri -20.0 1.0 1 [0.1, -0.0] [3.1, -0.0] [0.72, 0.51, 0.02]
+12 lear 19.5 -0.8 1 [-0.2, -0.3] [3.3, 0.5] [0.83, 0.63, -0.07]
+13 lear -20.8 0.3 1 [0.1, -0.0] [3.5, 0.2] [0.73, 0.58, -0.03]
+14 scri 20.5 -0.5 1 [3.3, 0.2] [6.3, 0.2] [0.84, 0.73, -0.04]
+15 lear 19.8 -1.8 1 [-0.0, 0.1] [2.4, 0.1] [0.78, 0.71, -0.13]
+16 le
+... (922 more characters)
+```
+</details>
+
+**21:57:39 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Episode 28 succeeded with one rim touch, caused by exploration noise cancelling the actor's mean; no change",
+ "report": "Not established: whether the hindsight actor reduces rim touches. There are only two learned episodes with it (27 and 28: 0 and 1 rim touches, returns 7.35 and 6.10), and exploration noise strongly affects both. The deterministic mean has not yet run on the robot.\n\nEpisode 28 (learned arm) succeeded by both independent checks, return 6.10, 18 steps, 2 force stops (1 rim touch, 1 floor stop). It entered at a +4.3, b -0.1 mm from the start after the touch.\n\nCause of the rim touch: the actor's mean pointed the right way (a +0.80, +0.82, +0.47 over the first three steps), but the first-descent noise c
+... (481 more characters)
+```
+
+<details><summary>21:57:39 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**22:09:35 execute agent:** No response requested.
+
+### 22:09:35 orchestrator -> execute agent
+
+```text
+Reflection after RL training episode 29 (30 so far): success - both independent checks say success (claim=none, perception=True, vlm=True). Look at what happened (log, images, rewards, learner log) and improve your episode program, prior, reward or learner if it helps; offline tests only; commit; then reply done. Keep it short.
+--- attempt_91: episode 29: success - both independent checks say success (claim=none, perception=True, vlm=True)
+# attempt_91: exit code 0; outcome: success
+
+command: RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: rl episode 29; commit: 16088c6; duration_s: 132.3; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "16088c6551",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [0.0, 15.0, 230.0, 0.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9583, 0.5625, 90.4606], "gripper": 0.9},
+"fk_check_mm": 0.18,
+"first_failed_check": null,
+"transitions": 18,
+"return": 6.1,
+"policy": {"source": "scripted baseline"},
+"rl_mode": "train",
+"episode": 29,
+"arm": "scripted",
+"scripted_rev": "r4 (r3 + start offset from first-descent entries only)",
+"segments": [["look_opening", true, 0.149, 0.3, 13.01, 39.9], ["look_drawer", true, 0.066, 0.43, 4.08, 39.7], ["above_tab", true, 0.141, 0.14, 8.9, 39.9], ["down_pre", true, 0.028, 0.12, 3.2, 39.4], ["down_tab", true, 0.057, 0.19, 5.49, 39.7], ["lift_slow", true, 0.034, 0.12, 3.31, 39.3], ["lift", t
+"pull_detect_tries": 1,
+"objects": {"drawer": {"c": [0.2597, -0.0009], "yaw": 81.35, "size": [0.0723, 0.1134], "face_h": 0.0916, "face_used": 0.0912}, "tab": {"ok": true, "xy": [0.2412, 0.0022], "s": -0.0187, "t": 0.0003, "side": -1, "why": null}, "opening": {"c": [0.4517, 0.0027], "yaw": 18.32, "measured": true}},
+"grasp": {"reading": 84.5, "held": true, "h_g": 0.1392},
+"decisions": ["turn the drawer +27.0 deg, tool yaw -71.7, opening [0.4517, 0.0027] yaw 18.3", "drawer entered at a 5.9 mm, b -3.1 mm, yaw 0.00 deg after 1 rim touches; start offset frozen (scripted r4)"],
+"tilt": {"standing": {"ok": true, "n": 1108, "tilt_s_deg": 0.16, "tilt_t_deg": 2.95, "z0": 0.0779, "resid_mm": 0.69, "span": [0.06, 0.1]}, "held": [{"ok": true, "n": 667, "tilt_s_deg": 0.01, "tilt_t_deg": 7.9, "z0": 0.1936, "rel_s": -1.47, "phi": 0.0}]},
+"align": [{"ok": false, "ea": null, "eb": null, "eyaw": null, "c0": [0.0, 0.0, 0.0], "why": null}],
+"touch_centre": [0.0029, -0.0031, 0.0044],
+"entry": {"c": [0.0059, -0.0031, 0.0044], "rim_touches": 1},
+"touch": {"best": [0.003, 0.0, 0.0], "best_h": 0.0127, "touches": 2},
+"insert": {"end": "seated", "steps": 18, "bottom": 0.0127, "c": [0.0059, -0.0031, 0.0044], "contacts": 2, "peak": 25.0, "tilt": 0.0, "contact_map": [[2.9, -3.1, 0.0, 95.0, 6.8, 1.7], [5.9, -3.1, 0.0, 12.7, -14.5, 3.9]], "tilts_tried": [0.0]},
+"blobs_before": [[0.262, -0.009, 0.098, 0.073, 0.118, 4113], [0.444, 0.174, 0.019, 0.053, 0.056, 359], [0.524, 0.02, 0.097, 0.296, 0.186, 12791]],
+"blobs_after": [[0.394, 0.135, 0.02, 0.062, 0.056, 325], [0.492, 0.007, 0.101, 0.299, 0.185, 13018]],
+"verify": {"check": true, "reason": "drawer flush in the target compartment", "n": 1376, "median_h": 0.0971, "flush": 1.0, "above": 0.0, "deep": 0.0, "cabinet_moved_m": null, "on_table": false, "terminal_reward": 10.0, "cabinet_shift_px": 0.12, "cabinet_outline_move_m": 0.0028, "orchestrator_check":
+"transitions_file": "transitions/train_ep0029.npz",
+"return_home": "already at default pose",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.5, "reading": 50.0},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.3]
+}
+
+log.txt: 103 lines; last 40:
+[22:08:16] step 8: a [0.0, 0.0, 0.0, 0.0] (mu [0.0, 0.0, 0.0, 0.0]) -> ok  bottom 0.0710 c [0.0059, -0.0031, 0.0044] tilt +0.0 peak 1.9 N r +0.190
+[22:08:16] plan 21_ins09: T=0.7s check ok=True tip>0.156 vmax=3.0deg/s lin=0.018m/s
+[22:08:17] exec 21_ins09: {'segment': 'i
+... (8036 more characters)
+```
+
+**22:09:40 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Episode 29 (scripted baseline) succeeded; no change",
+ "report": "Not established: whether the hindsight actor beats the scripted arm. Episode 29 was a scripted run, so it adds no evidence about the actor, and the learned arm still has only two episodes with hindsight (27 and 28, returns 7.35 and 6.10).\n\nEpisode 29 succeeded by both independent checks, return 6.10, 18 steps, 2 force stops (1 rim touch, 1 floor stop). It entered at a +3.0 mm from the start, the same as the earlier scripted runs, so the baseline is still steady.\n\nThe hover alignment measurement failed this time (ok false). It had no effect because that measurement is only logged and the start offset is fixed. No code change, nothing committed this turn
+... (4 more characters)
+```
+
+<details><summary>22:09:40 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**22:09:42 execute agent:** No response requested.
+
+### 22:09:42 orchestrator -> execute agent
+
+```text
+RL tuning turn after 30 training episodes (22 independent successes so far); evaluations: none yet. Look at rl_curve.jsonl, your learner log and these episodes; change the reward, hyperparameters, learner or episode program if the curve calls for it (say why in notes/), check offline, commit and reply done. The failed or unsure episodes:
+Find the cause, fix programs/execute.py, test it with a run (moves_robot true) and reply done when it works.
+```
+
+**22:09:49 execute agent:** I'll check the curve and where first descents touched or entered, since no episode failed.
+
+**22:10:02 tool Bash:**
+
+```bash
+git status --short | head -5; git log --oneline | head -1; ls rl; find . -maxdepth 3 -name 'rl_curve*' 2>/dev/null; tail -n 4 rl/learner_log.jsonl | /home/r2r/robot_learning_final_pj/.venv/bin/python -c "
+import sys,json
+for l in sys.stdin:
+    d=json.loads(l); print(d['episodes'],d['total_updates'],'q',d['q'],'lc',d['lc'],'hs_n',d.get('hindsight_n'),'hs_act',d.get('hindsight_act'),'hs_mu',d.get('hindsight_mu'))
+"
+cat > notes/dev/t_first_touch.py <<'E'
+"""Where did the first descent touch or enter, relative to the frozen start? And where does the deterministic mean go now? Read-only on rl/."""
+import glob, json, os, sys
+import numpy as np
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(ROOT, "programs"))
+import rlcommon as
+... (2191 more characters)
+```
+
+<details><summary>22:10:03 result</summary>
+
+```text
+16088c6 attempt 81: note why stored episodes are skipped by the first-descent hindsight
+learner_log.jsonl
+policy
+sim_arm
+touch_centre.json
+transitions
+verdicts
+26 3720 q 2.3957 lc 0.6926 hs_n 49 hs_act [0.7670000195503235, 0.03400000184774399, 0.10000000149011612, 0.0430000014603138] hs_mu [0.7749999761581421, 0.04100000113248825, 0.1080000028014183, 0.04699999839067459]
+27 4240 q 2.5049 lc 0.6518 hs_n 49 hs_act [0.7670000195503235, 0.03400000184774399, 0.10000000149011612, 0.0430000014603138] hs_mu [0.7670000195503235, 0.03700000047683716, 0.11100000143051147, 0.03500000014901161]
+28 4960 q 2.5525 lc 0.697 hs_n 53 hs_act [0.781000018119812, 0.028999999165534973, 0.11699999868869781, 0.041999999433755875] hs_mu [0.7940000295639038, 0.03200000151991844, 0.11400000005960464, 0.04399999976158142]
+29 5680 q 2.5804 lc 0.7879 hs_n 57 hs_act [0.777999997138977, 0.027000000700354576, 0.10899999737739563, 0.039000000804662704] hs_mu [0.781000018119812, 0.041999999433755875, 0.11999999731779099, 0.02500000037252903]
+actor updates 5680
+ep arm  first-descent  offset a b mm yaw | deterministic mean now a b mm yaw
+11 scri touched   +0.1  -0.0 +0.01 | +2.92 +0.15 -0.04
+12 lear touched   +0.6  +0.
+... (1241 more characters)
+```
+</details>
+
+**22:10:16 tool Edit:** `/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/programs/execute.py`
+
+<details><summary>22:10:16 result</summary>
+
+```text
+The file /home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/programs/execute.py has been updated successfully.
+```
+</details>
+
+**22:10:23 tool Bash:**
+
+```bash
+cat >> notes/design.md <<'E'
+
+## Tuning after 30 episodes: less first-descent noise (learned arm only)
+No failed episode. Since hindsight the actor's deterministic first-descent mean sits at a +2.98, b +0.21 mm from the start (`notes/dev/t_first_touch.py`, over the stored first observations), where the search found the entries. But it has never run on the robot: in episode 28
+the noise (std 0.8 per step) turned mean actions +0.80, +0.82, +0.47 into +0.31, +0.26, -0.83 and the drawer touched the rim at a +0.8 mm. Learned episodes therefore measure the noise more than the policy, and the final evaluation is deterministic.
+Changed: first-descent noise from 0.8, 0.8, 0.3 to 0.3, 0.3, 0.15 (a, b, yaw), so training episodes test the mean while still sampling around it. Open risk: the scripted ar
+... (653 more characters)
+```
+
+<details><summary>22:10:29 result</summary>
+
+```text
+learned arm, residual at the first rim touch: sd a 0.55 mm, b 0.59 mm, yaw 0.15 deg; share with b at least +1.0 mm: 0.06; max |a|,|b| 1.6, 2.1 mm | arm learned
+scripted arm: max |residual| 0.0
+t_explore: 0
+blurred frame, smoothed copy works: ok True tries 2
+never found: ok False tries 9
+t_arm: 0
+check: one update {'lc': 1.104974389076233, 'la': -23.34221839904785, 'q': 2.2684993743896484, 'alpha': 0.04999999701976
+ notes/design.md     | 6 ++++++
+ programs/execute.py | 2 +-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+```
+</details>
+
+**22:10:31 tool Bash:**
+
+```bash
+git add -A && git commit -q -m "attempt 92: less first-descent noise in the learned arm (a, b std 0.3, yaw 0.15) so training tests the learned mean; scripted and sim arms unchanged
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && git log --oneline | head -1; git show --stat --format= HEAD | tail -5; git status --short | wc -l
+```
+
+<details><summary>22:10:31 result</summary>
+
+```text
+280935a attempt 92: less first-descent noise in the learned arm (a, b std 0.3, yaw 0.15) so training tests the learned mean; scripted and sim arms unchanged
+ notes/design.md            |  6 ++++++
+ notes/dev/t_first_touch.py | 27 +++++++++++++++++++++++++++
+ programs/execute.py        |  2 +-
+ 3 files changed, 34 insertions(+), 1 deletion(-)
+0
+```
+</details>
+
+**22:10:33 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
+ "moves_robot": false,
+ "what": "Dry run of commit 280935a (smaller first-descent noise, learned arm only): record the commit on the robot machine and check the episode flow in the model, nothing moves",
+ "report": ""
+}
+```
+
+<details><summary>22:10:33 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**22:11:05 execute agent:** No response requested.
+
+### 22:11:05 orchestrator -> execute agent
+
+```text
+# attempt_93: exit code 0; outcome: success
+
+command: /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: Dry run of commit 280935a (smaller first-descent noise, learned arm only): record the commit on the robot machine and check the episode flow in the model, nothing moves; commit: 280935a; duration_s: 29.3; moves_robot: False
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "execute",
+"mode": "collect",
+"dry": true,
+"commit": "280935af16",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [0.01, 15.0, 230.0, 0.0, 55.02, 90.01], "tool_pose": [0.5791, 0.0048, 0.4274, 89.9533, 0.5704, 90.4548], "gripper": 50.0},
+"fk_check_mm": 0.18,
+"first_failed_check": null,
+"transitions": 15,
+"return": 9.25,
+"policy": {"source": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/rl/policy/actor.npz", "updates": 5680, "mtime": "Mon Nov 23 22:09:32 2026"},
+"rl_mode": "train",
+"episode": -1,
+"arm": "learned",
+"scripted_rev": "r4 (r3 + start offset from first-descent entries only)",
+"decisions": ["dry run: no drawer on the table, using a nominal standing drawer", "opening not measured ({'ok': False, 'why': 'edge not found', 'c': None, 'yaw': None}): using the stored rim", "turn the drawer +26.3 deg, tool yaw -71.7, opening [0.4519, 0.0029] yaw 18.3"],
+"segments": [["look_opening", "dry", 13.0], ["look_drawer", "dry", 3.5], ["above_tab", "dry", 8.8], ["down_pre", "dry", 3.1], ["down_tab", "dry", 5.1], ["lift_slow", "dry", 3.1], ["lift", "dry", 3.9], ["carry", "dry", 5.9], ["to_level", "dry", 0.5], ["to_hover", "dry", 1.8], ["ins00", "dry", 0.5], [
+"pull_detect_tries": 1,
+"objects": {"drawer": {"c": [0.285, -0.005], "yaw": 82.0, "size": [0.0723, 0.1131], "face_h": 0.0912, "face_used": 0.0912}, "tab": {"ok": true, "xy": [0.26568977265953936, -0.002286124531278724], "s": -0.0195, "t": 0.0, "side": -1, "why": null}, "opening": {"c": [0.4519, 0.0029], "yaw": 18.3, "measu
+"grasp": {"reading": 100.0, "held": true, "h_g": 0.1392},
+"tilt": {"standing": {"ok": false, "n": 0}, "held": [{"ok": false, "n": 0, "tilt_s_deg": null, "tilt_t_deg": null, "z0": null, "rel_s": null, "phi": 0.0}]},
+"align": [{"ok": false, "ea": null, "eb": null, "eyaw": null, "c0": [0.0, 0.0, 0.0], "why": "edge not found"}],
+"touch_centre": [0.0029, -0.0031, 0.0044],
+"entry": {"c": [0.0059, -0.0043, 0.1657], "rim_touches": 0},
+"touch": {"best": [0.0, 0.0, 0.0], "best_h": null, "touches": 0},
+"insert": {"end": "seated", "steps": 15, "bottom": 0.005, "c": [0.0059, -0.0043, 0.1657], "contacts": 0, "peak": 0.0, "tilt": 0.0, "contact_map": [], "tilts_tried": []},
+"blobs_before": [[0.497, 0.009, 0.1, 0.279, 0.183, 12765]],
+"blobs_after": [[0.494, 0.007, 0.102, 0.3, 0.185, 13137], [0.696, 0.166, 0.023, 0.072, 0.089, 497]],
+"verify": {"check": true, "reason": "drawer flush in the target compartment", "n": 1401, "median_h": 0.0979, "flush": 1.0, "above": 0.0, "deep": 0.0, "cabinet_moved_m": null, "on_table": false, "terminal_reward": 10.0, "cabinet_shift_px": 0.18, "cabinet_outline_move_m": 0.0009, "orchestrator_check":
+"transitions_file": "transitions/dry_train_test_20261123_221101.npz",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.5, "reading": 50.0}
+}
+
+log.txt: 62 lines; last 40:
+[22:10:51] drawer vs opening: [{'ok': False, 'ea': None, 'eb': None, 'eyaw': None, 'c0': [0.0, 0.0, 0.0], 'why': 'edge not found'}]
+[22:10:51] plan 10_to_hover: T=1.8s check ok=True tip>0.195 vmax=2.7deg/s lin=0.018m/s
+[22:10:51] == phase: insert_learned
+[22:10:51] plan 11_ins00: T=0.5s check ok=True tip>0.195 vmax=0.5deg/s lin=0.003m/s
+[22:10:51] step 0: a [0.69, -0.23, 0.06, -0.06] (mu [0.679, 0.067, 0.071, 0.029]) -> ok  bottom 0.1030 c [0.0036, -0.0033, 0.0366] tilt +0.0 peak 0.0 N r -0.020
+[22:10:52] plan 12_ins01: T=0.5s check ok=True tip>0.195 vmax=0.5deg/s lin=0.003m/s
+[22:10:52] step 1: a [0.67, -0.25, 0.07, 0.0] (mu [0.77, -0.034, 0.043, 0.039]) -> ok  bottom 0.1030 c [0.
+... (5518 more characters)
+```
+
+**22:11:16 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Tuning after 30 episodes: first-descent noise reduced in the learned arm, committed 280935a, dry run clean",
+ "report": "Not verified: the smaller noise has not run on the robot, and the actor's deterministic first descent has never been executed on it. A free first descent at a +3 mm may not enter, because the scripted arm only enters there after a rim touch, which could shift the drawer in the grip. I also did not find rl_curve.jsonl in my workspace, so this review uses the learner log and the stored episodes.\n\nNo episode failed or was unsure in this window, so there was no failure to fix. Fixed return over episodes 17-29: learned 6.28 mean over 8 episodes (6.10, 7.25, 6.10, 5.05, 6.15, 6.15, 7.35, 6.10), scripted 6.
+... (1096 more characters)
+```
+
+<details><summary>22:11:16 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

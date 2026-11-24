@@ -294,3 +294,9 @@ Changed: for a successful episode that touched the rim and then entered, the lea
 never stored, and take 25% of each batch. LEARNER_VERSION 4, so the next update retrains from all data. Now 11 episodes give 42 transitions (skipped: 5, 6, 9, 19 entered before any rim touch, so nothing to relabel; 7 and 22 entered at a +6.9 and +5.7 mm, out of reach in the steps before the first touch; 8 has no insertion steps; 14 started from another offset).
 Offline, on a copy of the data: the mean shift becomes a +2.20, b +0.11 mm, cosine 0.94. This is on the episodes it was trained on, so it shows the mechanism works and NOT that rim contacts drop; only the next learned episodes can show that.
 Caveat: the search tries a +3 mm first, so the entries are biased toward +3 mm. Episode 19 entered at a +0.4, b +1.5 mm, so +3 mm is not the only working offset. Scripted and sim arms are unchanged.
+
+## Tuning after 30 episodes: less first-descent noise (learned arm only)
+No failed episode. Since hindsight the actor's deterministic first-descent mean sits at a +2.98, b +0.21 mm from the start (`notes/dev/t_first_touch.py`, over the stored first observations), where the search found the entries. But it has never run on the robot: in episode 28
+the noise (std 0.8 per step) turned mean actions +0.80, +0.82, +0.47 into +0.31, +0.26, -0.83 and the drawer touched the rim at a +0.8 mm. Learned episodes therefore measure the noise more than the policy, and the final evaluation is deterministic.
+Changed: first-descent noise from 0.8, 0.8, 0.3 to 0.3, 0.3, 0.15 (a, b, yaw), so training episodes test the mean while still sampling around it. Open risk: the scripted arm enters at +3 mm only after a rim touch, which may shift the drawer in the grip, so +3 mm on a free first descent is not proven.
+Scripted and sim arms are unchanged.
