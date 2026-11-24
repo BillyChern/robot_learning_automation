@@ -172,3 +172,12 @@ entered at +2.9..3.0. Cause unknown: the tab-to-frame and outline-to-frame dista
 (21-23 mm, 2.2-2.8 mm), so the pinch offset is not it. A different sag in the grip is possible but unmeasured.
 Changed: the start offset is now the median of the last 9 entries (the running mean had moved it to +5.0, between the two values,
 where neither fits). The a and b line searches drop a direction once its contact is higher than the best one.
+
+## Scripted baseline arm (operator 19:10) and episode 8 (attempt 38)
+Training episodes with index % 3 == 2 (from 11; 8 ran before this change) run with zero residuals and no exploration, everything else
+identical. `summary.arm` is scripted, learned or learned_eval; transitions of all arms are logged and train the AWAC learner.
+`SCRIPTED_REV` in `execute.py` names the scripted part; bump it whenever that part changes.
+Fix made alongside: at search points the deterministic policy's residual was dropped in eval mode, so eval did not run the learned
+policy there. It now applies in eval too.
+Episode 8 failed at perception: a blurred wrist frame broke the thin label frame in the mask ("metal too small"). The program now
+tries the frame, a smoothed copy, then fresh frames. On a 640 px copy of the failed frame the detector finds the tab (s -21.3 mm).

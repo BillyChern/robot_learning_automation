@@ -20,7 +20,7 @@ class S:
     def feedback(s): return dict(force=np.zeros(3), gripper=85.0)
 w = dict(c_o=E.OPEN_C.copy(), yaw_o=18.3, face=0.0915, tab=dict(s=0.02, t=0.0)); g = dict(h_g=0.1396); pl = dict(off=np.array([-0.0193, -0.0064]), dyaw=-34.0, yaw_f=-71.7)
 def episode(hole, tol, seed):
-    e = E.Episode.__new__(E.Episode); e.s = S(); e.tz = -0.0154; e.mode = MODE; e.rng = np.random.default_rng(seed); e.actor = E.rc.Actor("/nonexistent")
+    e = E.Episode.__new__(E.Episode); e.s = S(); e.tz = -0.0154; e.mode = MODE; e.arm = "learned" if MODE == "train" else "learned_eval"; e.rng = np.random.default_rng(seed); e.actor = E.rc.Actor("/nonexistent")
     e.trans, e.events, e.ret, e.phi, e.R_fix, e.tilt, e.contact_map = [], [], 0.0, 0.0, np.eye(3), {}, []
     e.c0 = np.zeros(3)
     st = dict(b=E.RIM + E.HOVER, c=np.zeros(3))

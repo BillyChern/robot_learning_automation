@@ -50,6 +50,7 @@ SC_DESC = np.array([0.001, 0.001, 0.5])        # descent steps
 MAX_C = np.array([0.018, 0.018, 4.0])          # bound of the accumulated corrections
 PEAK_SEAT = 12.0                               # N: a force rise this large near the floor means the drawer is seated
 MAX_CONTACTS = 36
+SCRIPTED_REV = "r1 (5b26018 + blurred-frame retry for the pull)"   # bump with every change of the scripted part; both arms use it
 UNLOAD = 0.004                                 # m lifted after a touch (operator 18:30)
 DROPPED = 0.015                                # m below the rim: this point is the opening, remember it
 OBS_C = np.array([0.008, 0.008, 4.0])          # scale of the residual in the observation
@@ -80,6 +81,8 @@ class Episode:
         self.ep = int(os.environ.get("RLPJ_EPISODE", "-1"))
         self.rng = np.random.default_rng(int(time.time() * 1000) % 2 ** 31)
         self.actor = rc.Actor()
+        # operator 19:10: every third training episode is the scripted baseline (no learned residual, no exploration), same program
+        self.arm = "learned_eval" if self.mode == "eval" else "scripted" if self.ep >= 0 and self.ep % 3 == 2 else "learned"
         self.trans, self.events = [], []
         self.ret = 0.0
         self.terminal = None
@@ -190,8 +193,7 @@ class Episode:
             c_o, yaw_o = OPEN_C.copy(), OPEN_YAW
 
         img, Tm = self.look("drawer", np.r_[sd["c"], self.tz + face])
-        d = V.find_drawer(img, Tm, sd["c"], self.tz + face)
-        tab = V.find_tab(img, Tm, d, self.tz + face) if d.get("ok") else dict(ok=False, why="no drawer")
+        d, tab = self.pull_detect(img, Tm, sd["c"], self.tz + face)
         if s.dry and not (d.get("ok") and tab.get("ok")):          # the home view shows no drawer: flow test only
             d = dict(ok=True, c=sd["c"], yaw=sd["yaw"], size=[0.0723, 0.1131])
             a_s = V.axes(sd["yaw"] - 90.0)[0]
@@ -211,6 +213,33 @@ class Episode:
             ds, dt = V.axes(float(d["yaw"]) - 90.0)
             self.g_ref = np.tan(np.radians(st["tilt_s_deg"])) * ds + np.tan(np.radians(st["tilt_t_deg"])) * dt
         return dict(face=face, d=d, tab=tab, c_o=c_o, yaw_o=yaw_o)
+
+    def pull_detect(self, img, Tm, c, z):
+        """Drawer and tab from the wrist look-down. A blurred frame can break the thin label frame in the mask (episode 8): try the
+        frame, a smoothed copy of it, then fresh frames."""
+        s = self.s
+
+        def once(im):
+            d = V.find_drawer(im, Tm, c, z)
+            return d, (V.find_tab(im, Tm, d, z) if d.get("ok") else dict(ok=False, why="no drawer"))
+
+        d, tab = once(img)
+        tries = 1
+        for k in range(0 if s.dry else 4):
+            if d.get("ok") and tab.get("ok"):
+                break
+            H, W_ = img.shape[:2]
+            d, tab = once(cv2.resize(cv2.resize(img, (640, 360), interpolation=cv2.INTER_AREA), (W_, H), interpolation=cv2.INTER_CUBIC))
+            tries += 1
+            if d.get("ok") and tab.get("ok"):
+                break
+            time.sleep(0.5)
+            img = s.wrist.latest()[0]
+            self.save("wrist_drawer", img)
+            d, tab = once(img)
+            tries += 1
+        s.summary(pull_detect_tries=tries)
+        return d, tab
 
     # ---------------------------------------------------------------- scripted grasp and carry
     def grasp(self, w):
@@ -377,13 +406,16 @@ class Episode:
         for k in range(K_ALIGN + K_DESC):
             phase = 0 if k < K_ALIGN or last_force else 1   # after a contact: one lateral alignment step at the unloaded height
             o = self.obs(phase, b, c - self.c0, A3 @ (self.force() - f0), peak, k, w, n_contact)  # residual on the measured alignment
-            a, info = self.actor.act(o, explore=self.mode == "train", rng=self.rng)
-            if self.mode == "train" and phase == 0 and n_contact > 0:   # wide exploration only at the search points
+            if self.arm == "scripted":
+                a, info = np.array(rc.prior(o), float), dict(mu=[0.0] * rc.ACT_DIM, std=[0.0] * rc.ACT_DIM)
+            else:
+                a, info = self.actor.act(o, explore=self.arm == "learned", rng=self.rng)
+            if self.arm == "learned" and phase == 0 and n_contact > 0:   # wide exploration only at the search points
                 a = np.r_[np.clip(a[:3] + self.rng.normal(0.0, SEARCH_STD, 3), -1.0, 1.0), a[3]]
             if b <= RIM - ENTERED:                       # inside: the walls guide it, lateral residuals would only rub on them
                 a = np.r_[0.0, 0.0, 0.0, a[3]]
             if phase == 0 and n_contact > 0:             # search: a new point around the measured alignment + the policy's residual
-                c2 = self.c0 + next_pt + (0.0 if self.mode == "eval" else SC_DESC * a[:3])   # the search point + the policy's residual
+                c2 = self.c0 + next_pt + SC_DESC * a[:3]     # the search point + the policy's residual (zero in the scripted arm)
             else:
                 c2 = c + SC_DESC * a[:3]                 # first try: stay on the measured alignment (clearance ~1 mm)
             c2 = np.clip(c2, self.c0 - MAX_C, self.c0 + MAX_C)
@@ -539,14 +571,15 @@ class Episode:
         name = f"{self.mode}_ep{self.ep:04d}" if self.ep >= 0 else f"{self.mode}_test_{time.strftime('%Y%m%d_%H%M%S')}"
         if self.s.dry:
             name = "dry_" + name
-        p = rc.save_episode(name, self.trans, dict(version=rc.PRIOR_VERSION, mode=self.mode, episode=self.ep, dry=self.s.dry, ret=self.ret, check=ok, terminal=self.terminal,
+        p = rc.save_episode(name, self.trans, dict(version=rc.PRIOR_VERSION, arm=self.arm, scripted_rev=SCRIPTED_REV, mode=self.mode, episode=self.ep, dry=self.s.dry, ret=self.ret, check=ok, terminal=self.terminal,
                                                    reason=(rep or {}).get("reason"), events=self.events, policy=self.actor.info,
                                                    attempt=self.s.A, t=time.time()))
         self.s.summary(transitions_file=os.path.relpath(p, rc.rl_dir()), transitions=len(self.trans), **{"return": round(self.ret, 3)})
 
     def run(self):
         s = self.s
-        s.summary(first_failed_check=None, transitions=0, **{"return": 0.0}, policy=self.actor.info, rl_mode=self.mode, episode=self.ep)
+        s.summary(first_failed_check=None, transitions=0, **{"return": 0.0}, policy=self.actor.info if self.arm != "scripted" else dict(source="scripted baseline"),
+                  rl_mode=self.mode, episode=self.ep, arm=self.arm, scripted_rev=SCRIPTED_REV)
         w = self.perceive()
         g = self.grasp(w)
         if g is None:
