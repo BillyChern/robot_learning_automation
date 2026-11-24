@@ -53,7 +53,7 @@ SC_DESC = np.array([0.001, 0.001, 0.5])        # descent steps
 MAX_C = np.array([0.018, 0.018, 4.0])          # bound of the accumulated corrections
 PEAK_SEAT = 12.0                               # N: a force rise this large near the floor means the drawer is seated
 MAX_CONTACTS = 36
-SCRIPTED_REV = "r3 (r2 + start offset = densest cluster of entries)"   # bump with every change of the scripted part; both arms use it
+SCRIPTED_REV = "r4 (r3 + start offset from first-descent entries only)"   # bump with every change of the scripted part; both arms use it
 UNLOAD = 0.004                                 # m lifted after a touch (operator 18:30)
 DROPPED = 0.015                                # m below the rim: this point is the opening, remember it
 OBS_C = np.array([0.008, 0.008, 4.0])          # scale of the residual in the observation
@@ -425,7 +425,7 @@ class Episode:
         f0, peak, n_contact, end = self.force(), 0.0, 0, "steps"
         last_force = False
         ts, next_pt = touch.TouchSearch(MAX_CONTACTS), None
-        c_entry = None                                   # offset at which the drawer passed into the opening
+        c_entry, n_entry = None, 0                       # offset at which the drawer passed into the opening, rim touches before it
         for k in range(K_ALIGN + K_DESC):
             phase = 0 if k < K_ALIGN or last_force else 1   # after a contact: one lateral alignment step at the unloaded height
             o = self.obs(phase, b, c - self.c0, A3 @ (self.force() - f0), peak, k, w, n_contact)  # residual on the measured alignment
@@ -478,7 +478,7 @@ class Episode:
                 end = status
             last_force = status == "force"
             if c_entry is None and b <= RIM - ENTERED:
-                c_entry = c.copy()
+                c_entry, n_entry = c.copy(), n_contact
             self.trans.append(dict(obs=o, act=a, rew=r))
             self.ret += r
             self.events.append([k, status, np.round(a, 2).tolist(), round(r, 3), round(b, 4), np.round(c, 4).tolist(), round(peak, 1), self.phi])
@@ -492,10 +492,15 @@ class Episode:
             if status == "ok" and phase == 1 and (b <= B_MIN + 1e-4 or (peak >= PEAK_SEAT and b <= FLOOR + 0.012)):
                 end = "seated"
                 break
-        if end == "seated" and c_entry is not None and b <= RIM - DROPPED and not s.dry:   # found the opening: start nearer next time
-            new = touch.save_centre(rc.rl_dir(), c_entry, dict(bottom=round(b, 4), end=end, contacts=n_contact, episode=self.ep))
-            s.decide(f"drawer entered at a {c_entry[0] * 1000:.1f} mm, b {c_entry[1] * 1000:.1f} mm, yaw {c_entry[2]:.2f} deg after {n_contact} touches; "
-                     f"centre now {np.round(new * [1000, 1000, 1], 2).tolist()}")
+        if end == "seated" and c_entry is not None and b <= RIM - DROPPED and not s.dry:
+            msg = f"drawer entered at a {c_entry[0] * 1000:.1f} mm, b {c_entry[1] * 1000:.1f} mm, yaw {c_entry[2]:.2f} deg after {n_entry} rim touches"
+            if n_entry == 0:                             # only a clean first descent says where to start
+                new = touch.save_centre(rc.rl_dir(), c_entry, dict(bottom=round(b, 4), end=end, contacts=n_contact, episode=self.ep))
+                msg += f"; start now {np.round(new * [1000, 1000, 1], 2).tolist()}"
+            else:
+                msg += "; start offset unchanged"
+            s.decide(msg)
+        s.summary(entry=None if c_entry is None else dict(c=np.round(c_entry, 4).tolist(), rim_touches=n_entry))
         s.summary(touch=dict(best=np.round(ts.best, 4).tolist(), best_h=None if not np.isfinite(ts.best_h) else round(ts.best_h, 4), touches=len(ts.seen)))
         s.summary(insert=dict(end=end, steps=len(self.trans), bottom=round(b, 4), c=np.round(c, 4).tolist(), contacts=n_contact, peak=round(peak, 1), tilt=self.phi, contact_map=self.contact_map,
                                  tilts_tried=sorted({e[7] for e in self.events if e[1] == "force"})))

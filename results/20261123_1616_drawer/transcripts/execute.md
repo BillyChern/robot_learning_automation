@@ -6153,3 +6153,145 @@ Structured output provided successfully
 ```
 </details>
 
+**19:47:19 execute agent:** No response requested.
+
+### 19:47:19 orchestrator -> execute agent
+
+```text
+Reflection after RL training episode 14 (15 so far): success - both independent checks say success (claim=none, perception=True, vlm=True). Look at what happened (log, images, rewards, learner log) and improve your episode program, prior, reward or learner if it helps; offline tests only; commit; then reply done. Keep it short.
+--- attempt_52: episode 14: success - both independent checks say success (claim=none, perception=True, vlm=True)
+# attempt_52: exit code 0; outcome: success
+
+command: RLPJ_EPISODE=-1 RLPJ_RL_MODE=eval /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: rl episode 14; commit: 35b9f57; duration_s: 112.3; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "35b9f573c5",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 0.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9582, 0.5634, 90.4611], "gripper": 0.9},
+"fk_check_mm": 0.18,
+"first_failed_check": null,
+"transitions": 18,
+"return": 14.047,
+"policy": {"source": "scripted baseline"},
+"rl_mode": "train",
+"episode": 14,
+"arm": "scripted",
+"scripted_rev": "r3 (r2 + start offset = densest cluster of entries)",
+"segments": [["look_opening", true, 0.068, 0.24, 13.03, 39.8], ["look_drawer", true, 0.117, 0.65, 3.37, 39.5], ["above_tab", true, 0.108, 0.27, 2.61, 39.5], ["down_pre", true, 0.046, 0.17, 3.2, 39.7], ["down_tab", true, 0.04, 0.15, 5.16, 39.5], ["lift_slow", true, 0.026, 0.15, 3.14, 39.5], ["lift", 
+"pull_detect_tries": 1,
+"objects": {"drawer": {"c": [0.297, -0.0009], "yaw": -38.66, "size": [0.0771, 0.1189], "face_h": 0.0931, "face_used": 0.0912}, "tab": {"ok": true, "xy": [0.2838, -0.0166], "s": 0.0205, "t": -0.0005, "side": 1, "why": null}, "opening": {"c": [0.4517, 0.0028], "yaw": 18.31, "measured": true}},
+"grasp": {"reading": 84.1, "held": true, "h_g": 0.1392},
+"decisions": ["turn the drawer -33.0 deg, tool yaw -71.7, opening [0.4517, 0.0028] yaw 18.3", "drawer entered at a 9.2 mm, b -2.9 mm, yaw 0.18 deg after 2 touches; centre now [9.8, -2.52, 0.23]"],
+"tilt": {"standing": {"ok": true, "n": 956, "tilt_s_deg": -1.64, "tilt_t_deg": -1.94, "z0": 0.0787, "resid_mm": 0.75, "span": [0.059, 0.099]}, "held": [{"ok": true, "n": 786, "tilt_s_deg": 2.14, "tilt_t_deg": 7.19, "z0": 0.1928, "rel_s": 1.82, "phi": 0.0}]},
+"align": [{"ok": true, "ea": 0.0006, "eb": 0.0029, "eyaw": -0.22, "c0": [0.0, 0.0, 0.0], "why": null}],
+"touch_centre": [0.0062, -0.0029, 0.1769],
+"touch": {"best": [0.003, 0.0, 0.0], "best_h": 0.0122, "touches": 2},
+"insert": {"end": "seated", "steps": 18, "bottom": 0.0122, "c": [0.0092, -0.0029, 0.1769], "contacts": 2, "peak": 25.0, "tilt": 0.0, "contact_map": [[6.2, -2.9, 0.2, 95.1, 8.0, 1.1], [9.2, -2.9, 0.2, 12.2, -14.9, 3.9]], "tilts_tried": [0.0]},
+"blobs_before": [[0.296, -0.01, 0.099, 0.127, 0.1, 4684], [0.522, 0.019, 0.096, 0.29, 0.185, 12831], [0.733, 0.138, 0.02, 0.087, 0.078, 512]],
+"blobs_after": [[0.488, 0.006, 0.101, 0.284, 0.186, 12754]],
+"verify": {"check": true, "reason": "drawer flush in the target compartment", "n": 1412, "median_h": 0.0971, "flush": 1.0, "above": 0.0, "deep": 0.0, "cabinet_moved_m": null, "on_table": false, "terminal_reward": 12.0, "cabinet_shift_px": 0.11, "cabinet_outline_move_m": 0.0037, "orchestrator_check":
+"transitions_file": "transitions/train_ep0014.npz",
+"return_home": "already at default pose",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.5, "reading": 50.0},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 103 lines; last 40:
+[19:46:15] step 8: a [0.0, 0.0, 0.0, 0.0] (mu [0.0, 0.0, 0.0, 0.0]) -> ok  bottom 0.0711 c [0.0092, -0.0029, 0.1769] tilt +0.0 peak 1.2 N r +0.190
+[19:46:15] plan 21_ins09: T=0.7s check ok=True tip>0.156 vmax=3.0deg/s lin=0.018m/s
+[19:46:16] exec 21_ins09: {'segment': 'ins09', 'ok': True, 'reason': '', 'T_plan': 0.71, 'max_dev_deg': 0.04, 'max_dev_mm':
+... (7945 more characters)
+```
+
+**19:48:00 execute agent:** Episode 14 exposes a flaw in my start-offset logic. The drawer has been entering about 3 mm past wherever the first descent touched: start +3 gave entry +6, and start +6.2 gave entry +9.2. Those entries come after a rim contact, so they aren't the opening's location, and feeding them back has pushed the start to +9.8 mm and would keep ratcheting it upward. I'm checking this against the logged episodes and limiting the start offset to clean first-descent entries.
+
+**19:48:26 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && git log --oneline | head -1; git status --short | head -3; python3 - <<'EOF'
+import json, os
+print('att  ep  arm      start_a  rim touches a (mm)        entry_a  touches_before_entry')
+for n in (30,32,34,36,40,42,44,46,48,50,52):
+    d=json.load(open(f'attempts/attempt_{n}/summary.json')); ev=json.load(open('rl/transitions/'+os.path.basename(d['transitions_file']).replace('.npz','.json')))['events']
+    rim=[round(e[5][0]*1000,1) for e in ev if e[1]=='force' and e[4]>0.09]; ins=[e for e in ev if e[4]<=0.091]
+    k=ev.index(ins[0]); nb=sum(1 for e in ev[:k+1] if e[1]=='force' and e[4]>0.09)
+    print(n, d.get('episode'), d.get('arm','-'), round((d.get('touch_centre') or [0.003])[0]*1000,1), rim[:6], round
+... (6162 more characters)
+```
+
+<details><summary>19:48:32 result</summary>
+
+```text
+35b9f57 episode 11 reflection: start offset from the densest cluster of entries (scripted r3)
+att  ep  arm      start_a  rim touches a (mm)        entry_a  touches_before_entry
+30 -1 - 3.0 [] 3.0 0
+32 5 - 3.0 [] 2.9 0
+34 6 - 3.0 [] 2.9 0
+36 7 - 3.0 [2.8, 6.5] 9.8 2
+40 9 learned 3.0 [] 3.0 0
+42 -1 learned_eval 3.0 [3.0, 6.8] 9.8 2
+44 -1 learned_eval 3.0 [2.9, 6.0, 9.0, 12.0, 15.0, 0.1] 15.9 17
+46 11 scripted 3.0 [3.0] 6.0 1
+48 12 learned 2.9 [2.7] 6.2 1
+50 13 learned 2.9 [3.0] 6.4 1
+52 14 scripted 6.2 [6.2] 9.2 1
+real v3 file on disk -> start [2.92, -3.09, 0.0]
+hole a 9.2 seated | drawer entered at a 8.9 mm, b -3.1 mm, yaw 0.00 deg after 2 rim touches; start offset unchanged | entry {'c': [0.0089, -0.0031, 0.0044], 'rim_touches': 2} | start after [2.92, -3.09, 0.0]
+hole a 3.0 seated | drawer entered at a 2.9 mm, b -3.1 mm, yaw 0.00 deg after 0 rim touches; start now [2.92, -3.09, 0.0] | entry {'c': [0.0029, -0.0031, 0.0044], 'rim_touches': 0} | start after [2.92, -3.09, 0.0]
+hole a 6.0 seated | drawer entered at a 5.9 mm, b -3.1 mm, yaw 0.00 deg after 1 rim touches; start offset unchanged | entry {'c': [0.0059, -0.0031, 0.0044], 'rim_touches': 1} | start after [2.92, -3.09, 0.0]
+tra
+... (219 more characters)
+```
+</details>
+
+**19:48:39 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && python3 - <<'EOF'
+p='notes/design.md'; t=open(p).read()
+old='''The entry is ~3 mm past wherever the first touch happened: start +3 -> entry +6 (attempts
+46, 48, 50), start +6.2 -> entry +9.2 (attempt 52).'''
+new='''The entry comes one or two 3 mm search steps past the first touch: start +3 -> entry +6 (attempts
+46, 48, 50), start +3 -> +9.8 after two touches (36, 42), start +6.2 -> entry +9.2 (attempt 52).'''
+assert t.count(old)==1; open(p,'w').write(t.replace(old,new))
+EOF
+git add -A && git commit -q -m "episode 14 reflection: start offset only from first-descent entries (scripted r4), the search was ratcheting it upward
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && git log --oneline | he
+... (35 more characters)
+```
+
+<details><summary>19:48:39 result</summary>
+
+```text
+48fa784 episode 14 reflection: start offset only from first-descent entries (scripted r4), the search was ratcheting it upward
+```
+</details>
+
+**19:48:45 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Episode 14 reviewed: success; stopped the start offset ratcheting upward (commit 48fa784, scripted r4)",
+ "report": "NOT YET VERIFIED: commit 48fa784 has been tested offline only, on the logged entries and a fake contact model. The next episode is its first real use. Why the drawer enters only after a rim touch is still unexplained, and there is still no evaluation round.\n\nEpisode 14 (attempt 52, commit 35b9f57, scripted arm) succeeded by both independent checks. Top height is 97.1 mm, flush share 1.0, return 14.05. The first descent at the new start of +6.2 mm stopped on the rim, and the drawer entered at +9.2 mm.\n\nProblem found: my start-offset logic was ratcheting upward. Entries come one or two 3 mm search steps 
+... (1068 more characters)
+```
+
+<details><summary>19:48:45 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

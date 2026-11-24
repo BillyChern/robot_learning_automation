@@ -212,3 +212,11 @@ So pinch height is not the (whole) cause. The side-depth reading of the top was 
 with a larger offset (0 of 5 first-try entries at >= 92.7 mm, 4 of 4 at <= 91.7 mm), but why is unknown.
 Changed (scripted r3): the start offset is the centre of the densest cluster of past entries. The median of an even number of
 entries had just become +4.5 mm, between the clusters at +3 and +6, where the drawer never entered.
+
+## Reflection on episode 14 (attempt 52, scripted r3)
+Success, but the start offset was running away. The entry comes one or two 3 mm search steps past the first touch: start +3 -> entry +6 (attempts
+46, 48, 50), start +3 -> +9.8 after two touches (36, 42), start +6.2 -> entry +9.2 (attempt 52). So entries after a rim touch do not locate the opening, and feeding them back moved
+the start to +9.8 mm and would keep moving it. Possible mechanism, not measured: the pads are ~22 mm wide along a and the tab ~12 mm, so
+a rim contact may shift or level the drawer in the grip, after which a range of tool offsets enters.
+Changed (scripted r4, both arms): only entries on the first descent (no rim touch before) update the start offset. The stored file is
+reset to the four first-descent entries (attempts 30, 32, 34, 40), so the start returns to about +2.9, -3.1 mm.

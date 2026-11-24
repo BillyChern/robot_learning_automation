@@ -70,7 +70,7 @@ class TouchSearch:
         return None
 
 
-SEED_ENTRIES = [[0.003, -0.003, 0.0], [0.0029, -0.0032, -0.0134], [0.0029, -0.0031, 0.0088], [0.0098, -0.0024, 0.4175]]   # entries of attempts 30, 32, 34, 36
+SEED_ENTRIES = [[0.003, -0.003, 0.0], [0.0029, -0.0032, -0.0134], [0.0029, -0.0031, 0.0088], [0.00295, -0.00308, 0.0562]]   # first-descent entries: attempts 30, 32, 34, 40
 KEEP = 9                          # entries in the median
 
 
@@ -78,7 +78,7 @@ def _entries(rl_dir):
     try:
         with open(os.path.join(rl_dir, "touch_centre.json")) as f:
             d = json.load(f)
-        e = np.array(d["entries"], float) if d.get("v") == 3 else None
+        e = np.array(d["entries"], float) if d.get("v") == 4 else None
         if e is not None and e.ndim == 2 and e.shape[1] == 3 and len(e) and np.all(np.abs(e) <= [0.03, 0.03, 6.0]):
             return e
     except (OSError, ValueError, KeyError, TypeError):
@@ -101,11 +101,12 @@ def load_centre(rl_dir):
 
 
 def save_centre(rl_dir, entry, info):
-    """Add the offset at which the drawer just entered the opening; returns the new centre."""
+    """Add an offset at which the drawer entered on its FIRST descent; returns the new centre. Entries after a rim touch must not be
+    added: they sit ~3 mm past wherever the search started (start +3 -> entry +6, start +6.2 -> +9.2), so they ratchet the start."""
     p = os.path.join(rl_dir, "touch_centre.json")
     e = np.vstack([_entries(rl_dir), np.asarray(entry, float)])[-KEEP:]
     new = densest(e)
     with open(p + ".tmp", "w") as f:
-        json.dump(dict(v=3, centre=np.round(new, 5).tolist(), entries=np.round(e, 5).tolist(), **info), f)
+        json.dump(dict(v=4, centre=np.round(new, 5).tolist(), entries=np.round(e, 5).tolist(), **info), f)
     os.replace(p + ".tmp", p)
     return new

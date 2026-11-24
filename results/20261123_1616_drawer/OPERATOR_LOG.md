@@ -19,3 +19,4 @@ on the hand-inserted drawer (flush 1.0). Agents fresh; previous run's programs i
 - 2026-11-23 19:04: FIRST COUNTED SUCCESS: RL episode 7, perception True and VLM True (fixed check).
 - 2026-11-23 19:10: user approved a scripted-baseline arm: every 3rd training episode (ep % 3 == 2) runs the same program with the learned actor off (zero residual, no noise), tagged arm=scripted; plots split learned vs scripted.
 - 2026-11-23 19:45: resets 22 and 25 rejected ('drawer: not found'): drawer and cabinet merged into one side-camera blob (extent 0.43 x 0.18). Reset target moved 2 cm toward the robot (x 0.26-0.28; still >15 cm from the table edges); safe restart requested.
+- 2026-11-23 19:49: restart done (new reset target). Scripted part frozen at r4 (48fa784) after 4 revisions; RL agent told to change it only to fix an observed failure.
