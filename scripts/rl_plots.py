@@ -47,6 +47,14 @@ def style(ax, title, xlabel, ylabel):
         ax.spines[s].set_visible(False)
 
 
+def arm_of(d, ep):
+    """'scripted' or 'learned' from the episode's summary (the program writes arm=...); 'learned' when missing."""
+    try:
+        return json.loads((d / "episodes" / f"ep_{int(ep):06d}" / "summary.json").read_text()).get("arm") or "learned"
+    except (OSError, ValueError, TypeError):
+        return "learned"
+
+
 def draw(run):
     d = ROOT / "runs" / run
     out = d / "plots"
@@ -82,6 +90,13 @@ def draw(run):
         ax2.step(n, np.cumsum(ok), where="post", color="#2e9e4f", lw=1.6, label="cumulative successes")
         ax2.set_ylabel("cumulative successes")
         ax2.spines["top"].set_visible(False)
+    arms = [arm_of(d, r.get("episode")) for r in tr]
+    if "scripted" in arms:
+        for arm, col in (("learned", "#1f5fa8"), ("scripted", "#e67e22")):
+            idx = [i for i, a in enumerate(arms) if a.startswith(arm)]
+            ok = np.array([tr[i].get("final") == "success" for i in idx], float)
+            ax.plot(np.array(idx) + 1, np.cumsum(ok) / np.arange(1, len(ok) + 1) * 100, "o-", color=col, ms=3, lw=1.6,
+                    label=f"{arm}: running success ({int(ok.sum())}/{len(ok)})")
     if evals:
         ax.plot([r["after"] for r in evals], [100 * float(r.get("rate") or 0) for r in evals], "s", color="#c0392b",
                 ms=9, label="fixed evaluation")
@@ -114,7 +129,10 @@ def draw(run):
     (out / "summary.json").write_text(json.dumps(dict(
         t=time.strftime("%F %T"), train_episodes=len(tr), successes=sum(r.get("final") == "success" for r in tr),
         evals=[dict(after=r["after"], rate=r.get("rate")) for r in evals], resets=len(resets),
-        resets_ok=sum(bool(e.get("ok")) for e in resets)), indent=1))
+        resets_ok=sum(bool(e.get("ok")) for e in resets),
+        arms={a: dict(n=sum(1 for r in tr if arm_of(d, r.get("episode")) == a),
+                      successes=sum(1 for r in tr if arm_of(d, r.get("episode")) == a and r.get("final") == "success"))
+              for a in ("learned", "scripted")}), indent=1))
 
 
 def main():
