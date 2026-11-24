@@ -52,8 +52,8 @@ perception:                        # size priors (m)
   cabinet: {height: [0.08, 0.12], extent: [0.12, 0.30]}
 rl:
 
-  eval_every: 30                   # training episodes between fixed evaluations (20 -> 30 at 00:05: time-limited, skip the eval of a known-broken policy)
-  eval_episodes: 5                 # deterministic-policy episodes per evaluation (10 -> 5 at 00:05: time-limited)
+  eval_every: 50                   # 2026-11-23 20:25 (user: extend): one fixed evaluation after 50 training episodes (>= 10 scripted + 5 sim-policy episodes since the 19:49 freeze)
+  eval_episodes: 10                # 2026-11-23 20:25 (user): 10 deterministic episodes (10/10 -> >= 72% at 95% confidence)
   target_success_rate: 0.7         # over one evaluation
   max_episodes: 600                # training episodes, then stop and report
   reflect_every_episode: true      # RL agent reflects on each episode while the next reset runs (2026-11-20, time-limited)

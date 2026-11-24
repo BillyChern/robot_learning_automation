@@ -92,8 +92,10 @@ def draw(run):
         ax2.spines["top"].set_visible(False)
     arms = [arm_of(d, r.get("episode")) for r in tr]
     if "scripted" in arms:
-        for arm, col in (("learned", "#1f5fa8"), ("scripted", "#e67e22")):
+        for arm, col in (("learned", "#1f5fa8"), ("scripted", "#e67e22"), ("sim", "#8e44ad")):
             idx = [i for i, a in enumerate(arms) if a.startswith(arm)]
+            if not idx:
+                continue
             ok = np.array([tr[i].get("final") == "success" for i in idx], float)
             ax.plot(np.array(idx) + 1, np.cumsum(ok) / np.arange(1, len(ok) + 1) * 100, "o-", color=col, ms=3, lw=1.6,
                     label=f"{arm}: running success ({int(ok.sum())}/{len(ok)})")
@@ -132,7 +134,7 @@ def draw(run):
         resets_ok=sum(bool(e.get("ok")) for e in resets),
         arms={a: dict(n=sum(1 for r in tr if arm_of(d, r.get("episode")) == a),
                       successes=sum(1 for r in tr if arm_of(d, r.get("episode")) == a and r.get("final") == "success"))
-              for a in ("learned", "scripted")}), indent=1))
+              for a in ("learned", "scripted", "sim")}), indent=1))
 
 
 def main():
