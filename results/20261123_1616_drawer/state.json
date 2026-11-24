@@ -3,7 +3,7 @@
  "task": "drawer_lying",
  "condition": "text",
  "created": "2026-11-23T16:16:37",
- "phase": "rl_train",
+ "phase": "done",
  "counters": {
   "episodes": {
    "total": 0,
@@ -18,14 +18,14 @@
    "unsure": 0
   },
   "resets": {
-   "total": 73,
-   "ok": 63,
+   "total": 77,
+   "ok": 67,
    "fail": 10,
    "manual": 0
   },
   "consecutive_failures": {
    "execute": 0,
-   "reset": 2
+   "reset": 0
   },
   "rl": {
    "total": 50,
@@ -34,35 +34,35 @@
    "unsure": 3
   },
   "rl_eval": {
-   "total": 5,
-   "success": 3,
-   "fail": 2,
+   "total": 10,
+   "success": 7,
+   "fail": 3,
    "unsure": 0
   }
  },
  "agents": {
   "reset": {
-   "status": "repairing",
+   "status": "done",
    "session_id": "254eca5c-59b6-4a8f-b974-f31948fb090f",
    "model": "claude-opus-5-5",
    "started": "2026-11-23T16:22:41",
    "ended": "2026-11-23T17:06:56",
-   "attempts": 36,
-   "robot_attempts": 17,
-   "turns": 236,
-   "cost_usd": 27.78475319999999,
-   "input_tokens": 354,
-   "output_tokens": 310319,
-   "cache_read": 52780746,
-   "cache_creation": 1377601,
-   "duration_s": 5827.158,
+   "attempts": 37,
+   "robot_attempts": 18,
+   "turns": 238,
+   "cost_usd": 27.99228639999999,
+   "input_tokens": 358,
+   "output_tokens": 311726,
+   "cache_read": 53429232,
+   "cache_creation": 1383811,
+   "duration_s": 5842.22,
    "first_success_attempt": 2,
    "first_success_after_attempts": 6,
    "time_to_first_success_s": 874.9,
    "repairs": 2,
    "rounds": 0,
    "program_command": "/home/r2r/robot_learning_final_pj/.venv/bin/python programs/reset.py",
-   "last_report": "NOT VERIFIED: the compartment fix rests on one real success (attempt 36), from a flush drawer. A drawer pressed in harder could still slip; the program then retries once and stops cleanly. Drawers lying on a side, upside down, or tilted with the pull hidden are still not handled and stop the run with a message. Carrying a drawer already held at start, escaping from a low start pose, lowering back after a lift force stop, and the branch that reacts to a detected slip have never run on the arm.\n\nCAUSE OF ATTEMPTS 33 AND 34: the pinch height for a drawer in a compartment came from side depth, which reads about 3.5 mm high there. The pads caught the top of the knob (reading 87.5-88.4) and slid off during the lift, so the arm carried nothing to the table. The slip went unnoticed because the gripper reading does not change after a slip until the gripper is commanded again.\n\nFIXES: a flush drawer is now pinched at a fixed tool height of 0.1455 m. The gripper is re-closed after the first 2.5 cm of lift, after the full lift and after the carry, so a lost drawer is caught before placing. The final measurement now uses up to 6 frames, because a single depth artifact caused false failures in attempts 21 and 30 even though the drawer was correctly placed.\n\nRESULTS ON THE ARM: attempt 36 (commit 47aa213), same drawer state that failed twice: pinch reading 84.9, held through lift and carry, placed 0.8 cm from the target with the outline 10.3 cm from the nearest table edge, pull seen from above, claim success, layout check ok, 154 s. The 0.8 cm is mostly the deliberate inward shift for the edge rule. Attempt 37 (commit 1df962f, final code): drawer already in place, left untouched after a wrist check, 0.8 cm error, claim success, layout check ok, 49 s. Commit 1df962f changed only the measurement after attempt 36.\n\nREMAINING RISK: the orchestrator's layout measurement missed a motionless drawer in 6 of 20 tries at [0.29, -0.02] (attempt 15), so false reset failures can still occur. A repeat now costs about 50 s because the drawer is left in place. Fixing it needs a change to the orchestrator's check, which I cannot edit. Yaw variation stays small, mostly -25 to -30 deg, because of the 10 cm edge rule.",
+   "last_report": "NOT VERIFIED: the lower table pinch that fixed the tilt has one hardware success (attempt 110). The righting of a lying drawer worked once (attempt 105) and the slide away from the robot base worked once (attempt 101). Neither has been repeated on the final code. Drawers lying upside down, on a side wall, or tilted are still not handled and stop cleanly.\n\nFINAL RESULT, attempt 110 (commit 7652d2a): the drawer started standing against the cabinet's near end. Pinch reading 83.6, unchanged through the lift and the carry. The table was touched exactly when expected (0 mm early). Placed 1.8 cm from [0.276, -0.024], mostly the deliberate inward shift for the 10 cm edge rule, with the outline 10.1 cm from the nearest edge. Pull seen from above, claim success, the orchestrator's layout check passed, 152 s.\n\nCAUSES AND FIXES:\n1. Attempts 94 and 95: a tilted landing put the drawer next to the robot base, where it could not be picked. The program now pinches there with the tool tilted 20\u00b0 and slides the drawer 6 cm in +x by its knob, with a 20 N stop. Looks near the base use the far-side wrist orientation, and the pinch planner tries several arm configurations.\n2. Attempt 101: a weak grip (91.4) was accepted and the drawer was let go in the air, so it fell over. A grip now counts only up to 89 and only if it doesn't loosen during the lift, and the program never lets go without touching the table.\n3. A drawer lying open side up is now righted. The program pinches its front wall 1.8 cm deep beside the knob, lifts it, turns it front-up in the air (about the vertical first if needed), sets it on its back wall and backs out. The whole move is planned and checked before it touches the drawer.\n4. Table picks hung the drawer tilted in attempts 92-109, touching 12 mm early and landing 2-5 cm off. The pads sat 6 mm above the drawer face, above the knob's widest part. They now sit 3 mm above it, and attempt 110 landed level on the same drawer state that had tilted five times.\n5. In attempt 109 the knob search took the cabinet's edge for the knob. It now searches 5 cm around the drawer first.\n6. A body grasp across the drawer (attempts 108 and 109) is disabled. The open side gives it only the 1 cm front-wall edge to press on; the drawer slid 2 cm in one run and the grasp missed in the next.\n\nREMAINING RISKS: at the targets nearest the table edge, such as [0.276, -0.024], the edge rule uses 1.8 cm of the 2 cm tolerance, so a few millimetres of placement error fails the layout check. A reset can now take up to 9 minutes when it needs several correction rounds. The orchestrator's own layout measurement sometimes merges the drawer with nearby blobs, which can still cause false failures.",
    "reflections": 2
   },
   "execute": {
@@ -150,22 +150,25 @@
    ]
   }
  },
- "next_episode": 55,
- "next_reset": 73,
+ "next_episode": 60,
+ "next_reset": 77,
  "vlm": {
-  "calls": 55,
-  "cost_usd": 3.9725546000000005
+  "calls": 60,
+  "cost_usd": 4.301820800000001
  },
  "operator_notes": [],
  "rl": {
   "episodes": 50,
-  "evals": [],
+  "evals": [
+   {
+    "after": 50,
+    "success": 7,
+    "n": 10,
+    "rate": 0.7,
+    "t": "2026-11-24T02:42:51"
+   }
+  ],
   "since_review": 5,
-  "learner_fails": 0,
-  "eval_cur": {
-   "after": 50,
-   "done": 5,
-   "ok": 3
-  }
+  "learner_fails": 0
  }
 }
