@@ -18,9 +18,9 @@
    "unsure": 0
   },
   "resets": {
-   "total": 46,
-   "ok": 40,
-   "fail": 6,
+   "total": 51,
+   "ok": 44,
+   "fail": 7,
    "manual": 0
   },
   "consecutive_failures": {
@@ -28,8 +28,8 @@
    "reset": 0
   },
   "rl": {
-   "total": 32,
-   "success": 24,
+   "total": 36,
+   "success": 28,
    "fail": 6,
    "unsure": 2
   }
@@ -67,22 +67,22 @@
    "ended": "2026-11-23T17:32:18",
    "attempts": 27,
    "robot_attempts": 9,
-   "turns": 331,
-   "cost_usd": 36.12799800000001,
-   "input_tokens": 466,
-   "output_tokens": 455574,
-   "cache_read": 88571821,
-   "cache_creation": 1116113,
-   "duration_s": 4980.426000000001,
+   "turns": 340,
+   "cost_usd": 38.22914840000001,
+   "input_tokens": 484,
+   "output_tokens": 459542,
+   "cache_read": 89391493,
+   "cache_creation": 1348336,
+   "duration_s": 5025.684000000001,
    "first_success_attempt": 8,
    "first_success_after_attempts": 20,
    "time_to_first_success_s": 7870.1,
    "repairs": 0,
    "rounds": 0,
    "program_command": "RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
-   "last_report": "Not verified: the smaller noise has not run on the robot, and the actor's deterministic first descent has never been executed on it. A free first descent at a +3 mm may not enter, because the scripted arm only enters there after a rim touch, which could shift the drawer in the grip. I also did not find rl_curve.jsonl in my workspace, so this review uses the learner log and the stored episodes.\n\nNo episode failed or was unsure in this window, so there was no failure to fix. Fixed return over episodes 17-29: learned 6.28 mean over 8 episodes (6.10, 7.25, 6.10, 5.05, 6.15, 6.15, 7.35, 6.10), scripted 6.10 over 5 episodes. The gap is too small to call the learned arm better. Only 2 of those learned episodes (19 and 27) entered without a rim touch.\n\nWhy I changed it: since hindsight, the actor's mean first-descent offset on the stored observations is a +2.98, b +0.21 mm, which matches where the touch search found entries. The training noise was large enough to hide this. In episode 28 it turned mean actions of +0.80, +0.82, +0.47 into +0.31, +0.26, -0.83, and the drawer touched the rim at a +0.8 mm.\n\nChange (commit 280935a, learned arm only): first-descent noise std goes from 0.8, 0.8, 0.3 to 0.3, 0.3, 0.15 for a, b and yaw, so training episodes test the mean before the deterministic evaluation. The reason is in notes/design.md. Scripted and sim arms are unchanged.\n\nChecks: the exploration test gives a first-touch residual sd of 0.55 mm on a and 0.59 mm on b, with 0 residual in the scripted arm. The arm test and learner --check pass. Dry run attempt 93 on 280935a exited 0 with all plans passing the model check; its success claim means nothing because no drawer was moved.",
-   "reflections": 34,
-   "reviews": 6
+   "last_report": "Not verified: the actor's deterministic first descent, which the final evaluation will use, has never run on the robot. Its entry rate is unknown. I also did not find rl_curve.jsonl in my workspace, so I used the learner log and the stored episodes.\n\nNo episode failed or was unsure, so there was no failure to fix. Since episode 17, the learned arm averages 6.36 fixed return over 10 episodes, with 3 first-descent entries (19, 27, 33). The scripted arm scored 6.10 in all 6 of its episodes and touched the rim every time. The sim arm has 2 episodes (8.46, 8.22) with no force stops, which is not like for like because they skip the floor stop.\n\nThe learner is stable at version 5: critic Q 2.2 to 2.6, critic loss 0.56 to 0.77, 4520 updates. Episode 33 joined the replay, which now has 12 transitions from 3 real entries. The current actor's deterministic first-descent offset is a +2.35, b +1.35 mm on tab side -1 and a +0.86, b +1.01 mm on side +1. That is consistent with the three real entries (a +0.4 to +4.0, b +0.8 to +2.4 mm), but they are too few to say where the entry region ends.\n\nNo change: one learned episode with v5 is not enough evidence to retune, and changing again now would confound the remaining comparison. Nothing committed this turn, last commit 58a9b60.",
+   "reflections": 37,
+   "reviews": 7
   }
  },
  "datasets": {},
@@ -124,21 +124,25 @@
     [
      "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_65",
      "layout check failed: drawer: 2.7 cm off"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_70",
+     "layout check failed: drawer: not found"
     ]
    ]
   }
  },
- "next_episode": 32,
- "next_reset": 46,
+ "next_episode": 36,
+ "next_reset": 51,
  "vlm": {
-  "calls": 32,
-  "cost_usd": 2.4843172
+  "calls": 36,
+  "cost_usd": 2.7674624000000003
  },
  "operator_notes": [],
  "rl": {
-  "episodes": 32,
+  "episodes": 35,
   "evals": [],
-  "since_review": 2,
+  "since_review": 0,
   "learner_fails": 0
  }
 }

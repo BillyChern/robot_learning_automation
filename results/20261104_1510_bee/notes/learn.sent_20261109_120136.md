@@ -17,7 +17,7 @@ Operator (11:43): full_v6 stands at 2/18 (3/18 with ep 423, which is a success) 
 under different conditions: half of full_v6's rollouts were in the dark (brightness 94 vs 137), it is served from the
 5090 (inference about 260 ms vs 135 ms locally), and the rollout now uses eased chunks. Successes now release at
 103-115 s of the roughly 128 s of policy time, and ep 434 timed out over the bowl. Before choosing the base of the next
-full fine-tune, run an A/B check while the 4090 is busy (another user's jobs hold about 17.5 GB, so no training can start
+full fine-tune, run an A/B check while the 4090 is busy (aaron's jobs hold about 17.5 GB, so no training can start
 there now): when eval 14 ends, evaluate full_v5/30000 again with the current programs/rollout_look.py, 10 rollouts,
 DAgger on, served the same way as full_v6. If full_v5 still clearly beats full_v6, start the next run (full_v7) from
 full_v5 and look at what bee_v6 added: the eval-12 corrections came from full_v1's failure states, and 60k total
