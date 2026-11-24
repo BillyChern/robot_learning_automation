@@ -18,9 +18,9 @@
    "unsure": 0
   },
   "resets": {
-   "total": 21,
-   "ok": 18,
-   "fail": 3,
+   "total": 25,
+   "ok": 21,
+   "fail": 4,
    "manual": 0
   },
   "consecutive_failures": {
@@ -28,8 +28,8 @@
    "reset": 0
   },
   "rl": {
-   "total": 11,
-   "success": 3,
+   "total": 14,
+   "success": 6,
    "fail": 6,
    "unsure": 2
   }
@@ -66,13 +66,13 @@
    "ended": "2026-11-23T17:32:18",
    "attempts": 20,
    "robot_attempts": 8,
-   "turns": 190,
-   "cost_usd": 18.3065436,
-   "input_tokens": 236,
-   "output_tokens": 286618,
-   "cache_read": 37444238,
-   "cache_creation": 635549,
-   "duration_s": 3016.572,
+   "turns": 202,
+   "cost_usd": 20.365243000000003,
+   "input_tokens": 254,
+   "output_tokens": 307154,
+   "cache_read": 43552935,
+   "cache_creation": 688820,
+   "duration_s": 3235.8740000000003,
    "first_success_attempt": 8,
    "first_success_after_attempts": 20,
    "time_to_first_success_s": 7870.1,
@@ -80,7 +80,7 @@
    "rounds": 0,
    "program_command": "RLPJ_EPISODE=-1 RLPJ_RL_MODE=eval /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
    "last_report": "NOT YET VERIFIED: the fix for episode 8 has not been exercised on the robot. Its cause was a blurred wrist frame that broke the thin label frame in the detector's mask, and the fix retries on a smoothed copy and on fresh frames. Attempts 40 and 42 both detected the pull on the first try, so the retry never ran. No evaluation round has run yet, and the scripted baseline arm first runs at episode 11.\n\nReal test (attempt 42, commit a0c9a76, deterministic policy): success, and the independent geometric check agrees. Top height is 96.7 mm, flush share 1.0, cabinet shift 0.26 px, return 13.70. The drawer entered after 3 touches, the last of which was the floor contact. `learner.py --check` passes on the real data.\n\nNo program change this turn, which keeps the scripted and learned arms comparable. Only the notes changed (commit 3676c98).\n\nFinding from the curve so far: the entry window looks very narrow.\n- First-try entries are all at a 2.9-3.0 mm, b -3.0 to -3.2 mm, yaw within 0.06 deg (attempts 30, 32, 34, 40).\n- First touches 0.3-1.0 mm away missed (attempts 28, 36, 42). In attempts 36 and 42 the search then entered at a +9.8 mm, so that value is probably a second way in rather than a different grasp. This rests on 6 entries and is a hypothesis.\n- In attempt 42 the learned policy's own residual moved the first descent off the window by +0.8 and +0.6 mm. So far the learned residual costs touches rather than helping.\n\nDecision for the operator: if the scripted arm beats the learned arm from episode 11 on, I recommend shrinking the residual on the first descent. I left it unchanged so the comparison stays clean.",
-   "reflections": 10,
+   "reflections": 13,
    "reviews": 2
   }
  },
@@ -111,21 +111,25 @@
     [
      "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_34",
      "layout check failed: drawer: not found"
+    ],
+    [
+     "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/reset/attempts/attempt_45",
+     "layout check failed: drawer: not found"
     ]
    ]
   }
  },
- "next_episode": 11,
- "next_reset": 21,
+ "next_episode": 14,
+ "next_reset": 25,
  "vlm": {
-  "calls": 11,
-  "cost_usd": 0.8467088
+  "calls": 14,
+  "cost_usd": 1.0794736
  },
  "operator_notes": [],
  "rl": {
-  "episodes": 10,
+  "episodes": 14,
   "evals": [],
-  "since_review": 0,
+  "since_review": 4,
   "learner_fails": 0
  }
 }

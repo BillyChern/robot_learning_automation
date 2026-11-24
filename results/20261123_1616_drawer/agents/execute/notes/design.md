@@ -181,3 +181,34 @@ Fix made alongside: at search points the deterministic policy's residual was dro
 policy there. It now applies in eval too.
 Episode 8 failed at perception: a blurred wrist frame broke the thin label frame in the mask ("metal too small"). The program now
 tries the frame, a smoothed copy, then fresh frames. On a 640 px copy of the failed frame the detector finds the tab (s -21.3 mm).
+
+## Tuning after 10 episodes (attempt 42, commit a0c9a76)
+No program change: real test succeeded (independent geometric check True, top 96.7 mm, 3 touches). The blurred-frame retry was not
+needed (1 try), so the episode 8 fix is still unexercised on the robot.
+Pattern in the entry offsets: first-try entries are all at a 2.9-3.0, b -3.0..-3.2 mm, yaw within 0.06 deg (attempts 30, 32, 34, 40).
+First touches 0.3-1.0 mm away missed (attempt 28: +2.9, -2.8; attempt 36: +3.7, -2.1; attempt 42: +3.8, -2.5), and the last two then
+entered at +9.8. So the +9.8 entry is probably not a different grasp but a second way in after the narrow window at +3 is missed.
+Hypothesis only (6 entries). In attempt 42 the deterministic policy's residual itself moved the first descent off the window
+(+0.8, +0.6 mm), so the learned residual currently costs touches. Left as it is to keep the scripted/learned comparison clean;
+the scripted arm (first at episode 11) will show it.
+
+## Reflection on episode 10 (attempt 44), two causes found
+1. Run identity (my mistake). The orchestrator stores the last verified command as the episode command, and my test command carried
+   `RLPJ_EPISODE=-1 RLPJ_RL_MODE=eval`, which overrides its environment. Episode 10 therefore ran as an eval test: no exploration, no
+   arm schedule, no verdict link. `run_identity()` now reads the run's name from the orchestrator's attempt.json. Test commands must
+   not set these variables again.
+2. Pinch height explains the entry offsets. The grasp height follows the side-depth reading of the drawer top (91.0-94.5 mm):
+   Episodes that tried the +3 mm offset: face <= 91.7 mm entered on the first descent, 4 of 4 (attempts 30, 32, 34, 40);
+   face >= 92.7 mm stopped on the rim there, 0 of 4 (attempts 28, 36, 42, 44), and 36, 42, 44 entered only at +9.8 / +15.9 mm.
+   Earlier episodes tried other offsets and say nothing about this.
+   Likely mechanism, not measured: a higher pinch holds less of the tab, so the drawer hangs differently (attempt 44: 94.4 mm, tilt
+   reading -6.8 deg, 17 touches). This is a correlation over 8 episodes, not an experiment. Changed: the pinch uses a fixed top height of 91.2 mm (scripted r2,
+   both arms), unless the measurement is more than 8 mm away.
+
+## Reflection on episode 11 (attempt 46, first scripted-arm episode)
+Success by both checks, and the run identity fix works (train, 11, scripted). The fixed pinch height did not remove the offset jump:
+at the same pinch (h_g 139.2 mm, reading 84.1) the first descent at +3.0 mm stopped on the rim and the drawer entered at +6.0 mm.
+So pinch height is not the (whole) cause. The side-depth reading of the top was again high (92.9 mm), so that reading still goes
+with a larger offset (0 of 5 first-try entries at >= 92.7 mm, 4 of 4 at <= 91.7 mm), but why is unknown.
+Changed (scripted r3): the start offset is the centre of the densest cluster of past entries. The median of an even number of
+entries had just become +4.5 mm, between the clusters at +3 and +6, where the drawer never entered.

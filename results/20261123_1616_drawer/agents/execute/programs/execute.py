@@ -2,7 +2,9 @@
 learned alignment and descent (bounded residuals on a straight-down prior); release, rise, verification with the
 orchestrator's geometric check. Env: RLPJ_RL_DIR, RLPJ_RL_MODE (train|eval), RLPJ_EPISODE (-1 = test run)."""
 import contextlib
+import json
 import os
+import re
 import sys
 import time
 
@@ -35,6 +37,7 @@ SEED_DOWN = np.array([0, 25, -110, 0, -45, 90.0])
 CARRY = dict(name="carry", jv=12.0, lin=0.06)
 LOOK_H = 0.30                                  # tool height of the look-downs above the table
 F_GRASP, F_INSERT = 20.0, 25.0                 # N: operator's low-force limits for the approach and the descent
+FACE_H, FACE_TOL = 0.0912, 0.008                # m: drawer top on the table (median of the first-try entries), largest believable error
 TIP_CLEAR = 0.004                              # fingertips above the drawer's top face when closed on the tab
 TIP_CLOSED = 0.027 + 0.020 * 0.85              # tool to fingertip with the jaws on the ~12 mm tab
 GRIP_PRE = 0.50
@@ -50,7 +53,7 @@ SC_DESC = np.array([0.001, 0.001, 0.5])        # descent steps
 MAX_C = np.array([0.018, 0.018, 4.0])          # bound of the accumulated corrections
 PEAK_SEAT = 12.0                               # N: a force rise this large near the floor means the drawer is seated
 MAX_CONTACTS = 36
-SCRIPTED_REV = "r1 (5b26018 + blurred-frame retry for the pull)"   # bump with every change of the scripted part; both arms use it
+SCRIPTED_REV = "r3 (r2 + start offset = densest cluster of entries)"   # bump with every change of the scripted part; both arms use it
 UNLOAD = 0.004                                 # m lifted after a touch (operator 18:30)
 DROPPED = 0.015                                # m below the rim: this point is the opening, remember it
 OBS_C = np.array([0.008, 0.008, 4.0])          # scale of the residual in the observation
@@ -65,6 +68,27 @@ LEVEL_ITERS = 0                                # measure only: the side-depth ti
 SEARCH_STD = 0.35                              # extra exploration on alignment steps (units of the action), train mode
 
 
+def run_identity():
+    """(mode, episode). The orchestrator's attempt.json names the run ("rl episode 10", "rl_eval episode 12") and wins over the
+    environment: it adopted my test command with its RLPJ_EPISODE=-1 RLPJ_RL_MODE=eval prefix, which overrode its own values."""
+    mode, ep = os.environ.get("RLPJ_RL_MODE", "train"), int(os.environ.get("RLPJ_EPISODE", "-1"))
+    try:
+        with open(os.path.join(os.environ["RLPJ_ATTEMPT_DIR"], "attempt.json")) as f:
+            m = re.fullmatch(r"(rl|rl_eval) episode (\d+)", str(json.load(f).get("what", "")).strip())
+        if m:
+            mode, ep = ("eval" if m.group(1) == "rl_eval" else "train"), int(m.group(2))
+    except (OSError, KeyError, ValueError):
+        pass
+    return mode, ep
+
+
+def grasp_face(measured):
+    """Height of the drawer's top face for the look-down plane and the pinch. Side depth scatters it by 3 mm, and the pinch height
+    follows: at the +3 mm offset, <= 91.7 mm entered on the first descent (4 of 4), >= 92.7 mm did not (0 of 4). Far from the known
+    height the measurement is kept."""
+    return FACE_H if abs(measured - FACE_H) <= FACE_TOL else float(measured)
+
+
 def wrapd(a):
     return (a + 180.0) % 360.0 - 180.0
 
@@ -77,8 +101,7 @@ def rot2(v, deg):
 class Episode:
     def __init__(self, s):
         self.s = s
-        self.mode = os.environ.get("RLPJ_RL_MODE", "train")
-        self.ep = int(os.environ.get("RLPJ_EPISODE", "-1"))
+        self.mode, self.ep = run_identity()
         self.rng = np.random.default_rng(int(time.time() * 1000) % 2 ** 31)
         self.actor = rc.Actor()
         # operator 19:10: every third training episode is the scripted baseline (no learned residual, no exploration), same program
@@ -181,7 +204,7 @@ class Episode:
         # the drawer alone: the full-scene blobs sometimes merge it with the cabinet (attempt 6: one blob 0.446 m long)
         sd = self.side_drawer(tt.detect(P, dict(x=(0.20, 0.375), y=(-0.13, 0.12)), table_z=self.tz))
         s.require(sd is not None, "no drawer-sized blob on the table")
-        face = sd["face"]
+        face = grasp_face(sd["face"])
 
         s.phase("look")
         img, Tm = self.look("opening", np.r_[OPEN_C + OPEN_AIM, self.tz + RIM])
@@ -198,7 +221,7 @@ class Episode:
             d = dict(ok=True, c=sd["c"], yaw=sd["yaw"], size=[0.0723, 0.1131])
             a_s = V.axes(sd["yaw"] - 90.0)[0]
             tab = dict(ok=True, xy=(np.asarray(sd["c"]) - 0.0195 * a_s).tolist(), s=-0.0195, t=0.0, side=-1)
-        s.summary(objects=dict(drawer=dict(c=d.get("c"), yaw=d.get("yaw"), size=d.get("size"), face_h=round(face, 4)),
+        s.summary(objects=dict(drawer=dict(c=d.get("c"), yaw=d.get("yaw"), size=d.get("size"), face_h=round(sd["face"], 4), face_used=round(face, 4)),
                                tab={k: tab.get(k) for k in ("ok", "xy", "s", "t", "side", "why")},
                                opening=dict(c=np.round(c_o, 4).tolist(), yaw=round(yaw_o, 2), measured=bool(op.get("ok")))))
         s.require(bool(d.get("ok")), f"drawer not found in the wrist view: {d}")

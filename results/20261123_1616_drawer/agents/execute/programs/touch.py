@@ -86,17 +86,25 @@ def _entries(rl_dir):
     return np.array(SEED_ENTRIES, float)
 
 
+def densest(entries, radius=0.0015):
+    """Centre of the largest group of entries within radius in a and b (latest group on a tie). The entries form separate clusters
+    (a +3, +6, +9.8 mm), so a mean or an even-count median can land between them, where the drawer never entered (episode 11: +4.5)."""
+    e = np.asarray(entries, float)
+    near = np.all(np.abs(e[:, None, :2] - e[None, :, :2]) < radius, axis=2)
+    k = len(e) - 1 - int(np.argmax(near.sum(1)[::-1]))
+    return np.median(e[near[k]], axis=0)
+
+
 def load_centre(rl_dir):
-    """Median of the offsets (a, b, yaw) at which the drawer entered. Not a mean: episode 7 entered at a +9.8 mm where the others
-    entered at +2.9..3.0, and the running mean of v2 then started the next episode at +5.0, where neither fits."""
-    return np.median(_entries(rl_dir)[-KEEP:], axis=0)
+    """The offset (a, b, yaw) to start from: the densest cluster of the recent entries."""
+    return densest(_entries(rl_dir)[-KEEP:])
 
 
 def save_centre(rl_dir, entry, info):
     """Add the offset at which the drawer just entered the opening; returns the new centre."""
     p = os.path.join(rl_dir, "touch_centre.json")
     e = np.vstack([_entries(rl_dir), np.asarray(entry, float)])[-KEEP:]
-    new = np.median(e, axis=0)
+    new = densest(e)
     with open(p + ".tmp", "w") as f:
         json.dump(dict(v=3, centre=np.round(new, 5).tolist(), entries=np.round(e, 5).tolist(), **info), f)
     os.replace(p + ".tmp", p)
