@@ -33,6 +33,7 @@ STILLS = {"jam_ep0_side.jpg": "agents/execute/attempts/attempt_12/side_inserted.
           "opening_lookdown_attempt30.jpg": "agents/execute/attempts/attempt_30/wrist_opening.jpg",
           "inserted_attempt30_side.jpg": "agents/execute/attempts/attempt_30/side_inserted.jpg"}
 PLOTS = ("return_fixed.png", "return.png", "success.png", "timing.png", "timeline.png")
+BEE_FIGS = {"bee_success_per_model.png": "videos/thread/rollercoaster_chart.png", "bee_what_changed.png": "videos/thread/what_changed.png"}
 ARM = {None: "pre-arm", "learned": "learned", "scripted": "scripted", "sim": "sim", "learned_eval": "learned (eval mode)"}
 
 
@@ -249,9 +250,10 @@ def block_resets(d, ev):
             continue
         r = jload(d / "resets" / f"reset_{int(e['reset']):04d}.json", {})
         big = [b for b in r.get("measured", []) if max(b.get("extent", [0])) > 0.35]
+        reason, claim = (r.get("report") or {}).get("reason", "?"), r.get("claimed_outcome")
         why = ("drawer placed, but merged with the cabinet in the side-camera blobs" if big
-               else "drawer not taken out (program reported fail)" if r.get("claimed_outcome") == "fail"
-               else (r.get("report") or {}).get("reason", "?"))
+               else f"drawer not found; program reported {claim}" if "not found" in reason
+               else f"{reason}; program reported {claim}")
         fails.append([e["reset"], e["t"][11:16], why])
     short = [e["duration"] for e in rs if e["duration"] < 90]
     long_ = [e["duration"] for e in rs if e["duration"] >= 90]
@@ -303,7 +305,7 @@ def block_summary(d, ev, eps):
     gaps = [(_t(b["end"]) - _t(a["end"])) / 60 for a, b in zip(tr, tr[1:])]
     out = [f"- Training episodes: {len(tr)} (indices {tr[0]['ep']}-{tr[-1]['ep']}); counted successes {k}; unsure {len(un)} "
            f"({', '.join(map(str, un)) or 'none'}); failures {sum(e['final'] == 'fail' for e in tr)}.",
-           f"- Drawer seated at the compartment floor (program log): {len(seated)} episodes ({', '.join(map(str, seated))}).",
+           f"- Drawer seated at the compartment floor (program log): {len(seated)} episodes ({ranges(seated)}).",
            f"- First counted success: episode {first['ep']} at {first['end'][11:16]}." if first else "- No counted success yet.",
            f"- Episodes >= 9: {rate(sum(e['final'] == 'success' for e in since9), len(since9))}.",
            f"- Time between consecutive training episodes: median {st.median(gaps):.1f} min, {sum(g > 15 for g in gaps)} gaps "
@@ -311,6 +313,17 @@ def block_summary(d, ev, eps):
                f"{a} {sum(e['final'] == 'success' for e in tr if e['arm'] == a)}/{sum(e['arm'] == a for e in tr)}"
                for a in ARM.values() if any(e["arm"] == a for e in tr)) + "."]
     return "\n".join(x for x in out if x)
+
+
+def ranges(xs):
+    """'5-7, 9-45' for [5, 6, 7, 9, ..., 45]."""
+    out, xs = [], sorted(xs)
+    for x in xs:
+        if out and x == out[-1][1] + 1:
+            out[-1][1] = x
+        else:
+            out.append([x, x])
+    return ", ".join(str(a) if a == b else f"{a}-{b}" for a, b in out)
 
 
 def _t(iso):
@@ -491,6 +504,9 @@ def main():
     cut = "" if until is None else f", episodes up to {until}"
     if "--figures" in args:
         figures(d)
+        for dst, src in BEE_FIGS.items():
+            if (b / src).exists():
+                shutil.copy(b / src, FIG / dst)
     if "--update" in args:
         for rep in REPORTS:
             if not rep.exists():
