@@ -93,6 +93,12 @@ def verdict_for(d, meta):
     return None
 
 
+def any_seated(meta):
+    """The episode's last logged drawer bottom is at the compartment floor (commanded height, m)."""
+    ev = meta.get("events") or []
+    return bool(ev) and float(ev[-1][4]) < 0.03
+
+
 def relabel(d, f, part):
     """Replace my terminal bonus by one from the orchestrator's verdict (user 01:50): success -> +5; a fail that my
     geometry would have paid (likely backwards) or whose reason says backwards -> -5; other fails -> 0. Shaping terms
@@ -111,10 +117,13 @@ def relabel(d, f, part):
     reason = json.dumps(v).lower()
     if final == "success":
         new = 10.0
-    elif final in ("fail", "failure") and (mine > 0 or "backward" in reason or "wrong way" in reason):
-        new = -5.0
+    elif final in ("fail", "failure") and ("backward" in reason or "wrong way" in reason or "upside" in reason):
+        new = -5.0                                 # only a stated wrong orientation is punished: the geometric check also fails
+                                                   # correct insertions ("cabinet moved 3.3 cm" in attempt 30, nothing moved)
     elif final in ("fail", "failure"):
         new = 0.0
+    elif "vlm=true" in reason and any_seated(meta):    # unsure only because the geometric check's cabinet comparison misfires on a
+        new = 10.0                                     # filled compartment (attempts 30, 32): the vision judge says yes, drawer down
     else:
         return dict(final=final, kept=mine)
     part["rew"][-1] += new - mine

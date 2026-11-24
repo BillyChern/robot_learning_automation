@@ -20,7 +20,7 @@ class S:
     def feedback(s): return dict(force=np.zeros(3), gripper=85.0)
 w = dict(c_o=E.OPEN_C.copy(), yaw_o=18.3, face=0.0915, tab=dict(s=0.02, t=0.0)); g = dict(h_g=0.1396); pl = dict(off=np.array([-0.0193, -0.0064]), dyaw=-34.0, yaw_f=-71.7)
 def episode(hole, tol, seed):
-    e = E.Episode.__new__(E.Episode); e.s = S(); e.tz = -0.0154; e.mode = "eval"; e.rng = np.random.default_rng(seed); e.actor = E.rc.Actor("/nonexistent")
+    e = E.Episode.__new__(E.Episode); e.s = S(); e.tz = -0.0154; e.mode = MODE; e.rng = np.random.default_rng(seed); e.actor = E.rc.Actor("/nonexistent")
     e.trans, e.events, e.ret, e.phi, e.R_fix, e.tilt, e.contact_map = [], [], 0.0, 0.0, np.eye(3), {}, []
     e.c0 = np.zeros(3)
     st = dict(b=E.RIM + E.HOVER, c=np.zeros(3))
@@ -34,14 +34,16 @@ def episode(hole, tol, seed):
         c, b = captured["c"], captured["b"]
         fits = np.all(np.abs(c - hole) < tol) and abs(e.phi - TRUE_TILT) < 1.2
         if b < E.RIM + 0.001 and st["b"] >= E.RIM + 0.001 and not fits:
-            st["b"] = E.RIM + 0.001; return "force", dict(reason="contact force (sim)")
+            st["b"] = E.RIM + 0.001 + 0.22 * abs(c[0] - hole[0]) + 0.15 * abs(c[1] - hole[1]); return "force", dict(reason="contact force (sim)")
         st["b"], st["c"] = b, c; return "ok", dict(max_force_n=2.0)
     e.try_step = try_step
-    return e.insert(w, g, pl), len(e.trans)
-tol = np.array([0.0018, 0.0010, 0.8]); TRUE_TILT = 0.0
+    out = e.insert(w, g, pl); LAST.update(events=e.events); return out, len(e.trans)
+tol = np.array([0.0018, 0.0010, 0.8]); TRUE_TILT = 0.0; MODE = "eval"; LAST = {}
 for hole, TRUE_TILT in (((0, 0, 0), 0.0), ((0.003, 0.002, 0), 0.0), ((-0.0055, 0.0035, 0), 0.0), ((0.006, -0.004, 0), 0.0), ((0.0095, 0, 0), 0.0)):
     R = [episode(np.array(hole), tol, i) for i in range(300)]
     print("hole", hole, "true tilt", TRUE_TILT, "seated", round(np.mean([r[0]["end"] == "seated" for r in R]), 3), "ends", {k: sum(r[0]["end"] == k for r in R) for k in ("seated", "jam", "steps")}, "max steps", max(r[1] for r in R))
+MODE = "train"; episode(np.zeros(3), np.array([0.01, 0.01, 3.0]), 3); inside = [ev[5] for ev in LAST["events"] if ev[4] <= E.RIM - E.ENTERED]
+print("train mode: lateral drift after entering the opening (mm):", round(float(np.abs(np.array(inside)[:, :2] - np.array(inside)[0, :2]).max()) * 1000, 3), "over", len(inside), "steps"); MODE = "eval"
 kin = Kin.load(); P = Planner(kin); e = E.Episode.__new__(E.Episode); e.tz = -0.0154; e.R_fix = np.eye(3)
 bad = 0; q = np.array([0, 25, -110, 0, -45, 90.0])
 for sa in (-1, 1):
@@ -64,7 +66,7 @@ class Wrist:
     def latest(s): return np.zeros((720, 1280, 3), np.uint8), 0
 for e0 in (np.array([0.002, 0.004, -0.7]), np.array([0.014, -0.012, 6.0]), None):
     s = S(); s.dry = False; s.wrist = Wrist(); got = []
-    e = E.Episode.__new__(E.Episode); e.s = s; e.tz = -0.0154; e.R_fix = np.eye(3); e.c0 = np.zeros(3); e.save = lambda *a, **k: None
+    e = E.Episode.__new__(E.Episode); e.s = s; e.tz = -0.0154; e.R_fix = np.eye(3); e.c0 = np.zeros(3); e.centre = np.zeros(3); e.save = lambda *a, **k: None
     e.T_now = lambda: np.eye(4); s.move_line = lambda name, T, speed="slow", tip_margin=0.008: got.append(name)
     def meas(*a, **k):
         if e0 is None: return dict(ok=False, drawer=dict(why="edge not found"), cabinet={})

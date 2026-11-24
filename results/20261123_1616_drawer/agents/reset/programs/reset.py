@@ -237,7 +237,7 @@ class Reset:
         d = P[:, :2] - np.asarray(FX["centre"], float)
         in_cab = (np.abs(d @ A) < FX["size"][0] / 2 + 0.02) & (np.abs(d @ B) < FX["size"][1] / 2 + 0.02)
         blobs = [b for b in tt.detect(P[~in_cab], table_z=tz, max_height=0.16)
-                 if 0.05 <= b["height"] <= 0.14 and 0.05 <= max(b["extent"]) <= 0.19 and b["n"] > 1000]   # drawer ~4300 points; depth artifacts beside it ~200
+                 if 0.05 <= b["height"] <= 0.14 and 0.05 <= max(b["extent"]) <= 0.26 and b["n"] > 1000]   # drawer ~4300 points; depth artifacts beside it ~200
         blobs.sort(key=lambda b: -b["n"])
         comps = []
         for k in range(3):
@@ -478,16 +478,22 @@ class Reset:
         """The drawer's position from the side camera with the cabinet footprint removed (attempt 12: the plain blob search
         merged the drawer and the cabinet in one frame). Also records whether the plain search sees it as its own blob,
         which is what the orchestrator's layout check needs."""
-        plain = [b for b in self.s.tabletop() if layout.matches(PRIOR, b)
-                 and float(np.linalg.norm(np.subtract(b["xy"], self.target))) < 0.06]
-        blobs = self.scan("measure")["blobs"]
-        self.s.summary(plain_blob_found=bool(plain))
-        if not plain:
-            self.s.decide("the plain side-camera blob search does not separate the drawer from the cabinet in this frame")
-        if not blobs:
+        xy, hs, plain_ok, n = [], [], 0, 0
+        for n in range(1, 7):                 # depth artifacts come and go per frame (attempts 21, 30 lost the blob in one)
+            plain_ok += any(layout.matches(PRIOR, b) and float(np.linalg.norm(np.subtract(b["xy"], self.target))) < 0.06
+                            for b in self.s.tabletop())
+            blobs = self.scan("measure")["blobs"]
+            if blobs:
+                b = min(blobs, key=lambda c: float(np.linalg.norm(np.subtract(c["xy"], self.target))))
+                xy.append(b["xy"])
+                hs.append(float(b["height"]))
+            if len(xy) >= 3:
+                break
+            time.sleep(0.25)
+        self.s.summary(plain_blob_found=f"{plain_ok}/{n}", measure_frames=f"{len(xy)}/{n}")
+        if not xy:
             return None, None
-        b = min(blobs, key=lambda c: float(np.linalg.norm(np.subtract(c["xy"], self.target))))
-        return np.array(b["xy"], float), float(b["height"])
+        return np.median(np.array(xy, float), axis=0), float(np.median(hs))
 
     def in_place(self):
         """The knob axis when the drawer already stands correctly at the target, else None. The arm is at home."""

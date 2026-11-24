@@ -313,3 +313,26 @@ def drawer_vs_opening(img, T_base_tool, c, yaw_deg, z_rim, z_top, origin=(0, 0))
         return out
     out.update(ok=True, ea=d["da"], eb=round(d["db"] - k["cb"], 4), eyaw=d["dyaw"])
     return out
+
+
+def cabinet_shift_px(before, after, regions=((320, 160, 405, 240), (285, 205, 400, 290))):
+    """Largest image shift (px at 640 wide) of the cabinet's parts away from the target compartment between two side images, by
+    phase correlation; None when no region correlates."""
+    a, b = (cv2.cvtColor(cv2.resize(i, (640, 360), interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2GRAY) for i in (before, after))
+    out = []
+    for x0, y0, x1, y1 in regions:
+        g0, g1 = np.float32(a[y0:y1, x0:x1]), np.float32(b[y0:y1, x0:x1])
+        (dx, dy), r = cv2.phaseCorrelate(g0, g1, cv2.createHanningWindow(g0.shape[::-1], cv2.CV_32F))
+        if r > 0.2:
+            out.append(float(np.hypot(dx, dy)))
+    return max(out) if out else None
+
+
+def outline_xy(blob, yaw_deg):
+    """Centre of a blob's outline: 2nd-98th percentile midpoints along and across the axis yaw_deg (operator 18:56). Same definition as
+    rlpj.success.checks.outline_xy, used only where the installed checks module does not have it."""
+    a, b = axes(yaw_deg)
+    xy = np.asarray(blob["points"], float)[:, :2]
+    s0, s1 = np.percentile(xy @ a, [2, 98])
+    t0, t1 = np.percentile(xy @ b, [2, 98])
+    return 0.5 * (s0 + s1) * a + 0.5 * (t0 + t1) * b

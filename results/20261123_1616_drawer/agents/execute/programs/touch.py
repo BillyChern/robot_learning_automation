@@ -67,18 +67,24 @@ class TouchSearch:
 
 
 def load_centre(rl_dir):
-    """The offset (a, b, yaw) where the drawer last dropped in, else the default."""
+    """Running estimate of the offset (a, b, yaw) where the drawer enters, else the first working offset. Files without v = 2 held
+    the pose at the END of the descent, which includes the exploration's drift (episode 5: +1.8, +1.1 mm, 0.75 deg): ignored."""
     try:
         with open(os.path.join(rl_dir, "touch_centre.json")) as f:
             d = json.load(f)
         c = np.array(d["centre"], float)
-        return c if c.shape == (3,) and np.all(np.abs(c) <= [0.03, 0.03, 6.0]) else DEFAULT_CENTRE.copy()
+        ok = d.get("v") == 2 and c.shape == (3,) and np.all(np.abs(c) <= [0.03, 0.03, 6.0])
+        return c if ok else DEFAULT_CENTRE.copy()
     except (OSError, ValueError, KeyError, TypeError):
         return DEFAULT_CENTRE.copy()
 
 
-def save_centre(rl_dir, centre, info):
+def save_centre(rl_dir, entry, info, gain=0.3):
+    """Move the estimate toward the offset at which the drawer just entered the opening."""
     p = os.path.join(rl_dir, "touch_centre.json")
+    old = load_centre(rl_dir)
+    new = (1.0 - gain) * old + gain * np.asarray(entry, float)
     with open(p + ".tmp", "w") as f:
-        json.dump(dict(centre=np.round(centre, 5).tolist(), **info), f)
+        json.dump(dict(v=2, centre=np.round(new, 5).tolist(), entry=np.round(entry, 5).tolist(), **info), f)
     os.replace(p + ".tmp", p)
+    return new

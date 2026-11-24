@@ -56,6 +56,8 @@ OBS_C = np.array([0.008, 0.008, 4.0])          # scale of the residual in the ob
 FIRST_TILT = 0.0                               # deg about b; tilts -5 .. +2.5 at the rim all failed (attempt 26)
 ENTERED = 0.004                                # m below the rim: the drawer is in the opening, no more lateral moves
 FIX_MAX = np.array([0.010, 0.010, 4.0])         # bound of the measured correction (drawer vs opening, wrist image)
+CAB_MOVE_MAX = 0.02                            # m, the task's limit
+CAB_SHIFT_PX = 6.0                             # side image at 640 px, ~1.6 mm per px: ~1 cm (the task allows 2 cm)
 LEVEL_H = 0.025                                # drawer bottom above the rim while it is levelled
 LEVEL_TOL, LEVEL_MAX = 0.8, 6.0                # deg: tilt left alone, largest correction about the jaw axis
 LEVEL_ITERS = 0                                # measure only: the side-depth tilt repeats to ~2 deg only (episode 2)
@@ -171,7 +173,8 @@ class Episode:
         P = tt.cloud(s.side, n=7)
         self.tz = tt.table_fit(P)
         self.before = tt.detect(P, table_z=self.tz)
-        self.save("side_before", s.side.latest()[0])
+        self.img_before = s.side.latest()[0].copy()
+        self.save("side_before", self.img_before)
         # the drawer alone: the full-scene blobs sometimes merge it with the cabinet (attempt 6: one blob 0.446 m long)
         sd = self.side_drawer(tt.detect(P, dict(x=(0.20, 0.375), y=(-0.13, 0.12)), table_z=self.tz))
         s.require(sd is not None, "no drawer-sized blob on the table")
@@ -370,12 +373,15 @@ class Episode:
         f0, peak, n_contact, end = self.force(), 0.0, 0, "steps"
         last_force = False
         ts, next_pt = touch.TouchSearch(MAX_CONTACTS), None
+        c_entry = None                                   # offset at which the drawer passed into the opening
         for k in range(K_ALIGN + K_DESC):
             phase = 0 if k < K_ALIGN or last_force else 1   # after a contact: one lateral alignment step at the unloaded height
             o = self.obs(phase, b, c - self.c0, A3 @ (self.force() - f0), peak, k, w, n_contact)  # residual on the measured alignment
             a, info = self.actor.act(o, explore=self.mode == "train", rng=self.rng)
             if self.mode == "train" and phase == 0 and n_contact > 0:   # wide exploration only at the search points
                 a = np.r_[np.clip(a[:3] + self.rng.normal(0.0, SEARCH_STD, 3), -1.0, 1.0), a[3]]
+            if b <= RIM - ENTERED:                       # inside: the walls guide it, lateral residuals would only rub on them
+                a = np.r_[0.0, 0.0, 0.0, a[3]]
             if phase == 0 and n_contact > 0:             # search: a new point around the measured alignment + the policy's residual
                 c2 = self.c0 + next_pt + (0.0 if self.mode == "eval" else SC_DESC * a[:3])   # the search point + the policy's residual
             else:
@@ -416,6 +422,8 @@ class Episode:
                 r -= 1.0
                 end = status
             last_force = status == "force"
+            if c_entry is None and b <= RIM - ENTERED:
+                c_entry = c.copy()
             self.trans.append(dict(obs=o, act=a, rew=r))
             self.ret += r
             self.events.append([k, status, np.round(a, 2).tolist(), round(r, 3), round(b, 4), np.round(c, 4).tolist(), round(peak, 1), self.phi])
@@ -429,9 +437,10 @@ class Episode:
             if status == "ok" and phase == 1 and (b <= B_MIN + 1e-4 or (peak >= PEAK_SEAT and b <= FLOOR + 0.012)):
                 end = "seated"
                 break
-        if b <= RIM - DROPPED and not s.dry:             # found the opening: start there next time
-            touch.save_centre(rc.rl_dir(), c, dict(bottom=round(b, 4), end=end, contacts=n_contact, episode=self.ep))
-            s.decide(f"opening found at offset a {c[0] * 1000:.1f} mm, b {c[1] * 1000:.1f} mm, yaw {c[2]:.2f} deg after {n_contact} touches")
+        if end == "seated" and c_entry is not None and b <= RIM - DROPPED and not s.dry:   # found the opening: start nearer next time
+            new = touch.save_centre(rc.rl_dir(), c_entry, dict(bottom=round(b, 4), end=end, contacts=n_contact, episode=self.ep))
+            s.decide(f"drawer entered at a {c_entry[0] * 1000:.1f} mm, b {c_entry[1] * 1000:.1f} mm, yaw {c_entry[2]:.2f} deg after {n_contact} touches; "
+                     f"centre now {np.round(new * [1000, 1000, 1], 2).tolist()}")
         s.summary(touch=dict(best=np.round(ts.best, 4).tolist(), best_h=None if not np.isfinite(ts.best_h) else round(ts.best_h, 4), touches=len(ts.seen)))
         s.summary(insert=dict(end=end, steps=len(self.trans), bottom=round(b, 4), c=np.round(c, 4).tolist(), contacts=n_contact, peak=round(peak, 1), tilt=self.phi, contact_map=self.contact_map,
                                  tilts_tried=sorted({e[7] for e in self.events if e[1] == "force"})))
@@ -462,6 +471,22 @@ class Episode:
         T[2, 3] = max(T[2, 3], self.tz + 0.25)
         s.move_line("rise", T, "normal")
 
+    def cabinet_outline_move(self, after):
+        """Distance (m) between the cabinet's outline centres before and after (operator 18:56), or None when a scene has no clean
+        cabinet blob (for example merged with the standing drawer)."""
+        f = getattr(checks, "outline_xy", V.outline_xy)
+        yaw, c0 = float(CAB["yaw_deg"]), np.asarray(CAB["centre"], float)
+        def pick(blobs):
+            cand = [b for b in blobs if b["n"] > 3000 and 0.08 <= b["height"] <= 0.12 and 0.20 <= max(b["extent"]) <= 0.34
+                    and np.linalg.norm(np.asarray(f(b, yaw))[:2] - c0) < 0.06]
+            return max(cand, key=lambda b: b["n"]) if cand else None
+        try:
+            b0, b1 = pick(self.before), pick(after)
+            return None if b0 is None or b1 is None else float(np.linalg.norm(np.asarray(f(b1, yaw))[:2] - np.asarray(f(b0, yaw))[:2]))
+        except Exception as e:
+            self.s.log(f"outline check failed: {str(e)[:100]}")
+            return None
+
     def finish(self):
         s = self.s
         s.phase("verify")
@@ -470,7 +495,20 @@ class Episode:
         P = tt.cloud(s.side, n=7)
         after = tt.detect(P, table_z=tt.table_fit(P))
         self.save("side_after", s.side.latest()[0])
-        ok, rep = checks.drawer_lying(self.before, after, TASK)
+        # the check's cabinet comparison uses the blob centre, which a filled compartment moves by 3.3 cm (attempts 30, 32, nothing
+        # moved): flushness from the same check without it, cabinet motion from the side image
+        with_blob, _ = checks.drawer_lying(self.before, after, TASK)
+        ok, rep = checks.drawer_lying([], after, TASK)
+        shift = V.cabinet_shift_px(self.img_before, s.side.latest()[0])
+        outline = self.cabinet_outline_move(after)
+        # the outline's far edge is noisy (extent 0.278-0.318 m on a static scene), the image shift repeats to ~0.3 px: moved = both agree,
+        # or the one that is available says so
+        if shift is None:
+            moved = outline is not None and outline > CAB_MOVE_MAX
+        else:
+            moved = shift > CAB_SHIFT_PX and (outline is None or outline > CAB_MOVE_MAX)
+        if ok is True and moved:
+            ok, rep = False, dict(rep, reason=f"the cabinet moved (side image {shift} px, outline {outline} m)")
         brief = lambda bl: [[*np.round(b["xy"], 3).tolist(), round(float(b["height"]), 3), *np.round(b["extent"], 3).tolist(), int(b["n"])]
                             for b in bl if b["n"] > 300]          # x, y, height, extent x, extent y, points
         s.summary(blobs_before=brief(self.before), blobs_after=brief(after))
@@ -482,7 +520,9 @@ class Episode:
             self.ret += R
         s.summary(verify=dict(check=ok, reason=rep.get("reason"), n=rep.get("n"), median_h=rep.get("median_h"), flush=rep.get("flush"),
                               above=rep.get("above"), deep=rep.get("deep"), cabinet_moved_m=rep.get("cabinet_moved_m"),
-                              on_table=bool(rep.get("drawer_on_table")), terminal_reward=round(R, 3)))
+                              on_table=bool(rep.get("drawer_on_table")), terminal_reward=round(R, 3),
+                              cabinet_shift_px=None if shift is None else round(shift, 2), cabinet_outline_move_m=None if outline is None else round(outline, 4),
+                              orchestrator_check=with_blob))
         self.save_transitions(ok, rep)
         if ok is not True:
             s.summary(first_failed_check=f"geometric check {ok}: {rep.get('reason')}")

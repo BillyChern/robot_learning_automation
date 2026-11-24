@@ -4734,3 +4734,299 @@ Structured output provided successfully
 ```
 </details>
 
+**18:52:55 execute agent:** No response requested.
+
+### 18:52:55 orchestrator -> execute agent
+
+```text
+Reflection after RL training episode 5 (6 so far): unsure - the independent checks disagree or one is missing (claim=none, perception=False, vlm=True). Look at what happened (log, images, rewards, learner log) and improve your episode program, prior, reward or learner if it helps; offline tests only; commit; then reply done. Keep it short.
+--- attempt_32: episode 5: unsure - the independent checks disagree or one is missing (claim=none, perception=False, vlm=True)
+# attempt_32: exit code 2; outcome: fail
+
+command: python programs/execute.py; what: rl episode 5; commit: f4e80c5; duration_s: 117.2; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "f4e80c5df7",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 0.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9577, 0.5645, 90.4616], "gripper": 0.9},
+"fk_check_mm": 0.18,
+"first_failed_check": "geometric check False: the cabinet moved 3.3 cm",
+"transitions": 15,
+"return": 2.076,
+"policy": {"source": "prior", "note": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/rl/policy/actor.npz is from another version"},
+"rl_mode": "train",
+"episode": 5,
+"segments": [["look_opening", true, 0.109, 0.31, 13.02, 39.9], ["look_drawer", true, 0.092, 0.55, 3.65, 39.7], ["above_tab", true, 0.133, 0.13, 8.34, 39.8], ["down_pre", true, 0.031, 0.11, 3.18, 39.3], ["down_tab", true, 0.027, 0.13, 5.17, 39.7], ["lift_slow", true, 0.028, 0.13, 3.14, 39.5], ["lift"
+"objects": {"drawer": {"c": [0.2823, -0.0011], "yaw": 87.4, "size": [0.0722, 0.1133], "face_h": 0.0917}, "tab": {"ok": true, "xy": [0.2633, 0.0], "s": -0.019, "t": 0.0003, "side": -1, "why": null}, "opening": {"c": [0.4519, 0.0028], "yaw": 18.3, "measured": true}},
+"grasp": {"reading": 84.5, "held": true, "h_g": 0.1397},
+"decisions": ["turn the drawer +20.9 deg, tool yaw -71.7, opening [0.4519, 0.0028] yaw 18.3", "opening found at offset a 4.8 mm, b -1.9 mm, yaw 0.75 deg after 1 touches"],
+"tilt": {"standing": {"ok": true, "n": 1221, "tilt_s_deg": 0.16, "tilt_t_deg": 0.92, "z0": 0.0767, "resid_mm": 0.7, "span": [0.06, 0.1]}, "held": [{"ok": true, "n": 656, "tilt_s_deg": 0.75, "tilt_t_deg": 5.06, "z0": 0.191, "rel_s": 0.27, "phi": 0.0}]},
+"align": [{"ok": true, "ea": 0.0042, "eb": 0.003, "eyaw": -0.07, "c0": [0.0, 0.0, 0.0], "why": null}],
+"touch_centre": [0.003, -0.003, 0.0],
+"touch": {"best": [0.0024, 0.0009, 0.554], "best_h": 0.0122, "touches": 1},
+"insert": {"end": "seated", "steps": 15, "bottom": 0.0122, "c": [0.0048, -0.0019, 0.7534], "contacts": 1, "peak": 25.0, "tilt": 0.0, "contact_map": [[5.4, -2.1, 0.6, 12.2, -16.3, 3.5]], "tilts_tried": [0.0]},
+"blobs_before": [[0.282, -0.01, 0.095, 0.08, 0.112, 4118], [0.531, 0.022, 0.095, 0.279, 0.183, 12373]],
+"blobs_after": [[0.501, 0.01, 0.099, 0.277, 0.182, 12415]],
+"verify": {"check": false, "reason": "the cabinet moved 3.3 cm", "n": 1378, "median_h": null, "flush": null, "above": null, "deep": null, "cabinet_moved_m": 0.0332, "on_table": false, "terminal_reward": 0.0},
+"transitions_file": "transitions/train_ep0005.npz",
+"return_home": "already at default pose",
+"exit_code": 2,
+"gripper_final": {"cmd": 0.5, "reading": 50.0},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 92 lines; last 40:
+[18:51:44] step 5: a [-0.07, -0.26, 0.57, -0.39] (mu [0.0, 0.0, 0.0, 0.0]) -> ok  bottom 0.0772 c [0.0028, -0.0032, 0.1823] tilt +0.0 peak 1.8 N r +0.149
+[18:51:45] plan 17_ins06: T=0.9s check ok=True tip>0.161 vmax=3.0deg/s lin=0.018m/s
+[18:51:46] exec 17_ins06: {'segment': 'ins06', 'ok': True, 'reason': '', 'T_plan': 0.93, 'max_dev_deg': 0.037, 'max_dev_mm': 0.23, 'n': 37, 'max_abs_force_n': 5.8, 'max_force_n': 1.7, 't_exec': 0.99, 'rate_hz': 37.4, 'final_err_deg': 0.017}
+[18:51:46] step 6: a [0.07, -0.44, 0.07, 0.62] (mu [0.0, 0.0, 0.0, 0.0]) -> ok  bottom 0.0681 c [0.0028, -0.0037,
+... (7615 more characters)
+```
+
+**18:54:07 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && git log --oneline | head -2; git status --short | head -3; cat rl/touch_centre.json; echo; cat rl/verdicts/000005.json | cut -c1-420; echo; tail -n 1 rl/learner_log.jsonl | cut -c1-230; python3 - <<'EOF'
+p='programs/touch.py'; t=open(p).read()
+i=t.index('def load_centre')
+t=t[:i]+'''def load_centre(rl_dir):
+    """Running estimate of the offset (a, b, yaw) where the drawer enters, else the first working offset. Files without v = 2 held
+    the pose at the END of the descent, which includes the exploration's drift (episode 5: +1.8, +1.1 mm, 0.75 deg): ignored."""
+    try:
+        with open(os.path.join(rl_dir, "touch_centre.json")) as f:
+            d = json.load(f)
+        c = np.array(d["centre"], float
+... (8942 more characters)
+```
+
+<details><summary>18:54:25 result</summary>
+
+```text
+f4e80c5 attempt 29: touch search with a saved opening offset, force logging, opening look aim, floor height
+337a80b attempt 27: 2-D contact probe grid around the measured alignment, contact-height map
+ M notes/design.md
+ M programs/learner.py
+?? notes/dev/t_relabel.py
+{"centre": [0.00476, -0.0019, 0.7534], "bottom": 0.0122, "end": "seated", "contacts": 1, "episode": 5}
+{"episode": 5, "mode": "rl", "final": "unsure", "reason": "the independent checks disagree or one is missing (claim=none, perception=False, vlm=True)", "verdict": null}
+
+{"t": "2026-11-23 18:52:53", "episodes": 5, "transitions": 109, "new": 109, "updates": 3000, "total_updates": 3000, "device": "cuda", "secs": 8.2, "ret_last10": 0.675, "lc": 0.5319, "la": -28.4874, "q": -6.0621, "alpha": 0.1278, "
+attempt 10 cabinet shift px 0.15
+attempt 26 cabinet shift px 0.13
+attempt 28 cabinet shift px 0.18
+attempt 30 cabinet shift px 0.12
+attempt 32 cabinet shift px 0.2
+known shift (9, 4) px reads 9.73
+old-format file -> [0.003, -0.003, 0.0]
+after an entry at (3.5, -2.5 mm, 0.3 deg) -> [0.00315, -0.00285, 0.09] reloaded [0.00315, -0.00285, 0.09]
+flush compartment, no before blobs: True | empty: False
+bottom 0.0122 one, perceptio
+... (942 more characters)
+```
+</details>
+
+**18:54:51 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && python3 - <<'EOF'
+p='notes/dev/t_insert.py'; t=open(p).read()
+old='''            st["b"] = E.RIM + 0.001; return "force", dict(reason="contact force (sim)")'''
+new='''            st["b"] = E.RIM + 0.001 + 0.22 * abs(c[0] - hole[0]) + 0.15 * abs(c[1] - hole[1]); return "force", dict(reason="contact force (sim)")'''
+assert old in t; t=t.replace(old,new)
+t=t.replace('e = E.Episode.__new__(E.Episode); e.s = s; e.tz = -0.0154; e.R_fix = np.eye(3); e.c0 = np.zeros(3); e.save = lambda *a, **k: None\n    e.T_now = lambda: np.eye(4)','e = E.Episode.__new__(E.Episode); e.s = s; e.tz = -0.0154; e.R_fix = np.eye(3); e.c0 = np.zeros(3); e.centre = np.zeros(3); e.save = lambda *a, **k: None\n    e.T_now = lambda: np.e
+... (2767 more characters)
+```
+
+<details><summary>18:55:04 result</summary>
+
+```text
+hole (0, 0, 0) true tilt 0.0 seated 1.0 ends {'seated': 300, 'jam': 0, 'steps': 0} max steps 16
+hole (0.003, 0.002, 0) true tilt 0.0 seated 1.0 ends {'seated': 300, 'jam': 0, 'steps': 0} max steps 33
+hole (-0.0055, 0.0035, 0) true tilt 0.0 seated 1.0 ends {'seated': 300, 'jam': 0, 'steps': 0} max steps 39
+hole (0.006, -0.004, 0) true tilt 0.0 seated 1.0 ends {'seated': 300, 'jam': 0, 'steps': 0} max steps 40
+hole (0.0095, 0, 0) true tilt 0.0 seated 1.0 ends {'seated': 300, 'jam': 0, 'steps': 0} max steps 23
+train mode: lateral drift after entering the opening (mm): 0.0 over 14 steps
+descents at the correction bounds refused by the model: 3 of 8
+tilted descents refused by the model: 0 of 12
+error [0.002, 0.004, -0.7] -> c0 [0.0, 0.0, 0.0] moves [] left 0.002 0.004 -0.7
+error [0.014, -0.012, 6.0] -> c0 [0.0, 0.0, 0.0] moves [] left 0.014 -0.012 6.0
+error None -> c0 [0.0, 0.0, 0.0] moves [] left None None None
+check: one update {'lc': 4.1703042984008
+87de17e episode 5 reflection: own cabinet check from the side image, verdict relabel for unsure+vlm, entry-offset centre, no lateral residual inside
+f4e80c5 attempt 29: touch search with a saved opening offset, force logging, opening look
+... (205 more characters)
+```
+</details>
+
+**18:55:12 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Episode 5 reviewed: second real insertion; reward, entry-offset centre and cabinet check fixed (commit 87de17e)",
+ "report": "NOT YET VERIFIED: commit 87de17e has only been tested offline (recorded images, a fake contact model and unit tests) and has not run on the robot or in a dry run. Its first real use will be the next training episode.\n\nEpisode 5 (attempt 32, commit f4e80c5) looks like a second real insertion. The drawer went down to the floor after one contact, and the vision judge said success. The verdict is only \"unsure\" because the geometric check again reported \"the cabinet moved 3.3 cm\". The side images show a cabinet shift of 0.2 px (about 0.3 mm), so that reading is false. The check needs the operator
+... (1242 more characters)
+```
+
+<details><summary>18:55:12 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**18:58:08 execute agent:** No response requested.
+
+### 18:58:08 orchestrator -> execute agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+Operator note 18:56: episode 5 inserted the drawer (bottom 0.012, flush) but was scored "unsure": the orchestrator's
+check and YOUR program's own check both said "the cabinet moved 3.3 cm". That was a measurement bug: with the drawer
+in the compartment the cabinet blob's centroid shifts 3-5 cm. The orchestrator now uses the cabinet's outline centre
+(rlpj.success.checks.outline_xy(blob, yaw_deg): 2nd-98th percentile midpoints along/across the cabinet axis); use the
+same in your program's own verify, so a real insertion is claimed as success.
+
+Reflection after RL training episode 6 (7 so far): unsure - the independent checks disagree or one is missing (claim=none, perception=False, vlm=True). Look at what happened (log, images, rewards, learner log) and improve your episode program, prior, reward or learner if it helps; offline tests only; commit; then reply done. Keep it short.
+--- attempt_34: episode 6: unsure - the independent checks disagree or one is missing (claim=none, perception=False, vlm=True)
+# attempt_34: exit code 0; outcome: success
+
+command: python programs/execute.py; what: rl episode 6; commit: 87de17e; duration_s: 116.4; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "87de17ec90",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 0.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9578, 0.5632, 90.4612], "gripper": 0.9},
+"fk_check_mm": 0.18,
+"first_failed_check": null,
+"transitions": 15,
+"return": 14.381,
+"policy": {"source": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/rl/policy/actor.npz", "updates": 3000, "mtime": "Mon Nov 23 18:52:53 2026"},
+"rl_mode": "train",
+"episode": 6,
+"segments": [["look_opening", true, 0.127, 0.25, 13.03, 39.8], ["look_drawer", true, 0.043, 0.23, 3.52, 39.5], ["above_tab", true, 0.093, 0.12, 9.05, 39.9], ["down_pre", true, 0.026, 0.13, 3.2, 39.4], ["down_tab", true, 0.033, 0.11, 5.17, 39.7], ["lift_slow", true, 0.028, 0.15, 3.13, 39.3], ["lift",
+"objects": {"drawer": {"c": [0.2896, -0.0056], "yaw": 81.47, "size": [0.0743, 0.1168], "face_h": 0.0913}, "tab": {"ok": true, "xy": [0.2687, -0.0017], "s": -0.0213, "t": 0.0008, "side": -1, "why": null}, "opening": {"c": [0.4519, 0.0044], "yaw": 18.0, "measured": true}},
+"grasp": {"reading": 84.5, "held": true, "h_g": 0.1393},
+"decisions": ["turn the drawer +26.5 deg, tool yaw -72.0, opening [0.4519, 0.0044] yaw 18.0", "drawer entered at a 2.9 mm, b -3.1 mm, yaw 0.01 deg after 0 touches; centre now [2.97, -3.02, 0.0]"],
+"tilt": {"standing": {"ok": true, "n": 1137, "tilt_s_deg": -2.21, "tilt_t_deg": 3.27, "z0": 0.0775, "resid_mm": 0.84, "span": [0.06, 0.1]}, "held": [{"ok": true, "n": 809, "tilt_s_deg": -0.33, "tilt_t_deg": 8.5, "z0": 0.1932, "rel_s": 0.19, "phi": 0.0}]},
+"align": [{"ok": true, "ea": 0.005, "eb": 0.0052, "eyaw": 0.42, "c0": [0.0, 0.0, 0.0], "why": null}],
+"touch_centre": [0.003, -0.003, 0.0],
+"touch": {"best": [0.0, 0.0, 0.0], "best_h": null, "touches": 0},
+"insert": {"end": "seated", "steps": 15, "bottom": 0.0119, "c": [0.0029, -0.0031, 0.0088], "contacts": 0, "peak": 20.2, "tilt": 0.0, "contact_map": [], "tilts_tried": []},
+"blobs_before": [[0.288, -0.016, 0.098, 0.089, 0.114, 4412], [0.524, 0.019, 0.095, 0.277, 0.186, 12503]],
+"blobs_after": [[0.493, 0.007, 0.1, 0.303, 0.19, 13047]],
+"verify": {"check": true, "reason": "drawer flush in the target compartment", "n": 1389, "median_h": 0.0965, "flush": 1.0, "above": 0.0, "deep": 0.0, "cabinet_moved_m": null, "on_table": false, "terminal_reward": 12.0, "cabinet_shift_px": 0.28, "check_with_blob_centre": true},
+"transitions_file": "transitions/train_ep0006.npz",
+"return_home": "already at default pose",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.5, "reading": 50.0},
+"end_arm_state
+... (8262 more characters)
+```
+
+**18:58:14 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj && grep -n "outline_xy" -r rlpj | cut -c1-140; n=$(grep -n "def outline_xy" rlpj/success/checks.py | cut -d: -f1); sed -n "$n,$((n+14))p" rlpj/success/checks.py; n=$(grep -n "def drawer_lying" rlpj/success/checks.py | cut -d: -f1); sed -n "$n,$((n+30))p" rlpj/success/checks.py | cut -c1-150; cd runs/20261123_1616_drawer/agents/execute; git log --oneline | head -2; git status --short | head; cat rl/touch_centre.json; echo; cat rl/verdicts/000006.json | cut -c1-200; echo; grep -n "with_blob\|checks.drawer_lying\|shift = V\|CAB_SHIFT" programs/execute.py | cut -c1-130
+```
+
+<details><summary>18:58:14 result</summary>
+
+```text
+sed: -e expression #1, char 1: unknown command: `,'
+def drawer_lying(before, after, task_cfg):
+    """Success (cabinet lying on its back): the target compartment's opening (shrunk 1 cm) is filled at rim height (the
+    drawer's top flush, within flush_tol), no drawer-sized blob stands on the table, the cabinet has not moved."""
+    fx = task_cfg["fixtures"]["cabinet"]
+    tol = task_cfg["fixtures"].get("flush_tol", 0.012)
+    pri = task_cfg.get("perception", {}) or {}
+    if not after:
+        return None, dict(reason="no blobs after")
+    pts = np.vstack([np.asarray(b["points"], float) for b in after if len(b.get("points", []))])
+    table_z = float(np.median([b["z_top"] - b["height"] for b in after]))
+    y = np.radians(fx["yaw_deg"]); a = np.array([np.cos(y), np.sin(y)]); bb = np.array([-a[1], a[0]])
+    d = pts[:, :2] - np.asarray(fx["target_centre"], float)
+    s, t, h = d @ a, d @ bb, pts[:, 2] - table_z
+    hl, hw = fx["compartment"][0] / 2 - 0.01, fx["compartment"][1] / 2 - 0.01
+    m = (np.abs(s) < hl) & (np.abs(t) < hw) & (h > 0.003)
+    rep = dict(n=int(m.sum()))
+    cab_a = [b for b in after if layout.matches(pri.get("cabinet") or {}, b)]
+    cab_b = [b for b in (before
+... (1951 more characters)
+```
+</details>
+
+**18:58:57 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && python3 - <<'EOF'
+p='programs/vision.py'; t=open(p).read()
+t+='''
+
+def outline_xy(blob, yaw_deg):
+    """Centre of a blob's outline: 2nd-98th percentile midpoints along and across the axis yaw_deg (operator 18:56). Same definition as
+    rlpj.success.checks.outline_xy, used only where the installed checks module does not have it."""
+    a, b = axes(yaw_deg)
+    xy = np.asarray(blob["points"], float)[:, :2]
+    s0, s1 = np.percentile(xy @ a, [2, 98])
+    t0, t1 = np.percentile(xy @ b, [2, 98])
+    return 0.5 * (s0 + s1) * a + 0.5 * (t0 + t1) * b
+'''
+open(p,'w').write(t)
+p='programs/execute.py'; t=open(p).read()
+def rep(old,new):
+    global t
+    assert t.count(old)==1, old
+    t=t.replace(old,new)
+rep('''
+... (5623 more characters)
+```
+
+<details><summary>18:59:10 result</summary>
+
+```text
+filled compartment: centroid moves 4.9 cm, outline moves 0.42 cm
+cabinet really moved 3 cm: outline reads 2.98 cm
+merged blob before -> None
+hole (0, 0, 0) true tilt 0.0 seated 1.0 ends {'seated': 300, 'jam': 0, 'steps': 0} max ste
+hole (0.003, 0.002, 0) true tilt 0.0 seated 1.0 ends {'seated': 300, 'jam': 0, 'steps': 0}
+check: one update {'lc': 0.8887584805488
+dd1c01b episode 6 reflection: own verify uses the cabinet's outline centre together with the side-image shift
+```
+</details>
+
+**18:59:17 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Episode 6 reviewed: third insertion in a row; own verify now uses the cabinet's outline centre (commit dd1c01b)",
+ "report": "NOT YET VERIFIED: commit dd1c01b has been tested offline only, on synthetic point clouds, and has not run on the robot. `checks.outline_xy` is not in this machine's copy of the repo, so I could not compare against the orchestrator's version. The program calls it when the robot machine has it and otherwise uses the same formula from the operator's note in `vision.py`.\n\nEpisode 6 (attempt 34, commit 87de17e) inserted the drawer on the first descent with 0 touches: entry at a +2.9 mm, b -3.1 mm, top 96.5 mm, flush share 1.0, peak 20 N, return 14.38. My program claimed success. The verdict is still 
+... (916 more characters)
+```
+
+<details><summary>18:59:17 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

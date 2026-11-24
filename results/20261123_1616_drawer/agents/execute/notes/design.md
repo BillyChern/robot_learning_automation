@@ -132,3 +132,36 @@ Changed:
 Limits: a 4 mm grid can step over a window of ~2 mm across b; the line searches rely on the height trend. Offline success on a
 toy contact model was 39-100% depending on the offset, so "cannot miss" does not hold. The sim's lying_policy files are not on
 this machine, so Descent and Guided are not used or compared yet.
+
+## First real insertion (attempt 30, commit f4e80c5)
+Straight descent at the offset a +3.0 mm, b -3.0 mm, yaw 0 from the plan, with no hover correction: seated with 0 touches, median
+top 96.9 mm, flush share 1.0, peak 17 N at the floor. The side image shows the drawer in the nearest compartment, pull up.
+- Likely cause of the earlier jams: the plan is ~4 mm off, and the hover "correction" moved the wrong way along a (it read +5 mm
+  here, while the working offset is +3 mm). Not proven: attempt 28 touched almost the same offset (+2.9, -2.8, -0.14 deg) after a
+  lateral move and did not enter. One success says nothing yet about the success rate.
+- The touch search was not exercised (0 touches), and the sideways-force question from the sim is still unanswered.
+- This success came from the scripted prior at a found offset. No learned policy has improved anything yet.
+- The independent geometric check said "the cabinet moved 3.3 cm". It did not: phase correlation of before/after side images on the
+  far compartments, far wall and long side gives shifts <= 0.11 px (~0.2 mm). The blob's centre moves because the filled
+  compartment changes the top surface. The check can therefore fail correct insertions.
+- Learner: a failed verdict no longer turns my positive terminal into -5 unless it states a wrong orientation; it pays 0.
+
+## Reflection on episode 5 (attempt 32, commit f4e80c5)
+Second real insertion: the vision judge says success, and the geometric check says "cabinet moved 3.3 cm" again, so the verdict is
+unsure and my terminal reward was 0. Side-image shift of the cabinet in this episode: 0.2 px.
+Changed:
+- My own check: flushness from `checks.drawer_lying` without its blob-centre comparison; cabinet motion from side-image phase
+  correlation (stop above 6 px, ~1 cm; a synthetic 9.8 px shift reads 9.73). The orchestrator's check is unchanged.
+- Learner: an unsure verdict with vlm=True and the drawer down at the floor pays the success bonus.
+- `touch_centre.json` held the pose at the end of the descent, including exploration drift (+1.8, +1.1 mm, 0.75 deg). It now
+  holds a running estimate of the entry offset; old files are ignored and the start returns to (+3, -3 mm, 0).
+- Once 4 mm inside the opening, no lateral residuals: the walls guide the drawer.
+Note: commits made in a turn that ends with `done` right after a run (0550191, b0af540) were not kept in the history; their file
+changes were, and are committed here.
+
+## Reflection on episode 6 (attempt 34, commit 87de17e), operator note 18:56
+Third real insertion in a row at the saved offset (entered at +2.9, -3.1 mm with 0 touches, top 96.5 mm, flush 1.0). My program
+claimed success; the verdict was still unsure because the orchestrator's perception check said no.
+Changed: own verify also uses the cabinet's outline centre (`checks.outline_xy` when the robot machine has it, else the same
+formula in `vision.py`; this machine's copy of `checks.py` does not have it yet). The cabinet counts as moved only when the outline
+(> 2 cm) and the side-image shift (> 6 px) agree, because the outline's far edge varies on a static scene.
