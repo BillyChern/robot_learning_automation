@@ -211,6 +211,9 @@ class Episode:
         self.save("side_before", self.img_before)
         # the drawer alone: the full-scene blobs sometimes merge it with the cabinet (attempt 6: one blob 0.446 m long)
         sd = self.side_drawer(tt.detect(P, dict(x=(0.20, 0.375), y=(-0.13, 0.12)), table_z=self.tz))
+        if sd is None and s.dry:                         # dry runs get no reset: the drawer may still be in the cabinet, so test the flow on a nominal one
+            s.decide("dry run: no drawer on the table, using a nominal standing drawer")
+            sd = dict(c=[0.285, -0.005], yaw=82.0, size=[0.0723, 0.1131], face=FACE_H)
         s.require(sd is not None, "no drawer-sized blob on the table")
         face = grasp_face(sd["face"])
 
