@@ -7896,3 +7896,346 @@ Structured output provided successfully
 ```
 </details>
 
+**20:55:37 execute agent:** No response requested.
+
+### 20:55:37 orchestrator -> execute agent
+
+```text
+# attempt_68: exit code 0; outcome: success
+
+command: RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: Dry run of commit ec1506e (sim arm guard change): confirm the program flow on the robot machine and record the commit there, nothing moves; commit: ec1506e; duration_s: 40.3; moves_robot: False
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "execute",
+"mode": "collect",
+"dry": true,
+"commit": "ec1506e743",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [0.0, 15.0, 230.0, 0.0, 55.02, 90.01], "tool_pose": [0.5791, 0.0048, 0.4274, 89.9548, 0.5696, 90.4565], "gripper": 50.0},
+"fk_check_mm": 0.18,
+"first_failed_check": null,
+"transitions": 60,
+"return": 7.0,
+"policy": {"source": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/rl/policy/actor.npz", "updates": 4320, "mtime": "Mon Nov 23 20:46:40 2026"},
+"rl_mode": "train",
+"episode": -1,
+"arm": "sim",
+"scripted_rev": "r4 (r3 + start offset from first-descent entries only)",
+"decisions": ["dry run: no drawer on the table, using a nominal standing drawer", "opening not measured ({'ok': False, 'why': 'edge not found', 'c': None, 'yaw': None}): using the stored rim", "turn the drawer +26.3 deg, tool yaw -71.7, opening [0.4519, 0.0029] yaw 18.3"],
+"segments": [["look_opening", "dry", 13.0], ["look_drawer", "dry", 3.5], ["above_tab", "dry", 8.8], ["down_pre", "dry", 3.1], ["down_tab", "dry", 5.1], ["lift_slow", "dry", 3.1], ["lift", "dry", 3.9], ["carry", "dry", 5.9], ["to_level", "dry", 0.5], ["to_hover", "dry", 1.8], ["sim00", "dry", 0.6], [
+"pull_detect_tries": 1,
+"objects": {"drawer": {"c": [0.285, -0.005], "yaw": 82.0, "size": [0.0723, 0.1131], "face_h": 0.0912, "face_used": 0.0912}, "tab": {"ok": true, "xy": [0.26568977265953936, -0.002286124531278724], "s": -0.0195, "t": 0.0, "side": -1, "why": null}, "opening": {"c": [0.4519, 0.0029], "yaw": 18.3, "measu
+"grasp": {"reading": 100.0, "held": true, "h_g": 0.1392},
+"tilt": {"standing": {"ok": false, "n": 0}, "held": [{"ok": false, "n": 0, "tilt_s_deg": null, "tilt_t_deg": null, "z0": null, "rel_s": null, "phi": 0.0}]},
+"align": [{"ok": false, "ea": null, "eb": null, "eyaw": null, "c0": [0.0, 0.0, 0.0], "why": "edge not found"}],
+"touch_centre": [0.0029, -0.0031, 0.0044],
+"sim_arm": {"est": {"off": [0.01949999994250041, 1.4974924967443848e-06], "yaw": 0.0, "tilt": [0.0, 0.0], "hold": 0.04799999999999999}, "force_stop_n": 35.0, "end": "steps", "decisions": 60, "stops": 0, "over_40": 0, "steps_against_force": 0, "final_bottom": 0.0043},
+"insert": {"end": "steps", "steps": 60, "bottom": 0.0043, "c": [0.0146, -0.0092, -5.2637], "contacts": 0, "peak": 0.1},
+"blobs_before": [[0.494, 0.007, 0.1, 0.28, 0.185, 12636]],
+"blobs_after": [[0.493, 0.007, 0.1, 0.296, 0.186, 12957]],
+"verify": {"check": true, "reason": "drawer flush in the target compartment", "n": 1371, "median_h": 0.0963, "flush": 1.0, "above": 0.0, "deep": 0.0, "cabinet_moved_m": null, "on_table": false, "terminal_reward": 10.0, "cabinet_shift_px": 0.09, "cabinet_outline_move_m": 0.0006, "orchestrator_check":
+"transitions_file": "sim_arm/dry_test_20261123_205532.json",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.5, "reading": 50.0}
+}
+
+log.txt: 152 lines; last 40:
+[20:55:22] sim 43: step [0.43, -0.15, 0.01, -7.64] (mm, mm, deg, mm) -> ok bottom 0.0042 f [-0.1, 0.1, -0.0] peak 0.2 N
+[20:55:22] plan 55_sim44: T=0.5s check ok=True tip>0.097 vmax=0.4deg/s lin=0.002m/s
+[20:55:22] sim 44: step [0.45, -0.13, 0.01, -7.64] (mm, mm, deg, mm) -> ok bottom 0.0042 f [0.0, -0.0, -0.2] peak 0.2 N
+[20:55:22] plan 56_sim45: T=0.5s check ok=True tip>0.097 vmax=0.4deg/s lin=0.002m/s
+[20:55:22] sim 45: step [0.46, -0.12, 0.01, -7.61] (mm, mm, deg, mm) -> ok bottom 0.0042 f [0.0, 0.0, -0.0] peak 0.0 N
+[20:55:23] plan 57_sim46: T=0.5s check ok=True tip>0.097 vmax=0.4deg/s lin=0.002m/s
+[20:55:23] sim 46: step [0.47, -0.11, 0.01, -7.6] (mm, mm, deg
+... (6468 more characters)
+```
+
+**20:55:47 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Tuning after 20 episodes: no failures to fix; sim arm dry-run and tested once on the robot, guard adjusted (commit ec1506e)",
+ "report": "NOT YET VERIFIED: the final sim-arm guard (commit ec1506e) has passed a dry run and offline tests, but has not run on the real robot. The sim arm has one real test, so its success rate is unknown. The \"success\" in dry attempts 66 and 68 means nothing, because the drawer was already in the cabinet.\n\nNo training episode failed or was unsure this round, so I changed nothing in the scripted part, the learned arm or the learner. The learner is healthy (critic loss about 1.0, Q about 0.7).\n\nSim arm, as the operator required before episode 31:\n- Dry run (attempt 66): the policy loads o
+... (1137 more characters)
+```
+
+<details><summary>20:55:47 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**21:01:47 execute agent:** No response requested.
+
+### 21:01:48 orchestrator -> execute agent
+
+```text
+Reflection after RL training episode 20 (21 so far): success - both independent checks say success (claim=none, perception=True, vlm=True). Look at what happened (log, images, rewards, learner log) and improve your episode program, prior, reward or learner if it helps; offline tests only; commit; then reply done. Keep it short.
+--- attempt_70: episode 20: success - both independent checks say success (claim=none, perception=True, vlm=True)
+# attempt_70: exit code 0; outcome: success
+
+command: RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: rl episode 20; commit: ec1506e; duration_s: 131.4; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "ec1506e743",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 0.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9586, 0.5628, 90.4615], "gripper": 0.9},
+"fk_check_mm": 0.18,
+"first_failed_check": null,
+"transitions": 18,
+"return": 6.1,
+"policy": {"source": "scripted baseline"},
+"rl_mode": "train",
+"episode": 20,
+"arm": "scripted",
+"scripted_rev": "r4 (r3 + start offset from first-descent entries only)",
+"segments": [["look_opening", true, 0.127, 0.32, 13.01, 39.9], ["look_drawer", true, 0.131, 0.79, 4.06, 39.4], ["above_tab", true, 0.126, 0.17, 8.28, 39.9], ["down_pre", true, 0.044, 0.14, 3.2, 39.4], ["down_tab", true, 0.021, 0.11, 5.45, 39.6], ["lift_slow", true, 0.029, 0.14, 3.3, 39.7], ["lift", 
+"pull_detect_tries": 1,
+"objects": {"drawer": {"c": [0.2613, 0.0012], "yaw": 87.02, "size": [0.0725, 0.1132], "face_h": 0.0913, "face_used": 0.0912}, "tab": {"ok": true, "xy": [0.2426, 0.0027], "s": -0.0187, "t": 0.0005, "side": -1, "why": null}, "opening": {"c": [0.4515, 0.0028], "yaw": 18.29, "measured": true}},
+"grasp": {"reading": 84.5, "held": true, "h_g": 0.1392},
+"decisions": ["turn the drawer +21.3 deg, tool yaw -71.7, opening [0.4515, 0.0028] yaw 18.3", "drawer entered at a 5.9 mm, b -3.1 mm, yaw 0.00 deg after 1 rim touches; start offset frozen (scripted r4)"],
+"tilt": {"standing": {"ok": true, "n": 1026, "tilt_s_deg": 1.03, "tilt_t_deg": 2.29, "z0": 0.0774, "resid_mm": 0.57, "span": [0.059, 0.099]}, "held": [{"ok": true, "n": 694, "tilt_s_deg": 0.75, "tilt_t_deg": 7.58, "z0": 0.192, "rel_s": -1.04, "phi": 0.0}]},
+"align": [{"ok": true, "ea": 0.0037, "eb": 0.0033, "eyaw": -0.3, "c0": [0.0, 0.0, 0.0], "why": null}],
+"touch_centre": [0.0029, -0.0031, 0.0044],
+"entry": {"c": [0.0059, -0.0031, 0.0044], "rim_touches": 1},
+"touch": {"best": [0.003, 0.0, 0.0], "best_h": 0.0121, "touches": 2},
+"insert": {"end": "seated", "steps": 18, "bottom": 0.0121, "c": [0.0059, -0.0031, 0.0044], "contacts": 2, "peak": 25.0, "tilt": 0.0, "contact_map": [[2.9, -3.1, 0.0, 94.8, 7.8, 1.5], [5.9, -3.1, 0.0, 12.1, -15.0, 2.8]], "tilts_tried": [0.0]},
+"blobs_before": [[0.262, -0.008, 0.098, 0.074, 0.114, 4161], [0.522, 0.02, 0.096, 0.28, 0.185, 12721]],
+"blobs_after": [[0.492, 0.006, 0.102, 0.323, 0.243, 13578]],
+"verify": {"check": true, "reason": "drawer flush in the target compartment", "n": 1387, "median_h": 0.0978, "flush": 1.0, "above": 0.0, "deep": 0.0, "cabinet_moved_m": null, "on_table": false, "terminal_reward": 10.0, "cabinet_shift_px": 0.13, "cabinet_outline_move_m": 0.0029, "orchestrator_check":
+"transitions_file": "transitions/train_ep0020.npz",
+"return_home": "already at default pose",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.5, "reading": 50.0},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.3]
+}
+
+log.txt: 103 lines; last 40:
+[21:00:26] step 8: a [0.0, 0.0, 0.0, 0.0] (mu [0.0, 0.0, 0.0, 0.0]) -> ok  bottom 0.0708 c [0.0059, -0.0031, 0.0044] tilt +0.0 peak 1.4 N r +0.190
+[21:00:26] plan 21_ins09: T=0.7s check ok=True tip>0.156 vmax=3.0deg/s lin=0.018m/s
+[21:00:27] exec 21_ins09: {'segment': 'ins09', 'ok': True, 'reason': '', 'T_plan': 0.7, 'max_dev_deg': 0.042, 'max_de
+... (7956 more characters)
+```
+
+**21:01:56 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Episode 20 reviewed: scripted arm succeeded, no change made (still commit ec1506e)",
+ "report": "No change this turn. The episode succeeded, and the scripted part stays frozen at r4.\n\nEpisode 20 (attempt 70, commit ec1506e, scripted arm) succeeded by both independent checks. Top height is 97.8 mm, flush share 1.0, return 6.10, cabinet shift 0.13 px. The first descent stopped on the rim at a +2.9, b -3.1 mm, the drawer entered at +5.9 mm, and the second contact was the normal stop at the floor.\n\nCorrection to my earlier claim: the side-depth reading of the drawer top does not cleanly predict a first-descent entry. This episode read 91.3 mm and still missed at the +3 mm start, so readings of 91.7 mm or less are now 4 o
+... (609 more characters)
+```
+
+<details><summary>21:01:56 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**21:07:44 execute agent:** No response requested.
+
+### 21:07:44 orchestrator -> execute agent
+
+```text
+Reflection after RL training episode 21 (22 so far): success - both independent checks say success (claim=none, perception=True, vlm=True). Look at what happened (log, images, rewards, learner log) and improve your episode program, prior, reward or learner if it helps; offline tests only; commit; then reply done. Keep it short.
+--- attempt_72: episode 21: success - both independent checks say success (claim=none, perception=True, vlm=True)
+# attempt_72: exit code 2; outcome: fail
+
+command: RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: rl episode 21; commit: ec1506e; duration_s: 131.4; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "fail",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "ec1506e743",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 0.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9586, 0.5631, 90.4613], "gripper": 0.9},
+"fk_check_mm": 0.18,
+"first_failed_check": "geometric check False: a drawer-sized blob is still on the table",
+"transitions": 18,
+"return": -3.9,
+"policy": {"source": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/rl/policy/actor.npz", "updates": 5040, "mtime": "Mon Nov 23 21:01:45 2026"},
+"rl_mode": "train",
+"episode": 21,
+"arm": "learned",
+"scripted_rev": "r4 (r3 + start offset from first-descent entries only)",
+"segments": [["look_opening", true, 0.142, 0.32, 13.01, 39.9], ["look_drawer", true, 0.039, 0.27, 3.9, 39.5], ["above_tab", true, 0.098, 0.1, 8.85, 39.8], ["down_pre", true, 0.038, 0.13, 3.21, 39.6], ["down_tab", true, 0.036, 0.12, 5.27, 39.7], ["lift_slow", true, 0.049, 0.16, 3.19, 39.5], ["lift", 
+"pull_detect_tries": 1,
+"objects": {"drawer": {"c": [0.2715, -0.0027], "yaw": 82.03, "size": [0.0723, 0.1135], "face_h": 0.093, "face_used": 0.0912}, "tab": {"ok": true, "xy": [0.253, 0.0006], "s": -0.0187, "t": 0.0008, "side": -1, "why": null}, "opening": {"c": [0.4515, 0.0028], "yaw": 18.3, "measured": true}},
+"grasp": {"reading": 84.1, "held": true, "h_g": 0.1392},
+"decisions": ["turn the drawer +26.3 deg, tool yaw -71.7, opening [0.4515, 0.0028] yaw 18.3", "drawer entered at a 4.4 mm, b -2.7 mm, yaw -0.36 deg after 1 rim touches; start offset frozen (scripted r4)"],
+"tilt": {"standing": {"ok": true, "n": 1057, "tilt_s_deg": -0.1, "tilt_t_deg": 3.46, "z0": 0.0774, "resid_mm": 0.85, "span": [0.06, 0.1]}, "held": [{"ok": true, "n": 682, "tilt_s_deg": 1.99, "tilt_t_deg": 8.77, "z0": 0.1922, "rel_s": 0.55, "phi": 0.0}]},
+"align": [{"ok": true, "ea": 0.0034, "eb": 0.0035, "eyaw": -0.17, "c0": [0.0, 0.0, 0.0], "why": null}],
+"touch_centre": [0.0029, -0.0031, 0.0044],
+"entry": {"c": [0.0044, -0.0027, -0.361], "rim_touches": 1},
+"touch": {"best": [0.0015, 0.0004, -0.3654], "best_h": 0.0116, "touches": 2},
+"insert": {"end": "seated", "steps": 18, "bottom": 0.0116, "c": [0.0044, -0.0027, -0.361], "contacts": 2, "peak": 25.0, "tilt": 0.0, "contact_map": [[1.3, -2.6, -0.3, 95.1, 7.2, -0.3], [4.4, -2.7, -0.4, 11.6, -15.7, 1.3]], "tilts_tried": [0.0]},
+"blobs_before": [[0.271, -0.011, 0.098, 0.08, 0.112, 4243], [0.524, 0.021, 0.096, 0.284, 0.184, 12713]],
+"blobs_after": [[0.492, 0.007, 0.1, 0.294, 0.184, 12780], [0.693, 0.151, 0.059, 0.064, 0.094, 344]],
+"verify": {"check": false, "reason": "a drawer-sized blob is still on the table", "n": 1390, "median_h": null, "flush": null, "above": null, "deep": null, "cabinet_moved_m": null, "on_table": true, "terminal_reward": 0.0, "cabinet_shift_px": 0.06, "cabinet_outline_move_m": 0.0025, "orchestrator_chec
+"transitions_file": "transitions/train_ep0021.npz",
+"return_home": "already at default pose",
+"exit_code": 2,
+"gripper_final": {"cmd": 0.5, "reading": 50.0},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 103 lines; last 40:
+[21:06:22] step 8: a [0.0, 0.0, 0.0, -0.02] (mu [-0.023, -0.016, 0.037, -0.015]) -> ok  bottom 0.0709 c [0.0044,
+... (8339 more characters)
+```
+
+**21:08:20 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && git log --oneline | head -1; git status --short | head -3; python3 - <<'EOF'
+import json, glob
+real, spur = [], []
+c0 = (0.5286, 0.0207)
+for f in glob.glob('attempts/attempt_*/summary.json'):
+    d = json.load(open(f))
+    for key in ('blobs_before', 'blobs_after'):
+        for b in d.get(key) or []:
+            x, y, h, ex, ey, n = b
+            if 0.05 <= h <= 0.14 and 0.06 <= max(ex, ey) <= 0.16 and ((x-c0[0])**2 + (y-c0[1])**2)**.5 > 0.1875:
+                (real if 0.24 <= x <= 0.33 and abs(y) < 0.06 else spur).append((n, round(x, 3), round(y, 3), h, f.split('/')[1], key))
+print('drawer-like blobs at the reset spot:', len(real), 'n range', min(r[0] for r in real), max(r[0] for r in real))
+print('dra
+... (3803 more characters)
+```
+
+<details><summary>21:08:24 result</summary>
+
+```text
+ec1506e attempt 68: sim arm guard needs 3 rim stops at the end of its range (attempt 67 passed through it on the way in)
+drawer-like blobs at the reset spot: 47 n range 3804 4714
+drawer-like blobs elsewhere: [(344, 0.693, 0.151, 0.059, 'attempt_72', 'blobs_after')]
+seated                               filtered True (drawer flush in the target compartment) | unfiltered True
+seated + episode 21's noise patch    filtered True (drawer flush in the target compartment) | unfiltered False
+drawer really on the table           filtered False (a drawer-sized blob is still on the table) | unfiltered False
+ep 20 scripted verdict success  report   6.10 learner   6.10
+ep 21 learned  verdict success  report   6.10 learner   6.10
+mismatches: 0
+check: one update {'lc': 0.7509015798568
+5f4b102 episode 21 reflection: my own verify ignores small noise blobs (real success was claimed as fail); no motion change
+```
+</details>
+
+**21:08:30 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Episode 21 reviewed: success; fixed my own verify, which wrongly claimed fail (commit 5f4b102, no motion change)",
+ "report": "NOT YET VERIFIED: the verify fix (commit 5f4b102) is tested offline only, on synthetic blobs and the blob sizes logged in past summaries. The next episode is its first real use.\n\nEpisode 21 (attempt 72, commit ec1506e, learned arm) succeeded by both independent checks, but my own program claimed fail, with exit code 2 and a summary return of -3.9. A noise patch of 344 depth points at (0.69, 0.15) passed the drawer size prior, so my check reported a drawer still on the table.\n\nThe training data was not affected. The learner takes success from the orchestrator's verdict, and its relabelled retu
+... (769 more characters)
+```
+
+<details><summary>21:08:30 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**21:13:34 execute agent:** No response requested.
+
+### 21:13:34 orchestrator -> execute agent
+
+```text
+Reflection after RL training episode 22 (23 so far): success - both independent checks say success (claim=none, perception=True, vlm=True). Look at what happened (log, images, rewards, learner log) and improve your episode program, prior, reward or learner if it helps; offline tests only; commit; then reply done. Keep it short.
+--- attempt_74: episode 22: success - both independent checks say success (claim=none, perception=True, vlm=True)
+# attempt_74: exit code 0; outcome: success
+
+command: RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: rl episode 22; commit: 5f4b102; duration_s: 130.4; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "5f4b102823",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 0.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9583, 0.5626, 90.4616], "gripper": 0.9},
+"fk_check_mm": 0.18,
+"first_failed_check": null,
+"transitions": 19,
+"return": 5.05,
+"policy": {"source": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/rl/policy/actor.npz", "updates": 5760, "mtime": "Mon Nov 23 21:07:41 2026"},
+"rl_mode": "train",
+"episode": 22,
+"arm": "learned",
+"scripted_rev": "r4 (r3 + start offset from first-descent entries only)",
+"segments": [["look_opening", true, 0.124, 0.3, 13.03, 39.9], ["look_drawer", true, 0.038, 0.2, 4.0, 39.5], ["above_tab", true, 0.064, 0.12, 5.61, 39.8], ["down_pre", true, 0.029, 0.13, 3.21, 39.6], ["down_tab", true, 0.043, 0.14, 5.38, 39.6], ["lift_slow", true, 0.043, 0.15, 3.26, 39.6], ["lift", t
+"pull_detect_tries": 1,
+"objects": {"drawer": {"c": [0.2658, 0.0075], "yaw": -68.29, "size": [0.0746, 0.1166], "face_h": 0.093, "face_used": 0.0912}, "tab": {"ok": true, "xy": [0.2472, 0.0009], "s": 0.0198, "t": -0.0008, "side": 1, "why": null}, "opening": {"c": [0.4514, 0.003], "yaw": 18.31, "measured": true}},
+"grasp": {"reading": 84.1, "held": true, "h_g": 0.1392},
+"decisions": ["turn the drawer -3.4 deg, tool yaw -71.7, opening [0.4514, 0.003] yaw 18.3", "drawer entered at a 8.6 mm, b -3.3 mm, yaw -0.35 deg after 2 rim touches; start offset frozen (scripted r4)"],
+"tilt": {"standing": {"ok": true, "n": 1297, "tilt_s_deg": -1.18, "tilt_t_deg": -2.46, "z0": 0.0775, "resid_mm": 1.16, "span": [0.06, 0.1]}, "held": [{"ok": true, "n": 784, "tilt_s_deg": 0.64, "tilt_t_deg": 7.09, "z0": 0.1921, "rel_s": -0.39, "phi": 0.0}]},
+"align": [{"ok": true, "ea": 0.003, "eb": 0.004, "eyaw": 0.0, "c0": [0.0, 0.0, 0.0], "why": null}],
+"touch_centre": [0.0029, -0.0031, 0.0044],
+"entry": {"c": [0.0086, -0.0033, -0.351], "rim_touches": 2},
+"touch": {"best": [0.0056, -0.0002, -0.3554], "best_h": 0.0129, "touches": 3},
+"insert": {"end": "seated", "steps": 19, "bottom": 0.0129, "c": [0.0086, -0.0033, -0.351], "contacts": 3, "peak": 25.0, "tilt": 0.0, "contact_map": [[2.8, -3.2, -0.4, 95.5, 4.8, 0.4], [6.0, -3.2, -0.2, 94.3, 8.6, 0.2], [8.6, -3.3, -0.4, 12.9, -14.9, 1.3]], "tilts_tried": [0.0]},
+"blobs_before": [[0.268, -0.003, 0.097, 0.085, 0.112, 3680], [0.52, 0.019, 0.096, 0.291, 0.186, 12824], [0.71, 0.143, 0.021, 0.09, 0.092, 528]],
+"blobs_after": [[0.49, 0.006, 0.101, 0.286, 0.186, 12905]],
+"verify": {"check": true, "reason": "drawer flush in the target compartment", "n": 1404, "median_h": 0.0979, "flush": 1.0, "above": 0.0, "deep": 0.0, "cabinet_moved_m": null, "on_table": false, "terminal_reward": 10.0, "cabinet_shift_px": 0.1, "cabinet_outline_move_m": 0.0026, "orchestrator_check": 
+"transitions_file": "transitions/train_ep0022.npz",
+"return_home": "already at default pose",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.5, "reading": 50.0},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 108 lines; last 40:
+[21:12:13] step 9: a [0.0, 0.0, 0.0, 0.15] (mu [0.009, 0.015, -0.007, -0.021]) -> ok  bottom 0.0692 c [0.0086, -0.0033, -0.351] tilt +0.0
+... (8353 more characters)
+```
+
+**21:13:42 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Episode 22 reviewed: success by both independent checks, no change made (still commit 5f4b102)",
+ "report": "No change this turn. The episode succeeded and showed no fault, and leaving the program alone keeps the arms comparable.\n\nEpisode 22 (attempt 74, commit 5f4b102, learned arm) succeeded by both independent checks, and my own check agreed. Top height is 97.9 mm, flush share 1.0, cabinet shift 0.10 px. It took 3 contacts: rim stops at a +2.8 and +6.0 mm, entry at +8.6, -3.3 mm, then the normal stop at the floor. Return is 5.05.\n\nThe curve so far shows no learning gain. With the new reward, the learned arm scored 6.10, 7.25, 6.10 and 5.05 (episodes 18, 19, 21, 22; mean 6.13), and the scripted arm scored 6.10 and 6
+... (340 more characters)
+```
+
+<details><summary>21:13:42 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

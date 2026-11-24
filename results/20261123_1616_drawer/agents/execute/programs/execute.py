@@ -65,6 +65,7 @@ OBS_C = np.array([0.008, 0.008, 4.0])          # scale of the residual in the ob
 FIRST_TILT = 0.0                               # deg about b; tilts -5 .. +2.5 at the rim all failed (attempt 26)
 ENTERED = 0.004                                # m below the rim: the drawer is in the opening, no more lateral moves
 FIX_MAX = np.array([0.010, 0.010, 4.0])         # bound of the measured correction (drawer vs opening, wrist image)
+MIN_DRAWER_POINTS = 1500                       # side-depth points of a blob that can be the drawer on the table
 CAB_MOVE_MAX = 0.02                            # m, the task's limit
 CAB_SHIFT_PX = 6.0                             # side image at 640 px, ~1.6 mm per px: ~1 cm (the task allows 2 cm)
 LEVEL_H = 0.025                                # drawer bottom above the rim while it is levelled
@@ -655,7 +656,8 @@ class Episode:
         # the check's cabinet comparison uses the blob centre, which a filled compartment moves by 3.3 cm (attempts 30, 32, nothing
         # moved): flushness from the same check without it, cabinet motion from the side image
         with_blob, _ = checks.drawer_lying(self.before, after, TASK)
-        ok, rep = checks.drawer_lying([], after, TASK)
+        # a few hundred noise points far from the cabinet can pass the drawer size prior (episode 21: n 344 at (0.69, 0.15), a real drawer has > 3500)
+        ok, rep = checks.drawer_lying([], [b for b in after if b["n"] >= MIN_DRAWER_POINTS], TASK)
         shift = V.cabinet_shift_px(self.img_before, s.side.latest()[0])
         outline = self.cabinet_outline_move(after)
         # the outline's far edge is noisy (extent 0.278-0.318 m on a static scene), the image shift repeats to ~0.3 px: moved = both agree,

@@ -273,3 +273,8 @@ Real test (attempt 67, commit 69062cf, not one of the five recorded sim episodes
 force 0.97). On its way in the command reached the policy's +15 mm bound with no stop there, so the 14 mm guard could have ended a good attempt.
 Changed (sim arm only): the guard now ends the episode after 3 rim stops at that range instead of 1.
 This is one episode; it does not say how the sim arm compares with the others.
+
+## Reflection on episode 21 (attempt 72): my own verify failed a real success
+Both independent checks said success, but my program claimed fail ("a drawer-sized blob is still on the table"): a noise patch of 344 points at (0.69, 0.15) passed the
+drawer size prior. Fix to a failure that happened (episode 21), in the verification only, no motion change, scripted r4 stays: my own check ignores blobs under 1500 points.
+The learner was not misled, because it takes success from the orchestrator's verdict.

@@ -18,8 +18,8 @@
    "unsure": 0
   },
   "resets": {
-   "total": 33,
-   "ok": 28,
+   "total": 37,
+   "ok": 32,
    "fail": 5,
    "manual": 0
   },
@@ -28,8 +28,8 @@
    "reset": 0
   },
   "rl": {
-   "total": 20,
-   "success": 12,
+   "total": 23,
+   "success": 15,
    "fail": 6,
    "unsure": 2
   }
@@ -60,28 +60,28 @@
    "reflections": 2
   },
   "execute": {
-   "status": "reviewing",
+   "status": "done",
    "session_id": "5fed3068-1646-4cfb-9430-33473e8dbbd1",
    "model": "claude-opus-5-5",
    "started": "2026-11-23T17:06:56",
    "ended": "2026-11-23T17:32:18",
-   "attempts": 23,
+   "attempts": 24,
    "robot_attempts": 9,
-   "turns": 259,
-   "cost_usd": 29.841175200000006,
-   "input_tokens": 346,
-   "output_tokens": 388256,
-   "cache_read": 75043236,
-   "cache_creation": 883253,
-   "duration_s": 4156.8150000000005,
+   "turns": 268,
+   "cost_usd": 31.192733000000008,
+   "input_tokens": 360,
+   "output_tokens": 395584,
+   "cache_read": 79631225,
+   "cache_creation": 919171,
+   "duration_s": 4229.509000000001,
    "first_success_attempt": 8,
    "first_success_after_attempts": 20,
    "time_to_first_success_s": 7870.1,
    "repairs": 0,
    "rounds": 0,
    "program_command": "RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
-   "last_report": "NOT YET VERIFIED: the learner fix is tested offline only, on a copy of the real data. I did not make a separate robot test, following the operator's 19:19 note, because no motion code changed; the next episodes are the test. A sane critic does not show the policy will do better on the robot. `rl_curve.jsonl` is not on this machine, so I used the learner log and the logged episodes.\n\nNo episode failed or was unsure this round, so there was nothing to fix in the frozen scripted part (`execute.py` is unchanged).\n\nProblem found: the learner had diverged, so the learned arm was not learning anything useful.\n- Mean Q fell from -6 to -75 (minimum -131), while real returns-to-go are -2.8 to +12.2.\n- Critic loss rose from 0.7 to 25, and the entropy temperature from 0.15 to 1.4.\n- Likely cause: most logged actions are exactly zero, so the policy's spread collapses, the temperature keeps growing, and its term in the critic target drags Q down.\n\nChanged (commit 22c6f05, learner only):\n- Removed the entropy term from the AWAC critic target and stopped tuning the temperature.\n- Clamped critic targets to [-20, 20].\n- Raised the minimum policy std to 0.1, which slightly changes exploration in the learned arm.\n- Restart actor and critic once on all existing data.\n\nOffline result on the 300 real transitions: the error between Q and return-to-go fell from 82 to 2.1, correlation rose from 0.63 to 0.88, and Q now spans -2.7 to 12.1. `learner.py --check` passes.\n\nTwo things to know when reading the curve:\n- The next episode still uses the old actor, because the restarted learner first runs after it. Learned-arm results before and after that point are not comparable.\n- The retrained policy can still shift the first descent by up to about 0.8 mm along a, and past first-descent misses were 0.3-1.0 mm from the working offset. So the learned arm could need more touches than the scripted arm until it learns otherwise.",
-   "reflections": 22,
+   "last_report": "NOT YET VERIFIED: the final sim-arm guard (commit ec1506e) has passed a dry run and offline tests, but has not run on the real robot. The sim arm has one real test, so its success rate is unknown. The \"success\" in dry attempts 66 and 68 means nothing, because the drawer was already in the cabinet.\n\nNo training episode failed or was unsure this round, so I changed nothing in the scripted part, the learned arm or the learner. The learner is healthy (critic loss about 1.0, Q about 0.7).\n\nSim arm, as the operator required before episode 31:\n- Dry run (attempt 66): the policy loads on the robot machine and all 60 steps pass the model checks.\n- One real test (attempt 67, commit 69062cf, not one of the five recorded sim episodes): the drawer seated flush at 96.2 mm and the independent geometric check agrees. It took 19 decisions and 2 force stops (36.3 N on the rim, 37.1 N at the floor), return 4.84, and the cabinet shifted 0.07 px.\n- Frames confirmed on hardware: at the rim stop the force on the tool read +35.3 N up and +11.7 N along +a, and the policy's next step followed it (cosine 0.97).\n\nChanged (commit ec1506e, sim arm only): on its way in, the policy's command reached its +15 mm limit. My guard would have ended the episode if a force stop had landed there, so it now needs 3 rim stops at that range instead of 1.\n\nFor the operator: because attempt 67 passed the independent check, the orchestrator has probably stored its command, including `RLPJ_ARM=sim`, as the episode command. This does not turn training into sim episodes, since the program ignores that variable for any orchestrator episode (tested offline). You may still want to reset `program_command` to `python programs/execute.py`.",
+   "reflections": 25,
    "reviews": 4
   }
  },
@@ -124,17 +124,17 @@
    ]
   }
  },
- "next_episode": 20,
- "next_reset": 33,
+ "next_episode": 23,
+ "next_reset": 37,
  "vlm": {
-  "calls": 20,
-  "cost_usd": 1.5486440000000001
+  "calls": 23,
+  "cost_usd": 1.7807344
  },
  "operator_notes": [],
  "rl": {
-  "episodes": 20,
+  "episodes": 23,
   "evals": [],
-  "since_review": 0,
+  "since_review": 3,
   "learner_fails": 0
  }
 }
