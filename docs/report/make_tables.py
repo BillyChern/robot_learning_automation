@@ -1,10 +1,11 @@
-"""Tables and key numbers for docs/report/drawer_lying_report.md from a run's records (reads runs/, writes only docs/report/).
+"""Tables and key numbers for docs/report/drawer_lying_report.md from a run's records (reads runs/, writes docs/report/).
 
     python3 docs/report/make_tables.py [run_id] [--from 17] [--until N] [--update] [--figures]
 
-Prints the Markdown blocks to stdout (--until N: only episodes up to index N, for a consistent snapshot of a live run;
-resets, cost and the figures are not cut). --update replaces each block between <!-- BEGIN:name --> and <!-- END:name --> in the
-report; --figures copies the run's plots and a few stills to docs/report/figures/ (runs/ is not in git).
+Prints the Markdown blocks to stdout. --from: first episode of the learned-vs-scripted window. --until N: only episodes
+up to index N (a consistent snapshot of a live run; resets and cost are cut at that episode's end, figures are not).
+--update replaces each block between <!-- BEGIN:name --> and <!-- END:name --> in the report; --figures copies the
+run's plots and a few stills to docs/report/figures/ (runs/ is not in git).
 Definitions: rim touches = force stops with the drawer bottom above 80 mm (insert.contact_map; episodes 0-4 have no map
 and all their stops were on the rim); floor stop = a stop below 30 mm (the drawer seated on the compartment floor);
 peak = insert.peak (the last insertion step's peak, 25 = a force stop); max force = the largest contact force over the
@@ -232,8 +233,8 @@ def block_resets(d, ev):
     return "\n".join(lines + [table(["Reset", "Time", "Why it failed"], fails)] if fails else lines[:-1])
 
 
-def block_cost(d, ev):
-    us = jl(d / "usage.jsonl")
+def block_cost(d, ev, cutoff=None):
+    us = [u for u in jl(d / "usage.jsonl") if cutoff is None or u["t"] <= cutoff]
     if not us:
         return "no usage yet"
     tot = us[-1].get("totals", {})
@@ -245,8 +246,11 @@ def block_cost(d, ev):
     v = [u for u in us if u.get("kind") == "vlm"]
     rows.append(["VLM judge (episodes)", len(v), "-", f"{sum(u.get('duration_s') or 0 for u in v) / 60:.0f}", "-",
                  f"{sum(u.get('cost_usd') or 0 for u in v):.2f}"])
+    ro = [e for e in ev if e.get("kind") == "reset_orientation"]           # not in usage.jsonl: cost from the events
+    ro_usd = sum(e.get("cost_usd") or 0 for e in ro)
+    rows.append(["VLM orientation check (resets)", len(ro), "-", "-", "-", f"{ro_usd:.2f}"])
     rows.append(["total", "", tot.get("agent_turns", ""), f"{tot.get('agent_min', 0):.0f}", f"{tot.get('tokens_out', 0) / 1000:.0f} k",
-                 f"{tot.get('cost_usd', 0):.2f}"])
+                 f"{tot.get('cost_usd', 0) + ro_usd:.2f}"])
     t_end = us[-1]["t"][11:16]
     return "\n".join([table(["Item", "Calls", "Turns", "Minutes", "Output tokens", "Cost (USD, API list price)"], rows), "",
                       f"As of {t_end}: wall time {tot.get('wall_min', 0) / 60:.1f} h since the run was created, robot programs "
@@ -281,7 +285,7 @@ def _t(iso):
 
 def block_force(eps):
     """Sim-to-real check: lateral force at each rim touch vs the direction from the touch to where the drawer went in."""
-    rows, allc = [], []
+    rows, allc, sa, sb = [], [], [], []
     for e in eps:
         if not e["entry"]:
             continue
@@ -293,6 +297,10 @@ def block_force(eps):
             n1, n2 = math.hypot(da, db), math.hypot(fa, fb)
             if n1 >= 1.0 and n2 >= 0.5:
                 cs.append((da * fa + db * fb) / n1 / n2)
+            if abs(da) >= 1.0:
+                sa.append(da * fa > 0)
+            if abs(db) >= 1.0:
+                sb.append(db * fb > 0)
         if cs:
             allc += cs
             rows.append([e["ep"], len(cs), f"{min(cs):.2f}", f"{st.median(cs):.2f}",
@@ -302,7 +310,9 @@ def block_force(eps):
         return "no rim touches before an entry yet"
     return "\n".join([table(["Ep", "Rim touches", "Min cos", "Median cos", "Mean f_a (N)", "Mean f_b (N)"], rows), "",
                       f"All: {len(allc)} rim touches, cosine > 0 in {sum(c > 0 for c in allc)}, median {st.median(allc):.2f}, "
-                      f"> 0.9 in {sum(c > 0.9 for c in allc)}."])
+                      f"> 0.9 in {sum(c > 0.9 for c in allc)}. Per axis, where the entry was at least 1 mm away along it: the "
+                      f"force's a-component pointed toward the entry in {sum(sa)} of {len(sa)} touches, its b-component in "
+                      f"{sum(sb)} of {len(sb)}."])
 
 
 def block_sim():
@@ -351,8 +361,11 @@ def main():
     start = int(args[args.index("--from") + 1]) if "--from" in args else 17
     until = int(args[args.index("--until") + 1]) if "--until" in args else None
     d, ev, eps = load(run, until)
+    cutoff = max(e["end"] for e in eps) if until is not None and eps else None   # resets and cost up to the last episode
+    if cutoff:
+        ev = [e for e in ev if e["t"] <= cutoff]
     blocks = dict(summary=block_summary(d, ev, eps), episodes=block_episodes([e for e in eps if e["mode"] == "rl"]),
-                  arms=block_arms(eps, start), eval=block_eval(d, eps), resets=block_resets(d, ev), cost=block_cost(d, ev),
+                  arms=block_arms(eps, start), eval=block_eval(d, eps), resets=block_resets(d, ev), cost=block_cost(d, ev, cutoff),
                   force=block_force(eps), sim=block_sim())
     cut = "" if until is None else f", episodes up to {until}"
     stamp = f"<!-- generated by docs/report/make_tables.py from runs/{run}{cut} at {time.strftime('%Y-%m-%d %H:%M')} -->"

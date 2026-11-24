@@ -1,26 +1,30 @@
 # Agents as RL engineers: real-world drawer insertion on a Kinova Gen3 run by coding agents
 
 First draft, written from the records of run `20261123_1616_drawer` while the run is still going. Data up to training
-episode 16 (2026-11-23, 20:21). Numbers that do not exist yet are marked **[TBD]**. The generated blocks (between
-`<!-- BEGIN:... -->` and `<!-- END:... -->`) are rewritten by `python3 docs/report/make_tables.py --update --figures`.
+episode 18 (2026-11-23, 20:40). Numbers that do not exist yet are marked **[TBD]**. The generated blocks (between
+`<!-- BEGIN:... -->` and `<!-- END:... -->`) are rewritten by `python3 docs/report/make_tables.py --update --figures`
+(this draft: `--until 18`, so the tables match the text).
 
 ## Numbers to update when the run ends
 
-- [ ] Re-run `python3 docs/report/make_tables.py --update --figures` (all generated tables, the summary list and the
-      figure copies in `docs/report/figures/`).
+- [ ] Re-run `python3 docs/report/make_tables.py --update --figures` without `--until` (all generated tables, the
+      summary list and the figure copies in `docs/report/figures/`), then update the episode numbers quoted in the
+      text (abstract, 7.2, 7.3, 7.5, 9).
 - [ ] Abstract: training episodes, counted successes, final evaluation k/10 with its interval, learned vs scripted
       numbers in the comparison window (episodes >= 17), sim-arm result k/5, total cost and robot time.
 - [ ] Section 7.4: evaluation result and text (one round of 10 deterministic episodes after 50 training episodes).
 - [ ] Section 7.5: learned vs scripted in the window: table, the test of the difference, and the sentence that says
       whether the learner helped.
-- [ ] Section 7.6: sim-policy arm (episodes 31, 34, 37, 40, 43): outcome, forces, whether the force-direction cue held.
-- [ ] Section 5.6: state when the learned arm first used the fixed-formula reward and first-descent exploration
-      (commit `017e23a`, 20:28; first learned-arm episode after it: 18 if nothing else changes).
+- [ ] Section 7.6: sim-policy arm (episodes 31, 34, 37, 40, 43): outcome, forces, whether the force-direction cue held;
+      the force-cue numbers in the abstract and Section 6.6 (they come from the generated `force` block).
+- [ ] Section 5.6: confirm that nothing later changed the scripted part or the reward (episode 18 was the first
+      learned-arm episode with the fixed-formula reward and first-descent exploration, commit `017e23a`).
 - [ ] Section 8: interventions after 20:28 from `OPERATOR_LOG.md`; final counts in Table 8.
 - [ ] Section 7.8: final cost, agent and robot time; the sim worker's cost if it can be recovered.
 - [ ] Figures: `scripts/rl_plots.py` marks the freeze at episode 16 and counts episodes 0-8 and 10 as "learned" in
       `success.png`; the text below uses r4 from episode 15 and the repaired learner from episode 17. Align the plot
       or the captions before the final version.
+- [ ] Header and Section 7.1: the data cut-off and the timeline rows after episode 18.
 - [ ] Figure 1 (architecture) still to draw.
 - [ ] Appendix C: final video assets.
 
@@ -34,14 +38,14 @@ success. The task: pick up a drawer standing on its back wall beside a wooden ca
 it, pull up, into the compartment nearest the robot, with 1-2 mm of clearance per side. A previous attempt with the
 cabinet standing upright had no success in 30 training episodes. In this run the first five episodes ended with the
 drawer resting on the rim. After the agent rebuilt its program (opening measured before the grasp, a touch search on
-the rim, a stored start offset), 11 of the next 12 episodes inserted the drawer and the 8 training episodes before the
-time of writing were all independent successes, with no manual reset and one manual touch of the scene. A scripted
+the rim, a stored start offset), 13 of the next 14 episodes inserted the drawer and the 10 most recent training episodes
+(9-18) were all independent successes, with no manual reset and one manual touch of the scene. A scripted
 baseline arm (the same program with the learned residual switched off) did as well as the learned arm, so the gain so
 far comes from the agent's program changes, not from learning. **[TBD: training episodes in total, final evaluation
 k/10, learned vs scripted after the freeze, zero-shot sim-policy arm k/5, total cost.]** A simulation built by a
 separate agent (MuJoCo with a Newton GPU twin, PPO) reached 74.8 % success against 21.0 % for a straight descent and
 59.6 % for a force-guided script. Its main finding, that the sideways contact force points toward the opening, agreed
-with all 25 real rim touches that preceded an entry (median cosine 0.86), with a bias caveat discussed in Section 6.6.
+with all 27 real rim touches that preceded an entry (median cosine 0.96), with a bias caveat discussed in Section 6.6.
 
 ## 1 Introduction
 
@@ -326,8 +330,9 @@ training episodes with transitions, episode 10 stored under a test name, and 5 r
 
 Up to the tuning turn after 15 episodes the learner also tuned an entropy temperature and used it in the critic
 target. With almost all logged actions exactly zero (scripted arm, zeroed lateral actions inside the opening) the
-policy's spread collapsed, the temperature grew from 0.15 to 1.7 and mean Q fell to -92 while the real returns-to-go
-were between -2.8 and 12.2. The agent found this at 20:10, removed the entropy term from the AWAC target, clamped
+policy's spread collapsed, the temperature grew from 0.15 to 1.7 and mean Q drifted from -6 (after episode 5) to -10
+(after episode 9), then fell fast (-31 after episode 10, -92 after episode 15) while the real returns-to-go were
+between -2.8 and 12.2. The agent found this at 20:10, removed the entropy term from the AWAC target, clamped
 targets to [-20, 20], raised the minimum policy std to 0.1 and restarted actor and critic on all data. Because of a
 lost commit (Section 8.3) the fix first ran after episode 16 (Q 3.9, critic loss 0.58), so the first episode acting
 with the repaired learner is 17.
@@ -339,8 +344,8 @@ minus 0.05 per 5 N of peak force above 15 N, -0.15 per force stop and -1 per ref
 plus flushness terms (+2 x flush share, -2 x share above, -1 x share too deep, -1 if a drawer remains on the table).
 The learner replaces the terminal bonus by one from the orchestrator's verdict: +10 for success, 0 for failure (-5 only
 when the verdict says the drawer is upside down), and +10 for an `unsure` verdict with a VLM yes and the drawer at the
-floor. A success scores about 14 whatever the number of touches, so this reward saturated from episode 6 on and could
-not show progress (Figure 6).
+floor. A success scored 11.5-14.4 (episode 10, with 17 rim touches, still scored 11.5), so this reward saturated from
+episode 6 on and could not show progress (Figure 6).
 
 **The fixed-formula return** (used for the report's curves, `scripts/rl_plots.py` `fixed_return`, the same for every
 episode and arm): +10 if the verdict is success, -1 per force stop during the insertion, -0.1 per N of the last step's
@@ -429,7 +434,7 @@ learned to hover above the rim and was stopped.
 ### 6.4 Results
 
 <!-- BEGIN:sim -->
-<!-- generated by docs/report/make_tables.py from runs/20261123_1616_drawer at 2026-11-23 20:39 -->
+<!-- generated by docs/report/make_tables.py from runs/20261123_1616_drawer, episodes up to 18 at 2026-11-23 20:43 -->
 
 500 episodes per cell (MuJoCo CPU reference, seeds 100000-100499, same episodes for every controller).
 
@@ -490,7 +495,7 @@ episodes that went in we know the entry point. The table compares, for each rim 
 direction from the touch point to the entry point.
 
 <!-- BEGIN:force -->
-<!-- generated by docs/report/make_tables.py from runs/20261123_1616_drawer at 2026-11-23 20:39 -->
+<!-- generated by docs/report/make_tables.py from runs/20261123_1616_drawer, episodes up to 18 at 2026-11-23 20:43 -->
 
 | Ep | Rim touches | Min cos | Median cos | Mean f_a (N) | Mean f_b (N) |
 |---|---|---|---|---|---|
@@ -503,16 +508,18 @@ direction from the touch point to the entry point.
 | 15 | 1 | 0.97 | 0.97 | +5.6 | +1.6 |
 | 16 | 1 | 1.00 | 1.00 | +8.1 | +1.2 |
 | 17 | 1 | 0.99 | 0.99 | +7.8 | +1.2 |
+| 18 | 1 | 1.00 | 1.00 | +7.7 | +1.5 |
 
-All: 26 rim touches, cosine > 0 in 26, median 0.91, > 0.9 in 13.
+All: 27 rim touches, cosine > 0 in 27, median 0.96, > 0.9 in 14. Per axis, where the entry was at least 1 mm away along it: the force's a-component pointed toward the entry in 17 of 17 touches, its b-component in 16 of 17.
 <!-- END:force -->
 
 All touches have a positive cosine, but this is weaker evidence than it looks. In this run the opening was always at
 +a from the first touch (the search tries +a first), and the a-component of the force stayed at +3 to +7 N even in
-episode 10's touches at a of about 15 mm, where the entry was not further along +a; part of the a-component is
-therefore a bias. The b-component is more informative: in episode 10 it pointed toward the entry at b = -10 mm in the
-touches where b was the main direction (cosines 0.82-0.86). A controlled test (rim touches placed on purpose on all
-sides of the opening) is still missing. **[TBD: the sim arm's episodes give a direct test of the cue.]**
+episode 10's touches at a of about 15 mm, where the entry (a = 15.9 mm) was no longer further along +a; part of the
+a-component is therefore a bias. The b-component is more informative: in episode 10, the only episode in which the
+entry lay well to one side in b (b = -10 mm), it pointed toward the entry in 16 of 17 touches, including touches on
+the other side of the start line (b = +2 mm). A controlled test (rim touches placed on purpose on all sides of the
+opening) is still missing. **[TBD: the sim arm's episodes give a direct test of the cue.]**
 
 ## 7 Real-robot results
 
@@ -545,7 +552,9 @@ All times 2026-11-23.
 | 19:49-20:13 | note delivery, reflection and tuning turns (scripted part frozen at r4, learner divergence fixed); no robot motion for 24 min |
 | 20:15, 20:20 | episodes 15 and 16: successes |
 | 20:19-20:28 | user decision to extend to 50 training episodes and one evaluation of 10; sim arm added; restart; the agent adopts the fixed-formula reward |
-| **[TBD]** | episodes 17-49, sim-arm episodes, evaluation, end of the run |
+| 20:31-20:34 | episode 17 (scripted, first episode of the comparison window): success; the agent's return now equals the fixed formula (6.10) |
+| 20:38-20:40 | episode 18 (learned, the first with the fixed-formula reward and first-descent exploration): success, same pattern as the scripted arm |
+| **[TBD]** | episodes 19-49, sim-arm episodes, evaluation, end of the run |
 
 **Figure 5.** Resets (top, red = failed) and RL episodes (bottom, green = success) over time.
 
@@ -561,7 +570,7 @@ Steps: insertion steps. Entry: where the drawer passed into the opening, relativ
 return: the agent's own reward; fixed return: Section 5.5.
 
 <!-- BEGIN:episodes -->
-<!-- generated by docs/report/make_tables.py from runs/20261123_1616_drawer at 2026-11-23 20:39 -->
+<!-- generated by docs/report/make_tables.py from runs/20261123_1616_drawer, episodes up to 18 at 2026-11-23 20:43 -->
 
 | Ep | Start | Arm | Verdict (perception, VLM) | Rim touches + floor stop | Peak N | Max N | Steps | Entry a, b (mm) | Duration (s) | Agent return | Fixed return |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -583,6 +592,7 @@ return: the agent's own reward; fixed return: Section 5.5.
 | 15 | 20:13 | learned | success (P+ V+) | 1 + 1 | 25.0 | 32.1 | 17 | +5.3, -3.0 | 120 | 13.87 | 6.15 |
 | 16 | 20:18 | learned | success (P+ V+) | 1 + 1 | 25.0 | 31.7 | 18 | +6.7, -2.5 | 118 | 14.00 | 6.10 |
 | 17 | 20:31 | scripted | success (P+ V+) | 1 + 1 | 25.0 | 28.6 | 18 | +5.9, -3.1 | 130 | 6.10 | 6.10 |
+| 18 | 20:38 | learned | success (P+ V+) | 1 + 1 | 25.0 | 27.3 | 18 | +6.2, -2.5 | 130 | 6.10 | 6.10 |
 <!-- END:episodes -->
 
 Three phases are visible:
@@ -596,9 +606,9 @@ Three phases are visible:
   actor, run in eval mode by mistake) needed 17 rim touches before the spiral found the opening at (+15.9, -10.0) mm;
   the agent attributed this to a higher pinch on the tab and fixed the pinch height (r2), which did not remove the
   offset jump in episode 11.
-- **Episodes 11-16** (r2-r4): every episode, learned or scripted, followed the same pattern: the first descent at the
+- **Episodes 11-18** (r2-r4): every episode, learned or scripted, followed the same pattern: the first descent at the
   start offset (+2.7 to +3.5 mm, about -3 mm; +6.2 mm in episode 14) landed on the rim at 94.8-95.6 mm, one 3 mm search
-  step along +a let the drawer in, and the descent ended with a 25 N stop on the floor; 17-18 steps, 112-120 s. Since
+  step along +a let the drawer in, and the descent ended with a 25 N stop on the floor; 17-18 steps, 112-130 s. Since
   the same nominal offset entered without a touch in episodes 6 and 9, the entry window at +3 mm is narrower than the
   repeatability of the grasp; the agent's hypothesis (not measured) is that a rim touch shifts or levels the drawer in
   the grip.
@@ -608,8 +618,8 @@ cabinet outline moved at most 2.8 mm between before and after. No motion was ref
 
 ### 7.3 Learning curves
 
-**Figure 6.** The agent's own return per training episode (it changed meaning with the revisions and saturated at about
-14 per success).
+**Figure 6.** The agent's own return per training episode. It changed meaning with the revisions and saturated at about
+14 per success; from episode 17 it is the fixed formula (6.1 for a success with one rim touch and a floor stop).
 
 ![Agent return](figures/return.png)
 
@@ -619,11 +629,12 @@ from 11 on); the table in Section 7.2 separates them. Episode 10 (eval mode) is 
 
 ![Fixed return](figures/return_fixed.png)
 
-The fixed-formula curve rises from about -5 (episodes 0-4) to about +6 (episodes 11-16). This rise comes from the
+The fixed-formula curve rises from about -5 (episodes 0-4) to about +6 (episodes 11-18). This rise comes from the
 program redesign between episodes 4 and 5 and the start-offset revisions up to r4, all made by the agent in its
 reflection and tuning turns, not from the learner: the scripted arm, which never uses the learned residual, scores the
-same 6.10 in episodes 11 and 14 as the learned arm in 12, 13 and 16. The learned residual moved the first descent by
-less than 1 mm, and the learner itself had diverged from about episode 6 to 16 (Section 5.4). What is left to learn is
+same 6.10 in episodes 11, 14 and 17 as the learned arm in 12, 13, 16 and 18. The learned residual moved the first descent by
+less than 1 mm, and the learner's critic diverged after episode 10 (Section 5.4), so the actors used in episodes 11-16
+came from a broken learner. What is left to learn is
 visible in episodes 6 and 9: entering on the first descent (no rim touch) and seating without a 25 N floor stop
 (the actor controls the descent step size) would raise the fixed return from 6.1 to about 9. From episode 18 the
 learned arm explores the first descent and optimizes this return directly. **[TBD: whether the learned arm's fixed
@@ -632,14 +643,14 @@ return rises above the scripted arm's in the window, Figure 7 at the end of the 
 ### 7.4 Success rate and evaluation
 
 <!-- BEGIN:summary -->
-<!-- generated by docs/report/make_tables.py from runs/20261123_1616_drawer at 2026-11-23 20:39 -->
+<!-- generated by docs/report/make_tables.py from runs/20261123_1616_drawer, episodes up to 18 at 2026-11-23 20:43 -->
 
-- Training episodes: 18 (indices 0-17); counted successes 10; unsure 2 (5, 6); failures 6.
-- Drawer seated at the compartment floor (program log): 12 episodes (5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17).
+- Training episodes: 19 (indices 0-18); counted successes 11; unsure 2 (5, 6); failures 6.
+- Drawer seated at the compartment floor (program log): 13 episodes (5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18).
 - First counted success: episode 7 at 19:04.
-- Episodes >= 9: 9/9 = 100 % [70, 100].
+- Episodes >= 9: 10/10 = 100 % [72, 100].
 - Time between consecutive training episodes: median 6.0 min, 2 gaps over 15 min.
-- Per arm: pre-arm 1/9; learned 5/5; scripted 3/3; learned (eval mode) 1/1.
+- Per arm: pre-arm 1/9; learned 6/6; scripted 3/3; learned (eval mode) 1/1.
 <!-- END:summary -->
 
 **Figure 8.** Success rate: rolling 10 over training episodes (x axis: 1-based count), cumulative successes, running
@@ -652,7 +663,7 @@ Fixed evaluation (10 deterministic episodes after 50 training episodes; 10/10 wo
 72 %):
 
 <!-- BEGIN:eval -->
-<!-- generated by docs/report/make_tables.py from runs/20261123_1616_drawer at 2026-11-23 20:39 -->
+<!-- generated by docs/report/make_tables.py from runs/20261123_1616_drawer, episodes up to 18 at 2026-11-23 20:43 -->
 
 [TBD: the fixed evaluation (10 deterministic episodes after 50 training episodes) has not run yet]
 <!-- END:eval -->
@@ -662,26 +673,29 @@ Fixed evaluation (10 deterministic episodes after 50 training episodes; 10/10 wo
 Mean +- standard deviation per episode; success with a 95 % Wilson interval.
 
 <!-- BEGIN:arms -->
-<!-- generated by docs/report/make_tables.py from runs/20261123_1616_drawer at 2026-11-23 20:39 -->
+<!-- generated by docs/report/make_tables.py from runs/20261123_1616_drawer, episodes up to 18 at 2026-11-23 20:43 -->
 
-All training episodes (18):
+All training episodes (19):
 
 | Arm | Episodes | Success [95 % Wilson] | Rim touches | Floor stops | Max N | Steps | Duration (s) | Fixed return |
 |---|---|---|---|---|---|---|---|---|
 | pre-arm | 9 | 1/9 = 11 % [2, 44] | 2.6 ± 1.9 | 0.1 ± 0.4 | 28.2 ± 3.5 | 10.8 ± 5.4 | 115 ± 25 | -2.61 ± 4.01 |
-| learned | 5 | 5/5 = 100 % [57, 100] | 0.8 ± 0.4 | 0.8 ± 0.4 | 27.2 ± 8.0 | 17.2 ± 1.3 | 117 ± 3 | 6.74 ± 1.40 |
+| learned | 6 | 6/6 = 100 % [61, 100] | 0.8 ± 0.4 | 0.8 ± 0.4 | 27.2 ± 7.2 | 17.3 ± 1.2 | 119 ± 6 | 6.63 ± 1.28 |
 | learned (eval mode) | 1 | 1/1 = 100 % [21, 100] | 17.0 | 0.0 | 29.3 | 51.0 | 162 | -9.55 |
 | scripted | 3 | 3/3 = 100 % [44, 100] | 1.0 ± 0.0 | 1.0 ± 0.0 | 29.5 ± 0.9 | 18.0 ± 0.0 | 121 ± 9 | 6.10 ± 0.00 |
 
-Comparison window, training episodes >= 17 (1 so far):
+Comparison window, training episodes >= 17 (2 so far):
 
 | Arm | Episodes | Success [95 % Wilson] | Rim touches | Floor stops | Max N | Steps | Duration (s) | Fixed return |
 |---|---|---|---|---|---|---|---|---|
+| learned | 1 | 1/1 = 100 % [21, 100] | 1.0 | 1.0 | 27.3 | 18.0 | 130 | 6.10 |
 | scripted | 1 | 1/1 = 100 % [21, 100] | 1.0 | 1.0 | 28.6 | 18.0 | 130 | 6.10 |
 <!-- END:arms -->
 
-Up to episode 16 the arms cannot be told apart: all 5 learned and 2 scripted episodes succeeded, and from episode 11 on
-both produced one rim touch, one floor stop and 17-18 steps. The comparison that measures the learner is the window
+Up to episode 18 the arms cannot be told apart: all 6 learned and 3 scripted episodes succeeded, and from episode 11 on
+both produced one rim touch, one floor stop and 17-18 steps. The first two episodes of the window were identical: in
+episode 17 (scripted) and episode 18 (learned, with first-descent exploration that moved the first touch by 0.1 mm and
+0.9 deg) the drawer touched the rim at about (+2.9, -3) mm and went in one 3 mm step further along +a. The comparison that measures the learner is the window
 from episode 17, where the scripted part, the reward and the learner are fixed. With about 17 learned and 11 scripted
 episodes expected by episode 49, only a large effect will be clear: for example, the learned arm entering on the first
 descent in most episodes (0 rim touches) while the scripted arm keeps touching once. We will report the per-episode
@@ -697,7 +711,7 @@ against the policy's steps, and whether the policy moved toward the opening. The
 ### 7.7 Resets
 
 <!-- BEGIN:resets -->
-<!-- generated by docs/report/make_tables.py from runs/20261123_1616_drawer at 2026-11-23 20:39 -->
+<!-- generated by docs/report/make_tables.py from runs/20261123_1616_drawer, episodes up to 18 at 2026-11-23 20:43 -->
 
 - Resets: 31, layout check passed 26, failed 5; VLM orientation check passed 26 of 26.
 - Duration: 11 short resets (drawer already standing near the target; median 49 s) and 20 long ones (pull-out and placing; median 159 s, max 184 s).
@@ -734,20 +748,22 @@ the restart at 19:48 cost 24 minutes without robot motion, mostly the reset agen
 (it adapted its placement to the new range and tested it offline).
 
 <!-- BEGIN:cost -->
-<!-- generated by docs/report/make_tables.py from runs/20261123_1616_drawer at 2026-11-23 20:39 -->
+<!-- generated by docs/report/make_tables.py from runs/20261123_1616_drawer, episodes up to 18 at 2026-11-23 20:43 -->
 
 | Item | Calls | Turns | Minutes | Output tokens | Cost (USD, API list price) |
 |---|---|---|---|---|---|
 | reset agent | 26 | 154 | 47 | 192 k | 14.13 |
 | execute agent | 44 | 241 | 67 | 377 k | 27.33 |
-| VLM judge (episodes) | 18 | - | 2 | - | 1.39 |
-| total |  | 395 | 114 | 569 k | 42.85 |
+| VLM judge (episodes) | 19 | - | 2 | - | 1.47 |
+| VLM orientation check (resets) | 26 | - | - | - | 1.57 |
+| total |  | 395 | 114 | 569 k | 44.50 |
 
-As of 20:35: wall time 4.3 h since the run was created, robot programs 126 min, agent turns 114 min.
+As of 20:40: wall time 4.4 h since the run was created, robot programs 129 min, agent turns 114 min.
 <!-- END:cost -->
 
-Costs are the list-price equivalents that Claude Code reports per turn; the agents ran on a subscription. The sim
-worker and the supervising assistant are not included. **[TBD: final totals.]**
+Costs are the list-price equivalents that Claude Code reports per turn (`usage.jsonl`; the orientation checks after
+resets are taken from `events.jsonl`, where their cost is logged); the agents ran on a subscription. The sim worker and
+the supervising assistant are not included. **[TBD: final totals.]**
 
 ## 8 Human involvement and failure analysis
 
@@ -809,7 +825,7 @@ but not in its strategy: at two points a human-side hint changed the agent's des
 | Pull tab not found | episode 8 | a motion-blurred wrist frame broke the thin label frame in the mask | retry on a smoothed copy, then fresh frames (agent) |
 | Episode run in eval mode | episode 10 | the agent's test command set `RLPJ_EPISODE=-1 RLPJ_RL_MODE=eval`; the orchestrator reuses the last verified command, so the overrides reached the next episode | the program reads its run identity from the orchestrator's attempt file (agent); the orchestrator should strip such variables **[TBD: fixed?]** |
 | Start offset ratcheting | episodes 11-14 | entry points found after a rim touch were fed back into the start offset, which moved from +3 to +6 to +9 mm | only first-descent entries, then a constant (agent, r4); freeze (operator) |
-| Learner divergence | learner after about episode 6 to 15 | AWAC with an auto-tuned entropy temperature on nearly constant logged actions; mean Q -92 against returns of -2.8 to 12.2; not visible in the saturated reward | AWAC target without entropy, bounded targets, std floor, restart (agent, tuning turn after 15 episodes) |
+| Learner divergence | learner updates after episodes 10-15 (drifting from 5) | AWAC with an auto-tuned entropy temperature on nearly constant logged actions; mean Q -92 against returns of -2.8 to 12.2; not visible in the saturated reward | AWAC target without entropy, bounded targets, std floor, restart (agent, tuning turn after 15 episodes) |
 | Lost agent commits | 4 times (`0550191`, `b0af540`, `3676c98`, `22c6f05`) | commits made in a turn that ends with `done` right after a run were not kept by the workspace sync; the files stayed, the commits did not; the learner fix therefore missed one episode | the agent recommits in reflection turns; the sync is still to be fixed **[TBD]** |
 | Reset at the table edge | reset attempts 8, 9 | the yaml's first reset target lay on the table's edge; after the fix the agent kept testing with the old target it passed itself | target moved, SIGINT, drawer moved by hand, edge rule (operator, user, agent) |
 | Reset could not take the drawer out | resets 13, 14 | pinch height from side depth 3.5 mm too high on an inserted drawer; slip not visible in the gripper reading | fixed pinch height, re-close after each lift stage (agent repair) |
@@ -834,11 +850,12 @@ between interventions, and the independent verdict kept the success count honest
 as a success, at the price of two false `unsure` verdicts caused by a bug in our own check.
 
 **Where the improvement came from.** The jump from 0/5 to consistent success came from the agent's redesign of the
-program, prompted in part by operator notes, and from the start-offset revisions. Up to episode 16 the learned
+program, prompted in part by operator notes, and from the start-offset revisions. Up to episode 18 the learned
 residual had no measurable effect: the scripted arm did the same, the residual moved the first descent by less than
-1 mm, and the learner was diverged for most of that time without anyone noticing, because the agent's reward saturated
-at about 14 per success. The scripted baseline and the fixed-formula return were what made this visible; without them
-the success curve would have read as a learning curve. **[TBD: what the window shows.]**
+1 mm, and the learner's critic diverged after episode 10; the agent noticed it only in its tuning turn after 15
+episodes, and the saturated reward (about 14 per success) never showed it. The scripted baseline and the fixed-formula
+return were what made the absence of learning visible; without them the success curve would have read as a learning
+curve. **[TBD: what the window shows.]**
 
 **Where learning could still help.** With the opening measured to a few millimetres, the touch search finds the
 entry within one touch in most episodes, so success is no longer the right measure for the learner; the number of rim
@@ -849,7 +866,7 @@ suggests a force-guided search as a stronger learned component than a bounded re
 **Limitations.**
 
 - One cabinet, one drawer, one compartment, one start region and one afternoon; no claim about generality.
-- Small numbers: 17 training episodes at the time of writing; the 95 % Wilson interval of 8/8 is [68 %, 100 %].
+- Small numbers: 19 training episodes at the time of writing; the 95 % Wilson interval of 10/10 is [72 %, 100 %].
 - The fixed-formula return counts the floor stop as a contact and uses the last step's peak (clipped at the 25 N stop
   label), so it is a coarse measure; we report rim touches and the maximum force separately.
 - The success check uses the yaml's opening centre, which differs from the agent's wrist measurement by 1.5 cm; walls
@@ -867,7 +884,8 @@ Coding agents ran a real-world RL experiment end to end on a Kinova Gen3: they w
 episode program, the reward and the learner, kept the robot running without manual resets, and moved the drawer
 insertion from five failures to consistent independent successes within about an hour and a half of RL operation. The
 records show that this success came from the agents' program redesigns, helped by two operator notes, and not yet from
-the learner, whose divergence went unnoticed until a fixed return and a scripted baseline were added. **[TBD: final
+the learner, whose critic diverged for five episodes before the agent noticed it; only the scripted baseline and a fixed
+return made the absence of learning visible. **[TBD: final
 evaluation, learned vs scripted, zero-shot sim arm.]** The main practical lessons are to measure learning against a
 frozen scripted baseline with a fixed return from the start, to check the learner's internals as routinely as the
 robot's, and to treat the verdict code with the same care as the policy.
@@ -932,6 +950,8 @@ $PY -m pytest -q sim/drawer_insert/tests
 | `runs/20261117_2026_drawer/` (not in git) | the prior standing-cabinet run |
 
 ## Appendix C: Video assets
+
+Videos older than about 20 minutes are moved to a media disk by the run's media mover; the paths below are symlinks.
 
 | What | Where (run directory unless noted) |
 |---|---|
