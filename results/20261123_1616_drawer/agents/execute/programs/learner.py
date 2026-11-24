@@ -17,14 +17,19 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import rlcommon as rc
+import touch
 
 PRIOR_VERSION = rc.PRIOR_VERSION
-LEARNER_VERSION = 3                # 2: no entropy term in the critic target, bounded targets; 3: the report's reward (operator 20:21)
+LEARNER_VERSION = 4                # 2: no entropy term in the critic target, bounded targets; 3: the report's reward (operator 20:21); 4: first-descent hindsight (operator 21:27)
 Q_RANGE = (-20.0, 20.0)            # step reward >= -1 at gamma 0.95, terminal reward <= 12
 
 HP = dict(actor="awac", awac_lambda=0.3, awac_wmax=20.0, gamma=0.95, tau=0.005, lr=3e-4, batch=256, hidden=128, target_entropy=-2.0, init_alpha=0.05,
           utd_per_transition=40, max_updates=3000, time_budget_s=200.0, bc_weight=1.0, bc_decay_episodes=10.0,
-          min_transitions=8)
+          min_transitions=8, hindsight_frac=0.25)
+# hindsight relabelling of the first descent: the same scales as execute.py (SC_DESC, OBS_C, HOVER + ENTERED)
+H_SCALE, H_OBS = np.array([0.001, 0.001, 0.5]), np.array([0.008, 0.008, 4.0])
+H_DEPTH, H_MAX_A, H_START_TOL, H_END_TOL = 0.012, 0.95, np.array([0.0006, 0.0006, 0.3]), np.array([0.0005, 0.0005, 0.5])
+KEYS = ("obs", "act", "rew", "next_obs", "done", "prior")
 
 
 def mlp(i, o, h, ln=False):
@@ -122,10 +127,41 @@ def relabel(d, f, part):
     return dict(final=final, success=bool(success))
 
 
+def hindsight(part, meta, rel, gamma):
+    """A successful episode that touched the rim and then entered at offset E: the transitions up to the first touch again, with the lateral
+    actions that would have reached E on the first descent and the return of that 0-contact entry (the logged return after the entry, so the
+    floor stop stays). Only episodes that started on the frozen r4 offset, and only entries reachable in those steps. None when not applicable."""
+    ev = meta.get("events") or []
+    if not (rel and rel["success"]) or int(meta.get("episode", -1)) < 0 or meta.get("arm") == "sim" or not ev or ev[0][1] != "ok":
+        return None
+    forces = [i for i, e in enumerate(ev) if e[1] == "force"]
+    e = next((i for i, x in enumerate(ev) if x[4] <= ev[0][4] - H_DEPTH), None)
+    if not forces or e is None or forces[0] >= e:
+        return None
+    first, c0 = forces[0], touch.frozen_centre()
+    if np.any(np.abs(np.array(ev[0][5]) - H_SCALE * part["act"][0, :3] - c0) > H_START_TOL):
+        return None
+    goal, c = np.array(ev[e][5], float) - c0, np.zeros(3)
+    obs, act, nxt = [], [], []
+    for i in range(first + 1):
+        a = np.clip((goal - c) / (H_SCALE * (first + 1 - i)), -H_MAX_A, H_MAX_A)
+        o = part["obs"][i].copy(); o[2:5] = np.clip(c / H_OBS, -5, 5)
+        c = c + H_SCALE * a
+        o2 = part["obs"][min(i + 1, first)].copy(); o2[2:5] = np.clip(c / H_OBS, -5, 5)
+        obs.append(o); act.append(np.r_[a, part["act"][i, 3]]); nxt.append(o2)
+    if np.any(np.abs(goal - c) > H_END_TOL):
+        return None
+    after = part["rew"][e + 1:]
+    G = float((after * gamma ** np.arange(len(after))).sum())
+    rew = np.full(first + 1, -0.05, np.float32); rew[-1] += gamma * G
+    done = np.zeros(first + 1, np.float32); done[-1] = 1.0
+    return dict(obs=np.array(obs, np.float32), act=np.array(act, np.float32), rew=rew, next_obs=np.array(nxt, np.float32), done=done)
+
+
 def load_data(d):
     files = sorted(glob.glob(os.path.join(d, "transitions", "*.npz")))
     files = [f for f in files if not f.endswith(".tmp.npz") and not os.path.basename(f).startswith("dry_")]
-    parts, eps = [], []
+    parts, eps, hs = [], [], []
     for f in files:
         try:
             try:                               # only data whose actions and observations mean what they mean now
@@ -138,6 +174,9 @@ def load_data(d):
                 part = {k: z[k].copy() for k in ("obs", "act", "rew", "next_obs", "done")}
                 rel = relabel(d, f, part)
                 parts.append(part)
+                h = hindsight(part, json.load(open(f[:-4] + ".json")), rel, HP["gamma"])
+                if h is not None:
+                    hs.append(h)
                 eps.append(dict(file=os.path.basename(f), n=int(len(part["rew"])), ret=float(part["rew"].sum()), relabel=rel))
         except Exception as e:
             print(f"skip {f}: {e}")
@@ -149,6 +188,10 @@ def load_data(d):
         for j in rc.ZERO_OBS:
             D[k][ins, j] = 0.0
     D["prior"] = rc.prior(D["obs"]).astype(np.float32)
+    if hs:                                         # kept apart: sampled at a fixed share of each batch, never counted as robot transitions
+        H = {k: np.concatenate([h[k] for h in hs]) for k in hs[0]}
+        H["prior"] = rc.prior(H["obs"]).astype(np.float32)
+        D["hindsight"] = H
     return D, eps
 
 
@@ -253,6 +296,7 @@ def main():
         except Exception as e:
             print(f"learner state not loaded ({e}): starting fresh")
     D, eps = load_data(d)
+    H = None if D is None else D.pop("hindsight", None)
     n = 0 if D is None else len(D["rew"])
     print(f"data: {len(eps)} episodes, {n} transitions; device {dev}; updates so far {L.updates}")
     if check:
@@ -273,6 +317,8 @@ def main():
     n_up = 0
     if D is not None and n >= HP["min_transitions"]:
         T = {k: torch.tensor(v, device=dev) for k, v in D.items()}
+        TH = None if H is None else {k: torch.tensor(v, device=dev) for k, v in H.items()}
+        n_h = 0 if TH is None else int(HP["hindsight_frac"] * HP["batch"])
         n_up = int(min(HP["max_updates"], max(200, HP["utd_per_transition"] * max(n_new, 1))))
         if prev.get("prior_version") != PRIOR_VERSION:      # prior/BC target changed: one full-budget pass
             n_up = HP["max_updates"]
@@ -282,8 +328,12 @@ def main():
             print(f"actor fitted to prior version {PRIOR_VERSION}: loss {stats_bc:.4f}")
         acc = []
         for i in range(n_up):
-            idx = torch.randint(0, n, (HP["batch"],), device=dev)
-            acc.append(L.update([T[k][idx] for k in ("obs", "act", "rew", "next_obs", "done", "prior")], bc_w))
+            idx = torch.randint(0, n, (HP["batch"] - n_h,), device=dev)
+            B = [T[k][idx] for k in KEYS]
+            if n_h:
+                j = torch.randint(0, len(TH["rew"]), (n_h,), device=dev)
+                B = [torch.cat([b, TH[k][j]]) for b, k in zip(B, KEYS)]
+            acc.append(L.update(B, bc_w))
             if time.time() - t0 > HP["time_budget_s"]:
                 n_up = i + 1; break
         stats = {k: round(float(np.mean([a[k] for a in acc[-100:]])), 4) for k in acc[0]}
@@ -291,6 +341,11 @@ def main():
         with torch.no_grad():
             _, _, m = L.actor.sample(T["obs"][-min(n, 200):])
             stats["mean_act"] = np.round(m.mean(0).cpu().numpy(), 3).tolist()
+            if TH is not None:
+                _, _, mh = L.actor.sample(TH["obs"])
+                stats["hindsight_n"] = len(TH["rew"])
+                stats["hindsight_act"] = np.round(TH["act"].mean(0).cpu().numpy(), 3).tolist()
+                stats["hindsight_mu"] = np.round(mh.mean(0).cpu().numpy(), 3).tolist()
     st = L.state(); st["meta"] = dict(n_trans=n, episodes=len(eps), t=time.time(), learner_version=LEARNER_VERSION,
                                       prior_version=PRIOR_VERSION if (D is not None and n >= HP["min_transitions"]) else prev.get("prior_version"))
     torch.save(st, st_path + ".tmp"); os.replace(st_path + ".tmp", st_path)

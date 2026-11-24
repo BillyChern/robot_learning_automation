@@ -18,8 +18,8 @@
    "unsure": 0
   },
   "resets": {
-   "total": 37,
-   "ok": 32,
+   "total": 40,
+   "ok": 35,
    "fail": 5,
    "manual": 0
   },
@@ -28,8 +28,8 @@
    "reset": 0
   },
   "rl": {
-   "total": 24,
-   "success": 16,
+   "total": 27,
+   "success": 19,
    "fail": 6,
    "unsure": 2
   }
@@ -65,24 +65,24 @@
    "model": "claude-opus-5-5",
    "started": "2026-11-23T17:06:56",
    "ended": "2026-11-23T17:32:18",
-   "attempts": 24,
+   "attempts": 26,
    "robot_attempts": 9,
-   "turns": 268,
-   "cost_usd": 31.192733000000008,
-   "input_tokens": 360,
-   "output_tokens": 395584,
-   "cache_read": 79631225,
-   "cache_creation": 919171,
-   "duration_s": 4229.509000000001,
+   "turns": 301,
+   "cost_usd": 34.30208200000002,
+   "input_tokens": 412,
+   "output_tokens": 427972,
+   "cache_read": 85478921,
+   "cache_creation": 1034228,
+   "duration_s": 4664.074000000001,
    "first_success_attempt": 8,
    "first_success_after_attempts": 20,
    "time_to_first_success_s": 7870.1,
    "repairs": 0,
    "rounds": 0,
    "program_command": "RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
-   "last_report": "NOT YET VERIFIED: the final sim-arm guard (commit ec1506e) has passed a dry run and offline tests, but has not run on the real robot. The sim arm has one real test, so its success rate is unknown. The \"success\" in dry attempts 66 and 68 means nothing, because the drawer was already in the cabinet.\n\nNo training episode failed or was unsure this round, so I changed nothing in the scripted part, the learned arm or the learner. The learner is healthy (critic loss about 1.0, Q about 0.7).\n\nSim arm, as the operator required before episode 31:\n- Dry run (attempt 66): the policy loads on the robot machine and all 60 steps pass the model checks.\n- One real test (attempt 67, commit 69062cf, not one of the five recorded sim episodes): the drawer seated flush at 96.2 mm and the independent geometric check agrees. It took 19 decisions and 2 force stops (36.3 N on the rim, 37.1 N at the floor), return 4.84, and the cabinet shifted 0.07 px.\n- Frames confirmed on hardware: at the rim stop the force on the tool read +35.3 N up and +11.7 N along +a, and the policy's next step followed it (cosine 0.97).\n\nChanged (commit ec1506e, sim arm only): on its way in, the policy's command reached its +15 mm limit. My guard would have ended the episode if a force stop had landed there, so it now needs 3 rim stops at that range instead of 1.\n\nFor the operator: because attempt 67 passed the independent check, the orchestrator has probably stored its command, including `RLPJ_ARM=sim`, as the episode command. This does not turn training into sim episodes, since the program ignores that variable for any orchestrator episode (tested offline). You may still want to reset `program_command` to `python programs/execute.py`.",
-   "reflections": 25,
-   "reviews": 4
+   "last_report": "Not verified: neither change has run on the robot, so there is no evidence yet that rim contacts drop. The hindsight learner was only trained on a copy of the data, and dry run attempt 81 still used the old actor (7920 updates). The real learner retrains from all data after the next training episode. Wider first-descent noise (1638d9f) and hindsight (16088c6) will reach the robot together, so their effects cannot be separated.\n\nDiagnosis (operator 21:27): no, the actor's first-descent mean did not move toward the entries. Over episodes 11-24 the entries averaged a +3.17, b +0.23 mm from the start. The actor's mean shift was a -0.10, b -0.20 mm, with mean cosine to the entry -0.37, positive in 3 of 14 episodes. AWAC only copies logged actions, and almost no logged first action went to the entry.\n\nChange (learner only, execute.py untouched, scripted and sim arms unchanged): for a successful episode that touched the rim and then entered, the learner adds the steps up to the first touch again, with lateral actions that reach the found entry and the logged return after entry, so the floor stop still counts. These transitions are built at load, never stored, and take 25% of each batch. 11 episodes give 42 transitions. Skipped: 5, 6, 9, 19 (entered before any rim touch), 7 and 22 (entry out of reach, a +6.9 and +5.7 mm), 8 (no insertion steps), 14 (other start offset).\n\nOffline result on the same episodes it trained on: mean shift a +2.18, b +0.09 mm, cosine 0.94, positive in 14 of 14. This shows the mechanism works, not that it generalises, and 2.2 mm is still short of the 3.2 mm mean entry. The entries are also biased toward +3 mm because the touch search tries that point first, and episode 19 entered at a +0.4, b +1.5 mm.\n\nChecks: learner --check passed, t_learner passed, and the retrain from the old learner state ran on a copy. Dry run attempt 81 on commit 16088c6 exited 0 with all plans passing the model check; its success claim means nothing because no drawer was moved. Standing result before this change: learned 6.13 vs scripted 6.10 mean fixed return, no failed episodes in the last window.",
+   "reflections": 29,
+   "reviews": 5
   }
  },
  "datasets": {},
@@ -124,17 +124,17 @@
    ]
   }
  },
- "next_episode": 24,
- "next_reset": 37,
+ "next_episode": 27,
+ "next_reset": 40,
  "vlm": {
-  "calls": 24,
-  "cost_usd": 1.8585984
+  "calls": 27,
+  "cost_usd": 2.0949972
  },
  "operator_notes": [],
  "rl": {
-  "episodes": 23,
+  "episodes": 27,
   "evals": [],
-  "since_review": 3,
+  "since_review": 2,
   "learner_fails": 0
  }
 }

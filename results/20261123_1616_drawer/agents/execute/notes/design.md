@@ -278,3 +278,19 @@ This is one episode; it does not say how the sim arm compares with the others.
 Both independent checks said success, but my program claimed fail ("a drawer-sized blob is still on the table"): a noise patch of 344 points at (0.69, 0.15) passed the
 drawer size prior. Fix to a failure that happened (episode 21), in the verification only, no motion change, scripted r4 stays: my own check ignores blobs under 1500 points.
 The learner was not misled, because it takes success from the orchestrator's verdict.
+
+## Tuning after 25 episodes: wider first-descent exploration (learned arm only)
+No failed episode. The learned arm is not ahead of the scripted arm (6.13 vs 6.10). With the fixed pinch, 14 episodes, 1 entered on the first descent: episode 19, the only one
+whose first offset had b above -2.5 mm (b -1.8; all others -2.9 to -3.6). So the exploration has barely sampled the side that worked. One hit is a hint, not a result.
+The critic's Q over the first action is erratic (the most sampled action, zero, scores lowest and unsampled corners highest), so I do not read a direction from it.
+Changed: first-descent noise from std 0.5 on all axes to 0.8 on a and b and 0.3 on yaw, about 1.4 mm over the three steps above the rim. A miss costs the learned arm the same rim touch the
+scripted arm makes anyway. Scripted and sim arms are unchanged.
+
+## Operator 21:27: first-descent hindsight (learner only)
+Diagnosis (`notes/dev/t_first_mean.py`, actor at 7920 updates, episodes 11-24): the actor's first-descent mean did NOT move toward the entries the touch search found. Entries average a +3.17, b +0.23 mm from the
+start; the mean shift was a -0.10, b -0.20 mm (0.25 mm long, cosine to the entry -0.37, positive in 3 of 14 episodes). AWAC can only copy logged actions, and no logged first action went to the entry.
+Changed: for a successful episode that touched the rim and then entered, the learner adds the steps up to the first touch again with the lateral actions that reach the found entry, and the return of a 0-contact entry
+(the logged return after the entry, so the floor stop still counts). Only episodes that started on the frozen r4 offset, and only entries reachable within those steps at |a| <= 0.95. These transitions are built at load,
+never stored, and take 25% of each batch. LEARNER_VERSION 4, so the next update retrains from all data. Now 11 episodes give 42 transitions (skipped: 5, 6, 9, 19 entered before any rim touch, so nothing to relabel; 7 and 22 entered at a +6.9 and +5.7 mm, out of reach in the steps before the first touch; 8 has no insertion steps; 14 started from another offset).
+Offline, on a copy of the data: the mean shift becomes a +2.20, b +0.11 mm, cosine 0.94. This is on the episodes it was trained on, so it shows the mechanism works and NOT that rim contacts drop; only the next learned episodes can show that.
+Caveat: the search tries a +3 mm first, so the entries are biased toward +3 mm. Episode 19 entered at a +0.4, b +1.5 mm, so +3 mm is not the only working offset. Scripted and sim arms are unchanged.
