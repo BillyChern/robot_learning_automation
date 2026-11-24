@@ -38,3 +38,4 @@
 {"t": "2026-11-23T22:59:09", "kind": "train", "episode": 37, "n": 38, "final": "success", "reason": "both independent checks say success (claim=none, perception=True, vlm=True)", "duration": 126.3, "reward": 8.1, "transitions": 18}
 {"t": "2026-11-23T23:04:49", "kind": "train", "episode": 38, "n": 39, "final": "success", "reason": "both independent checks say success (claim=none, perception=True, vlm=True)", "duration": 129.3, "reward": 5.05, "transitions": 19}
 {"t": "2026-11-23T23:10:32", "kind": "train", "episode": 39, "n": 40, "final": "success", "reason": "both independent checks say success (claim=none, perception=True, vlm=True)", "duration": 124.3, "reward": 7.25, "transitions": 15}
+{"t": "2026-11-23T23:16:49", "kind": "train", "episode": 40, "n": 41, "final": "success", "reason": "both independent checks say success (claim=none, perception=True, vlm=True)", "duration": 126.2, "reward": 8.241, "transitions": 14}

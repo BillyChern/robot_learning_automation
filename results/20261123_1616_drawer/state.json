@@ -18,8 +18,8 @@
    "unsure": 0
   },
   "resets": {
-   "total": 55,
-   "ok": 48,
+   "total": 56,
+   "ok": 49,
    "fail": 7,
    "manual": 0
   },
@@ -28,8 +28,8 @@
    "reset": 0
   },
   "rl": {
-   "total": 40,
-   "success": 32,
+   "total": 41,
+   "success": 33,
    "fail": 6,
    "unsure": 2
   }
@@ -67,22 +67,22 @@
    "ended": "2026-11-23T17:32:18",
    "attempts": 27,
    "robot_attempts": 9,
-   "turns": 350,
-   "cost_usd": 38.849158200000005,
-   "input_tokens": 504,
-   "output_tokens": 462917,
-   "cache_read": 90790322,
-   "cache_creation": 1382419,
-   "duration_s": 5069.692000000002,
+   "turns": 357,
+   "cost_usd": 39.24736320000001,
+   "input_tokens": 518,
+   "output_tokens": 465552,
+   "cache_read": 91819447,
+   "cache_creation": 1399872,
+   "duration_s": 5101.6860000000015,
    "first_success_attempt": 8,
    "first_success_after_attempts": 20,
    "time_to_first_success_s": 7870.1,
    "repairs": 0,
    "rounds": 0,
    "program_command": "RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
-   "last_report": "Not verified: the actor's deterministic first descent, which the final evaluation will use, has never run on the robot. Its entry rate is unknown. I also did not find rl_curve.jsonl in my workspace, so I used the learner log and the stored episodes.\n\nNo episode failed or was unsure, so there was no failure to fix. Since episode 17, the learned arm averages 6.36 fixed return over 10 episodes, with 3 first-descent entries (19, 27, 33). The scripted arm scored 6.10 in all 6 of its episodes and touched the rim every time. The sim arm has 2 episodes (8.46, 8.22) with no force stops, which is not like for like because they skip the floor stop.\n\nThe learner is stable at version 5: critic Q 2.2 to 2.6, critic loss 0.56 to 0.77, 4520 updates. Episode 33 joined the replay, which now has 12 transitions from 3 real entries. The current actor's deterministic first-descent offset is a +2.35, b +1.35 mm on tab side -1 and a +0.86, b +1.01 mm on side +1. That is consistent with the three real entries (a +0.4 to +4.0, b +0.8 to +2.4 mm), but they are too few to say where the entry region ends.\n\nNo change: one learned episode with v5 is not enough evidence to retune, and changing again now would confound the remaining comparison. Nothing committed this turn, last commit 58a9b60.",
-   "reflections": 41,
-   "reviews": 7
+   "last_report": "Not verified on the robot: the deterministic policy the evaluation will use has never run there. I checked it only offline, by rolling the current actor (7440 updates) over the stored observations. I also did not find rl_curve.jsonl in my workspace, so I used the learner log and the stored episodes.\n\nNo episode failed or was unsure, so there was nothing to fix. With learner v5, all 3 learned episodes (33, 36, 39) entered on the first descent, each scoring 7.25. Since episode 17 the learned arm averages 6.51 fixed return over 12 episodes. The scripted arm averages 5.84 over 8 episodes and touched the rim every time. The sim arm scored 8.46, 8.22 and 8.10, but those returns are not like for like because they skip the floor stop.\n\nOffline, the current actor's deterministic first descent for episodes 33, 36 and 39 lands within 0.3 mm of where those noisy runs actually entered (for example a +3.34, b +0.95 mm against a real a +3.28, b +1.09 mm). Averaged over all stored episodes it is a +1.4 to +1.6, b +0.7 to +1.1 mm. That is close to the real entries, but it does not prove a deterministic run will enter. The critic loss is 0.84, steady.\n\nNo change: the curve does not call for one, and changing now would confound the last training episodes and the comparison. Nothing committed this turn, last commit 58a9b60.",
+   "reflections": 43,
+   "reviews": 8
   }
  },
  "datasets": {},
@@ -132,17 +132,17 @@
    ]
   }
  },
- "next_episode": 40,
- "next_reset": 55,
+ "next_episode": 41,
+ "next_reset": 56,
  "vlm": {
-  "calls": 40,
-  "cost_usd": 3.0198256000000003
+  "calls": 41,
+  "cost_usd": 3.0835122000000004
  },
  "operator_notes": [],
  "rl": {
-  "episodes": 39,
+  "episodes": 41,
   "evals": [],
-  "since_review": 4,
+  "since_review": 1,
   "learner_fails": 0
  }
 }
