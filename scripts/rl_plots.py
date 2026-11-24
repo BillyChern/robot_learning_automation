@@ -72,7 +72,8 @@ def fixed_return(r, s):
 
 
 ARM_COL = {"learned": "#1f5fa8", "scripted": "#e67e22", "sim": "#8e44ad"}
-FREEZE_EP = 16                                   # scripted part frozen at r4 (19:49) from this episode on
+FREEZE_EP = 15                                   # scripted part constant (r4 start offset, commit 317d578) from here
+REWARD_EP = 17                                   # repaired learner + the fixed-formula reward from here
 REDESIGN_EP = 5                                  # measured opening + touch search (18:37)
 
 
@@ -96,7 +97,7 @@ def draw_fixed(d, tr, out):
         odd = [i for i, a in enumerate(arms) if a not in ARM_COL and Y[i] is not None]
         if odd:
             ax.plot([eps[i] for i in odd], [Y[i] for i in odd], "x", color="#888", ms=7, label="eval-mode run (not averaged)")
-        for x, t in ((REDESIGN_EP, "redesign"), (FREEZE_EP, "scripted part frozen")):
+        for x, t in ((REDESIGN_EP, "redesign"), (FREEZE_EP, "scripted frozen"), (REWARD_EP, "learner on this reward")):
             ax.axvline(x - 0.5, color="#999", ls="--", lw=1)
             ax.text(x - 0.3, ax.get_ylim()[1], t, fontsize=8, color="#666", va="top")
         ax.legend(frameon=False, loc="lower right" if ax is axs[0] else "upper right")

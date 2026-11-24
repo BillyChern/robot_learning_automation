@@ -855,9 +855,11 @@ class Pipeline:
         try:
             lo, hi = ((self.task.get("perception") or {}).get("cabinet") or {}).get("height", [0.22, 0.32])
             tall = [b for b in blobs or [] if lo < b.get("height", 0) < hi]
-            if len(tall) != 1 or max(tall[0].get("extent", [0, 0])) > 0.30 or not len(tall[0].get("points", [])):
-                return None
             cab = ((self.task.get("fixtures") or {}).get("cabinet") or {})
+            if self.task.get("name") == "drawer_lying":      # the standing drawer is as tall: pick the cabinet by size
+                tall = [b for b in tall if 0.2 < max(b.get("extent", [0, 0])) < 0.33]
+            if len(tall) != 1 or max(tall[0].get("extent", [0, 0])) > 0.33 or not len(tall[0].get("points", [])):
+                return None
             if self.task.get("name") == "drawer_lying":        # outline: a drawer in a compartment moves the centroid
                 from rlpj.success.checks import outline_xy
                 o = outline_xy(tall[0], cab.get("yaw_deg", 0.0))
