@@ -105,6 +105,16 @@ class Sess:
                 w.dropped = round(float(h), 3)
             self.g = 100.0 * v
             return self.g
+        if v >= 0.9 and not w.held and w.state == "table" and abs(T[2, 3] - calib.table_z() - (R.DRAWER_L - R.BODY_DEPTH + 0.027)) < 0.01 \
+                and np.linalg.norm(T[:2, 3] - w.c) < 0.004 and abs(T[:2, 0] @ w.ax) > 0.95:          # body grasp
+            w.held, w.state = True, "held"
+            w.rel = T[:2, :2].T @ (w.c - T[:2, 3])
+            w.ax_rel = T[:2, :2].T @ w.ax
+            w.tz2 = float(T[2, 2])
+            self.g = 10.0
+            return self.g
+        if v >= 0.9 and w.held and self.g < 30:
+            return self.g
         if v >= 0.9:
             if not w.held and w.state != "held" and np.linalg.norm((T[:3, 3] + R.TIP_CLOSED * T[:3, 2])[:2] - w.knob) < 0.006 and T[2, 3] - calib.table_z() < 0.16:
                 w.held, w.state = True, "held"
