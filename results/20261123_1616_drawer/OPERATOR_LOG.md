@@ -36,3 +36,4 @@ on the hand-inserted drawer (flush 1.0). Agents fresh; previous run's programs i
 - 2026-11-24 02:42: RUN DONE. Fixed evaluation after 50 training episodes: 7/10 (episodes 50-59; failures 52, 54, 57).
   Target 70% met; the orchestrator stopped ("target_met") and the pipeline exited. The evaluation was paused 00:45-02:22
   by the reset failures near the robot base (tipped drawer, righted by the reset agent).
+- 2026-11-24 03:09: cabinet guard stopped (run over); arm checked at rest.

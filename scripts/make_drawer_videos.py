@@ -266,7 +266,7 @@ def timeline_bar(d, t, pil=None, y=990):
     X = lambda tt: x0 + (x1 - x0) * min(max(tt, 0), total) / total
     d.rectangle([x0, y, x1, y + 6], fill=(45, 52, 62))
     d.rectangle([x0, y, X(t), y + 6], fill=COL["rl"])
-    for hh in range(17, 26):
+    for hh in range(17, 28):
         xx = X(at(f"{hh % 24:02d}:00", "2026-11-24" if hh >= 24 else "2026-11-23"))
         if xx < x1:
             d.line([xx, y - 6, xx, y + 12], fill=(80, 88, 100), width=2)
@@ -869,6 +869,8 @@ MERGED = rec("reset/attempts/attempt_45")               # 19:30, reset 22: place
 FIRST_IN = rec("execute/attempts/attempt_30")           # 18:37, first insertion (a test of the new program)
 EP0 = ep_rec(0)                                         # 17:33, episode 0: on the rim
 EP5 = ep_rec(5)                                         # 18:50, in, but scored 'unsure' (check bug)
+TIP = rec("reset/attempts/attempt_101")                 # 01:10, recovery near the robot base: the drawer tips over when set down
+RIGHT = rec("reset/attempts/attempt_105")               # 01:35, the reset agent stands the drawer back up (no human touch)
 SIM31 = ep_rec(31)                                      # 22:20, sim policy zero-shot, in without a force stop
 CALIB_LOG = (SETUP / "sidecal/auto_calib_20261123.log").read_text(errors="replace")
 _m = re.search(r"poses (\d+) \(dropped (\d+)\) \| spread ([\d.]+) mm.*moved (\d+) mm, ([\d.]+) deg", CALIB_LOG)
@@ -887,7 +889,7 @@ def eval_text():
 HELP = [
     ("16:41", "Too close to the edge",
      "The first reset spot we gave the agent sat right on the table's edge. We moved it, but the agent's next test still "
-     "used the old spot, so a human stopped tests 8 and 9 (Ctrl+C) with the drawer on its way down."),
+     "used the old spot, so our watcher (the Claude Code session supervising the run) stopped tests 8 and 9 with Ctrl+C."),
     ("16:45", "Hands on", "The user moved the drawer away from the edge by hand. The only time anyone touched the scene during the run."),
     ("17:58", "Hints", "Episodes 0-4 all ended on the rim. Two notes from us: the second one said measure the opening before the "
      "grasp and feel for it with light touches. The agent built both and found the start offset itself."),
@@ -902,7 +904,9 @@ CALLS = [("19:10", "Add a scripted baseline: every 3rd episode runs with the lea
          ("20:45", "Fix our cabinet guard (it misread the cabinet when the drawer stood next to it)"),
          ("21:27", "A hint for the learner: relabel the first descent with where the drawer actually went in"),
          ("23:58", "Fix our success check again (episode 46) and restart before the final test")]
-LOG_CHECKED = "2026-11-24T00:05"     # HELP and CALLS cover OPERATOR_LOG.md up to here
+LOG_CHECKED = "2026-11-24T03:10"     # HELP and CALLS cover OPERATOR_LOG.md up to here
+NAP = ("00:45-02:22: resets failed with the drawer next to the robot base, and a recovery tipped it over. We sent notes and "
+       "the user said keep trying. The reset agent stood it back up at 01:35 (attempt 105); nobody touched it.")
 SETUP_HELP = ("Before the run, people set up the scene (cabinet on its back, checkerboard on the table) and pushed the drawer "
               "in by hand once to test the success check. The side camera had moved 13 cm since its last calibration.")
 
@@ -913,7 +917,7 @@ def v_story(w):
     w.add(card([("TWO AI AGENTS, A ROBOT ARM AND A DRAWER", 54, "B", TXT),
                 ("Real-world RL: put the drawer back into the cabinet. It has 1-2 mm to spare on each side.", 44, "M", COL["unsure"]),
                 (f"Claude Code agents running Claude Opus 5.5 wrote the resets, the episode program, the reward and the learner, "
-                 f"and ran {S['n_train']} training episodes in one evening. We helped a few times, and it's all marked.", 32, "R", DIM)],
+                 f"and ran {S['n_train']} training episodes in one night. We helped a few times, and it's all marked.", 32, "R", DIM)],
                6.5, TXT, first=True, mascot=230))
     w.add(chapter_card("1 / 6", "Calibrate yourself", "nobody waving a checkerboard around", COL["calib"]))
     w.add(fade(dash_segment(CALIB, 48, "The arm calibrates the side camera", "before the run, started by us, then on its own",
@@ -947,15 +951,19 @@ def v_story(w):
     w.add(fade(chart_segment(sim_bars_frame, 5.0, 0.5)))
     w.add(fade(sim_real_segment(SIM31, 4, 54, 92, "Zero-shot on the real robot", "the sim policy, unchanged",
                                 f"Not one real episode in its training. On the robot: {S['sim_ok']} / {len(S['sim_eps'])}.", story=True)))
-    w.add(card([("A FEW TIMES, A HUMAN STEPPED IN", 34, "B", COL["human"]), ("All of it is in the log", 64, "B", TXT),
-                (f"1 hand on the scene · 2 tests stopped · {S['notes']} notes to the agents · {S['restarts']} restarts to load our changes",
-                 34, "R", DIM)], 3.0, COL["human"]))
+    w.add(card([("A FEW TIMES, WE STEPPED IN", 34, "B", COL["human"]), ("All of it is in the log", 64, "B", TXT),
+                (f"1 hand on the scene · 2 tests stopped by our watcher · {S['notes']} notes to the agents · {S['restarts']} restarts "
+                 "to load our changes", 34, "R", DIM)], 3.0, COL["human"]))
     w.add(fade(dash_segment(EDGE, 7, "Too close to the edge", "human help, 16:42", "The agent's test still used an old spot "
-                            "right at the table's edge, so a human hit stop.", COL["human"], t0=100, t1=150, story=True,
-                            badge=("human", "stopped by a human"))))
+                            "right at the table's edge, so we hit stop.", COL["human"], t0=100, t1=150, story=True,
+                            badge=("human", "we hit stop"))))
     w.add(fade(stills_segment([EDGE["dir"] / "scene_after.jpg", rec("reset/attempts/attempt_12")["dir"] / "scene_before.jpg"],
                               ["16:43, right at the edge", "16:52, moved in by hand"], 3.5, "Hands on", "human help, 16:45",
                               "The user moved the drawer inward by hand. The only touch during the run.", COL["human"])))
+    w.add(fade(dash_segment(TIP, 12, "The drawer took a nap", "during the final test, 01:10", "A reset near the robot base sets "
+                            "the drawer down, and it tips over.", COL["fail"], t0=268, t1=330, story=True, badge=("fail", "✗  tipped over"))))
+    w.add(fade(dash_segment(RIGHT, 24, "...and got back up", "01:35, no human touch", "The reset agent wrote a righting move and "
+                            "stood it back up on its own.", COL["ok"], t0=5, t1=150, story=True, badge=("ok", "✓  back on its feet"))))
     w.add(chapter_card("6 / 6", "The final test", "10 episodes, learned policy, no exploration noise", COL["eval"]))
     w.add(fade(eval_part(7.0, story=True)))
     w.add(end_card())
@@ -1041,12 +1049,13 @@ def v_curve(w):
 
 def v_human(w):
     a = COL["human"]
-    w.add(card([("BLOOPERS", 30, "B", a), ("A human had to step in", 72, "B", TXT),
-                ("Not often, but every time is in the operator log. Here they all are.", 34, "R", DIM)], 5.0, a, first=True, mascot=250))
+    w.add(card([("BLOOPERS", 30, "B", a), ("We had to step in", 72, "B", TXT),
+                ("Not often, and every time is in the operator log. “We” is the user plus the Claude Code session that watched the run.",
+                 34, "R", DIM)], 5.0, a, first=True, mascot=250))
     w.add(card([("BEFORE THE RUN", 30, "B", a), (SETUP_HELP, 40, "M", TXT)], 5.0, a))
     t, title, txt = HELP[0]
     w.add(fade(dash_segment(EDGE, 6, f"#1 · {title}", f"human help, {t}", "The agent's reset test is about to set the drawer down "
-                            "at the very edge of the table...", a, t0=95, t1=152, note=txt, badge=("human", "stopped by a human"))))
+                            "at the very edge of the table...", a, t0=95, t1=152, note=txt, badge=("human", "we hit stop"))))
     t, title, txt = HELP[1]
     w.add(fade(stills_segment([EDGE["dir"] / "scene_after.jpg", rec("reset/attempts/attempt_12")["dir"] / "scene_before.jpg"],
                               ["16:43, right at the edge", "16:52, moved in by hand"], 5.5, f"#2 · {title}", f"human help, {t}", txt, a)))
@@ -1061,6 +1070,11 @@ def v_human(w):
     t, title, txt = HELP[4]
     w.add(fade(dash_segment(MERGED, 10, f"#5 · {title}", f"human help, {t}", "Reset 22 puts the drawer down 4 mm from its target. "
                             "The camera can't tell it from the cabinet.", a, t0=50, t1=145, note=txt, badge=("human", "moved the spot 2 cm"))))
+    w.add(fade(dash_segment(TIP, 8, "#6 · The drawer took a nap", "during the final test, 01:10", "A reset tries to get the "
+                            "drawer away from the robot base, sets it down... and it tips over.", COL["fail"], t0=255, t1=330,
+                            note=NAP, badge=("fail", "✗  tipped over"))))
+    w.add(fade(dash_segment(RIGHT, 12, "#6 · ...and got back up", "01:35, no human touch", "Lift, turn, set down. Back on its "
+                            "feet, no hands needed.", COL["ok"], t0=2, t1=150, note=NAP, badge=("ok", "✓  back on its feet"))))
     w.add(list_card("The calls we made", "decisions and notes from our side, as logged", CALLS, 9.0))
     w.add(card([("1 hand on the scene  ·  2 tests stopped", 60, "B", a),
                 (f"{S['notes']} notes to the agents  ·  {S['restarts']} restarts to load our changes  ·  0 manual resets", 40, "B", TXT),
@@ -1086,6 +1100,14 @@ def v_eval(w):
                 (f"After {S['n_train']} training episodes: the learned policy without exploration noise, 10 episodes in a row, "
                  "same resets and the same two independent checks.", 32, "R", DIM)], 6.0, a, first=True, mascot=200))
     w.add(fade(eval_part(0)))
+    fails = [e for e in EVAL_EPS if e["final"] != "success"]
+    if fails:
+        fe = fails[0]
+        w.add(fade(dash_segment(rec(fe["dir"]), 5, f"A miss: episode {fe['ep']}", f"{len(fails)} of {len(EVAL_EPS)} test episodes "
+                                f"failed ({', '.join(str(e['ep']) for e in fails)}), all the same way",
+                                "It drops 4-6 mm into the opening and jams, tilted, at the first touch. The program has no "
+                                "lift-and-try-again move, so it gives up and puts the drawer back on the table.", COL["fail"],
+                                t0=52, t1=92, zoom=SIDE_ZOOM, badge=("fail", "✗  jammed"), badge_at_s=17)))
     if EVAL_EPS:
         hero = next((e for e in EVAL_EPS if e["final"] == "success"), EVAL_EPS[0])
         w.add(fade(dash_segment(rec(hero["dir"]), 5, "One test episode, start to finish", f"episode {hero['ep']}",
@@ -1149,6 +1171,12 @@ SGS = ("SGS-RL (Success Guided Sampling): Zhang, Guaman Castro, Yin, Dagnino, Gu
        "Addressing the Exploration Bottleneck in Mega-Scale RL for Robot Control\", CoRL 2026")
 
 
+def fail_note():
+    fails = [e["ep"] for e in EVAL_EPS if e["final"] != "success"]
+    return "" if not fails or S["eval"] is None else (f" (misses: episodes {', '.join(map(str, fails))}, all the same way: "
+                                                      "jammed tilted 4-6 mm into the opening, no lift-and-retry in the program)")
+
+
 def unsure_note():
     un = [e["ep"] for e in TRAIN if e["ep"] >= WIN and e["final"] == "unsure" and e["arm"] in ("learned", "scripted")]
     return "" if not un else (f" (episode{'s' if len(un) > 1 else ''} {', '.join(map(str, un))}: in, but scored \"unsure\" "
@@ -1161,19 +1189,19 @@ def thread():
     ev = f"{S['eval'][0]}/{S['eval'][1]}" if S["eval"] else "[TBD]/10"
     sims = sim_eval()
     simtxt = ", ".join(f"{v:.1f}% {n}" for n, v, _ in sims[:3])
-    p1s = (f"Round 2: Claude Code agents (Opus 5.5) vs. a drawer. Real-world RL on our robot arm, cabinet on its back, "
+    p1s = (f"Round 2: Claude Code agents (Opus 5.5) vs. a drawer. Real-world RL on our arm, cabinet on its back, "
            f"1-2 mm of clearance per side.\n\nThey wrote the resets, the episode code, the reward and the learner. First 5 "
-           f"episodes: stuck on the rim. Later: {S['streak']} in a row 🗄️")
+           f"episodes: stuck on the rim. Later {S['streak']} in a row, final test {ev} 🗄️")
     p1l = (p1s + f"\n\nA third agent built a sim of the drawer (MuJoCo + NVIDIA Newton) and trained a PPO policy. We put it on "
            f"the real robot without changing a thing: {S['sim_ok']}/{len(S['sim_eps'])}.\n\nWe stepped in a few times. Every "
            f"time is marked in the video.")
-    p2s = (f"Numbers ({S['n_train']} training episodes, one evening, 0 manual resets):\n"
+    p2s = (f"Numbers ({S['n_train']} training episodes, one night, 0 manual resets):\n"
            f"- {S['ok']}/{S['n_train']} in, {S['streak']} in a row\n"
            f"- ep ≥{WIN}, straight in w/o rim touch: learned {L['clean']}/{L['n']} vs scripted baseline {Sc['clean']}/{Sc['n']} "
            f"(p={S['fisher']:.2g})\n"
            f"- final test, deterministic: {ev}\n"
            f"- sim PPO policy, zero-shot: {S['sim_ok']}/{len(S['sim_eps'])}")
-    p2l = (f"The numbers. One evening, {S['n_train']} training episodes, {S['resets']} robot resets, none by hand.\n\n"
+    p2l = (f"The numbers. One night (16:16 to 02:42), {S['n_train']} training episodes, {S['resets']} robot resets, none by hand.\n\n"
            f"Success = two independent checks agree: side-camera depth geometry and a Claude Opus 5.5 judge on before/after images.\n\n"
            f"- Episodes 0-4: 0/5, drawer on the rim. The agent rebuilt its program (measure the opening before the grasp, then a "
            f"touch search; both ideas came from a note we sent, the start offset it found itself). Since episode 9: "
@@ -1184,15 +1212,17 @@ def thread():
            f"episode), episodes ≥{WIN}: straight in without touching the rim {L['clean']}/{L['n']} vs {Sc['clean']}/{Sc['n']} "
            f"(Fisher's exact p = {S['fisher']:.2g}), {L['steps']:.1f} vs {Sc['steps']:.1f} steps, counted successes "
            f"{L['ok']}/{L['n']} vs {Sc['ok']}/{Sc['n']}{unsure_note()}.\n"
-           f"- Final test after {S['n_train']} training episodes: deterministic policy, 10 episodes: {ev}.\n"
+           f"- Final test after {S['n_train']} training episodes: deterministic policy, 10 episodes: {ev}"
+           f"{fail_note()}.\n"
            f"- Sim: PPO with an SGS-style reset curriculum, 4,096 worlds in NVIDIA Newton on one RTX 4090 (about 1.5 h). "
            f"500 MuJoCo episodes, same starts: PPO {sims[3][1]:.1f}% vs {simtxt}. On the real robot, unchanged: "
            f"{S['sim_ok']}/{len(S['sim_eps'])}.\n\nSGS: Zhang et al., \"A Balanced Data Diet\", CoRL 2026.")
     n_un = len([e for e in TRAIN if e["final"] == "unsure"])
-    p3s = ("Bloopers. We put the first reset spot right on the table's edge (our bad), so a human hit Ctrl+C twice and moved the "
-           f"drawer back by hand once. Bugs in our own success check scored {n_un} real insertions \"unsure\".\n\nAnd the fix "
-           "for the rim? Two ideas from a note we sent.")
-    p3l = (p3s + f"\n\nAll in all: 1 hand on the scene, 2 tests stopped, {S['notes']} notes to the agents, {S['restarts']} "
+    p3s = ("Bloopers. We put the first reset spot right on the table's edge (our bad): we hit Ctrl+C twice, and I moved the "
+           f"drawer back by hand once. Bugs in our own check scored {n_un} real insertions \"unsure\".\n\nMid-test the drawer "
+           "tipped over. The reset agent stood it back up by itself 😅")
+    p3l = (p3s + "\n\nAnd the fix for the rim? Two ideas from a note we sent. \"We\" = me plus a Claude Code session watching "
+           f"the run.\n\nAll in all: 1 hand on the scene, 2 tests stopped, {S['notes']} notes to the agents, {S['restarts']} "
            f"restarts to load our changes. The big calls were ours too: a scripted baseline, the freeze, one return formula, "
            f"the 10-episode test, trying the sim policy.")
     p4s = ("Takeaway: agents can take over the chores of real-world RL: resets, rewards, logging, plots, even a sim.\n\nA "
