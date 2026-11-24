@@ -9,20 +9,20 @@ Sim credit: SGS-RL (Success Guided Sampling): Zhang, Guaman Castro, Yin, Dagnino
 
 Attach: `00_full_story.mp4`
 
-Short (291/280):
+Short (265/280):
 
 ```
-Round 2: Claude Code agents (Opus 5.5) vs. a drawer. Real-world RL on our robot arm, cabinet lying on its back, 1-2 mm of clearance per side.
+Round 2: Claude Code agents (Opus 5.5) vs. a drawer. Real-world RL on our robot arm, cabinet on its back, 1-2 mm of clearance per side.
 
-They wrote the resets, the episode code, the reward and the learner. First 5 episodes: stuck on the rim. Then, after a few hiccups, 37 in a row 🗄️
+They wrote the resets, the episode code, the reward and the learner. First 5 episodes: stuck on the rim. Later: 37 in a row 🗄️
 ```
 
-Long (505):
+Long (479):
 
 ```
-Round 2: Claude Code agents (Opus 5.5) vs. a drawer. Real-world RL on our robot arm, cabinet lying on its back, 1-2 mm of clearance per side.
+Round 2: Claude Code agents (Opus 5.5) vs. a drawer. Real-world RL on our robot arm, cabinet on its back, 1-2 mm of clearance per side.
 
-They wrote the resets, the episode code, the reward and the learner. First 5 episodes: stuck on the rim. Then, after a few hiccups, 37 in a row 🗄️
+They wrote the resets, the episode code, the reward and the learner. First 5 episodes: stuck on the rim. Later: 37 in a row 🗄️
 
 A third agent built a sim of the drawer (MuJoCo + NVIDIA Newton) and trained a PPO policy. We put it on the real robot without changing a thing: 5/5.
 
@@ -33,26 +33,26 @@ We stepped in a few times. Every time is marked in the video.
 
 Attach: `thread/episodes.png`, `thread/learned_vs_scripted.png`, `thread/sim_results.png`, `thread/return.png` (X: up to 4 images per post)
 
-Short (242/280):
+Short (243/280):
 
 ```
-Numbers (49 training episodes, one evening, 0 manual resets):
-- 40/49 in, 37 in a row
-- ep ≥17, straight in w/o rim touch: learned 6/16 vs scripted baseline 0/11 (p=0.05)
+Numbers (50 training episodes, one evening, 0 manual resets):
+- 41/50 in, 37 in a row
+- ep ≥17, straight in w/o rim touch: learned 6/17 vs scripted baseline 0/11 (p=0.055)
 - final test, deterministic: [TBD]/10
 - sim PPO policy, zero-shot: 5/5
 ```
 
-Long (1167):
+Long (1240):
 
 ```
-The numbers. One evening, 49 training episodes, 65 robot resets, none by hand.
+The numbers. One evening, 50 training episodes, 66 robot resets, none by hand.
 
 Success = two independent checks agree: side-camera depth geometry and a Claude Opus 5.5 judge on before/after images.
 
-- Episodes 0-4: 0/5, drawer on the rim. The agent rebuilt its program (measure the opening before the grasp, then a touch search; both ideas came from a note we sent, the start offset it found itself). Since episode 9: 39/40 counted, 37 of them in a row; 46 put the drawer in but our check said "unsure" (a bug).
-- Learned (AWAC on the robot's own episodes) vs a scripted baseline (same program, learned part off, every 3rd episode), episodes ≥17: straight in without touching the rim 6/16 vs 0/11 (Fisher's exact p = 0.05), 16.6 vs 18.4 steps, success 100% in both.
-- Final test after 49 training episodes: deterministic policy, 10 episodes: [TBD]/10.
+- Episodes 0-4: 0/5, drawer on the rim. The agent rebuilt its program (measure the opening before the grasp, then a touch search; both ideas came from a note we sent, the start offset it found itself). Since episode 9: 40/41 counted, 37 of them in a row; 46 put the drawer in but our check said "unsure" (a bug).
+- Learned (AWAC on the robot's own episodes) vs a scripted baseline (same program, learned part off, every 3rd episode), episodes ≥17: straight in without touching the rim 6/17 vs 0/11 (Fisher's exact p = 0.055), 16.8 vs 18.4 steps, counted successes 16/17 vs 11/11 (episode 46: in, but scored "unsure" by a bug in our check).
+- Final test after 50 training episodes: deterministic policy, 10 episodes: [TBD]/10.
 - Sim: PPO with an SGS-style reset curriculum, 4,096 worlds in NVIDIA Newton on one RTX 4090 (about 1.5 h). 500 MuJoCo episodes, same starts: PPO 74.8% vs 21.0% straight down, 14.0% spiral search, 59.6% force-guided script. On the real robot, unchanged: 5/5.
 
 SGS: Zhang et al., "A Balanced Data Diet", CoRL 2026.
@@ -62,18 +62,18 @@ SGS: Zhang et al., "A Balanced Data Diet", CoRL 2026.
 
 Attach: `03_human_help.mp4`
 
-Short (268/280):
+Short (264/280):
 
 ```
-Bloopers. We put the first reset spot right on the table's edge (our bad), so a human hit Ctrl+C twice and moved the drawer back by hand once. Our success check had a bug and called two real insertions "unsure".
+Bloopers. We put the first reset spot right on the table's edge (our bad), so a human hit Ctrl+C twice and moved the drawer back by hand once. Bugs in our own success check scored 3 real insertions "unsure".
 
 And the fix for the rim? Two ideas from a note we sent.
 ```
 
-Long (501):
+Long (497):
 
 ```
-Bloopers. We put the first reset spot right on the table's edge (our bad), so a human hit Ctrl+C twice and moved the drawer back by hand once. Our success check had a bug and called two real insertions "unsure".
+Bloopers. We put the first reset spot right on the table's edge (our bad), so a human hit Ctrl+C twice and moved the drawer back by hand once. Bugs in our own success check scored 3 real insertions "unsure".
 
 And the fix for the rim? Two ideas from a note we sent.
 
@@ -84,20 +84,20 @@ All in all: 1 hand on the scene, 2 tests stopped, 16 notes to the agents, 6 rest
 
 Attach: nothing (text only)
 
-Short (292/280):
+Short (272/280):
 
 ```
-Takeaway: agents can take over the chores of real-world RL. Resets, rewards, logging, plots, even a sim.
+Takeaway: agents can take over the chores of real-world RL: resets, rewards, logging, plots, even a sim.
 
-The scripted baseline kept us honest: most of the gain came from the agent rewriting its program. The learner's share was smaller, fewer rim touches. And humans still made the key calls.
+A scripted baseline kept us honest. Most of the gain came from the agent rewriting its program; the learner only cut rim touches. And humans still made the key calls.
 ```
 
-Long (330):
+Long (310):
 
 ```
-Takeaway: agents can take over the chores of real-world RL. Resets, rewards, logging, plots, even a sim.
+Takeaway: agents can take over the chores of real-world RL: resets, rewards, logging, plots, even a sim.
 
-The scripted baseline kept us honest: most of the gain came from the agent rewriting its program. The learner's share was smaller, fewer rim touches. And humans still made the key calls.
+A scripted baseline kept us honest. Most of the gain came from the agent rewriting its program; the learner only cut rim touches. And humans still made the key calls.
 
 P.S. Opus 5.5 made these videos too.
 ```

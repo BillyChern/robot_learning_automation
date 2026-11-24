@@ -18,8 +18,8 @@
    "unsure": 0
   },
   "resets": {
-   "total": 66,
-   "ok": 58,
+   "total": 67,
+   "ok": 59,
    "fail": 8,
    "manual": 0
   },
@@ -32,6 +32,12 @@
    "success": 41,
    "fail": 6,
    "unsure": 3
+  },
+  "rl_eval": {
+   "total": 1,
+   "success": 1,
+   "fail": 0,
+   "unsure": 0
   }
  },
  "agents": {
@@ -67,13 +73,13 @@
    "ended": "2026-11-23T17:32:18",
    "attempts": 27,
    "robot_attempts": 9,
-   "turns": 379,
-   "cost_usd": 40.75238920000001,
-   "input_tokens": 560,
-   "output_tokens": 474684,
-   "cache_read": 95717017,
-   "cache_creation": 1467710,
-   "duration_s": 5212.382000000001,
+   "turns": 381,
+   "cost_usd": 40.90382840000001,
+   "input_tokens": 564,
+   "output_tokens": 475667,
+   "cache_read": 96053113,
+   "cache_creation": 1475778,
+   "duration_s": 5221.604000000001,
    "first_success_attempt": 8,
    "first_success_after_attempts": 20,
    "time_to_first_success_s": 7870.1,
@@ -81,7 +87,7 @@
    "rounds": 0,
    "program_command": "RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
    "last_report": "Not verified: the deterministic learned policy has never run on the robot, so its entry rate in the evaluation is unknown. On episode 42's observations (tab side -1) it falls short offline, at a 0.0, b +0.4 mm, inside the range where descents touched. I also did not find rl_curve.jsonl in my workspace, so I used the learner log and the stored episodes.\n\nNo episode failed or was unsure, so there was nothing to fix. Since episode 17, the learned arm averages 6.48 fixed return over 13 episodes and entered on the first descent in 3 of its 4 learner v5 episodes. The scripted arm averages 5.79 over 10 episodes and touched the rim every time. The sim arm finished 5 of 5 successful (returns 4.85 to 8.46), but those are not like for like because it usually skips the floor stop.\n\nCorrection to my last two reports: four learned training episodes remain, not one or two: 45, 46, 48 and 49 (47 is scripted).\n\nNo change: none of those four would be enough to show a change helps before the evaluation, and changing now would confound the comparison. Nothing committed this turn, last commit 58a9b60.",
-   "reflections": 51,
+   "reflections": 52,
    "reviews": 9
   }
  },
@@ -136,17 +142,22 @@
    ]
   }
  },
- "next_episode": 50,
- "next_reset": 66,
+ "next_episode": 51,
+ "next_reset": 67,
  "vlm": {
-  "calls": 50,
-  "cost_usd": 3.6604796000000004
+  "calls": 51,
+  "cost_usd": 3.7242114000000006
  },
  "operator_notes": [],
  "rl": {
-  "episodes": 49,
+  "episodes": 50,
   "evals": [],
-  "since_review": 4,
-  "learner_fails": 0
+  "since_review": 5,
+  "learner_fails": 0,
+  "eval_cur": {
+   "after": 50,
+   "done": 1,
+   "ok": 1
+  }
  }
 }

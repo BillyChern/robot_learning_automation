@@ -105,7 +105,6 @@ WIN = 17                         # repaired learner and one reward for every arm
 def stats():
     """The numbers the videos and posts quote."""
     s = dict(n_train=len(TRAIN), ok=sum(e["final"] == "success" for e in TRAIN))
-    s["first_fail"] = [e["ep"] for e in TRAIN if e["ep"] <= 4 and e["final"] == "fail"]
     best, cur = (0, None), (0, None)                    # longest run of counted successes
     for e in TRAIN:
         cur = (cur[0] + 1, cur[1] if cur[0] else e["ep"]) if e["final"] == "success" else (0, None)
@@ -113,7 +112,6 @@ def stats():
     s["streak"], s["streak_from"] = best
     since = [e for e in TRAIN if e["ep"] >= 9]
     s["since9"] = (sum(e["final"] == "success" for e in since), len(since))
-    s["unsure"] = [e["ep"] for e in TRAIN if e["final"] == "unsure"]
     for arm in ("learned", "scripted", "sim"):
         g = [e for e in TRAIN if e["arm"] == arm and e["ep"] >= WIN and e["rim"] is not None]
         s[arm] = dict(n=len(g), ok=sum(e["final"] == "success" for e in g), clean=sum(e["rim"] == 0 for e in g),
@@ -125,11 +123,6 @@ def stats():
     s["resets"], s["resets_ok"] = len(RESETS), sum(r["ok"] for r in RESETS)
     s["notes"], s["restarts"] = len(NOTES), len(RESTARTS)
     s["eval"] = None if EVAL is None else (int(EVAL["success"]), int(EVAL["n"]))
-    s["eval_done"] = [e for e in EVAL_EPS]
-    s["hours"] = (max(e["t"] for e in EPS) if EPS else 0) / 3600
-    s["first_ok_t"] = next((e["t"] for e in TRAIN if e["final"] == "success"), None)
-    tot = (jl(RUN / "usage.jsonl") or [{}])[-1].get("totals", {})
-    s["robot_min"] = tot.get("robot_min", 0)
     s["fisher"] = fisher_two_sided(s["learned"]["clean"], s["learned"]["n"], s["scripted"]["clean"], s["scripted"]["n"])
     return s
 
@@ -714,6 +707,8 @@ def sim_curve_frame(p):
     if p >= 1:
         s, v = pts[-1]
         text(d, (X(s) - 10, Y(v) - 20), f"{v:.1f} %", 44, "B", fill=TXT, anchor="rb")
+        text(d, (W // 2, 990), "Checked every 10 iterations on 4,096 test starts in Newton, no exploration. The bar chart uses a "
+             "separate check: 500 episodes in MuJoCo.", 30, "R", fill=DIM, anchor="mm")
     return pil
 
 
@@ -806,7 +801,7 @@ def stills_segment(paths, labels, dur, chapter, sub, caption, accent):
 
 
 def pair_segment(items, speed, chapter, sub, caption, accent):
-    """Two episodes side by side (wrist camera over a zoomed side camera), each with its own badge at the end.
+    """Two episodes side by side (side camera, zoomed in), each with its own badge at the end.
     items: (rec, t0, t1, label, label colour, badge)."""
     gens = [Video(r["dir"] / "dashboard.mp4").frames(speed, t0, t1) for r, t0, t1, *_ in items]
     last, done_k = [None, None], [None, None]
@@ -823,7 +818,7 @@ def pair_segment(items, speed, chapter, sub, caption, accent):
                 continue
             side, wrist, _ = split_dash(last[i])
             x = 20 + i * 950
-            img[200:720, x:x + 924] = fit(wrist, 924, 520)
+            img[200:720, x:x + 924] = fit(crop(side, SIDE_ZOOM), 924, 520)
         pil = Image.fromarray(img)
         d = ImageDraw.Draw(pil)
         header(d, chapter, accent, sub, None, speed)
@@ -875,26 +870,14 @@ MERGED = rec("reset/attempts/attempt_45")               # 19:30, reset 22: place
 FIRST_IN = rec("execute/attempts/attempt_30")           # 18:37, first insertion (a test of the new program)
 EP0 = ep_rec(0)                                         # 17:33, episode 0: on the rim
 EP5 = ep_rec(5)                                         # 18:50, in, but scored 'unsure' (check bug)
-EP7 = ep_rec(7)                                         # 19:02, first counted success
 SIM31 = ep_rec(31)                                      # 22:20, sim policy zero-shot, in without a force stop
 CALIB_LOG = (SETUP / "sidecal/auto_calib_20261123.log").read_text(errors="replace")
 _m = re.search(r"poses (\d+) \(dropped (\d+)\) \| spread ([\d.]+) mm.*moved (\d+) mm, ([\d.]+) deg", CALIB_LOG)
 CAL = dict(kept=int(_m.group(1)), dropped=int(_m.group(2)), spread=float(_m.group(3)), moved=int(_m.group(4)), deg=float(_m.group(5)))
 
 
-def git_count(role):
-    try:
-        return int(subprocess.check_output(["git", "-C", str(RUN / "agents" / role), "rev-list", "--count", "HEAD"], text=True))
-    except (subprocess.CalledProcessError, ValueError, OSError):
-        return None
-
-
 def py_lines(role):
     return sum(len(p.read_text(errors="replace").splitlines()) for p in (RUN / "agents" / role / "programs").glob("*.py"))
-
-
-def tbd(x, fmt="{}"):
-    return "[TBD]" if x is None else fmt.format(x)
 
 
 def eval_text():
@@ -921,8 +904,8 @@ CALLS = [("19:10", "Add a scripted baseline: every 3rd episode runs with the lea
          ("21:27", "A hint for the learner: relabel the first descent with where the drawer actually went in"),
          ("23:58", "Fix our success check again (episode 46) and restart before the final test")]
 LOG_CHECKED = "2026-11-24T00:05"     # HELP and CALLS cover OPERATOR_LOG.md up to here
-SETUP_HELP = ("Before the run, people set up the scene (cabinet on its back, checkerboard), moved the side camera, and "
-              "pushed the drawer in by hand once to test the success check.")
+SETUP_HELP = ("Before the run, people set up the scene (cabinet on its back, checkerboard on the table) and pushed the drawer "
+              "in by hand once to test the success check. The side camera had moved 13 cm since its last calibration.")
 
 
 # ------------------------------------------------------------------ videos
@@ -951,7 +934,7 @@ def v_story(w):
                             "the drawer sits on the rim.", COL["fail"], t0=50, t1=84, zoom=SIDE_ZOOM, story=True,
                             badge=("fail", "✗  on the rim"), badge_at_s=21)))
     w.add(card([("A HINT FROM US", 34, "B", COL["human"]),
-                ("“Measure the opening before you pick up the drawer, and feel for it with light touches.”", 48, "M", TXT),
+                ("Our note: measure the opening before you pick up the drawer, then feel for it with light touches.", 48, "M", TXT),
                 ("The agent built both, and worked out the right starting offset on its own.", 34, "R", DIM)], 5.0, COL["human"]))
     w.add(fade(dash_segment(FIRST_IN, 5, "First time in!", "a test of the new program, 18:37",
                             "It measures the opening first and starts 3 mm off center, where its probing had touched lowest. Straight in.", COL["ok"], t0=56, t1=92,
@@ -1040,13 +1023,13 @@ def v_curve(w):
                 ("Most of it came from the agent rebuilding its program after episode 4, with our hint. The learner came later.", 46, "M", TXT),
                 ("What's left for the learner: getting in without touching the rim first.", 34, "R", DIM)], 5.0, a))
     w.add(fade(clean_segment(9.0)))
-    L = [e for e in TRAIN if e["arm"] == "learned" and e["ep"] >= WIN and e["rim"] == 0]
+    L = [e for e in TRAIN if e["arm"] == "learned" and e["ep"] >= WIN and e["rim"] == 0 and e["final"] == "success"]
     Sc = [e for e in TRAIN if e["arm"] == "scripted" and e["ep"] >= WIN and e["rim"] and e["rim"] >= 2]
     if L and Sc:
         el, es = L[-1], Sc[-1]
         w.add(fade(pair_segment([(rec(el["dir"]), 58, 92, f"learned · episode {el['ep']}", COL["learned"], ("ok", "✓  straight in")),
                                  (rec(es["dir"]), 58, 92, f"scripted · episode {es['ep']}", COL["scripted"], ("unsure", f"{es['rim']} rim touches"))],
-                                3, "Side by side", "wrist camera, insertion only",
+                                3, "Side by side", "side camera, zoomed in, carry and insertion",
                                 "Both end with the drawer in. The learned one went straight in; the scripted one touched the rim twice first.", a)))
     st_l, st_s = S["learned"], S["scripted"]
     w.add(card([(f"Straight in: learned {st_l['clean']} of {st_l['n']}, scripted {st_s['clean']} of {st_s['n']}", 54, "B", a),
@@ -1137,7 +1120,7 @@ class DraftWriter(Writer):
         for f in frames:
             if self.tag is not None:
                 f = np.array(f, np.uint8)
-                y, x = H - 70, W - 350
+                y, x = 132, W - 350
                 a = self.tag[..., 3:] / 255.0
                 reg = f[y:y + 54, x:x + 330].astype(np.float32)
                 f[y:y + 54, x:x + 330] = (self.tag[..., :3] * a + reg * (1 - a)).astype(np.uint8)
