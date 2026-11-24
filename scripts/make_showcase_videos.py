@@ -14,38 +14,23 @@ import os
 import re
 import subprocess
 import time
-from collections import deque
 from functools import lru_cache
 from pathlib import Path
 
 import cv2
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageOps
 
 import showcase_music
+from showcase_common import (BG, DIM, FPS, H, PANEL, TXT, W, Video, Writer, balanced, blank, fade, fit, font, mono,
+                             split_dash, text, wrap)
 
 ROOT = Path(__file__).resolve().parents[1]
 RUN = ROOT / "runs" / "20261104_1510_bee"
 OUT = RUN / "videos"
 WORK = OUT / "_work"
-W, H, FPS = 1920, 1080, 30
-BG = (12, 16, 22)
-PANEL = (22, 27, 34)
-TXT = (235, 240, 245)
-DIM = (150, 160, 172)
 COL = dict(execute=(88, 166, 255), reset=(255, 166, 87), collect=(88, 166, 255), policy=(63, 200, 100),
            dagger=(190, 140, 255), train=(255, 210, 80), fail=(255, 90, 90), target=(255, 210, 80), human=(255, 112, 67))
-FONTS = "/usr/share/fonts/truetype/ubuntu/"
-
-
-@lru_cache(None)
-def font(size, weight="R"):
-    return ImageFont.truetype(FONTS + f"Ubuntu-{weight}.ttf", size)
-
-
-@lru_cache(None)
-def mono(size):
-    return ImageFont.truetype(FONTS + "UbuntuMono-R.ttf", size)
 
 
 # ------------------------------------------------------------------ run data
@@ -118,41 +103,6 @@ def by_ep(ep):
 
 
 # ------------------------------------------------------------------ drawing helpers
-FALLBACK = set("✓✗→")
-
-
-@lru_cache(None)
-def dejavu(size, weight):
-    return ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans%s.ttf" % ("-Bold" if weight in "BM" else ""), size)
-
-
-def runs(s, size, weight):
-    out = []
-    for ch in s:
-        f = dejavu(size, weight) if ch in FALLBACK else font(size, weight)
-        if out and out[-1][1] is f:
-            out[-1][0] += ch
-        else:
-            out.append([ch, f])
-    return out
-
-
-def text(d, xy, s, size, weight="R", fill=TXT, anchor="la", shadow=False):
-    """Draw text; characters missing from Ubuntu (check marks, arrows) come from DejaVu Sans."""
-    if not FALLBACK & set(s):
-        f = font(size, weight)
-        if shadow:
-            d.text((xy[0] + 2, xy[1] + 2), s, font=f, fill=(0, 0, 0), anchor=anchor)
-        d.text(xy, s, font=f, fill=fill, anchor=anchor)
-        return
-    rs = runs(s, size, weight)
-    total = sum(f.getlength(t) for t, f in rs)
-    x = xy[0] - {"l": 0, "m": total / 2, "r": total}[anchor[0]]
-    for t, f in rs:
-        if shadow:
-            d.text((x + 2, xy[1] + 2), t, font=f, fill=(0, 0, 0), anchor="l" + anchor[1])
-        d.text((x, xy[1]), t, font=f, fill=fill, anchor="l" + anchor[1])
-        x += f.getlength(t)
 
 
 @lru_cache(None)
@@ -205,85 +155,6 @@ def fly_bee(pil, k, n, y0=250, h=86):
         d.ellipse([x - 70 - r, y + 18 - r, x - 70 + r, y + 18 + r], fill=(70, 78, 90))
     x, y = pos(k)
     paste_bee(pil, x, y, h, angle=-12 * np.cos(2 * np.pi * 1.5 * k / max(1, n - 1)))
-
-
-def wrap(s, size, width, weight="R"):
-    f, words, lines, cur = font(size, weight), s.replace(" %", "\u00a0%").split(" "), [], ""
-    for w in words:
-        t = (cur + " " + w).strip()
-        if f.getlength(t) <= width:
-            cur = t
-        else:
-            lines.append(cur)
-            cur = w
-    return lines + ([cur] if cur else [])
-
-
-def fit(img, w, h):
-    return cv2.resize(img, (w, h), interpolation=cv2.INTER_AREA if img.shape[1] > w else cv2.INTER_CUBIC)
-
-
-def blank():
-    return np.full((H, W, 3), BG, np.uint8)
-
-
-def fade(gen, n_in=8, n_out=8):
-    """Fade from and to black, streaming (only the last n_out frames are held)."""
-    buf = deque()
-    for i, f in enumerate(gen):
-        if i < n_in:
-            f = (f.astype(np.float32) * (i + 1) / (n_in + 1)).astype(np.uint8)
-        buf.append(f)
-        if len(buf) > n_out:
-            yield buf.popleft()
-    m = len(buf)
-    for j, f in enumerate(buf):
-        yield (f.astype(np.float32) * (m - j) / (m + 1)).astype(np.uint8)
-
-
-class Video:
-    """Sequential reader of a recording with speed-up; yields RGB frames at the output rate."""
-
-    def __init__(self, path):
-        self.path = str(path)
-        cap = cv2.VideoCapture(self.path)
-        self.fps = cap.get(cv2.CAP_PROP_FPS) or 8.0
-        self.n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        self.dur = self.n / self.fps
-        cap.release()
-
-    def frames(self, speed, t0=0.0, t1=None):
-        cap = cv2.VideoCapture(self.path)
-        start = int(t0 * self.fps)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, start)
-        cur, last, k = start - 1, None, 0
-        t1 = self.dur if t1 is None else min(t1, self.dur)
-        while True:
-            t = t0 + k * speed / FPS
-            want = int(t * self.fps)
-            if t > t1 or want >= self.n:
-                break
-            while cur < want:
-                if cur < want - 1:
-                    ok = cap.grab()
-                else:
-                    ok, fr = cap.read()
-                    if ok:
-                        last = fr
-                if not ok:
-                    cap.release()
-                    return
-                cur += 1
-            if last is None:
-                break
-            yield cv2.cvtColor(last, cv2.COLOR_BGR2RGB)
-            k += 1
-        cap.release()
-
-
-def split_dash(fr):
-    """Dashboard frame (480x1280) -> side, wrist (360x640 each), log strip (120x1280)."""
-    return fr[:360, :640], fr[:360, 640:1280], fr[360:480, :1280]
 
 
 # ------------------------------------------------------------------ layouts
@@ -379,19 +250,6 @@ def dash_segment(rc, speed, chapter, sub, caption, accent, t0=0.0, t1=None, note
             counters(d, t_run, accent=accent)
             timeline_bar(d, t_run, pil)
         yield np.asarray(pil)
-
-
-def balanced(s, size, width, weight):
-    """Wrap into as many lines as needed, but of similar length (no one-word last line)."""
-    lines = wrap(s, size, width, weight)
-    if len(lines) < 2:
-        return lines
-    target = font(size, weight).getlength(s) / len(lines) * 1.06
-    for w_ in range(int(target), int(width) + 1, 20):
-        trial = wrap(s, size, w_, weight)
-        if len(trial) == len(lines):
-            return trial
-    return lines
 
 
 def card(lines, dur, accent=TXT, first=False, bee=None):
@@ -654,27 +512,6 @@ def code_segment(dur, chapter, accent, sub):
 
 
 # ------------------------------------------------------------------ output
-class Writer:
-    def __init__(self, path):
-        self.path = Path(path)
-        self.n = 0
-        self.p = subprocess.Popen(
-            ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
-             "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-shortest", "-c:v", "libx264", "-preset", "medium", "-crf", "19",
-             "-pix_fmt", "yuv420p", "-profile:v", "high", "-level", "4.1", "-c:a", "aac", "-b:a", "64k", "-movflags", "+faststart",
-             str(self.path)], stdin=subprocess.PIPE)
-
-    def add(self, frames):
-        for f in frames:
-            self.p.stdin.write(np.ascontiguousarray(f, np.uint8).tobytes())
-            self.n += 1
-
-    def close(self):
-        self.p.stdin.close()
-        self.p.wait()
-        return self.n / FPS
-
-
 def chapter_card(num, title, sub, accent, dur=2.0):
     return card([(f"STEP {num}", 34, "B", accent), (title, 72, "B", TXT), (sub, 34, "R", DIM)], dur, accent, bee=300)
 
