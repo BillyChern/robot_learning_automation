@@ -28,8 +28,8 @@
    "reset": 0
   },
   "rl": {
-   "total": 30,
-   "success": 22,
+   "total": 31,
+   "success": 23,
    "fail": 6,
    "unsure": 2
   }
@@ -128,17 +128,17 @@
    ]
   }
  },
- "next_episode": 30,
+ "next_episode": 31,
  "next_reset": 45,
  "vlm": {
-  "calls": 30,
-  "cost_usd": 2.3284088
+  "calls": 31,
+  "cost_usd": 2.4062608
  },
  "operator_notes": [],
  "rl": {
-  "episodes": 30,
+  "episodes": 31,
   "evals": [],
-  "since_review": 0,
+  "since_review": 1,
   "learner_fails": 0
  }
 }
