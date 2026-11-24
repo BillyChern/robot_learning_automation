@@ -300,3 +300,17 @@ No failed episode. Since hindsight the actor's deterministic first-descent mean 
 the noise (std 0.8 per step) turned mean actions +0.80, +0.82, +0.47 into +0.31, +0.26, -0.83 and the drawer touched the rim at a +0.8 mm. Learned episodes therefore measure the noise more than the policy, and the final evaluation is deterministic.
 Changed: first-descent noise from 0.8, 0.8, 0.3 to 0.3, 0.3, 0.15 (a, b, yaw), so training episodes test the mean while still sampling around it. Open risk: the scripted arm enters at +3 mm only after a rim touch, which may shift the drawer in the grip, so +3 mm on a free first descent is not proven.
 Scripted and sim arms are unchanged.
+
+## Reflection after episode 30: the hindsight targets were the search step (learner v5)
+Correction of the 21:27 change: post-touch "entry offsets" do not say where a first descent enters. Over 17 single-touch episodes (11-30) the entry lies a +2.99 mm (sd 0.27), b +0.05 mm past the touch, wherever the touch was (a -1.5 to +3.3 mm), and +3 mm is the search's first step.
+Episodes 14 and 30 touched the rim at a +3.3 and +3.2 mm, the offset the hindsight actor was trained to reach. So hindsight taught the search step.
+What does separate the first descents so far is b: both entries (19: a +0.4, b +1.5; 27: a +4.0, b +2.4) have b >= +1.5 mm, all 18 touches have b <= +0.5 mm. Two positives, so this is a hint, and I looked at several variables before finding it.
+Changed: the fabricated transitions are gone. The 25% share of each batch now replays the real steps of episodes that entered on the first descent before any rim touch (from episode 11 on, frozen start): 19 and 27, 8 transitions. LEARNER_VERSION 5 retrains from all data.
+Offline, two fresh retrains on a copy: deterministic first-descent offset for tab side -1 (both positives) a +2.5 to +2.9, b +1.4 to +1.5 mm; for tab side +1 (no positive yet) a +1.2 to +1.6, b -0.3 to +0.1 mm. So the actor has not generalised to side +1, and b +1.4 is just under the smallest b that entered.
+Scripted and sim arms are unchanged.
+
+## Reflection after episode 31: first sim-arm episode of the series
+Success by both checks, 14 decisions, 0 force stops, return 8.46. Not like for like with the other arms: it ended on the seated rule without a floor force stop, which costs them -1.
+Force: the logged 57 N is the README's fallback for max |f - f0| (41.2 N change within the segment + 15.8 N at its start), an upper bound. The largest total force in that move was 34.2 N, under the 35 N stop.
+Counterexample to the b hint of the last reflection: the sim arm crossed the rim at a +0.7 to +1.7, b 0.0 to +0.26 mm, yaw -0.1 deg from the start with no contact (peak 2.4 N). Learned and scripted first descents at b <= +0.5 mm all touched. So b >= +1.5 mm is not necessary.
+Differences I have not separated: the sim arm descends from its first decision without the two hover steps and is moving along +a while it crosses the rim. One episode, so no change to the learner. Sim transitions stay out of the actor's data (operator 20:27).

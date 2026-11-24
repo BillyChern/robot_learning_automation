@@ -20,15 +20,14 @@ import rlcommon as rc
 import touch
 
 PRIOR_VERSION = rc.PRIOR_VERSION
-LEARNER_VERSION = 4                # 2: no entropy term in the critic target, bounded targets; 3: the report's reward (operator 20:21); 4: first-descent hindsight (operator 21:27)
+LEARNER_VERSION = 5                # 2: no entropy term in the critic target, bounded targets; 3: the report's reward (operator 20:21); 4: first-descent hindsight (operator 21:27); 5: replay of real first-descent entries instead (the hindsight targets were the search step)
 Q_RANGE = (-20.0, 20.0)            # step reward >= -1 at gamma 0.95, terminal reward <= 12
 
 HP = dict(actor="awac", awac_lambda=0.3, awac_wmax=20.0, gamma=0.95, tau=0.005, lr=3e-4, batch=256, hidden=128, target_entropy=-2.0, init_alpha=0.05,
           utd_per_transition=40, max_updates=3000, time_budget_s=200.0, bc_weight=1.0, bc_decay_episodes=10.0,
           min_transitions=8, hindsight_frac=0.25)
-# hindsight relabelling of the first descent: the same scales as execute.py (SC_DESC, OBS_C, HOVER + ENTERED)
-H_SCALE, H_OBS = np.array([0.001, 0.001, 0.5]), np.array([0.008, 0.008, 4.0])
-H_DEPTH, H_MAX_A, H_START_TOL, H_END_TOL = 0.012, 0.95, np.array([0.0006, 0.0006, 0.3]), np.array([0.0005, 0.0005, 0.5])
+# replay of real first-descent entries: same scales as execute.py (SC_DESC, HOVER + ENTERED); episodes from 11 on have the fixed pinch
+H_SCALE, H_DEPTH, H_START_TOL, H_MIN_EPISODE = np.array([0.001, 0.001, 0.5]), 0.012, np.array([0.0006, 0.0006, 0.3]), 11
 KEYS = ("obs", "act", "rew", "next_obs", "done", "prior")
 
 
@@ -127,35 +126,20 @@ def relabel(d, f, part):
     return dict(final=final, success=bool(success))
 
 
-def hindsight(part, meta, rel, gamma):
-    """A successful episode that touched the rim and then entered at offset E: the transitions up to the first touch again, with the lateral
-    actions that would have reached E on the first descent and the return of that 0-contact entry (the logged return after the entry, so the
-    floor stop stays). Only episodes that started on the frozen r4 offset, and only entries reachable in those steps. None when not applicable."""
+def first_entry(part, meta, rel):
+    """The real steps of a successful episode whose drawer entered on its first descent, before any rim touch, from the frozen r4 start; None
+    otherwise. Entries after a touch are not used: they lie 3.0 mm (sd 0.27, 17 episodes) past the touch wherever it was, so they record the
+    search step and not where a first descent enters (episodes 14 and 30 touched at +3.3 and +3.2 mm)."""
     ev = meta.get("events") or []
-    if not (rel and rel["success"]) or int(meta.get("episode", -1)) < 0 or meta.get("arm") == "sim" or not ev or ev[0][1] != "ok":
+    if not (rel and rel["success"]) or int(meta.get("episode", -1)) < H_MIN_EPISODE or meta.get("arm") == "sim" or not ev or ev[0][1] != "ok":
         return None
     forces = [i for i, e in enumerate(ev) if e[1] == "force"]
     e = next((i for i, x in enumerate(ev) if x[4] <= ev[0][4] - H_DEPTH), None)
-    if not forces or e is None or forces[0] >= e:
+    if e is None or (forces and forces[0] <= e):
         return None
-    first, c0 = forces[0], touch.frozen_centre()
-    if np.any(np.abs(np.array(ev[0][5]) - H_SCALE * part["act"][0, :3] - c0) > H_START_TOL):
+    if np.any(np.abs(np.array(ev[0][5]) - H_SCALE * part["act"][0, :3] - touch.frozen_centre()) > H_START_TOL):
         return None
-    goal, c = np.array(ev[e][5], float) - c0, np.zeros(3)
-    obs, act, nxt = [], [], []
-    for i in range(first + 1):
-        a = np.clip((goal - c) / (H_SCALE * (first + 1 - i)), -H_MAX_A, H_MAX_A)
-        o = part["obs"][i].copy(); o[2:5] = np.clip(c / H_OBS, -5, 5)
-        c = c + H_SCALE * a
-        o2 = part["obs"][min(i + 1, first)].copy(); o2[2:5] = np.clip(c / H_OBS, -5, 5)
-        obs.append(o); act.append(np.r_[a, part["act"][i, 3]]); nxt.append(o2)
-    if np.any(np.abs(goal - c) > H_END_TOL):
-        return None
-    after = part["rew"][e + 1:]
-    G = float((after * gamma ** np.arange(len(after))).sum())
-    rew = np.full(first + 1, -0.05, np.float32); rew[-1] += gamma * G
-    done = np.zeros(first + 1, np.float32); done[-1] = 1.0
-    return dict(obs=np.array(obs, np.float32), act=np.array(act, np.float32), rew=rew, next_obs=np.array(nxt, np.float32), done=done)
+    return {k: part[k][:e + 1].copy() for k in ("obs", "act", "rew", "next_obs", "done")}
 
 
 def load_data(d):
@@ -174,7 +158,7 @@ def load_data(d):
                 part = {k: z[k].copy() for k in ("obs", "act", "rew", "next_obs", "done")}
                 rel = relabel(d, f, part)
                 parts.append(part)
-                h = hindsight(part, json.load(open(f[:-4] + ".json")), rel, HP["gamma"])
+                h = first_entry(part, json.load(open(f[:-4] + ".json")), rel)
                 if h is not None:
                     hs.append(h)
                 eps.append(dict(file=os.path.basename(f), n=int(len(part["rew"])), ret=float(part["rew"].sum()), relabel=rel))
@@ -188,7 +172,7 @@ def load_data(d):
         for j in rc.ZERO_OBS:
             D[k][ins, j] = 0.0
     D["prior"] = rc.prior(D["obs"]).astype(np.float32)
-    if hs:                                         # kept apart: sampled at a fixed share of each batch, never counted as robot transitions
+    if hs:                                         # real transitions replayed: a fixed share of each batch, not counted twice in the data size
         H = {k: np.concatenate([h[k] for h in hs]) for k in hs[0]}
         H["prior"] = rc.prior(H["obs"]).astype(np.float32)
         D["hindsight"] = H

@@ -18,8 +18,8 @@
    "unsure": 0
   },
   "resets": {
-   "total": 45,
-   "ok": 39,
+   "total": 46,
+   "ok": 40,
    "fail": 6,
    "manual": 0
   },
@@ -28,8 +28,8 @@
    "reset": 0
   },
   "rl": {
-   "total": 31,
-   "success": 23,
+   "total": 32,
+   "success": 24,
    "fail": 6,
    "unsure": 2
   }
@@ -67,13 +67,13 @@
    "ended": "2026-11-23T17:32:18",
    "attempts": 27,
    "robot_attempts": 9,
-   "turns": 316,
-   "cost_usd": 35.08431380000001,
-   "input_tokens": 440,
-   "output_tokens": 438705,
-   "cache_read": 86663140,
-   "cache_creation": 1075555,
-   "duration_s": 4771.947000000002,
+   "turns": 331,
+   "cost_usd": 36.12799800000001,
+   "input_tokens": 466,
+   "output_tokens": 455574,
+   "cache_read": 88571821,
+   "cache_creation": 1116113,
+   "duration_s": 4980.426000000001,
    "first_success_attempt": 8,
    "first_success_after_attempts": 20,
    "time_to_first_success_s": 7870.1,
@@ -81,7 +81,7 @@
    "rounds": 0,
    "program_command": "RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
    "last_report": "Not verified: the smaller noise has not run on the robot, and the actor's deterministic first descent has never been executed on it. A free first descent at a +3 mm may not enter, because the scripted arm only enters there after a rim touch, which could shift the drawer in the grip. I also did not find rl_curve.jsonl in my workspace, so this review uses the learner log and the stored episodes.\n\nNo episode failed or was unsure in this window, so there was no failure to fix. Fixed return over episodes 17-29: learned 6.28 mean over 8 episodes (6.10, 7.25, 6.10, 5.05, 6.15, 6.15, 7.35, 6.10), scripted 6.10 over 5 episodes. The gap is too small to call the learned arm better. Only 2 of those learned episodes (19 and 27) entered without a rim touch.\n\nWhy I changed it: since hindsight, the actor's mean first-descent offset on the stored observations is a +2.98, b +0.21 mm, which matches where the touch search found entries. The training noise was large enough to hide this. In episode 28 it turned mean actions of +0.80, +0.82, +0.47 into +0.31, +0.26, -0.83, and the drawer touched the rim at a +0.8 mm.\n\nChange (commit 280935a, learned arm only): first-descent noise std goes from 0.8, 0.8, 0.3 to 0.3, 0.3, 0.15 for a, b and yaw, so training episodes test the mean before the deterministic evaluation. The reason is in notes/design.md. Scripted and sim arms are unchanged.\n\nChecks: the exploration test gives a first-touch residual sd of 0.55 mm on a and 0.59 mm on b, with 0 residual in the scripted arm. The arm test and learner --check pass. Dry run attempt 93 on 280935a exited 0 with all plans passing the model check; its success claim means nothing because no drawer was moved.",
-   "reflections": 32,
+   "reflections": 34,
    "reviews": 6
   }
  },
@@ -128,17 +128,17 @@
    ]
   }
  },
- "next_episode": 31,
- "next_reset": 45,
+ "next_episode": 32,
+ "next_reset": 46,
  "vlm": {
-  "calls": 31,
-  "cost_usd": 2.4062608
+  "calls": 32,
+  "cost_usd": 2.4843172
  },
  "operator_notes": [],
  "rl": {
-  "episodes": 31,
+  "episodes": 32,
   "evals": [],
-  "since_review": 1,
+  "since_review": 2,
   "learner_fails": 0
  }
 }

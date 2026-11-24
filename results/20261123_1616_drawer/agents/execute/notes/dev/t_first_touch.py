@@ -4,7 +4,7 @@ import numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, "programs"))
 import rlcommon as rc, touch
-RL = os.path.join(ROOT, "rl"); c0 = touch.frozen_centre(); SC = np.array([.001, .001, .5]); OC = np.array([.008, .008, 4.0])
+RL = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "rl"); c0 = touch.frozen_centre(); SC = np.array([.001, .001, .5]); OC = np.array([.008, .008, 4.0])
 A = rc.Actor(os.path.join(RL, "policy", "actor.npz")); print("actor updates", A.info.get("updates"))
 rows = []
 for f in sorted(glob.glob(os.path.join(RL, "transitions", "train_ep*.npz"))):
