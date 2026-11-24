@@ -5543,3 +5543,102 @@ Structured output provided successfully
 ```
 </details>
 
+**19:18:08 execute agent:** No response requested.
+
+### 19:18:08 orchestrator -> execute agent
+
+```text
+# attempt_42: exit code 0; outcome: success
+
+command: RLPJ_EPISODE=-1 RLPJ_RL_MODE=eval /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: Real test of commit a0c9a76 with the deterministic policy: wrist look-downs with the blurred-frame retry, pinch the tab, lower into the compartment (25 N limit, touch search if it stops on the rim), release, home; commit: a0c9a76; duration_s: 118.2; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "a0c9a76aac",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 0.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9582, 0.5632, 90.462], "gripper": 0.9},
+"fk_check_mm": 0.18,
+"first_failed_check": null,
+"transitions": 19,
+"return": 13.696,
+"policy": {"source": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/rl/policy/actor.npz", "updates": 5160, "mtime": "Mon Nov 23 19:12:29 2026"},
+"rl_mode": "eval",
+"episode": -1,
+"arm": "learned_eval",
+"scripted_rev": "r1 (5b26018 + blurred-frame retry for the pull)",
+"segments": [["look_opening", true, 0.14, 0.37, 13.02, 39.9], ["look_drawer", true, 0.038, 0.23, 3.53, 39.7], ["above_tab", true, 0.14, 0.14, 8.93, 39.8], ["down_pre", true, 0.045, 0.16, 3.02, 39.4], ["down_tab", true, 0.045, 0.18, 5.15, 39.8], ["lift_slow", true, 0.029, 0.15, 3.12, 39.4], ["lift", 
+"pull_detect_tries": 1,
+"objects": {"drawer": {"c": [0.2907, -0.0058], "yaw": 82.01, "size": [0.0736, 0.1153], "face_h": 0.0931}, "tab": {"ok": true, "xy": [0.2717, -0.0029], "s": -0.0192, "t": 0.0003, "side": -1, "why": null}, "opening": {"c": [0.452, 0.0028], "yaw": 18.3, "measured": true}},
+"grasp": {"reading": 85.3, "held": true, "h_g": 0.1411},
+"decisions": ["turn the drawer +26.3 deg, tool yaw -71.7, opening [0.452, 0.0028] yaw 18.3", "drawer entered at a 9.8 mm, b -2.5 mm, yaw 0.23 deg after 3 touches; centre now [2.98, -3.04, 0.03]"],
+"tilt": {"standing": {"ok": true, "n": 1313, "tilt_s_deg": -1.33, "tilt_t_deg": 2.49, "z0": 0.0777, "resid_mm": 0.87, "span": [0.06, 0.1]}, "held": [{"ok": true, "n": 708, "tilt_s_deg": -0.78, "tilt_t_deg": 5.58, "z0": 0.191, "rel_s": -0.69, "phi": 0.0}]},
+"align": [{"ok": true, "ea": 0.0033, "eb": 0.0032, "eyaw": 0.16, "c0": [0.0, 0.0, 0.0], "why": null}],
+"touch_centre": [0.003, -0.0031, 0.0088],
+"touch": {"best": [0.0069, 0.0006, 0.2207], "best_h": 0.0147, "touches": 3},
+"insert": {"end": "seated", "steps": 19, "bottom": 0.0147, "c": [0.0098, -0.0025, 0.2295], "contacts": 3, "peak": 25.0, "tilt": 0.0, "contact_map": [[3.8, -2.5, 0.2, 94.8, 7.5, 0.8], [6.7, -2.6, 0.3, 93.5, 10.3, 0.1], [9.8, -2.5, 0.2, 14.7, -25.0, 4.1]], "tilts_tried": [0.0]},
+"blobs_before": [[0.29, -0.015, 0.098, 0.091, 0.113, 4400], [0.524, 0.018, 0.096, 0.282, 0.186, 12722]],
+"blobs_after": [[0.49, 0.008, 0.101, 0.282, 0.184, 12719]],
+"verify": {"check": true, "reason": "drawer flush in the target compartment", "n": 1424, "median_h": 0.0967, "flush": 1.0, "above": 0.0, "deep": 0.0, "cabinet_moved_m": null, "on_table": false, "terminal_reward": 12.0, "cabinet_shift_px": 0.26, "cabinet_outline_move_m": 0.0037, "orchestrator_check":
+"transitions_file": "transitions/eval_test_20261123_191754.npz",
+"return_home": "already at default pose",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.5, "reading": 50.0},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.3]
+}
+
+log.txt: 108 lines; last 40:
+[19:17:17] step 9: a [0.0, 0.0, 0.0, 0.01] (mu [0.06, 0.03, 0.001, 0.014]) -> ok  bottom 0.0763 c [0.0098, -0.0025, 0.2295] tilt +0.0 peak 1.6 N r +0.192
+[19:17:17] plan 23_ins10: T=0.7s check ok=True tip>0.163 vmax=3.0deg/s lin=0.018m/s
+[19:17:18] exec 23_ins10: {'segment': 'ins10', 'ok': True, 'reason': '', 'T_plan': 0.71, 'max_dev_deg': 0.039, 'max_dev_mm': 0.22, 'n': 30, 'max_abs_force_n': 6.7, 'max_force_n': 1.4, 't_exec': 0.78, 'rate_hz': 38.5, 'final_err_deg': 0.018}
+[
+... (7714 more characters)
+```
+
+**19:18:33 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && cat >> notes/design.md <<'EOF'
+
+## Tuning after 10 episodes (attempt 42, commit a0c9a76)
+No program change: real test succeeded (independent geometric check True, top 96.7 mm, 3 touches). The blurred-frame retry was not
+needed (1 try), so the episode 8 fix is still unexercised on the robot.
+Pattern in the entry offsets: first-try entries are all at a 2.9-3.0, b -3.0..-3.2 mm, yaw within 0.06 deg (attempts 30, 32, 34, 40).
+First touches 0.3-1.0 mm away missed (attempt 28: +2.9, -2.8; attempt 36: +3.7, -2.1; attempt 42: +3.8, -2.5), and the last two then
+entered at +9.8. So the +9.8 entry is probably not a different grasp but a second way in after the narrow window at +3 is missed.
+Hypothesis only (6 entri
+... (662 more characters)
+```
+
+<details><summary>19:18:35 result</summary>
+
+```text
+3676c98 notes: tuning after 10 episodes, narrow entry window at +3 mm
+check: one update {'lc': 5.832162857055664, 'la':
+```
+</details>
+
+**19:18:42 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Real test of commit a0c9a76 succeeded (attempt 42, independent geometric check true); no program change this turn",
+ "report": "NOT YET VERIFIED: the fix for episode 8 has not been exercised on the robot. Its cause was a blurred wrist frame that broke the thin label frame in the detector's mask, and the fix retries on a smoothed copy and on fresh frames. Attempts 40 and 42 both detected the pull on the first try, so the retry never ran. No evaluation round has run yet, and the scripted baseline arm first runs at episode 11.\n\nReal test (attempt 42, commit a0c9a76, deterministic policy): success, and the independent geometric check agrees. Top height is 96.7 mm, flush share 1.0, cabinet shift 0.26 px, return 13.70. The d
+... (1044 more characters)
+```
+
+<details><summary>19:18:42 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
