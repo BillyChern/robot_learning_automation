@@ -50,9 +50,9 @@ def style(ax, title, xlabel, ylabel):
 def arm_of(d, ep):
     """'scripted' or 'learned' from the episode's summary (the program writes arm=...); 'learned' when missing."""
     try:
-        return json.loads((d / "episodes" / f"ep_{int(ep):06d}" / "summary.json").read_text()).get("arm") or "learned"
+        return json.loads((d / "episodes" / f"ep_{int(ep):06d}" / "summary.json").read_text()).get("arm") or "pre"
     except (OSError, ValueError, TypeError):
-        return "learned"
+        return "pre"
 
 
 def summ(d, ep):
@@ -71,7 +71,7 @@ def fixed_return(r, s):
             - 0.1 * max(0.0, (ins.get("peak") or 0) - 15.0) - 0.05 * (ins.get("steps") or 0))
 
 
-ARM_COL = {"learned": "#1f5fa8", "scripted": "#e67e22", "sim": "#8e44ad"}
+ARM_COL = {"pre": "#9aa7b5", "learned": "#1f5fa8", "scripted": "#e67e22", "sim": "#8e44ad"}
 FREEZE_EP = 15                                   # scripted part constant (r4 start offset, commit 317d578) from here
 REWARD_EP = 17                                   # repaired learner + the fixed-formula reward from here
 REDESIGN_EP = 5                                  # measured opening + touch search (18:37)
@@ -80,7 +80,7 @@ REDESIGN_EP = 5                                  # measured opening + touch sear
 def draw_fixed(d, tr, out):
     """Fixed-formula return and rim contacts per episode by arm, with the redesign and the freeze marked."""
     S = [summ(d, r.get("episode")) for r in tr]
-    arms = [s.get("arm") or "learned" for s in S]          # "learned_eval" (ep 10: eval mode by a labelling bug) apart
+    arms = [s.get("arm") or "pre" for s in S]          # "learned_eval" (ep 10: eval mode by a labelling bug) apart
     eps = [int(r.get("episode")) for r in tr]
     R = [fixed_return(r, s) for r, s in zip(tr, S)]
     C = [(s.get("insert") or {}).get("contacts") for s in S]
@@ -93,7 +93,7 @@ def draw_fixed(d, tr, out):
             y = np.array([Y[i] for i in idx], float)
             x = np.array([eps[i] for i in idx])
             ax.plot(x, y, "o", color=col, ms=5, alpha=0.6)
-            ax.plot(x, roll(y, 5), "-", color=col, lw=2, label=f"{arm} (rolling 5)")
+            ax.plot(x, roll(y, 5), "-", color=col, lw=2, label=f"{'before the arms' if arm == 'pre' else arm} (rolling 5)")
         odd = [i for i, a in enumerate(arms) if a not in ARM_COL and Y[i] is not None]
         if odd:
             ax.plot([eps[i] for i in odd], [Y[i] for i in odd], "x", color="#888", ms=7, label="eval-mode run (not averaged)")
@@ -144,13 +144,13 @@ def draw(run):
         ax2.spines["top"].set_visible(False)
     arms = [arm_of(d, r.get("episode")) for r in tr]
     if "scripted" in arms:
-        for arm, col in (("learned", "#1f5fa8"), ("scripted", "#e67e22"), ("sim", "#8e44ad")):
+        for arm, col in (("pre", "#9aa7b5"), ("learned", "#1f5fa8"), ("scripted", "#e67e22"), ("sim", "#8e44ad")):
             idx = [i for i, a in enumerate(arms) if a.startswith(arm)]
             if not idx:
                 continue
             ok = np.array([tr[i].get("final") == "success" for i in idx], float)
             ax.plot(np.array(idx) + 1, np.cumsum(ok) / np.arange(1, len(ok) + 1) * 100, "o-", color=col, ms=3, lw=1.6,
-                    label=f"{arm}: running success ({int(ok.sum())}/{len(ok)})")
+                    label=f"{'before the arms' if arm == 'pre' else arm}: running success ({int(ok.sum())}/{len(ok)})")
     if evals:
         ax.plot([r["after"] for r in evals], [100 * float(r.get("rate") or 0) for r in evals], "s", color="#c0392b",
                 ms=9, label="fixed evaluation")
@@ -186,7 +186,7 @@ def draw(run):
         resets_ok=sum(bool(e.get("ok")) for e in resets), fixed_return=[round(v, 2) for v in fixed],
         arms={a: dict(n=sum(1 for r in tr if arm_of(d, r.get("episode")) == a),
                       successes=sum(1 for r in tr if arm_of(d, r.get("episode")) == a and r.get("final") == "success"))
-              for a in ("learned", "scripted", "sim")}), indent=1))
+              for a in ("pre", "learned", "scripted", "sim")}), indent=1))
 
 
 def main():
