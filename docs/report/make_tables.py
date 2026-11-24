@@ -1,13 +1,14 @@
-"""Tables and key numbers for docs/report/drawer_lying_report.md from a run's records (reads runs/, writes docs/report/).
+"""Tables and key numbers for docs/report/report.md and drawer_lying_report.md from the runs' records (reads runs/,
+writes docs/report/).
 
-    python3 docs/report/make_tables.py [run_id] [--from 17] [--until N] [--update] [--figures]
+    python3 docs/report/make_tables.py [drawer_run] [--bee bee_run] [--from 17] [--until N] [--update] [--figures]
 
-Prints the Markdown blocks to stdout. --from: first episode of the learned-vs-scripted window. --until N: only episodes
-up to index N (a consistent snapshot of a live run; resets and cost are cut at that episode's end, figures are not).
---update replaces each block between <!-- BEGIN:name --> and <!-- END:name --> in the report; --figures copies the
-run's plots and a few stills to docs/report/figures/ (runs/ is not in git).
+Prints the Markdown blocks to stdout. --from: first episode of the learned-vs-scripted window. --until N: only drawer
+episodes up to index N (a consistent snapshot of a live run; resets and cost are cut at that episode's end, figures are
+not). --update replaces each block between <!-- BEGIN:name --> and <!-- END:name --> in both reports (blocks named
+bee_* come from the bee run); --figures copies plots and a few stills to docs/report/figures/ (runs/ is not in git).
 Definitions: rim touches = force stops with the drawer bottom above 80 mm (insert.contact_map; episodes 0-4 have no map
-and all their stops were on the rim); floor stop = a stop below 30 mm (the drawer seated on the compartment floor);
+and all their stops were on the rim; the sim arm logs its stops without heights, so only their number is shown); floor stop = a stop below 30 mm (the drawer seated on the compartment floor);
 peak = insert.peak (the last insertion step's peak, 25 = a force stop); max force = the largest contact force over the
 insertion segments in the episode log (the stop value when a stop fired); fixed return = scripts/rl_plots.py fixed_return.
 """
@@ -22,7 +23,8 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-REPORT = ROOT / "docs/report/drawer_lying_report.md"
+REPORTS = (ROOT / "docs/report/report.md", ROOT / "docs/report/drawer_lying_report.md")
+LATE_FROM = 32                     # first scripted / learned pair after learner v5 (agent commit a8d9267, 22:19): episodes 32, 33
 FIG = ROOT / "docs/report/figures"
 SIM = ROOT / "sim/drawer_insert/results/lying"
 RIM_TOUCH_MM, FLOOR_MM = 80.0, 30.0
@@ -104,7 +106,7 @@ def max_force(log):
 def touches(s):
     """(rim touches, floor stops) of an episode, None when it never reached the insertion."""
     ins = s.get("insert") or {}
-    if ins.get("contacts") is None:
+    if ins.get("contacts") is None or s.get("sim_arm"):
         return None, None
     cm = ins.get("contact_map")
     if cm is None:
@@ -162,7 +164,8 @@ def block_episodes(eps):
         en = "-" if not e["entry"] else f"{e['entry'][0]:+.1f}, {e['entry'][1]:+.1f}"
         mode = "" if e["mode"] == "rl" else " [eval]"
         rows.append([e["ep"], e["start"], e["arm"] + mode, e["final"] + votes(e["reason"]),
-                     "-" if e["rim"] is None else f"{e['rim']} + {e['floor']}", f(e["peak"]), f(e["maxf"]),
+                     (f"{e['stops']} stops" if e["stops"] is not None else "-") if e["rim"] is None
+                     else f"{e['rim']} + {e['floor']}", f(e["peak"]), f(e["maxf"]),
                      "-" if e["steps"] is None else e["steps"], en, f(e["dur"], 0), f(e["ret"], 2), f(e["fixed"], 2)])
     return table(["Ep", "Start", "Arm", "Verdict (perception, VLM)", "Rim touches + floor stop", "Peak N",
                   "Max N", "Steps", "Entry a, b (mm)", "Duration (s)", "Agent return", "Fixed return"], rows)
@@ -175,24 +178,52 @@ def arm_rows(eps):
         if not g:
             continue
         k = sum(e["final"] == "success" for e in g)
-        ins = [e for e in g if e["rim"] is not None]
+        ins = [e for e in g if e["stops"] is not None]
 
         def ms(key, nd=1, src=ins):
             v = [e[key] for e in src if e[key] is not None]
             return "-" if not v else (f"{st.mean(v):.{nd}f}" + (f" ± {st.stdev(v):.{nd}f}" if len(v) > 1 else ""))
-        rows.append([arm, len(g), rate(k, len(g)), ms("rim"), ms("floor"), ms("maxf"), ms("steps"), ms("dur", 0, g),
+        rows.append([arm, len(g), rate(k, len(g)), ms("rim"), ms("stops"), ms("maxf"), ms("steps"), ms("dur", 0, g),
                      ms("fixed", 2, g)])
     return rows
 
 
+def perm_p(x, y, n=20000, seed=0):
+    """Two-sided permutation p-value of the difference of means of x and y."""
+    import random
+    if not x or not y:
+        return None
+    rng, pool, obs = random.Random(seed), list(x) + list(y), abs(st.mean(x) - st.mean(y))
+    hits = 0
+    for _ in range(n):
+        rng.shuffle(pool)
+        hits += abs(st.mean(pool[:len(x)]) - st.mean(pool[len(x):])) >= obs - 1e-12
+    return hits / n
+
+
+def compare(win, label):
+    """One line: learned vs scripted rim touches and fixed return in a set of episodes, with permutation p-values."""
+    L = [e for e in win if e["arm"] == "learned" and e["stops"] is not None]
+    S = [e for e in win if e["arm"] == "scripted" and e["stops"] is not None]
+    if not L or not S:
+        return f"{label}: not enough episodes yet."
+    out = [f"{label} (learned {', '.join(str(e['ep']) for e in L)}; scripted {', '.join(str(e['ep']) for e in S)}):"]
+    for key, name, nd in (("rim", "rim touches", 2), ("fixed", "fixed return", 2), ("steps", "steps", 1)):
+        a, b = [e[key] for e in L], [e[key] for e in S]
+        out.append(f"{name} {st.mean(a):.{nd}f} vs {st.mean(b):.{nd}f} (permutation p = {perm_p(a, b):.3f})")
+    return out[0] + " " + "; ".join(out[1:]) + "."
+
+
 def block_arms(eps, start):
-    head = ["Arm", "Episodes", "Success [95 % Wilson]", "Rim touches", "Floor stops", "Max N", "Steps", "Duration (s)",
+    head = ["Arm", "Episodes", "Success [95 % Wilson]", "Rim touches", "Force stops", "Max N", "Steps", "Duration (s)",
             "Fixed return"]
     train = [e for e in eps if e["mode"] == "rl"]
     win = [e for e in train if e["ep"] >= start]
     out = [f"All training episodes ({len(train)}):", "", table(head, arm_rows(train)), "",
            f"Comparison window, training episodes >= {start} ({len(win)} so far):", ""]
     out.append(table(head, arm_rows(win)) if win else "[TBD: no episodes in the window yet]")
+    out += ["", compare(win, f"Window >= {start}"), "",
+            compare([e for e in train if e["ep"] >= LATE_FROM], f"Episodes >= {LATE_FROM} (learner v5)")]
     return "\n".join(out)
 
 
@@ -239,16 +270,19 @@ def block_cost(d, ev, cutoff=None):
         return "no usage yet"
     tot = us[-1].get("totals", {})
     rows = []
-    for role in ("reset", "execute"):
+    for role in ("reset", "execute", "learn"):
         g = [u for u in us if u.get("kind") == "agent" and u.get("role") == role]
+        if not g:
+            continue
         rows.append([f"{role} agent", len(g), sum(u.get("turns") or 0 for u in g), f"{sum(u.get('duration_s') or 0 for u in g) / 60:.0f}",
                      f"{sum(u.get('output_tokens') or 0 for u in g) / 1000:.0f} k", f"{sum(u.get('cost_usd') or 0 for u in g):.2f}"])
     v = [u for u in us if u.get("kind") == "vlm"]
-    rows.append(["VLM judge (episodes)", len(v), "-", f"{sum(u.get('duration_s') or 0 for u in v) / 60:.0f}", "-",
+    rows.append(["VLM judge", len(v), "-", f"{sum(u.get('duration_s') or 0 for u in v) / 60:.0f}", "-",
                  f"{sum(u.get('cost_usd') or 0 for u in v):.2f}"])
     ro = [e for e in ev if e.get("kind") == "reset_orientation"]           # not in usage.jsonl: cost from the events
     ro_usd = sum(e.get("cost_usd") or 0 for e in ro)
-    rows.append(["VLM orientation check (resets)", len(ro), "-", "-", "-", f"{ro_usd:.2f}"])
+    if ro:
+        rows.append(["VLM orientation check (resets)", len(ro), "-", "-", "-", f"{ro_usd:.2f}"])
     rows.append(["total", "", tot.get("agent_turns", ""), f"{tot.get('agent_min', 0):.0f}", f"{tot.get('tokens_out', 0) / 1000:.0f} k",
                  f"{tot.get('cost_usd', 0) + ro_usd:.2f}"])
     t_end = us[-1]["t"][11:16]
@@ -344,6 +378,88 @@ def block_sim():
                       f"difference {nv.get('depth_absdiff_med_mm', 0):.2f} mm."])
 
 
+def fisher_p(k1, n1, k2, n2):
+    """Two-sided Fisher exact p-value of k1/n1 vs k2/n2."""
+    K, N = k1 + k2, n1 + n2
+    pr = [math.comb(n1, a) * math.comb(n2, K - a) / math.comb(N, K) for a in range(K + 1)]
+    lo, hi = max(0, K - n2), min(K, n1)
+    return min(1.0, sum(pr[a] for a in range(lo, hi + 1) if pr[a] <= pr[k1] * (1 + 1e-9)))
+
+
+def ckpt(path):
+    return "/".join(Path(str(path)).parts[-2:]) if path else "-"
+
+
+def bee_evals(b):
+    """Every evaluation of the bee run (evals/*.json), pooled success per checkpoint, and the final comparison."""
+    rows, pool, last = [], {}, {}
+    for f in sorted((b / "evals").glob("*.json")):
+        r = jload(f, {})
+        n, k, dg = int(r.get("n") or 0), int(r.get("success") or 0), r.get("dagger") or []
+        c = ckpt(r.get("checkpoint"))
+        rows.append([r.get("id", f.stem)[:2], c, str(r.get("t_start", ""))[5:16].replace("T", " "), n, r.get("unsure", 0),
+                     rate(k, n) if n else "no rollout", f"{sum(x.get('final') == 'success' for x in dg)}/{len(dg)}",
+                     Path(str(r.get("rollout") or "")).name or "-"])
+        if n:
+            pk = pool.setdefault(c, [0, 0])
+            pk[0] += k
+            pk[1] += n
+            last[c] = (k, n)
+    out = [table(["Eval", "Checkpoint", "Start", "Rollouts", "Unsure", "Success [95 % Wilson]", "DAgger ok/total", "Rollout program"], rows),
+           "", "Pooled over all evaluations of a checkpoint (conditions differ between evaluations, see the text):", "",
+           table(["Checkpoint", "Success [95 % Wilson]"], [[c, rate(*v)] for c, v in pool.items()])]
+    if "full_v7/30000" in last and "full_v8/30000" in last:
+        (k1, n1), (k2, n2) = last["full_v7/30000"], last["full_v8/30000"]
+        out += ["", f"Final comparison (last evaluation of each, same protocol): full_v7 {k1}/{n1} vs full_v8 {k2}/{n2}, "
+                    f"two-sided Fisher exact p = {fisher_p(k1, n1, k2, n2):.2f}."]
+    return "\n".join(out)
+
+
+def bee_data(b):
+    """Datasets of the bee run with a manifest (bee_v3 and later)."""
+    rows = []
+    for m in sorted((b / "datasets/rlpj").glob("*/manifest.json")):
+        d = jload(m, {})
+        modes = {}
+        for e in d.get("episodes", []):
+            mode = (jload(Path(e["dir"]) / "meta.json", {}) or {}).get("mode", "?")
+            modes[mode] = modes.get(mode, 0) + 1
+        opt = d.get("options") or {}
+        rows.append([m.parent.name, str(d.get("created", ""))[5:16], d.get("n_episodes", len(d.get("episodes", []))),
+                     modes.get("collect", "-") if "?" not in modes else "-", modes.get("dagger", 0) if "?" not in modes else "-",
+                     f"{int(d.get('n_frames') or 0):,}", ", ".join(f"{k}={v}" for k, v in opt.items()) or "-"])
+    return table(["Dataset", "Created", "Episodes", "Demos", "DAgger", "Frames (15 fps)", "Converter options"], rows)
+
+
+def bee_summary(b, ev):
+    """Counts of the bee run from events.jsonl and state.json."""
+    s = jload(b / "state.json", {})
+    eps = [e for e in ev if e.get("kind") == "episode"]
+
+    def cnt(mode):
+        g = [e for e in eps if e.get("mode") == mode]
+        return f"{len(g)} ({sum(e.get('final') == 'success' for e in g)} success, {sum(e.get('final') == 'fail' for e in g)} fail, " \
+               f"{sum(e.get('final') == 'unsure' for e in g)} unsure)"
+    rs = (s.get("counters") or {}).get("resets", {})
+    notes = {}
+    for e in ev:
+        if e.get("kind") == "operator_note":
+            notes[e.get("role")] = notes.get(e.get("role"), 0) + 1
+    ag = s.get("agents") or {}
+    kinds = {k: sum(e.get("kind") == k for e in ev) for k in ("restart", "autonomous_stop", "phase_override", "episode_discarded")}
+    return "\n".join([
+        f"- Span: {ev[0]['t'][:16].replace('T', ' ')} to {ev[-1]['t'][:16].replace('T', ' ')} "
+        f"({(_t(ev[-1]['t']) - _t(ev[0]['t'])) / 3600:.0f} h).",
+        f"- Demonstrations (scripted program, collection mode): {cnt('collect')}; unsure episodes discarded and redone: "
+        f"{kinds['episode_discarded']}.",
+        f"- Policy rollouts in evaluations: {cnt('eval')}. DAgger corrections: {cnt('dagger')}.",
+        f"- Resets: {rs.get('total', 0)} (layout check ok {rs.get('ok', 0)}, failed {rs.get('fail', 0)}, manual {rs.get('manual', 0)}).",
+        "- Agents: " + "; ".join(f"{r} {a.get('robot_attempts', 0)} robot test runs, {a.get('repairs', 0)} repairs, "
+                                 f"{a.get('reflections') or 0} reflections" for r, a in ag.items()) + ".",
+        f"- Operator notes: {sum(notes.values())} ({', '.join(f'{k} {v}' for k, v in sorted(notes.items()))}); restarts "
+        f"{kinds['restart']}; autonomous stops {kinds['autonomous_stop']}; phase overrides {kinds['phase_override']}."])
+
+
 def figures(d):
     FIG.mkdir(parents=True, exist_ok=True)
     for p in PLOTS:
@@ -356,8 +472,9 @@ def figures(d):
 
 def main():
     args = sys.argv[1:]
-    run = next((a for i, a in enumerate(args) if not a.startswith("--") and (i == 0 or args[i - 1] not in ("--from", "--until"))),
+    run = next((a for i, a in enumerate(args) if not a.startswith("--") and (i == 0 or args[i - 1] not in ("--from", "--until", "--bee"))),
                "20261123_1616_drawer")
+    bee = args[args.index("--bee") + 1] if "--bee" in args else "20261104_1510_bee"
     start = int(args[args.index("--from") + 1]) if "--from" in args else 17
     until = int(args[args.index("--until") + 1]) if "--until" in args else None
     d, ev, eps = load(run, until)
@@ -367,19 +484,26 @@ def main():
     blocks = dict(summary=block_summary(d, ev, eps), episodes=block_episodes([e for e in eps if e["mode"] == "rl"]),
                   arms=block_arms(eps, start), eval=block_eval(d, eps), resets=block_resets(d, ev), cost=block_cost(d, ev, cutoff),
                   force=block_force(eps), sim=block_sim())
+    b = ROOT / "runs" / bee
+    if b.exists():
+        bev = jl(b / "events.jsonl")
+        blocks.update(bee_summary=bee_summary(b, bev), bee_evals=bee_evals(b), bee_data=bee_data(b), bee_cost=block_cost(b, bev))
     cut = "" if until is None else f", episodes up to {until}"
-    stamp = f"<!-- generated by docs/report/make_tables.py from runs/{run}{cut} at {time.strftime('%Y-%m-%d %H:%M')} -->"
     if "--figures" in args:
         figures(d)
     if "--update" in args:
-        txt = REPORT.read_text()
-        for k, v in blocks.items():
-            txt, n = re.subn(rf"(<!-- BEGIN:{k} -->).*?(<!-- END:{k} -->)",
-                             lambda m: f"{m.group(1)}\n{stamp}\n\n{v}\n{m.group(2)}", txt, flags=re.S)
-            if not n:
-                print(f"no block {k} in the report")
-        REPORT.write_text(txt)
-        print(f"updated {REPORT.relative_to(ROOT)}")
+        for rep in REPORTS:
+            if not rep.exists():
+                continue
+            txt, done = rep.read_text(), []
+            for k, v in blocks.items():
+                src = f"runs/{bee}" if k.startswith("bee_") else f"runs/{run}{cut}"
+                st_k = f"<!-- generated by docs/report/make_tables.py from {src} at {time.strftime('%Y-%m-%d %H:%M')} -->"
+                txt, n = re.subn(rf"(<!-- BEGIN:{k} -->).*?(<!-- END:{k} -->)",
+                                 lambda m: f"{m.group(1)}\n{st_k}\n\n{v}\n{m.group(2)}", txt, flags=re.S)
+                done += [k] * n
+            rep.write_text(txt)
+            print(f"updated {rep.relative_to(ROOT)}: {', '.join(done) or 'no blocks'}")
     else:
         for k, v in blocks.items():
             print(f"## {k}\n\n{v}\n")
