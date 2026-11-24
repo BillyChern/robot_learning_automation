@@ -19,6 +19,8 @@ import torch.nn.functional as F
 import rlcommon as rc
 
 PRIOR_VERSION = rc.PRIOR_VERSION
+LEARNER_VERSION = 2                # 2: no entropy term in the critic target, bounded targets; a state from version 1 had diverged (Q -75)
+Q_RANGE = (-20.0, 20.0)            # step reward >= -1 at gamma 0.95, terminal reward <= 12
 
 HP = dict(actor="awac", awac_lambda=0.3, awac_wmax=20.0, gamma=0.95, tau=0.005, lr=3e-4, batch=256, hidden=128, target_entropy=-2.0, init_alpha=0.05,
           utd_per_transition=40, max_updates=3000, time_budget_s=200.0, bc_weight=1.0, bc_decay_episodes=10.0,
@@ -200,7 +202,8 @@ class Learner:
         with torch.no_grad():
             a2, lp2, _ = self.actor.sample(o2)
             q1t, q2t = self.target(o2, a2)
-            y = r + HP["gamma"] * (1 - d) * (torch.min(q1t, q2t) - alpha * lp2)
+            soft = 0.0 if HP["actor"] == "awac" else alpha * lp2     # AWAC needs no entropy bonus; with near-constant logged actions it diverged
+            y = (r + HP["gamma"] * (1 - d) * (torch.min(q1t, q2t) - soft)).clamp(*Q_RANGE)
         q1, q2 = self.critic(o, a)
         lc = F.mse_loss(q1, y) + F.mse_loss(q2, y)
         self.oc.zero_grad(); lc.backward(); self.oc.step()
@@ -222,8 +225,9 @@ class Learner:
             q1n, q2n = self.critic(o, an)
             la = (alpha * lp - torch.min(q1n, q2n)).mean() + bc_w * ((mean_a - pr) ** 2).sum(-1).mean()
         self.oa.zero_grad(); la.backward(); self.oa.step()
-        lal = -(self.log_alpha * (lp.detach() + HP["target_entropy"])).mean()
-        self.oal.zero_grad(); lal.backward(); self.oal.step()
+        if HP["actor"] != "awac":
+            lal = -(self.log_alpha * (lp.detach() + HP["target_entropy"])).mean()
+            self.oal.zero_grad(); lal.backward(); self.oal.step()
         with torch.no_grad():
             for p, pt in zip(self.critic.parameters(), self.target.parameters()):
                 pt.mul_(1 - HP["tau"]).add_(HP["tau"] * p)
@@ -252,10 +256,10 @@ def main():
     if os.path.exists(st_path):
         try:
             st = torch.load(st_path, map_location=dev, weights_only=False)
-            if st.get("meta", {}).get("prior_version") == PRIOR_VERSION:
+            if st.get("meta", {}).get("prior_version") == PRIOR_VERSION and st.get("meta", {}).get("learner_version") == LEARNER_VERSION:
                 L.load(st); prev = st.get("meta", prev)
             else:
-                print(f"learner state is from prior version {st.get('meta', {}).get('prior_version')}: starting fresh")
+                print(f"learner state is from prior/learner version {st.get('meta', {}).get('prior_version')}/{st.get('meta', {}).get('learner_version')}: starting fresh on all data")
         except Exception as e:
             print(f"learner state not loaded ({e}): starting fresh")
     D, eps = load_data(d)
@@ -297,7 +301,7 @@ def main():
         with torch.no_grad():
             _, _, m = L.actor.sample(T["obs"][-min(n, 200):])
             stats["mean_act"] = np.round(m.mean(0).cpu().numpy(), 3).tolist()
-    st = L.state(); st["meta"] = dict(n_trans=n, episodes=len(eps), t=time.time(),
+    st = L.state(); st["meta"] = dict(n_trans=n, episodes=len(eps), t=time.time(), learner_version=LEARNER_VERSION,
                                       prior_version=PRIOR_VERSION if (D is not None and n >= HP["min_transitions"]) else prev.get("prior_version"))
     torch.save(st, st_path + ".tmp"); os.replace(st_path + ".tmp", st_path)
     L.actor.to_npz(os.path.join(pol, "actor.npz"), L.updates)

@@ -6532,3 +6532,140 @@ Structured output provided successfully
 ```
 </details>
 
+**20:15:49 execute agent:** No response requested.
+
+### 20:15:49 orchestrator -> execute agent
+
+```text
+Reflection after RL training episode 15 (16 so far): success - both independent checks say success (claim=none, perception=True, vlm=True). Look at what happened (log, images, rewards, learner log) and improve your episode program, prior, reward or learner if it helps; offline tests only; commit; then reply done. Keep it short.
+--- attempt_55: episode 15: success - both independent checks say success (claim=none, perception=True, vlm=True)
+# attempt_55: exit code 0; outcome: success
+
+command: RLPJ_EPISODE=-1 RLPJ_RL_MODE=eval /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: rl episode 15; commit: 317d578; duration_s: 120.3; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "317d578839",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 0.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9585, 0.5653, 90.461], "gripper": 0.9},
+"fk_check_mm": 0.18,
+"first_failed_check": null,
+"transitions": 17,
+"return": 13.865,
+"policy": {"source": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/rl/policy/actor.npz", "updates": 10840, "mtime": "Mon Nov 23 19:47:16 2026"},
+"rl_mode": "train",
+"episode": 15,
+"arm": "learned",
+"scripted_rev": "r4 (r3 + start offset from first-descent entries only)",
+"segments": [["look_opening", true, 0.104, 0.26, 13.03, 39.8], ["look_drawer", true, 0.082, 0.48, 4.12, 39.6], ["above_tab", true, 0.085, 0.09, 7.78, 39.7], ["down_pre", true, 0.028, 0.12, 3.21, 39.6], ["down_tab", true, 0.023, 0.11, 5.46, 39.7], ["lift_slow", true, 0.059, 0.18, 3.31, 39.6], ["lift"
+"pull_detect_tries": 1,
+"objects": {"drawer": {"c": [0.2624, 0.0049], "yaw": -88.04, "size": [0.0725, 0.1133], "face_h": 0.093, "face_used": 0.0912}, "tab": {"ok": true, "xy": [0.2426, 0.006], "s": 0.0198, "t": -0.0018, "side": 1, "why": null}, "opening": {"c": [0.4515, 0.0028], "yaw": 18.27, "measured": true}},
+"grasp": {"reading": 84.1, "held": true, "h_g": 0.1392},
+"decisions": ["turn the drawer +16.3 deg, tool yaw -71.7, opening [0.4515, 0.0028] yaw 18.3", "drawer entered at a 5.3 mm, b -3.0 mm, yaw 0.58 deg after 1 rim touches; start offset frozen (scripted r4)"],
+"tilt": {"standing": {"ok": true, "n": 1108, "tilt_s_deg": -1.21, "tilt_t_deg": -1.57, "z0": 0.0779, "resid_mm": 0.85, "span": [0.06, 0.099]}, "held": [{"ok": true, "n": 663, "tilt_s_deg": 0.87, "tilt_t_deg": 6.7, "z0": 0.1919, "rel_s": -0.73, "phi": 0.0}]},
+"align": [{"ok": true, "ea": 0.0042, "eb": 0.0044, "eyaw": -0.41, "c0": [0.0, 0.0, 0.0], "why": null}],
+"touch_centre": [0.0029, -0.0031, 0.0044],
+"entry": {"c": [0.0053, -0.003, 0.5765], "rim_touches": 1},
+"touch": {"best": [0.0024, 0.0001, 0.5721], "best_h": 0.0115, "touches": 2},
+"insert": {"end": "seated", "steps": 17, "bottom": 0.0115, "c": [0.0053, -0.003, 0.5765], "contacts": 2, "peak": 25.0, "tilt": 0.0, "contact_map": [[2.7, -3.1, 0.3, 95.6, 5.6, 1.6], [5.3, -3.0, 0.6, 11.5, -16.2, 3.2]], "tilts_tried": [0.0]},
+"blobs_before": [[0.262, -0.004, 0.098, 0.073, 0.112, 4090], [0.527, 0.018, 0.095, 0.278, 0.183, 12349]],
+"blobs_after": [[0.496, 0.007, 0.099, 0.28, 0.184, 12659]],
+"verify": {"check": true, "reason": "drawer flush in the target compartment", "n": 1369, "median_h": 0.0963, "flush": 1.0, "above": 0.0, "deep": 0.0, "cabinet_moved_m": null, "on_table": false, "terminal_reward": 12.0, "cabinet_shift_px": 0.2, "cabinet_outline_move_m": 0.002, "orchestrator_check": t
+"transitions_file": "transitions/train_ep0015.npz",
+"return_home": "already at default pose",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.5, "reading": 50.0},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 100 lines; last 40:
+[20:14:44] step 7: a [0.0, 0.0, 0.0, -0.02] (mu [-0.075, -0.031, -0.05, -0.005]) -> ok  bottom 0.0718 c [0.0053, -0.003, 0.5765] tilt +0.0 peak 1.7 N r +0.188
+[20:14:44] plan 20_ins08: T=0
+... (8215 more characters)
+```
+
+**20:15:54 tool Bash:**
+
+```bash
+git log --oneline | head -3; git status --short | head -6; grep -c "LEARNER_VERSION" programs/learner.py; grep -n "LOG_STD_MIN, LOG_STD_MAX =" programs/rlcommon.py | cut -c1-70; ls -la --time-style=+%H:%M:%S rl/policy | tail -3; tail -n 2 rl/learner_log.jsonl | cut -c1-290
+```
+
+<details><summary>20:15:54 result</summary>
+
+```text
+317d578 comment: the start offset is the frozen r4 value
+44f0461 freeze the scripted part at r4: constant start offset for all arms (operator 19:49)
+48fa784 episode 14 reflection: start offset only from first-descent entries (scripted r4), the search was ratcheting it upward
+ M notes/design.md
+ M programs/learner.py
+ M programs/rlcommon.py
+?? notes/dev/t_first.py
+?? notes/dev/t_learner.py
+3
+17:LOG_STD_MIN, LOG_STD_MAX = -2.3, 0.0           # min std 0.1: most 
+drwxrwxr-x 5 r2r r2r   4096 19:46:23 ..
+-rw-rw-r-- 1 r2r r2r  79782 20:15:45 actor.npz
+-rw-rw-r-- 1 r2r r2r 897133 20:15:45 learner_state.pt
+{"t": "2026-11-23 19:47:16", "episodes": 14, "transitions": 300, "new": 18, "updates": 720, "total_updates": 10840, "device": "cuda", "secs": 2.6, "ret_last10": 13.615, "lc": 25.4178, "la": -61.8885, "q": -75.4165, "alpha": 1.3878, "ent": -9.6873, "bc_w": 0.2466, "mean_act": [0.01099999994
+{"t": "2026-11-23 20:15:45", "episodes": 15, "transitions": 317, "new": 17, "updates": 680, "total_updates": 11520, "device": "cuda", "secs": 2.4, "ret_last10": 13.632, "lc": 33.8104, "la": -78.5671, "q": -92.5143, "alpha": 1.7001, "ent": -9.6928, "bc_w": 0.2231, "mean_act": [0.00300000002
+```
+</details>
+
+**20:16:08 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && cat >> notes/design.md <<'EOF'
+
+## Reflection on episode 15 (attempt 55): the learner fix had not reached the robot
+Success (1 rim touch, entry at +5.3 mm). The learner fix of the tuning turn was not in the git history, so the robot machine's learner
+still ran the old code after this episode: Q -92, critic loss 34, alpha 1.7. Commits made in a tuning turn that ends with `done` have now
+been lost four times (0550191, b0af540, 3676c98, 22c6f05), while the edited files stayed in the working tree here. Commits made in
+reflection turns are kept. The learner fix is committed again in this reflection turn.
+EOF
+rm -rf dev_out/rl_tune && mkdir -p dev_out/rl_tune && cp -r rl/transitions rl/verdicts rl/policy dev_o
+... (991 more characters)
+```
+
+<details><summary>20:16:54 result</summary>
+
+```text
+state as on the robot:
+episodes 15 transitions 317 | return-to-go -2.78..12.19 mean 5.68 | Q -158.49..13.01 mean -93.96 | MAE 99.66 corr 0.60 | actor |mean| 0.030 max 0.810 std 0.115 | updates 11520
+learner state is from prior/learner version 2/None: starting fresh on all data
+data: 15 episodes, 317 transitions; device cpu; updates so far 0
+after the fixed learner:
+episodes 15 transitions 317 | return-to-go -2.78..12.19 mean 5.68 | Q -3.18..12.15 mean 3.56 | MAE 2.26 corr 0.89 | actor |mean| 0.032 max 0.767 std 0.113 | updates 3000
+check: one update {'lc': 13.970397949218
+check_exit 0
+ee3328c learner: fix critic divergence (no entropy term in the AWAC target, bounded targets, std floor 0.1, restart on all data); recommitted, the tuning-turn commit was lost
+317d578 comment: the start offset is the frozen r4 value
+ programs/learner.py    | 16 ++++++++++------
+ programs/rlcommon.py   |  2 +-
+```
+</details>
+
+**20:17:01 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Episode 15 reviewed: success; the learner fix had not reached the robot and is recommitted (commit ee3328c)",
+ "report": "NOT YET VERIFIED: the learner fix has still not run on the robot machine. It is tested offline on a copy of the real data, and the learner run after the next episode will be its first real use. Check that the next `learner_log.jsonl` line shows `alpha` 0.05 and Q in single digits.\n\nCorrection to my last report: the learner fix (commit 22c6f05) never took effect. That commit is not in the git history, so the robot machine kept running the old learner after episode 15, and the divergence continued: mean Q -92, critic loss 34, temperature 1.7. The learned arm is therefore still using a policy from the 
+... (966 more characters)
+```
+
+<details><summary>20:17:01 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

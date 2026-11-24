@@ -14,7 +14,7 @@ PRIOR = np.zeros(ACT_DIM)                      # the scripted prior: straight do
 PRIOR_VERSION = 2                              # 2: residuals on the measured alignment, search points on contact (data of v1 mean something else)
 MIN_ACTOR_VERSION = 2
 INIT_STD = 0.30                                # pre-tanh std of the initial policy
-LOG_STD_MIN, LOG_STD_MAX = -4.0, 0.0
+LOG_STD_MIN, LOG_STD_MAX = -2.3, 0.0           # min std 0.1: most logged actions are exactly 0, and the fit collapsed the std to 0.018 (no exploration)
 EXPLORE_MAX = 0.5
 
 

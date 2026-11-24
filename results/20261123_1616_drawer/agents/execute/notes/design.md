@@ -228,3 +228,19 @@ One edit was needed to make the freeze real: the start offset was still updated 
 the learned arm, so the scripted baseline could inherit what the learned arm found. It is now the constant r4 value (the centre of the
 entries of attempts 30, 32, 34, 40, about +2.9, -3.1 mm) for all arms, the same value r4 would start from. Entries stay logged in
 `summary.entry`. `SCRIPTED_REV` stays r4.
+
+## Tuning after 15 episodes: the critic had diverged (learner only, scripted r4 untouched)
+No failed episode this round, but the learner log showed divergence: Q mean -6 -> -75 (min -131) while returns-to-go are -2.8..12.2,
+critic loss 0.7 -> 25, temperature alpha 0.15 -> 1.4, entropy -9.7 against a target of -2.
+Likely cause: most logged actions are exactly 0 (scripted arm, frozen lateral action inside the opening), so the AWAC fit collapses the
+policy std, log-probabilities become large, the auto-tuned alpha keeps growing, and the entropy term in the critic target drags Q down.
+Changed: no entropy term in the critic target for AWAC, no alpha update, targets clamped to [-20, 20], minimum policy std 0.1 (it had
+collapsed toward the 0.018 floor), and a learner-version check that restarts actor and critic on all v2 data.
+Offline on a copy of the real data (300 transitions): Q vs return-to-go MAE 82 -> 2.1, correlation 0.63 -> 0.88, Q range -2.7..12.1.
+This shows a sane critic on the training data. It does not show that the policy will do better on the robot.
+
+## Reflection on episode 15 (attempt 55): the learner fix had not reached the robot
+Success (1 rim touch, entry at +5.3 mm). The learner fix of the tuning turn was not in the git history, so the robot machine's learner
+still ran the old code after this episode: Q -92, critic loss 34, alpha 1.7. Commits made in a tuning turn that ends with `done` have now
+been lost four times (0550191, b0af540, 3676c98, 22c6f05), while the edited files stayed in the working tree here. Commits made in
+reflection turns are kept. The learner fix is committed again in this reflection turn.
