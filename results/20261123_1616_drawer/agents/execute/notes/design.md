@@ -165,3 +165,10 @@ claimed success; the verdict was still unsure because the orchestrator's percept
 Changed: own verify also uses the cabinet's outline centre (`checks.outline_xy` when the robot machine has it, else the same
 formula in `vision.py`; this machine's copy of `checks.py` does not have it yet). The cabinet counts as moved only when the outline
 (> 2 cm) and the side-image shift (> 6 px) agree, because the outline's far edge varies on a static scene.
+
+## Reflection on episode 7 (attempt 36, commit dd1c01b)
+First episode accepted by both independent checks. The touch search found the opening after 2 contacts, at a +9.8 mm; attempts 30-34
+entered at +2.9..3.0. Cause unknown: the tab-to-frame and outline-to-frame distances are the same in all 13 episodes measured
+(21-23 mm, 2.2-2.8 mm), so the pinch offset is not it. A different sag in the grip is possible but unmeasured.
+Changed: the start offset is now the median of the last 9 entries (the running mean had moved it to +5.0, between the two values,
+where neither fits). The a and b line searches drop a direction once its contact is higher than the best one.

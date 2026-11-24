@@ -31,6 +31,10 @@ class TouchSearch:
             self.seen.append(np.asarray(point, float).copy())
             if height < self.best_h - MIN_GAIN:
                 self.best, self.best_h = np.asarray(point, float).copy(), float(height)
+            elif height > self.best_h + MIN_GAIN and self.stage in (1, 2):   # higher contact: this side of the line leads away
+                k = self.stage - 1
+                side = np.sign(point[k] - self.best[k])
+                self.queue = [q for q in self.queue if np.sign(q[k] - self.best[k]) != side]
 
     def _visited(self, p):
         return any(abs(p[0] - q[0]) < 0.001 and abs(p[1] - q[1]) < 0.001 and abs(p[2] - q[2]) < 0.5 for q in self.seen)
@@ -66,25 +70,34 @@ class TouchSearch:
         return None
 
 
-def load_centre(rl_dir):
-    """Running estimate of the offset (a, b, yaw) where the drawer enters, else the first working offset. Files without v = 2 held
-    the pose at the END of the descent, which includes the exploration's drift (episode 5: +1.8, +1.1 mm, 0.75 deg): ignored."""
+SEED_ENTRIES = [[0.003, -0.003, 0.0], [0.0029, -0.0032, -0.0134], [0.0029, -0.0031, 0.0088], [0.0098, -0.0024, 0.4175]]   # entries of attempts 30, 32, 34, 36
+KEEP = 9                          # entries in the median
+
+
+def _entries(rl_dir):
     try:
         with open(os.path.join(rl_dir, "touch_centre.json")) as f:
             d = json.load(f)
-        c = np.array(d["centre"], float)
-        ok = d.get("v") == 2 and c.shape == (3,) and np.all(np.abs(c) <= [0.03, 0.03, 6.0])
-        return c if ok else DEFAULT_CENTRE.copy()
+        e = np.array(d["entries"], float) if d.get("v") == 3 else None
+        if e is not None and e.ndim == 2 and e.shape[1] == 3 and len(e) and np.all(np.abs(e) <= [0.03, 0.03, 6.0]):
+            return e
     except (OSError, ValueError, KeyError, TypeError):
-        return DEFAULT_CENTRE.copy()
+        pass
+    return np.array(SEED_ENTRIES, float)
 
 
-def save_centre(rl_dir, entry, info, gain=0.3):
-    """Move the estimate toward the offset at which the drawer just entered the opening."""
+def load_centre(rl_dir):
+    """Median of the offsets (a, b, yaw) at which the drawer entered. Not a mean: episode 7 entered at a +9.8 mm where the others
+    entered at +2.9..3.0, and the running mean of v2 then started the next episode at +5.0, where neither fits."""
+    return np.median(_entries(rl_dir)[-KEEP:], axis=0)
+
+
+def save_centre(rl_dir, entry, info):
+    """Add the offset at which the drawer just entered the opening; returns the new centre."""
     p = os.path.join(rl_dir, "touch_centre.json")
-    old = load_centre(rl_dir)
-    new = (1.0 - gain) * old + gain * np.asarray(entry, float)
+    e = np.vstack([_entries(rl_dir), np.asarray(entry, float)])[-KEEP:]
+    new = np.median(e, axis=0)
     with open(p + ".tmp", "w") as f:
-        json.dump(dict(v=2, centre=np.round(new, 5).tolist(), entry=np.round(entry, 5).tolist(), **info), f)
+        json.dump(dict(v=3, centre=np.round(new, 5).tolist(), entries=np.round(e, 5).tolist(), **info), f)
     os.replace(p + ".tmp", p)
     return new
