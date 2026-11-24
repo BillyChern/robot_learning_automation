@@ -53,6 +53,11 @@ SC_DESC = np.array([0.001, 0.001, 0.5])        # descent steps
 MAX_C = np.array([0.018, 0.018, 4.0])          # bound of the accumulated corrections
 PEAK_SEAT = 12.0                               # N: a force rise this large near the floor means the drawer is seated
 MAX_CONTACTS = 36
+FIRST_STD = 0.5                                # extra exploration before the first contact, learned arm only (units of the action, 1 mm / 0.5 deg)
+SIM_EPISODES = {31, 34, 37, 40, 43}             # operator 20:27: zero-shot sim policy (sim/drawer_insert, README "Lying cabinet")
+F_SIM = 35.0                                   # N: force stop of the sim arm (operator: 25-40 N)
+SIM_DRIFT_MAX = 0.014                          # m from the start while still on the rim
+SIM_OVER_N, SIM_OVER_MAX, SIM_AWAY_MAX, SIM_STOPS_MAX = 40.0, 2, 3, 20   # end the sim episode: stops above 40 N, steps against the force, stops
 SCRIPTED_REV = "r4 (r3 + start offset from first-descent entries only)"   # bump with every change of the scripted part; both arms use it
 UNLOAD = 0.004                                 # m lifted after a touch (operator 18:30)
 DROPPED = 0.015                                # m below the rim: this point is the opening, remember it
@@ -105,7 +110,10 @@ class Episode:
         self.rng = np.random.default_rng(int(time.time() * 1000) % 2 ** 31)
         self.actor = rc.Actor()
         # operator 19:10: every third training episode is the scripted baseline (no learned residual, no exploration), same program
-        self.arm = "learned_eval" if self.mode == "eval" else "scripted" if self.ep >= 0 and self.ep % 3 == 2 else "learned"
+        self.arm = "learned_eval" if self.mode == "eval" else "sim" if self.ep in SIM_EPISODES else "scripted" if self.ep >= 0 and self.ep % 3 == 2 else "learned"
+        if self.ep < 0 and os.environ.get("RLPJ_ARM") == "sim":   # own test runs only: an orchestrator episode always has ep >= 0
+            self.arm = "sim"
+        self.sim_log, self.sim_head = [], {}
         self.trans, self.events = [], []
         self.ret = 0.0
         self.terminal = None
@@ -387,7 +395,7 @@ class Episode:
         s.log(f"levelling: {hist}")
 
     # ---------------------------------------------------------------- learned alignment and descent
-    def try_step(self, name, T):
+    def try_step(self, name, T, limit=None):
         s = self.s
         try:
             seg = s.planner.cart_line(name, s.measured_q(s.last_ref()), T, SLOW)
@@ -398,7 +406,7 @@ class Episode:
         if not ok:
             return "refused", dict(reason="model", keep_out=rep.get("keep_out_violations"), tip=round(rep["min_tip_above_table"], 3))
         try:
-            with self.low_force(F_INSERT):
+            with self.low_force(F_INSERT if limit is None else limit):
                 return "ok", s.run_segment(seg, tip_margin=0.008)
         except Abort as e:
             msg = str(e)
@@ -435,6 +443,8 @@ class Episode:
                 a, info = self.actor.act(o, explore=self.arm == "learned", rng=self.rng)
             if self.arm == "learned" and phase == 0 and n_contact > 0:   # wide exploration only at the search points
                 a = np.r_[np.clip(a[:3] + self.rng.normal(0.0, SEARCH_STD, 3), -1.0, 1.0), a[3]]
+            if self.arm == "learned" and n_contact == 0 and b > RIM:     # first descent: explore around the start offset (operator 20:21)
+                a = np.r_[np.clip(a[:3] + self.rng.normal(0.0, FIRST_STD, 3), -1.0, 1.0), a[3]]
             if b <= RIM - ENTERED:                       # inside: the walls guide it, lateral residuals would only rub on them
                 a = np.r_[0.0, 0.0, 0.0, a[3]]
             if phase == 0 and n_contact > 0:             # search: a new point around the measured alignment + the policy's residual
@@ -500,6 +510,93 @@ class Episode:
         s.summary(touch=dict(best=np.round(ts.best, 4).tolist(), best_h=None if not np.isfinite(ts.best_h) else round(ts.best_h, 4), touches=len(ts.seen)))
         s.summary(insert=dict(end=end, steps=len(self.trans), bottom=round(b, 4), c=np.round(c, 4).tolist(), contacts=n_contact, peak=round(peak, 1), tilt=self.phi, contact_map=self.contact_map,
                                  tilts_tried=sorted({e[7] for e in self.events if e[1] == "force"})))
+        self.save("side_inserted", s.side.latest()[0])
+        return dict(end=end, b=b, c=c)
+
+    # ---------------------------------------------------------------- sim arm (operator 20:27): the sim policy unchanged
+    def insert_sim(self, w, g, pl):
+        """Descent of sim/drawer_insert (README "Lying cabinet") from the same carry and hover as the other arms. The jaws lie along the
+        opening's y, so yaw_straight is the tool yaw at the hover and the policy's tool frame is the opening frame there (the sim draws the
+        soft jaw axis along tool x or y with equal odds). Believed centre = measured opening + the frozen r4 offset, so the drawer starts on it."""
+        s = self.s
+        s.phase("insert_sim")
+        root = str(config.ROOT)
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        from sim.drawer_insert.lying_policy import Descent, Policy
+        ax, bx = V.axes(w["yaw_o"])
+        centre = w["c_o"] + self.c0[0] * ax + self.c0[1] * bx
+        rim_z, ys = self.tz + RIM, wrapd(w["yaw_o"] - 90.0)
+        d_tool = -rot2(pl["off"], pl["dyaw"] + self.c0[2])    # drawer top centre minus tool point, base = opening frame after rotating
+        est = dict(off=(float(d_tool @ ax), float(d_tool @ bx)), yaw=0.0, tilt=(0.0, 0.0), hold=float(g["h_g"] - w["face"]))
+        yaw_of = lambda T: float(np.degrees(np.arctan2(T[1, 0], T[0, 0])))
+        time.sleep(0.3)
+        fs = []
+        for _ in range(5):
+            fs.append(self.force())
+            time.sleep(0.03)
+        f0 = np.mean(fs, axis=0)
+        T = self.T_now()
+        ins = Descent(Policy(str(config.ROOT / "sim/drawer_insert/weights/policy_lying.npz")), centre, w["yaw_o"], rim_z, ys, est, T[:3, 3], yaw_of(T), f0)
+        z_min = B_MIN + w["face"] - RIM                       # never command the drawer's bottom below the lowest height of the other arms
+        self.sim_head = dict(C=centre, AX=w["yaw_o"], RIM_Z=rim_z, YS=ys, est=est, est_source="wrist look-down of the standing drawer before the grasp; tilt not measured",
+                             f0=f0, start_tool=T[:3, 3], start_yaw=yaw_of(T), force_stop_n=F_SIM)
+        b = float(T[2, 3]) - self.tz - g["h_g"]
+        end, done, over, away, seated, stops = "steps", False, 0, 0, 0, 0
+        while not done and end == "steps":
+            f_raw = self.force()
+            xyz, yaw = ins.next(f_raw)
+            if ins.target[3] < z_min:
+                ins.target[3] = z_min
+                xyz, yaw = ins.to_base(ins.target)
+            k, t0 = ins.k, time.time()
+            status, res = self.try_step(f"sim{k:02d}", tool_down_T(xyz, yaw), limit=F_SIM)
+            stopped = status == "force"
+            peak = float(res.get("max_force_n", 0.0)) + float(np.linalg.norm(f_raw - f0))     # README fallback for max |f - f0|
+            stop_n = None
+            if stopped:
+                m = re.search(r"contact force ([0-9.]+) N", str(res.get("reason", "")))
+                stop_n = float(m.group(1)) if m else F_SIM
+                peak = max(peak, stop_n)
+                stops += 1
+                over += stop_n > SIM_OVER_N
+            T = self.T_now()
+            f_o = np.asarray(ins.obs["f"], float)
+            step_xy = np.asarray(ins.step[:2], float)
+            if (stopped or f_o[2] > 15.0) and np.linalg.norm(f_o[:2]) > 4.0 and np.linalg.norm(step_xy) > 0.001 and step_xy @ f_o[:2] < 0:
+                away += 1                                     # in contact and stepping against the sideways force
+            b2 = float(T[2, 3]) - self.tz - g["h_g"]
+            r = -0.02 + (0.0 if stopped else 30.0 * (b - b2)) - 0.05 * max(0.0, peak - 15.0) / 5.0 - (0.15 if stopped else 0.0) - (1.0 if status not in ("ok", "force") else 0.0)
+            self.ret += r
+            b = b2 if not stopped else min(b, b2)
+            if status in ("ok", "force"):
+                done = ins.done(peak, stopped, T[:3, 3], yaw_of(T))
+            self.sim_log.append(dict(k=k, obs={q: (np.round(v, 5).tolist() if np.ndim(v) else round(float(v), 5)) for q, v in ins.obs.items()},
+                                     step=np.round(ins.step, 5).tolist(), target=np.round(ins.target, 5).tolist(), tool=np.round(T[:3, 3], 5).tolist(), tool_yaw=round(yaw_of(T), 3),
+                                     f_raw=np.round(f_raw, 3).tolist(), peak=round(peak, 2), stopped=bool(stopped), status=status, stop_n=stop_n, dt=round(time.time() - t0, 3), bottom=round(b, 4), r=round(r, 3)))
+            s.log(f"sim {k}: step {np.round(ins.step * [1000, 1000, 1, 1000], 2).tolist()} (mm, mm, deg, mm) -> {status} bottom {b:.4f} f {np.round(f_o, 1).tolist()} peak {peak:.1f} N")
+            if stopped and b > RIM - ENTERED and np.linalg.norm(ins.cmd[:2] - ins.cmd0[:2]) >= SIM_DRIFT_MAX:
+                away = SIM_AWAY_MAX                           # still on the rim at the end of the policy's 15 mm range: it is walking away
+            z_dec = float(ins.obs["z"])                   # README: on the floor when z < 1 cm and f_z > 10 N for two decisions
+            seated = seated + 1 if z_dec < 0.01 and f_o[2] > 10.0 else (0 if z_dec > 0.012 else seated)
+            if status not in ("ok", "force"):
+                end = status
+            elif seated >= 2 or (stopped and b <= FLOOR + 0.012):   # the second is the seated rule of the other arms
+                end = "seated"
+            elif over >= SIM_OVER_MAX:
+                end = "over_force"
+            elif away >= SIM_AWAY_MAX:
+                end = "pushing_away"
+            elif stops >= SIM_STOPS_MAX:
+                end = "too_many_stops"
+            elif not s.dry and not HOLD[0] <= float(s.feedback()["gripper"]) <= HOLD[1]:
+                end = "dropped"
+        cy = wrapd(yaw_of(T) - pl["yaw_f"])
+        xy = T[:2, 3] - w["c_o"] - rot2(pl["off"], pl["dyaw"] + cy)
+        c = np.array([xy @ ax, xy @ bx, cy])
+        self.sim_head.update(end=end, decisions=len(self.sim_log), stops=stops, over_40=over, steps_against_force=away, final_bottom=round(b, 4))
+        s.summary(sim_arm={k_: v for k_, v in self.sim_head.items() if k_ in ("end", "decisions", "stops", "over_40", "steps_against_force", "final_bottom", "est", "force_stop_n")},
+                  insert=dict(end=end, steps=len(self.sim_log), bottom=round(b, 4), c=np.round(c, 4).tolist(), contacts=stops, peak=round(self.sim_log[-1]["peak"], 1)))
         self.save("side_inserted", s.side.latest()[0])
         return dict(end=end, b=b, c=c)
 
@@ -569,11 +666,18 @@ class Episode:
                             for b in bl if b["n"] > 300]          # x, y, height, extent x, extent y, points
         s.summary(blobs_before=brief(self.before), blobs_after=brief(after))
         bonus = 10.0 if ok is True else 0.0
-        R = bonus + 2.0 * rep.get("flush", 0.0) - 2.0 * rep.get("above", 0.0) - 1.0 * rep.get("deep", 0.0) - (1.0 if rep.get("drawer_on_table") else 0.0)
+        R = bonus                                        # the report's reward (operator 20:21): rc.fixed_rewards for the whole episode
         self.terminal = dict(bonus=bonus, R=round(R, 3))
         if self.trans:
-            self.trans[-1]["rew"] += R
-            self.ret += R
+            rew = rc.fixed_rewards(len(self.trans), [i for i, e in enumerate(self.events) if e[1] == "force"], self.events[-1][6], ok is True)
+            for tr, x in zip(self.trans, rew):
+                tr["rew"] = float(x)
+            self.ret = float(rew.sum())
+        elif self.arm == "sim" and self.sim_log:
+            rew = rc.fixed_rewards(len(self.sim_log), [i for i, e in enumerate(self.sim_log) if e["stopped"]], self.sim_log[-1]["peak"], ok is True)
+            for e, x in zip(self.sim_log, rew):
+                e["r"] = round(float(x), 3)
+            self.ret = float(rew.sum())
         s.summary(verify=dict(check=ok, reason=rep.get("reason"), n=rep.get("n"), median_h=rep.get("median_h"), flush=rep.get("flush"),
                               above=rep.get("above"), deep=rep.get("deep"), cabinet_moved_m=rep.get("cabinet_moved_m"),
                               on_table=bool(rep.get("drawer_on_table")), terminal_reward=round(R, 3),
@@ -588,6 +692,16 @@ class Episode:
         if self._saved:
             return
         self._saved = True
+        if self.arm == "sim":                            # another action layout: kept out of rl/transitions, the learner never sees it
+            d = os.path.join(rc.rl_dir(), "sim_arm")
+            os.makedirs(d, exist_ok=True)
+            name = ("dry_" if self.s.dry else "") + (f"ep{self.ep:04d}" if self.ep >= 0 else f"test_{time.strftime('%Y%m%d_%H%M%S')}") + ".json"
+            with open(os.path.join(d, name), "w") as f:
+                json.dump(dict(self.sim_head, arm="sim", episode=self.ep, ret=self.ret, check=ok, terminal=self.terminal, reason=(rep or {}).get("reason"),
+                               scripted_rev=SCRIPTED_REV, attempt=self.s.A, decisions_log=self.sim_log), f,
+                          default=lambda o: np.round(o, 5).tolist() if isinstance(o, np.ndarray) else float(o) if isinstance(o, np.floating) else str(o))
+            self.s.summary(transitions_file=os.path.join("sim_arm", name), transitions=len(self.sim_log), **{"return": round(self.ret, 3)})
+            return
         for i, tr in enumerate(self.trans):
             last = i == len(self.trans) - 1
             tr["next_obs"] = tr["obs"] if last else self.trans[i + 1]["obs"]
@@ -613,7 +727,7 @@ class Episode:
         pl = self.plan_place(w, g)
         s.decide(f"turn the drawer {pl['dyaw']:+.1f} deg, tool yaw {pl['yaw_f']:.1f}, opening {np.round(w['c_o'], 4).tolist()} yaw {w['yaw_o']:.1f}")
         self.carry(w, g, pl)
-        ins = self.insert(w, g, pl)
+        ins = self.insert_sim(w, g, pl) if self.arm == "sim" else self.insert(w, g, pl)
         self.release(w, g, pl, ins)
         self.finish()
 

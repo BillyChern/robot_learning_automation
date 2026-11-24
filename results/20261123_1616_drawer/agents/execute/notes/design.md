@@ -244,3 +244,24 @@ Success (1 rim touch, entry at +5.3 mm). The learner fix of the tuning turn was 
 still ran the old code after this episode: Q -92, critic loss 34, alpha 1.7. Commits made in a tuning turn that ends with `done` have now
 been lost four times (0550191, b0af540, 3676c98, 22c6f05), while the edited files stayed in the working tree here. Commits made in
 reflection turns are kept. The learner fix is committed again in this reflection turn.
+
+## Sim arm (operator 20:27): episodes 31, 34, 37, 40, 43
+The sim policy runs unchanged (`sim/drawer_insert/lying_policy.py`, `weights/policy_lying.npz`) after the same perception, grasp, carry and hover.
+- Frames: believed centre = measured opening + the frozen r4 offset; axis = measured opening yaw. My jaws lie along the opening's y, so
+  `yaw_straight` = opening yaw - 90 and the policy's tool frame is the opening frame at the hover (the sim draws the soft jaw axis along tool x or y).
+- Estimates: `off` from the wrist look-down before the grasp, yaw 0 (squared by the carry), tilt 0 (not measurable; README: costs ~3 points).
+  hold = tool to top face, 48 mm, because I pass the Kortex tool point; it only shifts the z reference.
+- Added around the policy, not in it: force stop 35 N, command floor at my lowest bottom height (5 mm), seated rule (README's, or a stop at the
+  floor as in the other arms). The episode ends on two stops above 40 N, on a stop at the rim 14 mm or more from the start, or after 20 stops.
+- Data: per-decision log as the README asks, in `rl/sim_arm/`, not in `rl/transitions`: the action layout differs, so my learner never trains on it.
+- The learned and scripted `insert()` code is unchanged. A test run can force the arm with RLPJ_ARM=sim; orchestrator episodes ignore it.
+Not done yet: the dry run required before episode 31, which needs a run turn.
+
+## Reward = the report's fixed return (operator 20:21)
+`rc.fixed_rewards`: -0.05 per step, -1 per force-stopped step, at the last step -0.1 per N of its peak above 15 N and +10 for a success. The sum equals
+`scripts/rl_plots.py fixed_return`. As in that formula, `contacts` includes the stop at the floor and `peak` is the last step's peak, not the episode's maximum.
+- All stored episodes are relabelled when the learner loads them (files unchanged); the learner restarts once (version 3).
+- Exception to an exact match: episodes 5 and 6 (verdict unsure only because of the old cabinet-move bug, vision judge positive, drawer at the floor) get the +10
+  in the learner, and the plot gives them 0. Test runs have no verdict and use my own check.
+- First descent: the residual already acted there (1 mm, 0.5 deg per unit, on the 3-4 steps above the rim), but with std ~0.1 it barely explored. The learned arm
+  now adds noise of std 0.5 units before the first contact. The scripted arm still has zero residual and no noise.

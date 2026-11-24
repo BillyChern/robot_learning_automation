@@ -6669,3 +6669,648 @@ Structured output provided successfully
 ```
 </details>
 
+**20:21:08 execute agent:** No response requested.
+
+### 20:21:08 orchestrator -> execute agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+Operator note 20:27 (user decision: extend the experiment for the report):
+1. Training now runs to 50 episodes, then ONE fixed evaluation of 10 deterministic episodes (config changed).
+2. Keep the scripted baseline (episode % 3 == 2) and the freeze at r4.
+3. NEW third arm "sim" (sim-to-real, zero-shot): episodes 31, 34, 37, 40, 43 run the SIM policy unchanged
+   (repo sim/drawer_insert, README "Lying cabinet": Descent(Policy(".../weights/policy_lying.npz"), ...), frames, signs
+   and logging as documented there) in place of your actor, with the same grasp, measured alignment and carry; no
+   touch search of yours (the sim policy does its own search); keep your force stop at 25-40 N; tag arm="sim" and log
+   what the README asks per decision. Dry-run it once before episode 31 (a risky change: one real test is allowed if
+   the dry run cannot show the frames are right). If it misbehaves (pushing away from the opening, > 40 N twice),
+   end that episode cleanly and keep the record: a failure is a valid result.
+4. Do not train your actor on the sim-arm transitions with the same action meaning unless they match your layout;
+   keep them in a separate folder if not.
+
+Reflection after RL training episode 16 (17 so far): success - both independent checks say success (claim=none, perception=True, vlm=True). Look at what happened (log, images, rewards, learner log) and improve your episode program, prior, reward or learner if it helps; offline tests only; commit; then reply done. Keep it short.
+--- attempt_57: episode 16: success - both independent checks say success (claim=none, perception=True, vlm=True)
+# attempt_57: exit code 0; outcome: success
+
+command: RLPJ_EPISODE=-1 RLPJ_RL_MODE=eval /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: rl episode 16; commit: ee3328c; duration_s: 118.2; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "ee3328c312",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 0.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9576, 0.5637, 90.4616], "gripper": 0.9},
+"fk_check_mm": 0.18,
+"first_failed_check": null,
+"transitions": 18,
+"return": 14.003,
+"policy": {"source": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/rl/policy/actor.npz", "updates": 11520, "mtime": "Mon Nov 23 20:15:45 2026"},
+"rl_mode": "train",
+"episode": 16,
+"arm": "learned",
+"scripted_rev": "r4 (r3 + start offset from first-descent entries only)",
+"segments": [["look_opening", true, 0.124, 0.29, 13.02, 39.9], ["look_drawer", true, 0.032, 0.2, 4.0, 39.5], ["above_tab", true, 0.147, 0.18, 6.27, 39.7], ["down_pre", true, 0.026, 0.12, 3.19, 39.5], ["down_tab", true, 0.023, 0.12, 5.34, 39.7], ["lift_slow", true, 0.029, 0.14, 3.24, 39.5], ["lift", 
+"pull_detect_tries": 1,
+"objects": {"drawer": {"c": [0.2669, 0.0095], "yaw": -73.74, "size": [0.0744, 0.1162], "face_h": 0.0925, "face_used": 0.0912}, "tab": {"ok": true, "xy": [0.2483, 0.0046], "s": 0.0192, "t": -0.0005, "side": 1, "why": null}, "opening": {"c": [0.4518, 0.0028], "yaw": 18.3, "measured": true}},
+"grasp": {"reading": 84.5, "held": true, "h_g": 0.1392},
+"decisions": ["turn the drawer +2.0 deg, tool yaw -71.7, opening [0.4518, 0.0028] yaw 18.3", "drawer entered at a 6.7 mm, b -2.5 mm, yaw 0.30 deg after 1 rim touches; start offset frozen (scripted r4)"],
+"tilt": {"standing": {"ok": true, "n": 1018, "tilt_s_deg": 0.89, "tilt_t_deg": -1.63, "z0": 0.0774, "resid_mm": 0.6, "span": [0.06, 0.1]}, "held": [{"ok": true, "n": 659, "tilt_s_deg": 0.0, "tilt_t_deg": 4.97, "z0": 0.1902, "rel_s": 0.83, "phi": 0.0}]},
+"align": [{"ok": true, "ea": 0.0027, "eb": 0.0033, "eyaw": -1.32, "c0": [0.0, 0.0, 0.0], "why": null}],
+"touch_centre": [0.0029, -0.0031, 0.0044],
+"entry": {"c": [0
+... (9506 more characters)
+```
+
+**20:21:11 execute agent:** I'm checking that the learner fix took effect, then reading the sim policy's documented frames and interface before wiring in the new arm.
+
+**20:21:13 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj && tail -n 2 runs/20261123_1616_drawer/agents/execute/rl/learner_log.jsonl | cut -c1-250; git -C runs/20261123_1616_drawer/agents/execute log --oneline | head -2; git -C runs/20261123_1616_drawer/agents/execute status --short | head; ls sim/drawer_insert | tr '\n' ' '; echo; ls sim/drawer_insert/weights 2>/dev/null | head -20; ls -la sim/drawer_insert/lying_* 2>&1 | head; grep -n "Lying cabinet" sim/drawer_insert/README.md sim/README.md README.md 2>/dev/null | head; grep -rln "class Descent" sim 2>/dev/null | head
+```
+
+<details><summary>20:21:13 result</summary>
+
+```text
+{"t": "2026-11-23 20:15:45", "episodes": 15, "transitions": 317, "new": 17, "updates": 680, "total_updates": 11520, "device": "cuda", "secs": 2.4, "ret_last10": 13.632, "lc": 33.8104, "la": -78.5671, "q": -92.5143, "alpha": 1.7001, "ent": -9.6928, "b
+{"t": "2026-11-23 20:21:05", "episodes": 16, "transitions": 335, "new": 335, "updates": 3000, "total_updates": 3000, "device": "cuda", "secs": 7.9, "ret_last10": 13.887, "lc": 0.5791, "la": -23.744, "q": 3.9278, "alpha": 0.05, "ent": -3.3165, "bc_w":
+ee3328c learner: fix critic divergence (no entropy term in the AWAC target, bounded targets, std floor 0.1, restart on all data); recommitted, the tuning-turn commit was lost
+317d578 comment: the start offset is the frozen r4 value
+baselines.py curriculum.py env.py evaluate.py __init__.py lying_baselines.py lying_env.py lying_eval.py lying_params.py lying_policy.py lying_render.py lying_scene.py newton_env.py newton_lying.py newton_try params.py policy.py __pycache__ README.md render.py results runs scene.py tests train.py vec.py weights 
+policy_lying.npz
+policy.npz
+policy_v2.npz
+-rw-rw-r-- 1 r2r r2r 3992 Nov 23 17:45 sim/drawer_insert/lying_baselines.py
+-rw-rw-r-- 1 r2r r2r 8240 Nov 23 16
+... (531 more characters)
+```
+</details>
+
+**20:21:15 tool Bash:**
+
+```bash
+sed -n 324,470p sim/drawer_insert/README.md | cut -c1-220
+```
+
+<details><summary>20:21:15 result</summary>
+
+```text
+## Lying cabinet (vertical insertion, task drawer_lying, 2026-11-23)
+
+The cabinet lies on its back, compartments open to the top. The drawer, held by its pull (tool pointing down), is
+lowered back wall first into the compartment nearest the robot until its top is flush with the rim. The sim models
+only that descent: the hand carries the drawer through a compliant pinch grasp at the pull and moves in small steps in
+the opening frame; the compartment has a floor, four walls with rounded inner rim edges and, beyond the divider, the
+middle compartment. A PPO policy (reset-to-states curriculum as above) outputs one bounded tool step per decision from
+signals the robot has. The standing-cabinet sim (sections above) is unchanged.
+
+Files (next to the old ones): `lying_params.py` (measured values + randomization), `lying_scene.py` (MJCF),
+`lying_env.py` (MuJoCo CPU reference), `newton_lying.py` (Newton GPU twin), `lying_policy.py` (numpy runtime: `Policy`,
+`Descent`, `start_pose`), `lying_baselines.py` (straight descent, spiral search, force-guided script, pre-rolls), `lying_eval.py`,
+`lying_render.py`, `weights/policy_lying.npz`, `results/lying/`, `tests/test_lying.py`,
+`newton_try/validat
+... (11122 more characters)
+```
+</details>
+
+**20:21:15 tool Read:** `/home/r2r/robot_learning_final_pj/sim/drawer_insert/lying_policy.py`
+
+<details><summary>20:21:16 result</summary>
+
+```text
+1	"""Numpy-only policy for the lying cabinet (vertical insertion): Policy(path).act(obs) -> (dx m, dy m, dyaw deg, dz m);
+2	Descent does the robot-side bookkeeping in the base frame. Frames, obs and signs: README.md "Lying cabinet"."""
+3	import numpy as np
+4	
+5	from .policy import Policy as Mlp
+6	
+7	H_STEPS = 60
+8	STEP_LO = np.array([-0.004, -0.004, -2.0, -0.008])     # dx, dy (m, opening frame), dyaw (deg), dz (m, - = down)
+9	STEP_HI = np.array([0.004, 0.004, 2.0, 0.004])
+10	OBS_DIM = 19
+11	XY_BOUND, YAW_BOUND, Z_LOW, Z_HIGH = 0.015, 8.0, -0.015, 0.020   # command bounds (see Descent.next)
+12	
+13	
+14	def obs_vector(o):
+15	    """Obs dict -> scaled network input (19,)."""
+16	    v = np.r_[o["x"] / 0.01, o["y"] / 0.01, o["yaw"] / 5.0, o["z"] / 0.05, np.asarray(o["off"]) / 0.01,
+17	              o["yaw_est"] / 5.0, np.asarray(o["tilt"]) / 5.0, np.asarray(o["f"]) / 30.0, o["f_peak"] / 60.0,
+18	              float(o["stopped"]), np.asarray(o["prev"]) / np.array([0.004, 0.004, 2.0, 0.008]), o["k"] / H_STEPS]
+19	    return np.clip(v, -5.0, 5.0).astype(np.float32)
+20	
+21	
+22	def step_of(a):
+23	    """Network output in [-1, 1]^4 -> (dx m, dy m, dyaw deg, dz m)."""
+24	    a = np.clip(np.asa
+... (5267 more characters)
+```
+</details>
+
+**20:21:17 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute && grep -n "    def insert" programs/execute.py; n=$(grep -n "    def insert" programs/execute.py | cut -d: -f1); sed -n "$n,$((n+125))p" programs/execute.py | cut -c1-175; grep -n "def run(self)" -A 18 programs/execute.py | cut -c1-140; grep -n "def try_step" -A 16 programs/execute.py | cut -c1-130
+```
+
+<details><summary>20:21:17 result</summary>
+
+```text
+418:    def insert(self, w, g, pl):
+    def insert(self, w, g, pl):
+        s = self.s
+        s.phase("insert_learned")
+        self.set_tilt(w, FIRST_TILT)
+        c, b = self.c0.copy(), RIM + HOVER
+        ax, bx = V.axes(w["yaw_o"])
+        A3 = np.array([[*ax, 0.0], [*bx, 0.0], [0, 0, 1.0]])
+        f0, peak, n_contact, end = self.force(), 0.0, 0, "steps"
+        last_force = False
+        ts, next_pt = touch.TouchSearch(MAX_CONTACTS), None
+        c_entry, n_entry = None, 0                       # offset at which the drawer passed into the opening, rim touches before it
+        for k in range(K_ALIGN + K_DESC):
+            phase = 0 if k < K_ALIGN or last_force else 1   # after a contact: one lateral alignment step at the unloaded height
+            o = self.obs(phase, b, c - self.c0, A3 @ (self.force() - f0), peak, k, w, n_contact)  # residual on the measured alignment
+            if self.arm == "scripted":
+                a, info = np.array(rc.prior(o), float), dict(mu=[0.0] * rc.ACT_DIM, std=[0.0] * rc.ACT_DIM)
+            else:
+                a, info = self.actor.act(o, explore=self.arm == "learned", rng=self.rng)
+            if self.arm == "learned" and phase == 0 and n
+... (8848 more characters)
+```
+</details>
+
+**20:22:05 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj && sed -n 470,600p sim/drawer_insert/README.md | cut -c1-240; sed -n 1,200p sim/drawer_insert/lying_baselines.py | grep -n "class Guided" -A 32 | cut -c1-130; sed -n 1,60p sim/drawer_insert/policy.py | cut -c1-110
+```
+
+<details><summary>20:22:05 result</summary>
+
+```text
+| tilt estimate passed as zero | 21.6 % | 12.0 % | 61.6 % | 72.2 % |
+| friction 0.6-0.9 | 17.8 % | 10.6 % | 66.4 % | 71.4 % |
+| loose grasp (slip torques / forces / 3) | 20.0 % | 12.8 % | 57.6 % | 78.0 % |
+| arm 5e3-2e4 N/m | 32.4 % | 20.2 % | 50.8 % | 69.6 % |
+| decision period 0.5-1.0 s | 21.4 % | 16.0 % | 59.8 % | 74.2 % |
+| force stop 25-40 N | 16.8 % | 12.6 % | 65.4 % | 72.8 % |
+
+Forces (carry): median per-episode true peak 74 N (straight 81, spiral 79, guided 78), 6.9 force stops per episode
+(straight 24.7, spiral 12.4, guided 14.1), median 23 decisions to the first success state. The peaks are the stop's
+overshoot between 40 Hz samples; with the stop at 25-40 N the policy's median peak is 56 N. In contact (f_z > 15 N,
+|f_xy| > 4 N; 2093 decisions in 300 episodes) the policy's lateral step points along the measured lateral force (mean
+cosine 0.95, always positive): it learned a force-guided search, which is why the hand-written `Guided` script is the
+strongest baseline. Final lateral shift: median 12 mm (10-90 %: 5-18 mm), yaw change median 6 deg. Failures (300 carry
+episodes, 73 fails): 60 never entered the opening (start error median 13 mm), 12 stuck part-way, 1 fully in bu
+... (13888 more characters)
+```
+</details>
+
+**20:24:18 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && git log --oneline | head -1; git status --short | head -3; cp programs/execute.py dev_out/execute_before_sim.py; python3 - <<'EOF'
+p='programs/execute.py'; t=open(p).read()
+def rep(old,new):
+    global t
+    assert t.count(old)==1, old
+    t=t.replace(old,new)
+rep('''        self.arm = "learned_eval" if self.mode == "eval" else "scripted" if self.ep >= 0 and self.ep % 3 == 2 else "learned"
+''','''        self.arm = "learned_eval" if self.mode == "eval" else "sim" if self.ep in SIM_EPISODES else "scripted" if self.ep >= 0 and self.ep % 3 == 2 else "learned"
+        if self.ep < 0 and os.environ.get("RLPJ_ARM") == "sim":   # own test runs only: an orchestrator episode always has ep >= 0
+            self.ar
+... (13519 more characters)
+```
+
+<details><summary>20:24:20 result</summary>
+
+```text
+ee3328c learner: fix critic divergence (no entropy term in the AWAC target, bounded targets, std floor 0.1, restart on all data); recommitted, the tuning-turn commit was lost
+start obs (real frames):  {'x': -0.01936, 'y': -0.00305, 'yaw': 0.0044, 'z': 0.0992, 'off': [0.01936, 0.00305], 'yaw_est': 0.0, 'tilt': [0.0, 0.0]}
+true error a +0 b +0 mm: seated 0/8, ends ['steps', 'too_many_stops'], decisions 60, stops 19, away 0
+true error a +3 b +0 mm: seated 0/8, ends ['steps', 'too_many_stops'], decisions 60, stops 15, away 0
+true error a +4 b -2 mm: seated 0/8, ends ['too_many_stops'], decisions 56, stops 20, away 0
+true error a -4 b +3 mm: seated 0/8, ends ['too_many_stops'], decisions 54, stops 20, away 0
+true error a +7 b +2 mm: seated 0/8, ends ['steps', 'too_many_stops'], decisions 60, stops 19, away 0
+true error a -8 b -4 mm: seated 0/8, ends ['steps'], decisions 60, stops 18, away 0
+true error a +12 b +0 mm: seated 0/8, ends ['steps', 'too_many_stops'], decisions 59, stops 19, away 0
+force sign flipped (misbehaviour guard): end steps decisions 60 stops 18 away 0
+Traceback (most recent call last):
+  File "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/
+... (464 more characters)
+```
+</details>
+
+**20:24:34 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && python3 - <<'EOF'
+p='notes/dev/t_simarm.py'; t=open(p).read()
+i=t.index('print("start obs (real frames)')
+head=t[:i]
+open('notes/dev/t_simarm_head.py','w').write(head)
+EOF
+cat > notes/dev/t_simtrace.py <<'EOF'
+import sys; W = "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute"; exec(open(W + "/notes/dev/t_simarm_head.py").read())
+for ea, eb in ((0, 0), (0.007, 0.002)):
+    o, h, _, e, s = run(ea, eb, seed=1); print("error", ea, eb, "end", h["end"], "decisions", h["decisions"], "stops", h["stops"], "final bottom", h["final_bottom"])
+    for x in e.sim_log[:60]:
+        ob = x["obs"]
+        if x["k"] < 34 or x["k"] > 52: print(f" k{x['k']:2d} z {ob['z']*1000:6.1f} x {ob['x']*1000:
+... (295 more characters)
+```
+
+<details><summary>20:24:35 result</summary>
+
+```text
+error 0 0 end steps decisions 60 stops 19 final bottom 0.0978
+ k 0 z   99.2 x  -19.4 y   -3.1 f [0.4, -0.3, -0.3] step mm [0.6, 0.2, -0.1, -4.5] ok    bottom  98.5
+ k 1 z   94.7 x  -18.7 y   -2.9 f [-0.3, -0.3, -0.1] step mm [1.0, 0.4, -0.1, -7.3] ok    bottom  91.2
+ k 2 z   87.4 x  -17.7 y   -2.4 f [0.2, 0.4, 0.4] step mm [1.1, 0.2, -0.1, -7.9] force bottom  91.2
+ k 3 z   92.7 x  -16.6 y   -2.2 f [-11.0, -3.8, 31.8] step mm [-3.9, -3.1, -0.5, 2.1] ok    bottom  98.6
+ k 4 z   94.8 x  -20.5 y   -5.3 f [-0.1, -0.1, -0.0] step mm [-1.8, -0.8, 0.7, -3.0] force bottom  96.5
+ k 5 z   92.7 x  -22.4 y   -6.1 f [8.0, 6.0, 31.7] step mm [3.7, 3.2, 0.7, 3.2] ok    bottom  99.7
+ k 6 z   95.9 x  -18.7 y   -2.9 f [1.2, -0.3, 0.2] step mm [2.4, 0.4, -0.2, -3.6] force bottom  96.5
+ k 7 z   92.7 x  -16.3 y   -2.6 f [-10.3, -2.5, 32.0] step mm [-3.8, -2.7, -0.7, 3.0] ok    bottom  99.5
+ k 8 z   95.7 x  -20.1 y   -5.3 f [-0.0, -0.9, -0.5] step mm [-1.8, -0.8, 0.6, -3.2] force bottom  96.5
+ k 9 z   92.7 x  -21.9 y   -6.1 f [6.4, 6.9, 31.8] step mm [3.4, 3.5, 0.5, 3.2] ok    bottom  99.7
+ k10 z   95.9 x  -18.6 y   -2.6 f [0.2, -0.3, -0.4] step mm [2.1, 0.5, -0.3, -3.7] force bottom  96.5
+ k11 z   92.7 
+... (3429 more characters)
+```
+</details>
+
+**20:25:05 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && python3 - <<'EOF'
+p='programs/execute.py'; t=open(p).read()
+def rep(old,new):
+    global t
+    assert t.count(old)==1, old
+    t=t.replace(old,new)
+rep('''            seated = seated + 1 if ins.cmd[3] < 0.01 and f_o[2] > 10.0 else 0
+            if status not in ("ok", "force"):
+                end = status
+            elif seated >= 2:
+                end = "seated"
+''','''            z_dec = float(ins.obs["z"])                   # README: on the floor when z < 1 cm and f_z > 10 N for two decisions
+            seated = seated + 1 if z_dec < 0.01 and f_o[2] > 10.0 else (0 if z_dec > 0.012 else seated)
+            if status not in ("ok", "force"):
+                end = status
+            elif seated >= 2 o
+... (1820 more characters)
+```
+
+<details><summary>20:25:06 result</summary>
+
+```text
+start obs (real frames):  {'x': -0.01936, 'y': -0.00305, 'yaw': 0.0044, 'z': 0.0992, 'off': [0.01936, 0.00305], 'yaw_est': 0.0, 'tilt': [0.0, 0.0]}
+true error a +0 b +0 mm: seated 8/8, ends ['seated'], decisions 12, stops 1, away 0
+true error a +3 b +0 mm: seated 8/8, ends ['seated'], decisions 12, stops 1, away 0
+true error a +4 b -2 mm: seated 6/8, ends ['seated', 'too_many_stops'], decisions 24, stops 6, away 0
+true error a -4 b +3 mm: seated 8/8, ends ['seated'], decisions 15, stops 2, away 0
+true error a +7 b +2 mm: seated 8/8, ends ['seated'], decisions 15, stops 2, away 0
+true error a -8 b -4 mm: seated 8/8, ends ['seated'], decisions 17, stops 3, away 0
+true error a +12 b +0 mm: seated 8/8, ends ['seated'], decisions 33, stops 10, away 0
+force sign flipped (misbehaviour guard): end steps decisions 60 stops 18 away 0
+files: ['sim_arm'] ['ep0031.json'] | transitions dir exists: False | log keys ['bottom', 'dt', 'f_raw', 'k', 'obs', 'peak', 'r', 'status', 'step', 'stop_n', 'stopped', 'target', 'tool', 'tool_yaw']
+30 train learned ok | 31 train sim ok | 32 train scripted ok | 34 train sim ok | 35 train scripted ok | 43 train sim ok | 44 train scripted ok | 46 train learned ok |
+... (133 more characters)
+```
+</details>
+
+**20:25:37 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && python3 - <<'EOF'
+p='programs/execute.py'; t=open(p).read()
+def rep(old,new):
+    global t
+    assert t.count(old)==1, old
+    t=t.replace(old,new)
+rep('''            z_dec = float(ins.obs["z"])                   # README:''','''            if stopped and b > RIM - ENTERED and np.linalg.norm(ins.cmd[:2] - ins.cmd0[:2]) >= SIM_DRIFT_MAX:
+                away = SIM_AWAY_MAX                           # still on the rim at the end of the policy's 15 mm range: it is walking away
+            z_dec = float(ins.obs["z"])                   # README:''')
+rep('SIM_OVER_N, SIM_OVER_MAX, SIM_AWAY_MAX, SIM_STOPS_MAX = 40.0, 2, 3, 20 ','SIM_DRIFT_MAX = 0.014                          # m from the start while still on th
+... (3362 more characters)
+```
+
+<details><summary>20:25:43 result</summary>
+
+```text
+rim touches 10 | mean cosine(force, direction to the entry) 0.986 | min 0.966 | median |f_xy| N 7.6
+true error a +0 b +0 mm: seated 8/8, ends ['seated'], decisions 12, stops 1, away 0
+true error a +3 b +0 mm: seated 8/8, ends ['seated'], decisions 12, stops 1, away 0
+true error a +4 b -2 mm: seated 6/8, ends ['seated', 'too_many_stops'], decisions 24, stops 6, away 0
+true error a -4 b +3 mm: seated 8/8, ends ['seated'], decisions 15, stops 2, away 0
+true error a +7 b +2 mm: seated 8/8, ends ['seated'], decisions 15, stops 2, away 0
+true error a -8 b -4 mm: seated 8/8, ends ['seated'], decisions 17, stops 3, away 0
+true error a +12 b +0 mm: seated 4/8, ends ['pushing_away', 'seated'], decisions 16, stops 4, away 3
+force sign flipped (misbehaviour guard): end pushing_away decisions 12 stops 5 away 3
+train ep  11 arm scripted     end seated transitions 16 max|action| 0.00 fi
+train ep  12 arm learned      end seated transitions 15 max|action| 0.70 fi
+check: one update {'lc': 0.5515754222869
+check_exit 0
+00d1a89 sim arm for episodes 31, 34, 37, 40, 43 (operator 20:27): sim policy unchanged, own log folder, guards; scripted r4 untouched
+```
+</details>
+
+**20:25:55 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Episode 16 reviewed: learner fix confirmed on the robot; sim arm added for episodes 31-43 (commit 00d1a89), dry run still to do",
+ "report": "NOT YET VERIFIED: the sim arm has not run on the robot or in a dry run. The dry run the operator requires before episode 31 is still open, because this turn allows no runs. I need a run turn before episode 31, and the command is `RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py` with `moves_robot` false. Offline it was tested only against my own simple contact model, so its seating rates there say nothing about the real success rate.\n\nEpisode 16 (attempt 57, commit ee3328c, learned arm) succeeded by both independent checks: top 95.4 mm, flush sh
+... (1488 more characters)
+```
+
+<details><summary>20:25:55 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**20:26:09 execute agent:** No response requested.
+
+### 20:26:09 orchestrator -> execute agent
+
+```text
+Note from the operator (overrides your earlier assumptions where they disagree):
+Operator note 20:21 (user: the return curve must show the learning progress). Since episode 6 your return is ~14
+in every success (the success bonus dominates), so learned and scripted look the same: both make 2 rim contacts,
+25 N, ~18 steps (episode 9 had 0 contacts, 13 N, 15 steps: that is the room to learn; the frozen start offset makes
+the scripted arm land on the rim twice every time). From now on use THIS reward (the report plots it for all
+episodes, scripts/rl_plots.py fixed_return): +10 if the drawer ends seated flush, -1 per rim contact, -0.1 per N of
+peak force above 15 N, -0.05 per insertion step (spread per step as you like, the episode sum must match). Relabel
+all stored transitions with it before the next update, and make sure the actor's residual acts on the first
+descent point (the start offset), so the learner can find the 0-contact entry. Do not change the scripted arm.
+
+Before collection continues: no robot run now; update your program for the note above and test it offline.
+This is a reflection turn while the robot runs the other agent's program: you cannot use the robot or the cameras now (no run actions, not even dry runs). If this run shows a problem or a clear, safe improvement (robustness first, then speed), edit programs/execute.py, check it offline on this machine, commit, and reply done; reply done at once if nothing should change. Your next run uses what you committed, and its result comes back to you the same way.
+```
+
+**20:26:40 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj && git -C runs/20261123_1616_drawer/agents/execute log --oneline | head -2; git -C runs/20261123_1616_drawer/agents/execute status --short | head -4; ls -la scripts/rl_plots.py; grep -n "fixed_return" -r scripts rlpj | cut -c1-120; n=$(grep -n "def fixed_return" scripts/rl_plots.py | cut -d: -f1); sed -n "$((n-12)),$((n+50))p" scripts/rl_plots.py | cut -c1-170; tail -n 3 runs/20261123_1616_drawer/agents/execute/rl/learner_log.jsonl | cut -c1-200; ls runs/20261123_1616_drawer/agents/execute/rl/transitions | grep -v dry | grep npz | tail -4; ls runs/20261123_1616_drawer/agents/execute/attempts | sort -t_ -k2 -n | tail -2
+```
+
+<details><summary>20:26:40 result</summary>
+
+```text
+00d1a89 sim arm for episodes 31, 34, 37, 40, 43 (operator 20:27): sim policy unchanged, own log folder, guards; scripted r4 untouched
+ee3328c learner: fix critic divergence (no entropy term in the AWAC target, bounded targets, std floor 0.1, restart on all data); recommitted, the tuning-turn commit was lost
+-rw-rw-r-- 1 r2r r2r 9648 Nov 23 20:21 scripts/rl_plots.py
+scripts/rl_plots.py:66:def fixed_return(r, s):
+scripts/rl_plots.py:84:    R = [fixed_return(r, s) for r, s in zip(tr, S)]
+scripts/rl_plots.py:185:        resets_ok=sum(bool(e.get("ok")) for e in resets), fixed_return=[round(v, 2) for v in fix
+    except (OSError, ValueError, TypeError):
+        return "learned"
+
+
+def summ(d, ep):
+    """The episode's program summary ({} when missing)."""
+    try:
+        return json.loads((d / "episodes" / f"ep_{int(ep):06d}" / "summary.json").read_text())
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def fixed_return(r, s):
+    """One return formula for every episode (the program's own reward changed with its revisions): 10 for a success by
+    the independent checks, -1 per rim contact, -0.1 per N of peak force above 15 N, -0.05 per insertion step."""
+    ins = s.get
+... (3315 more characters)
+```
+</details>
+
+**20:26:41 tool Bash:**
+
+```bash
+cd /home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute && grep -n "def relabel" -B8 -A34 programs/learner.py | cut -c1-140; grep -n "def load_data" -A30 programs/learner.py | cut -c1-130; grep -n "def finish" -A36 programs/execute.py | grep -n "R = \|bonus\|terminal\|self.ret" | cut -c1-170
+```
+
+<details><summary>20:26:41 result</summary>
+
+```text
+96-
+97-
+98-def any_seated(meta):
+99-    """The episode's last logged drawer bottom is at the compartment floor (commanded height, m)."""
+100-    ev = meta.get("events") or []
+101-    return bool(ev) and float(ev[-1][4]) < 0.03
+102-
+103-
+104:def relabel(d, f, part):
+105-    """Replace my terminal bonus by one from the orchestrator's verdict (user 01:50): success -> +5; a fail that my
+106-    geometry would have paid (likely backwards) or whose reason says backwards -> -5; other fails -> 0. Shaping terms
+107-    (progress, flushness, force, step cost) stay."""
+108-    try:
+109-        meta = json.load(open(f[:-4] + ".json"))
+110-    except Exception:
+111-        return None
+112-    v = verdict_for(d, meta)
+113-    if v is None or not len(part["rew"]):
+114-        return None
+115-    mine = float(((meta.get("terminal") or {}).get("bonus")) or 0.0)
+116-    if (meta.get("terminal") or {}).get("bonus") is None and meta.get("check") is True:
+117-        mine = 5.0
+118-    final = str(v.get("final", "")).lower()
+119-    reason = json.dumps(v).lower()
+120-    if final == "success":
+121-        new = 10.0
+122-    elif final in ("fail", "failure") and ("backward" in reason or "wrong way" in r
+... (3009 more characters)
+```
+</details>
+
+**20:27:56 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && python3 - <<'EOF'
+def edit(p, pairs):
+    t=open(p).read()
+    for old,new in pairs:
+        assert t.count(old)==1, (p, old)
+        t=t.replace(old,new)
+    open(p,'w').write(t)
+edit('programs/rlcommon.py',[
+('''def rl_dir():''','''def fixed_rewards(n_steps, contact_steps, last_peak, success):
+    """The report's return (operator 20:21, scripts/rl_plots.py fixed_return), spread over the steps: -0.05 per step, -1 at each force-stopped
+    step (rim or floor, as insert.contacts counts them), and at the last step -0.1 per N of its peak above 15 N and +10 for a success."""
+    r = np.full(int(n_steps), -0.05, dtype=np.float32)
+    if len(r):
+        r[np.asarray(list(contact_steps), int)] -= 1.0
+        r[
+... (7408 more characters)
+```
+
+<details><summary>20:28:20 result</summary>
+
+```text
+ep  5 -        verdict unsure   report  -2.75 learner   7.25  (+10: unsure verdict, real insertion)
+ep  6 -        verdict unsure   report  -1.27 learner   8.73  (+10: unsure verdict, real insertion)
+ep  7 -        verdict success  report   6.37 learner   6.37
+ep  9 learned  verdict success  report   9.25 learner   9.25
+ep 11 scripted verdict success  report   6.10 learner   6.10
+ep 12 learned  verdict success  report   6.10 learner   6.10
+ep 13 learned  verdict success  report   6.10 learner   6.10
+ep 14 scripted verdict success  report   6.10 learner   6.10
+ep 15 learned  verdict success  report   6.15 learner   6.15
+ep 16 learned  verdict success  report   6.10 learner   6.10
+mismatches: 0
+learner state is from prior/learner version 2/2: starting fresh on all data
+data: 16 episodes, 335 transitions; device cpu; updates so far 0
+episodes 16 transitions 335 | return-to-go -10.63..9.95 mean 1.55 | Q -7.57..9.75 mean 0.05 | MAE 2.38 corr 0.89 | actor |mean| 0.033 max 0.698 std 0.114 | updates 3000
+train ep  11 arm scripted     end seated transitions 16 max|action| 0.00 final res
+train ep  12 arm learned      end seated transitions 15 max|action| 1.00 final res
+eval  ep   8 arm learn
+... (284 more characters)
+```
+</details>
+
+**20:28:26 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; git -C $W add -A && git -C $W commit -q -m "reward = the report's fixed return, stored episodes relabelled at load; first-descent exploration in the learned arm only (operator 20:21)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && git -C $W log --oneline | head -2; git -C $W status --short | head -3; git -C $W show --stat --oneline HEAD | grep -E "programs/" | cut -c1-48; git -C $W diff HEAD~1 HEAD -- programs/execute.py | grep -E '^[-+]' | grep -c "scripted"
+```
+
+<details><summary>20:28:26 result</summary>
+
+```text
+017e23a reward = the report's fixed return, stored episodes relabelled at load; first-descent exploration in the learned arm only (operator 20:21)
+00d1a89 sim arm for episodes 31, 34, 37, 40, 43 (operator 20:27): sim policy unchanged, own log folder, guards; scripted r4 untouched
+ programs/execute.py   | 18 +++++++++++++-----
+ programs/learner.py   | 36 +++++++++++++-------
+ programs/rlcommon.py  | 10 ++++++++++
+0
+```
+</details>
+
+**20:28:34 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Reward replaced by the report's fixed return, stored data relabelled, first-descent exploration added to the learned arm (commit 017e23a)",
+ "report": "NOT YET VERIFIED: commit 017e23a is tested offline only, and the next episode is its first real use. More first-descent exploration may cost the learned arm extra rim contacts at first, and nothing yet shows the learner will find the 0-contact entry. The sim arm's required dry run before episode 31 is also still open.\n\nChanged, per the operator's 20:21 note:\n- Reward: the program and learner now use one function matching `fixed_return` in `scripts/rl_plots.py`: +10 for success, -1 per contact, -0.1 per N of peak above 15 N, -0.05 per step.\n- Relabelling: all stored ep
+... (1397 more characters)
+```
+
+<details><summary>20:28:34 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**20:34:55 execute agent:** No response requested.
+
+### 20:34:56 orchestrator -> execute agent
+
+```text
+Reflection after RL training episode 17 (18 so far): success - both independent checks say success (claim=none, perception=True, vlm=True). Look at what happened (log, images, rewards, learner log) and improve your episode program, prior, reward or learner if it helps; offline tests only; commit; then reply done. Keep it short.
+--- attempt_59: episode 17: success - both independent checks say success (claim=none, perception=True, vlm=True)
+# attempt_59: exit code 0; outcome: success
+
+command: RLPJ_EPISODE=-1 RLPJ_RL_MODE=eval /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: rl episode 17; commit: 017e23a; duration_s: 130.3; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "017e23a998",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 0.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9584, 0.5645, 90.4614], "gripper": 0.9},
+"fk_check_mm": 0.18,
+"first_failed_check": null,
+"transitions": 18,
+"return": 6.1,
+"policy": {"source": "scripted baseline"},
+"rl_mode": "train",
+"episode": 17,
+"arm": "scripted",
+"scripted_rev": "r4 (r3 + start offset from first-descent entries only)",
+"segments": [["look_opening", true, 0.09, 0.21, 13.01, 39.8], ["look_drawer", true, 0.036, 0.21, 3.89, 39.6], ["above_tab", true, 0.068, 0.13, 6.85, 39.7], ["down_pre", true, 0.029, 0.11, 3.21, 39.6], ["down_tab", true, 0.037, 0.13, 5.3, 39.8], ["lift_slow", true, 0.03, 0.14, 3.21, 39.6], ["lift", t
+"pull_detect_tries": 1,
+"objects": {"drawer": {"c": [0.2703, 0.0075], "yaw": -78.79, "size": [0.0735, 0.115], "face_h": 0.0931, "face_used": 0.0912}, "tab": {"ok": true, "xy": [0.2501, 0.005], "s": 0.0203, "t": -0.0015, "side": 1, "why": null}, "opening": {"c": [0.4515, 0.0028], "yaw": 18.23, "measured": true}},
+"grasp": {"reading": 84.1, "held": true, "h_g": 0.1392},
+"decisions": ["turn the drawer +7.0 deg, tool yaw -71.8, opening [0.4515, 0.0028] yaw 18.2", "drawer entered at a 5.9 mm, b -3.1 mm, yaw 0.00 deg after 1 rim touches; start offset frozen (scripted r4)"],
+"tilt": {"standing": {"ok": true, "n": 958, "tilt_s_deg": -0.61, "tilt_t_deg": -2.64, "z0": 0.0783, "resid_mm": 0.7, "span": [0.059, 0.098]}, "held": [{"ok": true, "n": 653, "tilt_s_deg": 0.99, "tilt_t_deg": 6.74, "z0": 0.1923, "rel_s": 0.06, "phi": 0.0}]},
+"align": [{"ok": true, "ea": 0.0036, "eb": 0.0046, "eyaw": 0.37, "c0": [0.0, 0.0, 0.0], "why": null}],
+"touch_centre": [0.0029, -0.0031, 0.0044],
+"entry": {"c": [0.0059, -0.0031, 0.0044], "rim_touches": 1},
+"touch": {"best": [0.003, 0.0, 0.0], "best_h": 0.0117, "touches": 2},
+"insert": {"end": "seated", "steps": 18, "bottom": 0.0117, "c": [0.0059, -0.0031, 0.0044], "contacts": 2, "peak": 25.0, "tilt": 0.0, "contact_map": [[2.9, -3.1, 0.0, 94.9, 7.8, 1.2], [5.9, -3.1, 0.0, 11.7, -15.3, 2.1]], "tilts_tried": [0.0]},
+"blobs_before": [[0.271, -0.001, 0.1, 0.082, 0.114, 4024], [0.528, 0.02, 0.096, 0.278, 0.185, 12537]],
+"blobs_after": [[0.502, 0.01, 0.098, 0.28, 0.182, 12530]],
+"verify": {"check": true, "reason": "drawer flush in the target compartment", "n": 1379, "median_h": 0.095, "flush": 1.0, "above": 0.0, "deep": 0.0, "cabinet_moved_m": null, "on_table": false, "terminal_reward": 10.0, "cabinet_shift_px": 0.16, "cabinet_outline_move_m": 0.0013, "orchestrator_check": 
+"transitions_file": "transitions/train_ep0017.npz",
+"return_home": "already at default pose",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.5, "reading": 50.0},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 103 lines; last 40:
+[20:33:07] step 8: a [0.0, 0.0, 0.0, 0.0] (mu [0.0, 0.0, 0.0, 0.0]) -> ok  bottom 0.0709 c [0.0059, -0.0031, 0.0044] tilt +0.0 peak 1.7 N r +0.190
+[20:33:07] plan 21_ins09: T=0.7s check ok=True tip>0.156 vmax=3.0deg/s lin=0.018m/s
+[20:33:08] exec 21_ins09: {'segment': 'ins09', 'ok': True, 'reason': '', 'T_plan': 0.71, 'max_dev_deg'
+... (7973 more characters)
+```
+
+**20:35:00 tool Bash:**
+
+```bash
+git log --oneline | head -1; git status --short | head -3; tail -n 2 rl/learner_log.jsonl | python3 -c "
+import sys, json
+for l in sys.stdin:
+    d=json.loads(l); print({k:d.get(k) for k in ('t','episodes','transitions','updates','total_updates','ret_last10','lc','q','alpha','ent')})"
+```
+
+<details><summary>20:35:00 result</summary>
+
+```text
+017e23a reward = the report's fixed return, stored episodes relabelled at load; first-descent exploration in the learned arm only (operator 20:21)
+{'t': '2026-11-23 20:21:05', 'episodes': 16, 'transitions': 335, 'updates': 3000, 'total_updates': 3000, 'ret_last10': 13.887, 'lc': 0.5791, 'q': 3.9278, 'alpha': 0.05, 'ent': -3.3165}
+{'t': '2026-11-23 20:34:52', 'episodes': 17, 'transitions': 353, 'updates': 3000, 'total_updates': 3000, 'ret_last10': 6.71, 'lc': 0.834, 'q': 0.0394, 'alpha': 0.05, 'ent': -3.2428}
+```
+</details>
+
+**20:35:05 tool StructuredOutput:**
+
+```json
+{
+ "action": "done",
+ "command": "",
+ "moves_robot": false,
+ "what": "Episode 17 reviewed: scripted arm succeeded, new reward confirmed in the learner, no change made (still commit 017e23a)",
+ "report": "No change this turn. The episode succeeded, and the scripted arm should stay untouched.\n\nEpisode 17 (attempt 59, commit 017e23a, scripted arm, r4) succeeded by both independent checks. Top height is 95.0 mm, flush share 1.0, return 6.10 on the report's formula. It made 2 contacts: the first descent stopped on the rim at a +2.9, b -3.1 mm, the drawer entered at +5.9 mm, and the second contact was the normal stop at the floor.\n\nThe new reward is live on the robot. The learner restarted on all data after this episode (3000 updates, 17 episodes, 353 transitions), with mean return over the 
+... (576 more characters)
+```
+
+<details><summary>20:35:05 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+

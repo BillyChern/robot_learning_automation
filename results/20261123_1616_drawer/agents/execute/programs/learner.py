@@ -19,7 +19,7 @@ import torch.nn.functional as F
 import rlcommon as rc
 
 PRIOR_VERSION = rc.PRIOR_VERSION
-LEARNER_VERSION = 2                # 2: no entropy term in the critic target, bounded targets; a state from version 1 had diverged (Q -75)
+LEARNER_VERSION = 3                # 2: no entropy term in the critic target, bounded targets; 3: the report's reward (operator 20:21)
 Q_RANGE = (-20.0, 20.0)            # step reward >= -1 at gamma 0.95, terminal reward <= 12
 
 HP = dict(actor="awac", awac_lambda=0.3, awac_wmax=20.0, gamma=0.95, tau=0.005, lr=3e-4, batch=256, hidden=128, target_entropy=-2.0, init_alpha=0.05,
@@ -102,34 +102,24 @@ def any_seated(meta):
 
 
 def relabel(d, f, part):
-    """Replace my terminal bonus by one from the orchestrator's verdict (user 01:50): success -> +5; a fail that my
-    geometry would have paid (likely backwards) or whose reason says backwards -> -5; other fails -> 0. Shaping terms
-    (progress, flushness, force, step cost) stay."""
+    """Rewards of a stored episode from the report's formula (rc.fixed_rewards), whatever reward it was logged with. Success: the verdict; an
+    unsure verdict with the vision judge positive and the drawer at the floor (episodes 5, 6: the check's cabinet comparison misfired on a
+    filled compartment) counts, as does my own check for test runs that have no verdict."""
     try:
         meta = json.load(open(f[:-4] + ".json"))
     except Exception:
         return None
-    v = verdict_for(d, meta)
-    if v is None or not len(part["rew"]):
+    ev = meta.get("events") or []
+    if len(ev) != len(part["rew"]) or not len(ev):
         return None
-    mine = float(((meta.get("terminal") or {}).get("bonus")) or 0.0)
-    if (meta.get("terminal") or {}).get("bonus") is None and meta.get("check") is True:
-        mine = 5.0
-    final = str(v.get("final", "")).lower()
-    reason = json.dumps(v).lower()
-    if final == "success":
-        new = 10.0
-    elif final in ("fail", "failure") and ("backward" in reason or "wrong way" in reason or "upside" in reason):
-        new = -5.0                                 # only a stated wrong orientation is punished: the geometric check also fails
-                                                   # correct insertions ("cabinet moved 3.3 cm" in attempt 30, nothing moved)
-    elif final in ("fail", "failure"):
-        new = 0.0
-    elif "vlm=true" in reason and any_seated(meta):    # unsure only because the geometric check's cabinet comparison misfires on a
-        new = 10.0                                     # filled compartment (attempts 30, 32): the vision judge says yes, drawer down
+    v = verdict_for(d, meta)
+    final = None if v is None else str(v.get("final", "")).lower()
+    if v is None:
+        success = meta.get("check") is True
     else:
-        return dict(final=final, kept=mine)
-    part["rew"][-1] += new - mine
-    return dict(final=final, mine=mine, new=new)
+        success = final == "success" or (final == "unsure" and "vlm=true" in json.dumps(v).lower() and any_seated(meta))
+    part["rew"] = rc.fixed_rewards(len(ev), [i for i, e in enumerate(ev) if e[1] == "force"], ev[-1][6], success)
+    return dict(final=final, success=bool(success))
 
 
 def load_data(d):

@@ -23,6 +23,16 @@ def prior(obs):
     return np.zeros(ACT_DIM) if o.ndim == 1 else np.zeros((len(o), ACT_DIM))
 
 
+def fixed_rewards(n_steps, contact_steps, last_peak, success):
+    """The report's return (operator 20:21, scripts/rl_plots.py fixed_return), spread over the steps: -0.05 per step, -1 at each force-stopped
+    step (rim or floor, as insert.contacts counts them), and at the last step -0.1 per N of its peak above 15 N and +10 for a success."""
+    r = np.full(int(n_steps), -0.05, dtype=np.float32)
+    if len(r):
+        r[np.asarray(list(contact_steps), int)] -= 1.0
+        r[-1] += -0.1 * max(0.0, float(last_peak) - 15.0) + (10.0 if success else 0.0)
+    return r
+
+
 def rl_dir():
     d = os.environ.get("RLPJ_RL_DIR") or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rl")
     os.makedirs(d, exist_ok=True)

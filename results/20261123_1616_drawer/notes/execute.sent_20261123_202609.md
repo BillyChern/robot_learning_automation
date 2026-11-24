@@ -1,4 +1,4 @@
-Operator note 20:33 (user: the return curve must show the learning progress). Since episode 6 your return is ~14
+Operator note 20:21 (user: the return curve must show the learning progress). Since episode 6 your return is ~14
 in every success (the success bonus dominates), so learned and scripted look the same: both make 2 rim contacts,
 25 N, ~18 steps (episode 9 had 0 contacts, 13 N, 15 steps: that is the room to learn; the frozen start offset makes
 the scripted arm land on the rim twice every time). From now on use THIS reward (the report plots it for all
