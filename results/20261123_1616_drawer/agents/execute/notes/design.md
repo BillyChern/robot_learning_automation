@@ -265,3 +265,11 @@ Not done yet: the dry run required before episode 31, which needs a run turn.
   in the learner, and the plot gives them 0. Test runs have no verdict and use my own check.
 - First descent: the residual already acted there (1 mm, 0.5 deg per unit, on the 3-4 steps above the rim), but with std ~0.1 it barely explored. The learned arm
   now adds noise of std 0.5 units before the first contact. The scripted arm still has zero residual and no noise.
+
+## Tuning after 20 episodes: sim arm dry run and one real test (attempts 66, 67)
+No training episode failed. Dry run on a nominal drawer: the policy loads on the robot machine and all 60 steps pass the model checks.
+Real test (attempt 67, commit 69062cf, not one of the five recorded sim episodes): seated and flush (96.2 mm, independent geometric check True), 19 decisions, 2 stops
+(rim 36.3 N, floor 37.1 N), return 4.84. Frames confirmed at the rim stop: force on the tool +35.3 N up, +11.7 N along +a; the next policy step was +3.9, +1.1 mm (cosine with the
+force 0.97). On its way in the command reached the policy's +15 mm bound with no stop there, so the 14 mm guard could have ended a good attempt.
+Changed (sim arm only): the guard now ends the episode after 3 rim stops at that range instead of 1.
+This is one episode; it does not say how the sim arm compares with the others.

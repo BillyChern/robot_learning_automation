@@ -579,7 +579,8 @@ class Episode:
                                      f_raw=np.round(f_raw, 3).tolist(), peak=round(peak, 2), stopped=bool(stopped), status=status, stop_n=stop_n, dt=round(time.time() - t0, 3), bottom=round(b, 4), r=round(r, 3)))
             s.log(f"sim {k}: step {np.round(ins.step * [1000, 1000, 1, 1000], 2).tolist()} (mm, mm, deg, mm) -> {status} bottom {b:.4f} f {np.round(f_o, 1).tolist()} peak {peak:.1f} N")
             if stopped and b > RIM - ENTERED and np.linalg.norm(ins.cmd[:2] - ins.cmd0[:2]) >= SIM_DRIFT_MAX:
-                away = SIM_AWAY_MAX                           # still on the rim at the end of the policy's 15 mm range: it is walking away
+                away += 1                                     # on the rim at the end of the policy's 15 mm range. Not at once: the real test went
+                                                              # through +15 mm on its way in (attempt 67), so only repeated stops there mean it is lost
             z_dec = float(ins.obs["z"])                   # README: on the floor when z < 1 cm and f_z > 10 N for two decisions
             seated = seated + 1 if z_dec < 0.01 and f_o[2] > 10.0 else (0 if z_dec > 0.012 else seated)
             if status not in ("ok", "force"):

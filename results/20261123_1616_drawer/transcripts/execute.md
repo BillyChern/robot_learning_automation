@@ -7642,3 +7642,257 @@ Structured output provided successfully
 ```
 </details>
 
+**20:48:07 execute agent:** No response requested.
+
+### 20:48:07 orchestrator -> execute agent
+
+```text
+# attempt_66: exit code 0; outcome: success
+
+command: RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: Dry run of the sim arm on a nominal drawer (the real one is still in the cabinet): load the sim policy, check its frames and every descent step in the model, nothing moves; commit: 69062cf; duration_s: 39.4; moves_robot: False
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "execute",
+"mode": "collect",
+"dry": true,
+"commit": "69062cf219",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [0.01, 15.0, 230.0, 0.0, 55.02, 90.02], "tool_pose": [0.5791, 0.0048, 0.4274, 89.9523, 0.571, 90.4543], "gripper": 50.0},
+"fk_check_mm": 0.18,
+"first_failed_check": null,
+"transitions": 60,
+"return": 7.0,
+"policy": {"source": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/rl/policy/actor.npz", "updates": 4320, "mtime": "Mon Nov 23 20:46:40 2026"},
+"rl_mode": "train",
+"episode": -1,
+"arm": "sim",
+"scripted_rev": "r4 (r3 + start offset from first-descent entries only)",
+"decisions": ["dry run: no drawer on the table, using a nominal standing drawer", "opening not measured ({'ok': False, 'why': 'edge not found', 'c': None, 'yaw': None}): using the stored rim", "turn the drawer +26.3 deg, tool yaw -71.7, opening [0.4519, 0.0029] yaw 18.3"],
+"segments": [["look_opening", "dry", 13.0], ["look_drawer", "dry", 3.5], ["above_tab", "dry", 8.8], ["down_pre", "dry", 3.1], ["down_tab", "dry", 5.1], ["lift_slow", "dry", 3.1], ["lift", "dry", 3.9], ["carry", "dry", 5.9], ["to_level", "dry", 0.5], ["to_hover", "dry", 1.8], ["sim00", "dry", 0.6], [
+"pull_detect_tries": 1,
+"objects": {"drawer": {"c": [0.285, -0.005], "yaw": 82.0, "size": [0.0723, 0.1131], "face_h": 0.0912, "face_used": 0.0912}, "tab": {"ok": true, "xy": [0.26568977265953936, -0.002286124531278724], "s": -0.0195, "t": 0.0, "side": -1, "why": null}, "opening": {"c": [0.4519, 0.0029], "yaw": 18.3, "measu
+"grasp": {"reading": 100.0, "held": true, "h_g": 0.1392},
+"tilt": {"standing": {"ok": false, "n": 0}, "held": [{"ok": false, "n": 0, "tilt_s_deg": null, "tilt_t_deg": null, "z0": null, "rel_s": null, "phi": 0.0}]},
+"align": [{"ok": false, "ea": null, "eb": null, "eyaw": null, "c0": [0.0, 0.0, 0.0], "why": "edge not found"}],
+"touch_centre": [0.0029, -0.0031, 0.0044],
+"sim_arm": {"est": {"off": [0.01949999994250041, 1.4974924967443848e-06], "yaw": 0.0, "tilt": [0.0, 0.0], "hold": 0.04799999999999999}, "force_stop_n": 35.0, "end": "steps", "decisions": 60, "stops": 0, "over_40": 0, "steps_against_force": 0, "final_bottom": 0.0043},
+"insert": {"end": "steps", "steps": 60, "bottom": 0.0043, "c": [0.014, -0.0101, -5.2699], "contacts": 0, "peak": 0.1},
+"blobs_before": [[0.496, 0.008, 0.1, 0.281, 0.183, 12647], [0.69, 0.115, 0.028, 0.095, 0.092, 424]],
+"blobs_after": [[0.49, 0.006, 0.101, 0.292, 0.185, 12769]],
+"verify": {"check": true, "reason": "drawer flush in the target compartment", "n": 1378, "median_h": 0.0972, "flush": 1.0, "above": 0.0, "deep": 0.0, "cabinet_moved_m": null, "on_table": false, "terminal_reward": 10.0, "cabinet_shift_px": 0.19, "cabinet_outline_move_m": 0.0016, "orchestrator_check":
+"transitions_file": "sim_arm/dry_test_20261123_204803.json",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.5, "reading": 50.0}
+}
+
+log.txt: 152 lines; last 40:
+[20:47:53] sim 43: step [0.43, -0.16, 0.01, -7.65] (mm, mm, deg, mm) -> ok bottom 0.0042 f [-0.0, -0.0, -0.0] peak 0.1 N
+[20:47:53] plan 55_sim44: T=0.5s check ok=True tip>0.097 vmax=0.4deg/s lin=0.002m/s
+[20:47:53] sim 44: step [0.46, -0.14, 0.01, -7.64] (mm, mm, deg, mm) -> ok bottom 0.0042 f [0.1, -0.1, 0.1] peak 0.1 N
+[20:47:53] plan 56_sim45: T=0.5s check ok=True tip>0.097 vmax=0.4deg/s lin=0.002m/s
+[20:47:53] sim 45: step [0.47, -0.13, 0.01, -7.62] (mm, mm, deg, mm) -> ok bottom 0.0042 f [0.1, -0.0, -0.1] peak 0.1 N
+[20:47:53] plan 57_sim46: T=0.5s check ok=True tip>0.097 vmax=0.4deg/s
+... (6551 more characters)
+```
+
+**20:48:28 execute agent:** The dry run loads the sim policy on the robot machine, and all 60 steps pass the model checks. It can't show the contact-force frames, because nothing touches anything in a dry run, and its "success" only reflects the drawer already sitting in the cabinet. The operator allows one real test in exactly this case. First I'm checking how far the policy drifts before it reaches the rim.
+
+**20:48:31 tool Bash:**
+
+```bash
+git log --oneline | head -1; git status --short | head -3; python3 - <<'EOF'
+import json
+d=json.load(open('rl/sim_arm/dry_test_20261123_204803.json')); L=d['decisions_log']
+print('C',[round(x,4) for x in d['C']],'AX',d['AX'],'YS',d['YS'],'start yaw',round(d['start_yaw'],2),'f0',[round(x,1) for x in d['f0']])
+x0,y0=L[0]['obs']['x'],L[0]['obs']['y']
+for e in L[:7]+L[10:11]+L[14:15]:
+    o=e['obs']; print('k',e['k'],'z mm',round(o['z']*1000,1),'bottom mm',round(e['bottom']*1000,1),'dx from start mm',round((o['x']-x0)*1000,2),'dy',round((o['y']-y0)*1000,2),'yaw',round(o['yaw'],2),'step',[round(v*1000,1) for v in (e['step'][0],e['step'][1],e['step'][3])])
+EOF
+```
+
+<details><summary>20:48:31 result</summary>
+
+```text
+69062cf attempt 66: dry runs use a nominal drawer when none stands on the table (real runs unchanged)
+C [0.4556, 0.0009] AX 18.3 YS -71.7 start yaw -71.68 f0 [2.6, -0.4, 2.7]
+k 0 z mm 98.5 bottom mm 97.3 dx from start mm 0.0 dy 0.0 yaw 0.02 step [0.6, 0.1, -4.4]
+k 1 z mm 94.1 bottom mm 89.9 dx from start mm 0.6 dy 0.08 yaw -0.04 step [0.9, 0.4, -7.3]
+k 2 z mm 86.8 bottom mm 82.0 dx from start mm 1.5 dy 0.46 yaw -0.15 step [0.9, 0.2, -7.9]
+k 3 z mm 78.9 bottom mm 74.0 dx from start mm 2.44 dy 0.68 yaw -0.24 step [0.5, 0.2, -8.0]
+k 4 z mm 70.9 bottom mm 66.0 dx from start mm 2.92 dy 0.92 yaw -0.44 step [-0.0, 0.3, -8.0]
+k 5 z mm 62.9 bottom mm 58.0 dx from start mm 2.9 dy 1.24 yaw -0.64 step [-0.5, 0.2, -8.0]
+k 6 z mm 54.9 bottom mm 50.0 dx from start mm 2.36 dy 1.46 yaw -0.85 step [-0.9, 0.3, -8.0]
+k 10 z mm 23.0 bottom mm 18.1 dx from start mm -1.01 dy 3.09 yaw -2.3 step [-0.6, 0.1, -8.0]
+k 14 z mm 1.2 bottom mm 4.2 dx from start mm -2.87 dy 2.8 yaw -4.18 step [-0.3, -0.2, -7.9]
+```
+</details>
+
+**20:48:37 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
+ "moves_robot": true,
+ "what": "One real test of the sim policy (operator 20:27, the dry run cannot show its force frames): same grasp and carry, then up to 60 small policy steps with a 35 N stop; ends on two stops above 40 N, 20 stops, or 14 mm drift on the rim; release or put back, home",
+ "report": ""
+}
+```
+
+<details><summary>20:48:37 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
+**20:54:08 execute agent:** No response requested.
+
+### 20:54:08 orchestrator -> execute agent
+
+```text
+# attempt_67: exit code 0; outcome: success
+
+command: RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py; what: One real test of the sim policy (operator 20:27, the dry run cannot show its force frames): same grasp and carry, then up to 60 small policy steps with a 35 N stop; ends on two stops above 40 N, 20 stops, or 14 mm drift on the rim; release or put back, home; commit: 69062cf; duration_s: 127.2; moves_robot: True
+
+summary.json:
+{
+"claimed_outcome": "success",
+"program": "execute",
+"mode": "collect",
+"dry": false,
+"commit": "69062cf219",
+"command": "programs/execute.py",
+"step": "verify",
+"ready_wait_s": 0.0,
+"start": {"arm_state": "ARMSTATE_SERVOING_READY", "q": [360.0, 15.0, 230.0, 0.0, 55.01, 90.01], "tool_pose": [0.5791, 0.0048, 0.4273, 89.9585, 0.5633, 90.4612], "gripper": 0.9},
+"fk_check_mm": 0.18,
+"first_failed_check": null,
+"transitions": 19,
+"return": 4.84,
+"policy": {"source": "/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute/rl/policy/actor.npz", "updates": 4320, "mtime": "Mon Nov 23 20:46:40 2026"},
+"rl_mode": "train",
+"episode": -1,
+"arm": "sim",
+"scripted_rev": "r4 (r3 + start offset from first-descent entries only)",
+"segments": [["look_opening", true, 0.079, 0.25, 13.02, 39.9], ["look_drawer", true, 0.048, 0.25, 3.83, 39.7], ["above_tab", true, 0.162, 0.2, 6.21, 39.8], ["down_pre", true, 0.027, 0.11, 3.21, 39.6], ["down_tab", true, 0.049, 0.18, 5.21, 39.5], ["lift_slow", true, 0.028, 0.14, 3.16, 39.6], ["lift",
+"pull_detect_tries": 1,
+"objects": {"drawer": {"c": [0.2748, 0.008], "yaw": -72.41, "size": [0.0726, 0.1135], "face_h": 0.0946, "face_used": 0.0912}, "tab": {"ok": true, "xy": [0.2562, 0.0029], "s": 0.0192, "t": -0.0008, "side": 1, "why": null}, "opening": {"c": [0.4509, 0.0033], "yaw": 18.22, "measured": true}},
+"grasp": {"reading": 84.1, "held": true, "h_g": 0.1392},
+"decisions": ["turn the drawer +0.6 deg, tool yaw -71.8, opening [0.4509, 0.0033] yaw 18.2"],
+"tilt": {"standing": {"ok": true, "n": 1021, "tilt_s_deg": -1.42, "tilt_t_deg": -3.17, "z0": 0.0781, "resid_mm": 0.79, "span": [0.06, 0.099]}, "held": [{"ok": true, "n": 725, "tilt_s_deg": 3.69, "tilt_t_deg": 6.67, "z0": 0.1913, "rel_s": 2.24, "phi": 0.0}]},
+"align": [{"ok": false, "ea": null, "eb": null, "eyaw": null, "c0": [0.0, 0.0, 0.0], "why": null}],
+"touch_centre": [0.0029, -0.0031, 0.0044],
+"sim_arm": {"est": {"off": [0.019271623969580216, -0.0007579640988209643], "yaw": 0.0, "tilt": [0.0, 0.0], "hold": 0.04799999999999999}, "force_stop_n": 35.0, "end": "seated", "decisions": 19, "stops": 2, "over_40": 0, "steps_against_force": 0, "final_bottom": 0.0105},
+"insert": {"end": "seated", "steps": 19, "bottom": 0.0105, "c": [0.0041, -0.0048, -3.44], "contacts": 2, "peak": 37.1},
+"blobs_before": [[0.276, -0.001, 0.099, 0.09, 0.111, 3930], [0.522, 0.02, 0.096, 0.308, 0.188, 12980]],
+"blobs_after": [[0.492, 0.007, 0.1, 0.286, 0.185, 12747], [0.736, 0.163, 0.023, 0.105, 0.051, 535]],
+"verify": {"check": true, "reason": "drawer flush in the target compartment", "n": 1399, "median_h": 0.0962, "flush": 1.0, "above": 0.0, "deep": 0.0, "cabinet_moved_m": null, "on_table": false, "terminal_reward": 10.0, "cabinet_shift_px": 0.07, "cabinet_outline_move_m": 0.0028, "orchestrator_check":
+"transitions_file": "sim_arm/test_20261123_205352.json",
+"return_home": "already at default pose",
+"exit_code": 0,
+"gripper_final": {"cmd": 0.5, "reading": 50.0},
+"end_arm_state": ["ARMSTATE_SERVOING_READY", 7.4]
+}
+
+log.txt: 103 lines; last 40:
+[20:53:10] exec 20_sim09: {'segment': 'sim09', 'ok': True, 'reason': '', 'T_plan': 0.82, 'max_dev_deg': 0.042, 'max_dev_mm': 0.21, 'n': 33, 'max_abs_force_n': 6.8, 'max_force_n': 2.1, 't_exec': 0.87, 'rate_hz': 37.9, 'final_err_deg': 0.019}
+[20:53:10] sim 9: step [-1.59, -0.08, 0.02, -7.92] (mm, mm, deg, mm) -> ok bottom 0.0758 f [-0.5, -2.0, -1.1] peak 4.4 N
+[20:53:10] plan 21_sim10: T=0.8s check ok=True tip>0.160 vmax=3.2deg/s lin=0.018m/s
+[20:53:11] exec 21_sim10: {'
+... (7334 more characters)
+```
+
+**20:54:18 tool Bash:**
+
+```bash
+git log --oneline | head -1; git status --short | head -3; python3 - <<'EOF'
+import json, numpy as np
+d=json.load(open('rl/sim_arm/test_20261123_205352.json')); L=d['decisions_log']
+print('end',d['end'],'decisions',d['decisions'],'stops',d['stops'],'ret',round(d['ret'],2),'check',d['check'])
+x0,y0=L[0]['obs']['x'],L[0]['obs']['y']
+for i,e in enumerate(L[:9]):
+    o=e['obs']; print('k',e['k'],'z',round(o['z']*1000,1),'bottom',round(e['bottom']*1000,1),'x-x0',round((o['x']-x0)*1000,1),'y-y0',round((o['y']-y0)*1000,1),'yaw',round(o['yaw'],2),'f',np.round(o['f'],1).tolist(),'step',[round(e['step'][0]*1000,1),round(e['step'][1]*1000,1),round(e['step'][2],2),round(e['step'][3]*1000,1)],e['status'],e['stop_n'])
+for i,e in enumerate(L[:-1]):
+    if e['stopped']:
+        n=L[i+1]; f=np.array(n['obs
+... (290 more characters)
+```
+
+<details><summary>20:54:19 result</summary>
+
+```text
+69062cf attempt 66: dry runs use a nominal drawer when none stands on the table (real runs unchanged)
+end seated decisions 19 stops 2 ret 4.84 check True
+k 0 z 99.2 bottom 98.5 x-x0 0.0 y-y0 0.0 yaw 0.0 f [0.0, 0.2, 0.1] step [0.6, 0.0, -0.03, -4.4] ok None
+k 1 z 94.8 bottom 93.7 x-x0 0.6 y-y0 0.0 yaw -0.03 f [-0.7, -0.3, -0.6] step [1.0, 0.3, -0.09, -7.3] force 36.3
+k 2 z 89.9 bottom 96.9 x-x0 1.4 y-y0 0.2 yaw -0.09 f [11.7, 0.2, 35.3] step [3.9, 1.1, 0.14, 3.2] ok None
+k 3 z 93.1 bottom 93.7 x-x0 5.4 y-y0 1.3 yaw 0.05 f [-3.1, -2.7, -2.2] step [1.9, -0.8, -0.21, -3.2] ok None
+k 4 z 89.9 bottom 93.5 x-x0 7.3 y-y0 0.5 yaw -0.16 f [3.4, -0.8, 17.8] step [2.7, -0.8, -0.04, -0.2] ok None
+k 5 z 89.7 bottom 91.3 x-x0 10.0 y-y0 -0.3 yaw -0.2 f [0.2, -0.5, 9.6] step [1.8, -1.0, -0.09, -2.2] ok None
+k 6 z 87.5 bottom 93.2 x-x0 11.7 y-y0 -1.3 yaw -0.29 f [6.4, 1.7, 22.6] step [3.8, 1.2, 0.28, 1.9] ok None
+k 7 z 89.5 bottom 89.9 x-x0 15.0 y-y0 -0.1 yaw -0.01 f [-2.0, -2.3, -2.8] step [1.5, -0.4, -0.38, -3.3] ok None
+k 8 z 86.2 bottom 83.7 x-x0 15.0 y-y0 -0.4 yaw -0.39 f [-0.3, -2.5, -0.8] step [-0.9, -0.2, -0.38, -6.2] ok None
+after the stop at k 1 : f on tool [11.7, 0.2, 35.3] next step mm 
+... (183 more characters)
+```
+</details>
+
+**20:54:48 tool Bash:**
+
+```bash
+W=/home/r2r/robot_learning_final_pj/runs/20261123_1616_drawer/agents/execute; cd $W && python3 - <<'EOF'
+p='programs/execute.py'; t=open(p).read()
+old='''                away = SIM_AWAY_MAX                           # still on the rim at the end of the policy's 15 mm range: it is walking away
+'''
+new='''                away += 1                                     # on the rim at the end of the policy's 15 mm range. Not at once: the real test went
+                                                              # through +15 mm on its way in (attempt 67), so only repeated stops there mean it is lost
+'''
+assert t.count(old)==1; open(p,'w').write(t.replace(old,new))
+EOF
+cat >> notes/design.md <<'EOF'
+
+## Tuning after 20 episodes: sim arm dry run and one real test (attempts 66, 67)
+No training e
+... (1405 more characters)
+```
+
+<details><summary>20:54:51 result</summary>
+
+```text
+true error a +0 b +0 mm: seated 8/8, ends ['seated'], decisions 12, stops 1, away 0
+true error a +3 b +0 mm: seated 8/8, ends ['seated'], decisions 12, stops 1, away 0
+true error a +4 b -2 mm: seated 6/8, ends ['seated', 'too_many_stops'], decisions 24, stops 6, away 0
+true error a -4 b +3 mm: seated 8/8, ends ['seated'], decisions 15, stops 2, away 0
+true error a +7 b +2 mm: seated 8/8, ends ['seated'], decisions 15, stops 2, away 0
+true error a -8 b -4 mm: seated 8/8, ends ['seated'], decisions 17, stops 3, away 0
+true error a +12 b +0 mm: seated 5/8, ends ['pushing_away', 'seated'], decisions 19, stops 7, away 3
+force sign flipped (misbehaviour guard): end pushing_away decisions 18 stops 7 away 3
+check: one update {'lc': 1.4156751632690
+ec1506e attempt 68: sim arm guard needs 3 rim stops at the end of its range (attempt 67 passed through it on the way in)
+```
+</details>
+
+**20:54:53 tool StructuredOutput:**
+
+```json
+{
+ "action": "run",
+ "command": "RLPJ_ARM=sim /home/r2r/robot_learning_final_pj/.venv/bin/python programs/execute.py",
+ "moves_robot": false,
+ "what": "Dry run of commit ec1506e (sim arm guard change): confirm the program flow on the robot machine and record the commit there, nothing moves",
+ "report": ""
+}
+```
+
+<details><summary>20:54:53 result</summary>
+
+```text
+Structured output provided successfully
+```
+</details>
+
