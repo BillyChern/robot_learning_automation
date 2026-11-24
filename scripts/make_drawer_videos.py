@@ -965,7 +965,7 @@ def v_story(w):
     w.add(fade(dash_segment(RIGHT, 24, "...and got back up", "01:35, no human touch", "The reset agent wrote a righting move and "
                             "stood it back up on its own.", COL["ok"], t0=5, t1=150, story=True, badge=("ok", "✓  back on its feet"))))
     w.add(chapter_card("6 / 6", "The final test", "10 episodes, learned policy, no exploration noise", COL["eval"]))
-    w.add(fade(eval_part(7.0, story=True)))
+    w.add(fade(eval_part(8.0, story=True)))
     w.add(end_card())
 
 
@@ -986,7 +986,7 @@ def eval_part(dur, story=False):
         return card([("FINAL TEST", 34, "B", COL["eval"]), (f"[TBD] / 10{done}", 96, "B", TXT),
                      ("Runs after training episode 49: the learned policy, no exploration noise, 10 episodes.", 34, "R", DIM)], dur, COL["eval"])
     items = [(rec(e["dir"]), 45.0, 100.0, e["final"], (f"episode {e['ep']}", "eval")) for e in EVAL_EPS[:10]]
-    return grid_segment(items, 4, 3, 10 if story else 7, "The final test", "learned policy, no exploration noise",
+    return grid_segment(items, 4, 3, 13 if story else 7, "The final test", "learned policy, no exploration noise",
                         lambda k, n: f"{k} / {n} in", "Every tile is one real test episode (side camera, zoomed in). "
                         "✗ = not in, ? = our check said “unsure”.", COL["eval"],
                         dur=dur if story else None)
