@@ -7,6 +7,7 @@ import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 attempt, out, times = sys.argv[1], sys.argv[2], sys.argv[3:]
+side = out.startswith("side_")          # left half of the dashboard (side camera) instead of the wrist
 A = os.path.join(ROOT, "attempts", attempt)
 L = open(os.path.join(A, "log.txt")).read().splitlines()
 
@@ -25,7 +26,7 @@ for v in times:
     c.set(cv2.CAP_PROP_POS_FRAMES, min(int((sec(v) - t0) * fps), n - 1))
     ok, f = c.read()
     if ok:
-        panels.append(cv2.putText(cv2.resize(f[:, f.shape[1] // 2:], (320, 240)), v, (6, 18), 0, 0.5, (0, 255, 255), 1))
+        panels.append(cv2.putText(cv2.resize(f[:, :f.shape[1] // 2] if side else f[:, f.shape[1] // 2:], (320, 240)), v, (6, 18), 0, 0.5, (0, 255, 255), 1))
 while len(panels) % 2:
     panels.append(np.zeros((240, 320, 3), np.uint8))
 rows = [np.hstack(panels[i:i + 2]) for i in range(0, len(panels), 2)]

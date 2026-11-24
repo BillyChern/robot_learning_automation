@@ -26,3 +26,4 @@ on the hand-inserted drawer (flush 1.0). Agents fresh; previous run's programs i
 - 2026-11-23 21:27: learned arm not yet better than scripted after the reward change (contacts 2,1,2,3,2 vs 2,2,2). Note to the RL agent: diagnose the first-descent action; hindsight relabelling of the found entry offset.
 - 2026-11-23 23:35: sim-policy arm complete: 5/5 successes (episodes 31, 34, 37, 40, 43).
 - 2026-11-23 23:53: episode 46 (a flush insertion, VLM yes) scored 'unsure': the geometric check took the standing drawer for the cabinet ('cabinet moved 27.1 cm'). Fixed: cabinet chosen by size (commit above); safe restart before the evaluation. Episode 46 stays 'unsure' in rl_curve.
+- 2026-11-24 00:57: resets 71-72 and the repair run failed ('no feasible grasp yaw'): the drawer stands next to the robot base (0.24, 0.00) with its knob axis pointing at the base. Note to the reset agent with physical variants (flip yaw, pinch the body, nudge it away from the base).

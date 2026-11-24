@@ -45,7 +45,7 @@ TABLE_FACE, COMP_C = R.DRAWER_L, R.COMP_0
 class World:
     def __init__(self, state, c, ax):
         self.state, self.c, self.ax, self.held, self.rel, self.ax_rel = state, np.array(c, float), np.array(ax, float), False, None, None
-        self.dropped = None
+        self.dropped, self.tz2, self.tilt_err = None, None, 0.0
 
     @property
     def knob(self):
@@ -91,18 +91,20 @@ class Sess:
         w, T = self.w, KIN.fk(self.q)
         self.gf = float(v)
         if v >= 0.9:
-            if not w.held and w.state != "held" and np.linalg.norm(T[:2, 3] - w.knob) < 0.006 and T[2, 3] - calib.table_z() < 0.16:
+            if not w.held and w.state != "held" and np.linalg.norm((T[:3, 3] + R.TIP_CLOSED * T[:3, 2])[:2] - w.knob) < 0.006 and T[2, 3] - calib.table_z() < 0.16:
                 w.held, w.state = True, "held"
                 w.rel = T[:2, :2].T @ (w.c - T[:2, 3])
                 w.ax_rel = T[:2, :2].T @ w.ax
+                w.tz2 = float(T[2, 2])                                # tool tilt at the pinch must be kept to the release
             self.g = 85.0 if w.held else 98.5
         else:
             if w.held:
                 h = T[2, 3] - calib.table_z()
                 w.c = T[:2, 3] + T[:2, :2] @ w.rel + R.PLACE_BIAS
+                w.tilt_err = float(abs(T[2, 2] - w.tz2)) if w.tz2 is not None else 0.0
                 w.ax = T[:2, :2] @ w.ax_rel
                 w.held, w.state = False, "table"
-                if h > 0.15:
+                if h > 0.16:
                     w.dropped = round(h, 3)
             self.g = 100.0 * v
         return self.g
@@ -140,7 +142,8 @@ def scenario(flow, target, seed):
     ax0 = np.array([[np.cos(a), -np.sin(a)], [np.sin(a), np.cos(a)]]) @ nom
     w = {"compartment": lambda: World("comp", COMP_C, nom),
          "table": lambda: World("table", [0.335, -0.075], ax0),
-         "in_place": lambda: World("table", np.array(R.aim_for(target, ax0)) + [0.002, 0.002], ax0)}[flow]()
+         "in_place": lambda: World("table", np.array(R.aim_for(target, ax0)) + [0.002, 0.002], ax0),
+         "near_base": lambda: World("table", [0.206, 0.019], [-0.83, 0.558])}[flow]()   # after attempt 99
     s = Sess(w)
     r = Sim(s, target)
     r.rng = np.random.default_rng(seed)
@@ -164,7 +167,7 @@ def scenario(flow, target, seed):
         again = bool(s2.S.get("already_in_place")) and s2.out == "success" and float(np.linalg.norm(w.c - c0)) < 1e-6
     return dict(flow=flow, target=list(target), claim=s.out, err=err, margin=R.edge_margin(w.c, w.ax)[0], gap=R.cab_gap(w.c, w.ax),
                 shift=s.S.get("aim_shift_m"), yaw=s.S.get("yaw_goal_deg"), inplace=bool(s.S.get("already_in_place")), held=w.held,
-                dropped=w.dropped, again=again, msg=msg, segs=s.nseg, t=time.time() - t0)
+                dropped=w.dropped or (w.tilt_err > 0.01 and "tilt changed"), again=again, msg=msg, segs=s.nseg, t=time.time() - t0)
 
 
 if __name__ == "__main__":
@@ -174,7 +177,7 @@ if __name__ == "__main__":
     res = []
     for i, x in enumerate(np.linspace(*L["x"], n)):
         for j, y in enumerate(np.linspace(*L["y"], n)):
-            for flow in ("compartment", "table", "in_place"):
+            for flow in ("compartment", "table", "in_place", "near_base"):
                 res.append(scenario(flow, np.array([x, y]), i + 2 * j))
     bad = [r for r in res if r["claim"] != "success" or r["err"] > 0.02 or r["margin"] < 0.10 or r["held"] or r["dropped"]]
     pl = [r for r in res if r["shift"] is not None]

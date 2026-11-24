@@ -62,6 +62,9 @@ EDGE_MARGIN = 0.10              # user 16:41: the drawer's outline stays >= 10 c
 SHIFT_MAX = 0.0185              # the aim may leave the target by this much (layout tolerance 2 cm)
 EDGE_BUF = (0.004, 0.003, 0.002, 0.001)   # extra edge margin of the aim: the largest that stays within SHIFT_MAX
 GAP_WANT = 0.06                 # drawer outline to the cabinet: at ~5 cm the side camera merged them (operator 19:45, resets 22, 25)
+NEAR_BASE_R = 0.24               # knob closer to the base axis: pinch with the tool tilted 20 deg away from the base
+NEAR_BASE_TILT = 20.0           # (attempt 97: vertical pinch at 0.20 m left joint 3 only 3.5 deg from its limit; 20 deg: 21 deg)
+NUDGE = 0.06                    # next to the base: slide the drawer this far toward +x by its knob (operator 00:57), then pick
 GAP_MIN = 0.044                 # a drawer closer than this is not left in place (the tightest target corner plans 4.5 cm)
 
 
@@ -329,11 +332,15 @@ class Reset:
     def look(self, xy, h_top, h_tool, tag):
         """Tool-down view with the optical axis through (xy, h_top); the knob in the base frame, or None."""
         s = self.s
-        T = tool_down_T(np.r_[xy, self.tz + h_tool], YAW_DEG)
-        Tc = T @ self.Ttc
         X = np.r_[xy, self.tz + h_top]
-        lam = (X[2] - Tc[2, 3]) / Tc[2, 2]
-        T[:2, 3] += X[:2] - (Tc[:2, 3] + lam * Tc[:2, 2])
+        poses = []
+        for yaw in (YAW_DEG, YAW_DEG + 180.0):   # the camera sits 5 cm off the tool axis: near the robot base the default
+            T = tool_down_T(np.r_[xy, self.tz + h_tool], yaw)   # look put the tool inside the base keep-out (attempts 94, 95)
+            Tc = T @ self.Ttc
+            lam = (X[2] - Tc[2, 3]) / Tc[2, 2]
+            T[:2, 3] += X[:2] - (Tc[:2, 3] + lam * Tc[:2, 2])
+            poses.append(T)
+        T = poses[0] if np.hypot(*poses[0][:2, 3]) >= 0.23 else max(poses, key=lambda P: np.hypot(*P[:2, 3]))
         s.move_joint(f"look_{tag}", self.ik(T), "normal")
         time.sleep(0.7)
         img = s.wrist.latest()[0]
@@ -370,43 +377,79 @@ class Reset:
 
     # ------------------------------------------------------------ pick and place
     def grasp_poses(self, k, ax, h_g):
-        """Jaws square to the knob axis: the feasible yaw (of two) with the smallest joint move."""
+        """Jaws square to the knob axis: of both yaws and several IK seeds, the feasible plan with the smallest joint move.
+        Attempt 97: next to the robot base the IK seeded from the look pose landed on a branch whose descent hit the
+        joint limits, while the branch from a tool-down seed was clear."""
         s = self.s
         a = np.degrees(np.arctan2(ax[1], ax[0]))
         q0 = self.q_now()
         best = None
+        tilt = NEAR_BASE_TILT if np.hypot(*k) < NEAR_BASE_R else 0.0
+        if tilt:
+            s.decide(f"knob {np.hypot(*k):.3f} m from the base axis: pinch with the tool tilted {tilt:.0f} deg away from the base")
         for yaw in (wrap(a + 90.0), wrap(a - 90.0)):
-            Ta = tool_down_T(np.r_[k, self.tz + h_g + 0.09], yaw)
-            Tg = tool_down_T(np.r_[k, self.tz + h_g], yaw)
-            try:
-                qa = s.planner.ik_exact(Ta, q0)[0]
-                seg = s.planner.joint_move("chk", q0, qa, NORMAL)
-                seg2 = s.planner.cart_line("chk2", qa, Tg, SLOW)
-            except Exception as e:
-                s.log(f"grasp yaw {yaw:.0f}: not plannable ({str(e)[:70]})")
-                continue
-            ok1 = sim.check(seg.q, s.kin, NORMAL, gripper_frac=PRE, table_z=self.tz)[0]
-            ok2 = sim.check(seg2.q, s.kin, SLOW, gripper_frac=PRE, table_z=self.tz)[0]
-            cost = float(np.abs(qa - q0).max())
-            s.log(f"grasp yaw {yaw:.0f}: move {ok1} descent {ok2} cost {cost:.0f}")
-            if ok1 and ok2 and (best is None or cost < best[0]):
-                best = (cost, Ta, Tg, yaw)
+            Tg = tool_down_T(np.zeros(3), yaw)
+            if tilt:
+                u = np.r_[np.asarray(k, float) / np.linalg.norm(k), 0.0]
+                kx = np.cross([0.0, 0.0, 1.0], u)
+                kx /= np.linalg.norm(kx)
+                K = np.array([[0, -kx[2], kx[1]], [kx[2], 0, -kx[0]], [-kx[1], kx[0], 0]])
+                th = np.radians(tilt)
+                Tg[:3, :3] = (np.eye(3) + np.sin(th) * K + (1 - np.cos(th)) * K @ K) @ Tg[:3, :3]
+            tip = np.r_[k, self.tz + h_g - TIP_CLOSED]             # the fingertips where a vertical pinch puts them
+            Tg[:3, 3] = tip - TIP_CLOSED * Tg[:3, 2]
+            Ta = Tg.copy()
+            Ta[:3, 3] -= 0.09 * Tg[:3, 2]
+            seeds = [q0, SEED_DOWN, np.array([0, -7, -134, 0, -53, yaw]), np.array([0, 40, -120, 0, -60, yaw])]
+            seen = []
+            for sd in seeds:
+                try:
+                    qa = s.planner.ik_exact(Ta, sd)[0]
+                except Exception:
+                    continue
+                qa = q0 + wrap180(qa - q0)
+                if any(np.abs(qa - p).max() < 1.0 for p in seen):
+                    continue
+                seen.append(qa)
+                try:
+                    seg = s.planner.joint_move("chk", q0, qa, NORMAL)
+                    seg2 = s.planner.cart_line("chk2", qa, Tg, SLOW)
+                except Exception as e:
+                    s.log(f"grasp yaw {yaw:.0f}: not plannable ({str(e)[:70]})")
+                    continue
+                ok1, r1 = sim.check(seg.q, s.kin, NORMAL, gripper_frac=PRE, table_z=self.tz)
+                ok2, r2 = sim.check(seg2.q, s.kin, SLOW, gripper_frac=PRE, table_z=self.tz)
+                cost = float(np.abs(qa - q0).max())
+                for ok, r, nm in ((ok1, r1, "move"), (ok2, r2, "descent")):
+                    if not ok:
+                        s.log(f"grasp yaw {yaw:.0f} {nm} refused: " + str({kk: v for kk, v in r.items() if kk in (
+                            "joint_limit_violations", "keep_out_violations", "near_base", "min_tip_above_table",
+                            "min_body_above_table", "min_link_z", "keep_in_violations", "joint_speed_ok", "max_radius")}))
+                s.log(f"grasp yaw {yaw:.0f} branch {np.round(qa, 0).tolist()}: move {ok1} descent {ok2} cost {cost:.0f}")
+                if ok1 and ok2 and (best is None or cost < best[0]):
+                    best = (cost, Ta, Tg, yaw, qa)
         s.require(best is not None, "no feasible grasp yaw for the knob")
+        self.grasp_q = best[4]
         return best[1], best[2], best[3]
 
     def pick(self, loc, tag):
         """Pinch the knob and lift the drawer LIFT m. Two tries; returns the grip description."""
         s = self.s
-        for trial in range(2):
+        nudges = 0
+        for trial in range(4):
+            if trial - nudges >= 2:                   # two real grasp tries; slides away from the base do not count
+                break
             s.phase(f"pick_{tag}_{trial}")
             v = self.find_knob(loc, f"{tag}_{trial}")
             s.require(v is not None, f"the pull is not visible from above at {np.round(loc['xy'], 3).tolist()} "
                                      f"({loc['where']}): the drawer is not pull-up")
             h_g = loc["h_top"] + TIP_CLOSED + TIP_CLEAR - 0.0015 * trial    # second try a little lower on the knob
             Ta, Tg, yaw = self.grasp_poses(v["knob"], v["axis"], h_g)
+            h_g = float(Tg[2, 3] - self.tz)                         # tool height of the (possibly tilted) pinch
+            k_rel = np.asarray(v["knob"], float) - Tg[:2, 3]          # knob from the tool origin (non-zero when tilted)
             s.decide(f"pinch the knob at {np.round(v['knob'], 4).tolist()}, jaw yaw {yaw:.1f}, tool {h_g:.3f} m above the table")
             s.gripper(PRE, "pre-close around the knob")
-            s.move_joint("above_knob", self.ik(Ta), "normal")
+            s.move_joint("above_knob", self.grasp_q, "normal")      # the branch that was checked
             if not self.contact_line("descend_knob", Tg):
                 s.gripper(0.0, "open after contact")
                 self.rise("up_after_contact", h_g + 0.09)
@@ -417,6 +460,10 @@ class Reset:
                 s.decide(f"gripper reads {g:.1f}: the knob is not between the pads")
                 s.gripper(PRE, "release")
                 self.rise("up_after_miss", h_g + 0.09)
+                continue
+            if np.hypot(*v["knob"]) < NEAR_BASE_R and loc["where"] == "table" and nudges < 2:
+                loc = self.nudge(loc, h_g)
+                nudges += 1
                 continue
             limit = LIFT_FORCE if loc["where"].startswith("compartment") else LIFT_FORCE_TABLE
             z0 = self.T_now()[2, 3]
@@ -443,8 +490,33 @@ class Reset:
                 s.gripper(PRE, "open after the slip")
                 self.rise("up_after_slip", max(self.T_now()[2, 3] - self.tz, h_g + 0.09))
                 continue
-            return dict(knob=v["knob"], axis=v["axis"], h_g=h_g, bottom=loc["h_top"] - DRAWER_L, yaw=yaw)
+            return dict(knob=v["knob"], axis=v["axis"], h_g=h_g, bottom=loc["h_top"] - DRAWER_L, yaw=yaw, k_rel=k_rel)
         s.require(False, f"could not grasp the knob after two tries ({loc['where']})")
+
+    def nudge(self, loc, h_g):
+        """Attempts 97-99: next to the robot base the arm cannot lift the drawer (vertical: joint 3 at its limit; tilted:
+        the knob slipped). Holding the knob, slide the drawer NUDGE m toward +x along the table (away from the base and
+        from every table edge; it only needs to overcome sliding friction), let go, rise. Returns the updated location."""
+        s = self.s
+        T0 = self.T_now()
+        dst = T0.copy()
+        dst[0, 3] += NUDGE
+        dst[2, 3] += 0.001
+        c_new = np.asarray(loc["xy"], float) + [NUDGE, 0.0]
+        s.require(edge_margin(c_new)[0] >= min(EDGE_MARGIN, edge_margin(loc["xy"])[0]), "the slide would bring the drawer nearer a table edge")
+        s.decide(f"drawer next to the robot base: slide it {NUDGE * 100:.0f} cm toward +x by its knob, then pick it")
+        try:
+            with ForceLimit(s, 20.0):
+                self.line("slide_from_base", dst, "slow")
+        except Abort as e:
+            if "contact force" not in str(e):
+                raise
+            s.decide("the slide stopped at the 20 N limit")
+        moved = float(self.T_now()[0, 3] - T0[0, 3])
+        s.gripper(PRE, "let go after the slide")
+        self.rise("up_after_slide", h_g + 0.09)
+        s.summary(slid_m=round(moved, 4))
+        return dict(loc, xy=np.asarray(loc["xy"], float) + [moved, 0.0])
 
     def still_held(self, when):
         """Command the closure again: after a slip the reading stays where it was until the gripper is told to move
@@ -492,7 +564,8 @@ class Reset:
         Tc = T0.copy()
         Tc[:3, :3] = R @ T0[:3, :3]
         bias = PLACE_BIAS if aim[0] < 0.40 else np.zeros(2)
-        Tc[:2, 3] = aim - bias + off
+        kr = R[:2, :2] @ np.asarray(grip.get("k_rel", np.zeros(2)), float)   # tilted pinch: the tool is not above the knob
+        Tc[:2, 3] = aim - bias + off - kr
         s.decide(f"carry: drawer centre to {np.round(aim, 3).tolist()}, turn {delta:+.1f} deg")
         try:
             self.line("carry", Tc, "normal")
@@ -508,8 +581,18 @@ class Reset:
         T2 = Tc.copy()
         T2[2, 3] = self.tz + h_place
         touched = not self.contact_line("lower_to_table", T2, 20.0)
+        early = float(self.T_now()[2, 3] - self.tz - (h_place + 0.004))
+        s.summary(touch_early_mm=round(early * 1000, 1))
+        if touched and early > 0.004 and not grip.get("unknown") and not s.dry:
+            # attempts 92, 94: the drawer hung tilted in the pads, a corner touched 1 cm early and, let go there, it fell
+            # flat 5 cm away (next to the robot base). Press it level first (it turns about the knob back under the pads).
+            s.decide(f"touched the table {early * 1000:.0f} mm early: the drawer hangs tilted, press it level before letting go")
+            T3 = Tc.copy()
+            T3[2, 3] = self.tz + h_place + 0.002
+            self.contact_line("level_drawer", T3, 35.0)
+            s.summary(touch_after_level_mm=round(float(self.T_now()[2, 3] - self.tz - (h_place + 0.004)) * 1000, 1))
         s.require(touched or s.dry or not grip.get("unknown"), "held drawer: no table contact while lowering, not releasing")
-        c_now = self.T_now()[:2, 3] - off + bias
+        c_now = self.T_now()[:2, 3] + kr - off + bias
         m1 = edge_margin(c_now, ax)[0]
         s.summary(edge_margin_at_release_m=round(m1, 4))
         s.require(m1 >= EDGE_MARGIN, f"release refused: outline {m1 * 100:.1f} cm from a table edge")
