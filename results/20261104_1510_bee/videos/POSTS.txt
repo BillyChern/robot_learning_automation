@@ -1,0 +1,43 @@
+X thread: fine-tuning π0.5 with Claude Code agents (toy bee into a bowl)
+Attach the listed files to each post. Counts are X's (arrows and emoji count 2).
+
+============================================================
+1/4  The main video  (278/280)
+attach: 00_full_story.mp4
+============================================================
+We gave Claude Code agents (Opus 5.5) a robot and one sentence:
+
+“Fine-tune π0.5 to pick up the toy bee and put it into the bowl, with at least 70% success.”
+
+They did demos, resets, training, evals, DAgger. Hit 80% SR in 6 days, half of it while I was away at CoRL in Austin 🐝
+
+============================================================
+2/4  Why the success rate dropped  (277/280)
+attach: thread/rollercoaster_chart.png, thread/what_changed.png
+============================================================
+Success rate: 63% → 15% → 80% → 55%. What changed:
+
+15%: kept training the 63% model at the same LR (5e-5), plus 14 DAgger runs from an older 0% model.
+80%: restart from the 63% model, LR 5x lower, DAgger only from its own failures.
+55%: +64 demos. Not significant (p=0.18).
+
+============================================================
+3/4  Bloopers  (277/280)
+attach: 08_human_help.mp4
+============================================================
+Bloopers. A human had to step in 9 times, mostly for the bee: stuck to the fingers, off the table, on the floor. Once the robot grabbed the curtain. After I left for CoRL, just once.
+
+The bee broke on the first night. It's a fun side project, so we fixed it with orange tape 😄
+
+============================================================
+4/4  Takeaway  (278/280)
+attach: nothing (text only)
+============================================================
+Why do this? Robot learning is mostly chores, and we were tired of them. So the agents ran it all.
+
+But agents alone are way too slow and expensive. A few human calls, like full fine-tuning over LoRA, save a lot of time, compute and tokens.
+
+P.S. Opus 5.5 made these videos too.
+
+
+Extra videos, not in the thread (they overlap with the main video): 01_agents_write_programs.mp4, 02_autonomous_resets.mp4, 03_data_collection.mp4, 04_training.mp4, 05_evaluation_and_dagger.mp4, 06_final_policy_80_percent.mp4, 07_final_policy_rollouts.mp4

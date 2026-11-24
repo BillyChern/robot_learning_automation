@@ -134,9 +134,9 @@ the grasp (where, how wide, how high) and the placement geometry yourself and st
 
 ## Reusable material (read-only, `inputs/reuse/`)
 Code and lessons from earlier agents on these arms, on other tasks; each has an `INDEX.md` or a `run.py` to start from:
-- `inputs/reuse/battery_placement_kinova_b` -> `/home/r2r/Documents/aaron/agentic_robotics/far_skills/battery_placement/kinova_b`
-- `inputs/reuse/marker_placement_kinova_a` -> `/home/r2r/Documents/aaron/agentic_robotics/far_skills/marker_placement/kinova_a`
-- `inputs/reuse/seed_2_kinova_a` -> `/home/r2r/Documents/aaron/agentic_robotics/far_runs/battery_placement/baseline/seed_2/kinova_a`
+- `inputs/reuse/battery_placement_kinova_b` -> `/home/r2r/Documents/colleague/agentic_robotics/far_skills/battery_placement/kinova_b`
+- `inputs/reuse/marker_placement_kinova_a` -> `/home/r2r/Documents/colleague/agentic_robotics/far_skills/marker_placement/kinova_a`
+- `inputs/reuse/seed_2_kinova_a` -> `/home/r2r/Documents/colleague/agentic_robotics/far_runs/battery_placement/baseline/seed_2/kinova_a`
 - Decide from the indexes first. Open a card or a file only for a skill you may use.
 - For every skill you use, state APPLY (as is), ADAPT (say what changes) or REJECT (say why) in `notes/reuse.md`. Copy
   what you apply or adapt into this workspace (e.g. `programs/lib/`), keep its origin in a comment, and commit it: your

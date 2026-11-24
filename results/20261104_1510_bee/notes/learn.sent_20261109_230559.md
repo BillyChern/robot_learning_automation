@@ -7,7 +7,7 @@ scripts/train_when_free.sh before it could start (it had not started; the GPU wa
 - Corrections: 44 normal-wrist DAgger successes exist; 105 clean collect demos (bee_v5 had 94). Check what the
   corrections from eval 12 (full_v1 failure states) look like, e.g. recover phases or odd poses, before using them. The
   ones from evals 15/18 (full_v5's own failures: hovering 3-4 cm beside the bee) are the most relevant.
-- More clean demos: the robot can collect while the 4090 is blocked (aaron's jobs, ~17 GB).
+- More clean demos: the robot can collect while the 4090 is blocked (another user's jobs, ~17 GB).
 When you have decided, re-arm it yourself (run on the 4090 machine, in tmux):
   bash scripts/train_when_free.sh runs/20261104_1510_bee <dataset> full_v7 --num-train-steps <N> --batch-size 4 --pytorch-weight-path <init>
 (compute the dataset's norm stats first; after_training.sh full_v7 is already waiting in window after_train).

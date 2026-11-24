@@ -207,4 +207,4 @@ Robot time lost to human-dependent stops: about 1 h (1-3), about 0.75 h (4), 8.5
 - 11-10 20:14: full_v8 finished on Worksation_5090 (/home/r2r/robot_learning_final_pj/runs/20261104_1510_bee/checkpoints/full_v8/30000); weights copied; note to agent 3; PHASE=learn.
 - 11-10 23:32: user: test full_v8 for the final success rate. Relaunching run-all (PHASE=learn, stale RESTART removed); note to agent 3: eval full_v8 exactly as eval 22, no further training.
 - 11-11 03:09: eval 23: full_v8/30000 11/20 (55%, 1 unsure) vs full_v7/30000 16/20 (80%). Agent 3 done (target met by full_v7); run-all reached report and stopped. Best checkpoint: checkpoints/full_v7/30000.
-- 11-14 14:10: (Rai) reflect_after_every_run off, review_every 50: per-run reflections were ~82% of the run's cost and changed a program once; repairs after failures unchanged. Applies to the next run.
+- 11-14 14:10: (a lab member) reflect_after_every_run off, review_every 50: per-run reflections were ~82% of the run's cost and changed a program once; repairs after failures unchanged. Applies to the next run.

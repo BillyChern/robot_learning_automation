@@ -199,7 +199,7 @@
   start tool yaw >= 100 deg: 349, 367, 372, 397, 400 successful (+393 fail) -> high-yaw corrections present.
 - train full_v6: pi05_kinova_full (stock representation, like full_v5), bee_v6, init full_v5/30000
   (--pytorch-weight-path), 30k steps, batch 4, on the 4090 (~8.2 h).
-  result: full_v6 training OOM on the 4090: other users' jobs hold 19.7 GB of 24.5 GB (aaron's XPolicyLab policy
+  result: full_v6 training OOM on the 4090: other users' jobs hold 19.7 GB of 24.5 GB (another user's XPolicyLab policy
   server + RMBench eval, an r2r imitate_episodes job; running 13+ h). Cannot stop them.
 - Workaround: train full_v6 on the 5090 (32 GB, idle) with the cu128 torch from pylib/torch128 (programs/train_5090.py),
   same config/flags; counts as a training run (declared). Copy bee_v6 + full_v5/30000 to the 5090 first, copy the
