@@ -165,8 +165,11 @@ def drawer_rl(before, after, task_cfg):
     prof = slot_profile(pts, table_z, fx, tol)
     rep = dict(slot=prof)
     n = np.asarray(fx["front_normal"], float)
-    cab_a = [b for b in after if layout.matches(pri.get("cabinet") or {}, b)]
-    cab_b = [b for b in (before or []) if layout.matches(pri.get("cabinet") or {}, b)]
+    hc = (pri.get("cabinet") or {}).get("height", [0.08, 0.12])
+    big = lambda b: hc[0] < b.get("height", 0) < hc[1] and 0.2 < max(b.get("extent", [0, 0])) < 0.36  # noqa: E731
+    # by size: the standing drawer (~0.12 m) also fits the cabinet prior's extent range (episode 46: "moved 27 cm")
+    cab_a = [b for b in after if big(b)]
+    cab_b = [b for b in (before or []) if big(b)]
     if cab_a and cab_b:
         moved = _dist(max(cab_a, key=lambda b: b["n"])["xy"], max(cab_b, key=lambda b: b["n"])["xy"])
         rep["cabinet_moved_m"] = round(moved, 4)
@@ -203,8 +206,11 @@ def drawer_lying(before, after, task_cfg):
     hl, hw = fx["compartment"][0] / 2 - 0.01, fx["compartment"][1] / 2 - 0.01
     m = (np.abs(s) < hl) & (np.abs(t) < hw) & (h > 0.003)
     rep = dict(n=int(m.sum()))
-    cab_a = [b for b in after if layout.matches(pri.get("cabinet") or {}, b)]
-    cab_b = [b for b in (before or []) if layout.matches(pri.get("cabinet") or {}, b)]
+    hc = (pri.get("cabinet") or {}).get("height", [0.08, 0.12])
+    big = lambda b: hc[0] < b.get("height", 0) < hc[1] and 0.2 < max(b.get("extent", [0, 0])) < 0.36  # noqa: E731
+    # by size: the standing drawer (~0.12 m) also fits the cabinet prior's extent range (episode 46: "moved 27 cm")
+    cab_a = [b for b in after if big(b)]
+    cab_b = [b for b in (before or []) if big(b)]
     if cab_a and cab_b:
         # outline centre, not the blob centroid: an inserted drawer fills a compartment and moves the centroid ~3 cm
         oa, ob = (outline_xy(max(c, key=lambda b: b["n"]), fx["yaw_deg"]) for c in (cab_a, cab_b))
